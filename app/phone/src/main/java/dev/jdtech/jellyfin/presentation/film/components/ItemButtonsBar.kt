@@ -1,8 +1,12 @@
 package dev.jdtech.jellyfin.presentation.film.components
 
+import android.app.DownloadManager
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
@@ -17,10 +21,12 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.window.core.layout.WindowSizeClass
+import dev.jdtech.jellyfin.core.presentation.downloader.DownloaderState
 import dev.jdtech.jellyfin.core.presentation.dummy.dummyEpisode
 import dev.jdtech.jellyfin.models.FindroidItem
 import dev.jdtech.jellyfin.models.FindroidMovie
 import dev.jdtech.jellyfin.models.FindroidShow
+import dev.jdtech.jellyfin.models.isDownloaded
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
 import dev.jdtech.jellyfin.core.R as CoreR
@@ -32,8 +38,11 @@ fun ItemButtonsBar(
     onMarkAsPlayedClick: () -> Unit,
     onMarkAsFavoriteClick: () -> Unit,
     onDownloadClick: () -> Unit,
+    onDownloadCancelClick: () -> Unit,
+    onDownloadDeleteClick: () -> Unit,
     onTrailerClick: (uri: String) -> Unit,
     modifier: Modifier = Modifier,
+    downloaderState: DownloaderState? = null,
 ) {
     val windowSizeClass = currentWindowAdaptiveInfo().windowSizeClass
 
@@ -143,15 +152,37 @@ fun ItemButtonsBar(
                         }
                     }
                 }
-                if (item.canDownload) {
-                    FilledTonalIconButton(
-                        onClick = onDownloadClick,
-                        enabled = false,
-                    ) {
-                        Icon(
-                            painter = painterResource(CoreR.drawable.ic_download),
-                            contentDescription = null,
+                if (downloaderState != null && !downloaderState.isDownloading) {
+                    if (item.isDownloaded()) {
+                        FilledTonalIconButton(
+                            onClick = onDownloadDeleteClick,
+                        ) {
+                            Icon(
+                                painter = painterResource(CoreR.drawable.ic_trash),
+                                contentDescription = null,
+                            )
+                        }
+                    } else if (item.canDownload) {
+                        FilledTonalIconButton(
+                            onClick = onDownloadClick,
+                        ) {
+                            Icon(
+                                painter = painterResource(CoreR.drawable.ic_download),
+                                contentDescription = null,
+                            )
+                        }
+                    }
+                }
+            }
+            if (downloaderState != null) {
+                AnimatedVisibility(downloaderState.isDownloading) {
+                    Column {
+                        DownloaderCard(
+                            state = downloaderState,
+                            onCancelClick = onDownloadCancelClick,
+                            onRetryClick = onDownloadClick,
                         )
+                        Spacer(Modifier.height(MaterialTheme.spacings.small))
                     }
                 }
             }
@@ -169,6 +200,29 @@ private fun ItemButtonsBarPreview() {
             onMarkAsPlayedClick = {},
             onMarkAsFavoriteClick = {},
             onDownloadClick = {},
+            onDownloadCancelClick = {},
+            onDownloadDeleteClick = {},
+            onTrailerClick = {},
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun ItemButtonsBarDownloadingPreview() {
+    FindroidTheme {
+        ItemButtonsBar(
+            item = dummyEpisode,
+            downloaderState = DownloaderState(
+                status = DownloadManager.STATUS_RUNNING,
+                progress = 0.3f,
+            ),
+            onPlayClick = {},
+            onMarkAsPlayedClick = {},
+            onMarkAsFavoriteClick = {},
+            onDownloadClick = {},
+            onDownloadCancelClick = {},
+            onDownloadDeleteClick = {},
             onTrailerClick = {},
         )
     }

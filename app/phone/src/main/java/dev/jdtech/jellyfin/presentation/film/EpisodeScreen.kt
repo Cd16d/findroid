@@ -38,6 +38,9 @@ import androidx.core.graphics.toColorInt
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.jdtech.jellyfin.PlayerActivity
+import dev.jdtech.jellyfin.core.presentation.downloader.DownloaderAction
+import dev.jdtech.jellyfin.core.presentation.downloader.DownloaderState
+import dev.jdtech.jellyfin.core.presentation.downloader.DownloaderViewModel
 import dev.jdtech.jellyfin.core.presentation.dummy.dummyEpisode
 import dev.jdtech.jellyfin.core.presentation.dummy.dummyVideoMetadata
 import dev.jdtech.jellyfin.film.presentation.episode.EpisodeAction
@@ -63,16 +66,25 @@ fun EpisodeScreen(
     navigateToPerson: (personId: UUID) -> Unit,
     navigateToSeason: (seasonId: UUID) -> Unit,
     viewModel: EpisodeViewModel = hiltViewModel(),
+    downloaderViewModel: DownloaderViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val downloaderState by downloaderViewModel.state.collectAsStateWithLifecycle()
 
     LaunchedEffect(true) {
         viewModel.loadEpisode(episodeId = episodeId)
     }
 
+    LaunchedEffect(state.episode) {
+        state.episode?.let { episode ->
+            downloaderViewModel.update(episode)
+        }
+    }
+
     EpisodeScreenLayout(
         state = state,
+        downloaderState = downloaderState,
         onAction = { action ->
             when (action) {
                 is EpisodeAction.Play -> {
@@ -89,13 +101,18 @@ fun EpisodeScreen(
             }
             viewModel.onAction(action)
         },
+        onDownloaderAction = { action ->
+            downloaderViewModel.onAction(action)
+        },
     )
 }
 
 @Composable
 private fun EpisodeScreenLayout(
     state: EpisodeState,
+    downloaderState: DownloaderState,
     onAction: (EpisodeAction) -> Unit,
+    onDownloaderAction: (DownloaderAction) -> Unit,
 ) {
     val safePadding = rememberSafePadding()
 
@@ -192,6 +209,7 @@ private fun EpisodeScreenLayout(
                     }
                     ItemButtonsBar(
                         item = episode,
+                        downloaderState = downloaderState,
                         onPlayClick = { startFromBeginning ->
                             onAction(EpisodeAction.Play(startFromBeginning = startFromBeginning))
                         },
@@ -208,7 +226,15 @@ private fun EpisodeScreenLayout(
                             }
                         },
                         onTrailerClick = {},
-                        onDownloadClick = {},
+                        onDownloadClick = {
+                            onDownloaderAction(DownloaderAction.Download(episode))
+                        },
+                        onDownloadCancelClick = {
+                            onDownloaderAction(DownloaderAction.CancelDownload(episode))
+                        },
+                        onDownloadDeleteClick = {
+                            onDownloaderAction(DownloaderAction.DeleteDownload(episode))
+                        },
                         modifier = Modifier.fillMaxWidth(),
                     )
                     Spacer(Modifier.height(MaterialTheme.spacings.small))
@@ -291,7 +317,9 @@ private fun EpisodeScreenLayoutPreview() {
                 episode = dummyEpisode,
                 videoMetadata = dummyVideoMetadata,
             ),
+            downloaderState = DownloaderState(),
             onAction = {},
+            onDownloaderAction = {},
         )
     }
 }
