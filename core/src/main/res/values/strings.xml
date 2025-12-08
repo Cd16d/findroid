@@ -106,4 +106,5 @@
     <string name="download_paused">Paused</string>
     <string name="download_downloading">Downloading…</string>
     <string name="download_failed">Failed to download</string>
+    <string name="title_search">Search</string>
 </resources>

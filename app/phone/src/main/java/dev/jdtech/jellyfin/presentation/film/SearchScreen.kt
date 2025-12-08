@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.MaterialTheme
@@ -29,23 +28,29 @@ import dev.jdtech.jellyfin.core.presentation.dummy.dummyCollections
 import dev.jdtech.jellyfin.film.presentation.media.MediaAction
 import dev.jdtech.jellyfin.film.presentation.media.MediaState
 import dev.jdtech.jellyfin.film.presentation.media.MediaViewModel
+import dev.jdtech.jellyfin.film.presentation.search.SearchAction
+import dev.jdtech.jellyfin.film.presentation.search.SearchState
+import dev.jdtech.jellyfin.film.presentation.search.SearchViewModel
 import dev.jdtech.jellyfin.models.FindroidItem
 import dev.jdtech.jellyfin.presentation.components.ErrorDialog
 import dev.jdtech.jellyfin.presentation.film.components.Direction
 import dev.jdtech.jellyfin.presentation.film.components.ErrorCard
-import dev.jdtech.jellyfin.presentation.film.components.FavoritesCard
+import dev.jdtech.jellyfin.presentation.film.components.FilmSearchBar
 import dev.jdtech.jellyfin.presentation.film.components.ItemCard
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
 import dev.jdtech.jellyfin.presentation.utils.rememberSafePadding
 
 @Composable
-fun MediaScreen(
+fun SearchScreen(
     onItemClick: (FindroidItem) -> Unit,
-    onFavoritesClick: () -> Unit,
+    searchExpanded: Boolean,
+    onSearchExpand: (Boolean) -> Unit,
     viewModel: MediaViewModel = hiltViewModel(),
+    searchViewModel: SearchViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val searchState by searchViewModel.state.collectAsStateWithLifecycle()
 
     LaunchedEffect(true) {
         viewModel.loadData()
@@ -53,13 +58,22 @@ fun MediaScreen(
 
     MediaScreenLayout(
         state = state,
+        searchState = searchState,
+        searchExpanded = searchExpanded,
+        onSearchExpand = onSearchExpand,
         onAction = { action ->
             when (action) {
                 is MediaAction.OnItemClick -> onItemClick(action.item)
-                is MediaAction.OnFavoritesClick -> onFavoritesClick()
                 else -> Unit
             }
             viewModel.onAction(action)
+        },
+        onSearchAction = { action ->
+            when (action) {
+                is SearchAction.OnItemClick -> onItemClick(action.item)
+                else -> Unit
+            }
+            searchViewModel.onAction(action)
         },
     )
 }
@@ -67,7 +81,11 @@ fun MediaScreen(
 @Composable
 private fun MediaScreenLayout(
     state: MediaState,
+    searchState: SearchState,
+    searchExpanded: Boolean,
+    onSearchExpand: (Boolean) -> Unit,
     onAction: (MediaAction) -> Unit,
+    onSearchAction: (SearchAction) -> Unit,
 ) {
     val safePadding = rememberSafePadding(
         handleStartInsets = false,
@@ -99,6 +117,15 @@ private fun MediaScreenLayout(
         modifier = Modifier
             .fillMaxSize(),
     ) {
+        FilmSearchBar(
+            state = searchState,
+            expanded = searchExpanded,
+            onExpand = onSearchExpand,
+            onAction = onSearchAction,
+            modifier = Modifier.fillMaxWidth(),
+            paddingStart = paddingStart,
+            paddingEnd = paddingEnd,
+        )
         LazyVerticalGrid(
             columns = GridCells.Adaptive(minSize = minColumnSize),
             modifier = Modifier.fillMaxSize(),
@@ -111,15 +138,6 @@ private fun MediaScreenLayout(
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacings.default),
             verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacings.default),
         ) {
-            item(
-                span = { GridItemSpan(maxLineSpan) },
-            ) {
-                FavoritesCard(
-                    onClick = {
-                        onAction(MediaAction.OnFavoritesClick)
-                    },
-                )
-            }
             items(state.libraries, key = { it.id }) { library ->
                 ItemCard(
                     item = library,
@@ -167,7 +185,11 @@ private fun MediaScreenLayoutPreview() {
                 libraries = dummyCollections,
                 error = Exception("Failed to load data"),
             ),
+            searchState = SearchState(),
+            searchExpanded = false,
+            onSearchExpand = {},
             onAction = {},
+            onSearchAction = {},
         )
     }
 }

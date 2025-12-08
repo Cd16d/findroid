@@ -29,7 +29,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.toRoute
-import androidx.window.core.layout.WindowSizeClass
+import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_EXPANDED_LOWER_BOUND
+import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_MEDIUM_LOWER_BOUND
 import dev.jdtech.jellyfin.models.CollectionType
 import dev.jdtech.jellyfin.models.FindroidBoxSet
 import dev.jdtech.jellyfin.models.FindroidCollection
@@ -47,6 +48,7 @@ import dev.jdtech.jellyfin.presentation.film.LibraryScreen
 import dev.jdtech.jellyfin.presentation.film.MediaScreen
 import dev.jdtech.jellyfin.presentation.film.MovieScreen
 import dev.jdtech.jellyfin.presentation.film.PersonScreen
+import dev.jdtech.jellyfin.presentation.film.SearchScreen
 import dev.jdtech.jellyfin.presentation.film.SeasonScreen
 import dev.jdtech.jellyfin.presentation.film.ShowScreen
 import dev.jdtech.jellyfin.presentation.settings.AboutScreen
@@ -88,6 +90,9 @@ data object HomeRoute
 
 @Serializable
 data object MediaRoute
+
+@Serializable
+data object SearchRoute
 
 @Serializable
 data object DownloadsRoute
@@ -150,6 +155,7 @@ data class TabBarItem(
 
 val homeTab = TabBarItem(title = CoreR.string.title_home, icon = CoreR.drawable.ic_home, route = HomeRoute)
 val mediaTab = TabBarItem(title = CoreR.string.title_media, icon = CoreR.drawable.ic_library, route = MediaRoute)
+val searchTab = TabBarItem(title = CoreR.string.title_search, icon = CoreR.drawable.ic_search, route = SearchRoute)
 val downloadsTab = TabBarItem(title = CoreR.string.title_download, icon = CoreR.drawable.ic_download, route = DownloadsRoute)
 
 @Composable
@@ -168,7 +174,7 @@ fun NavigationRoot(
     }
 
     val navigationItems = when (isOfflineMode) {
-        false -> listOf(homeTab, mediaTab, downloadsTab)
+        false -> listOf(homeTab, mediaTab, searchTab, downloadsTab)
         true -> listOf(homeTab, downloadsTab)
     }
     val navigationItemClassNames = navigationItems.map { it.route::class.qualifiedName }
@@ -192,8 +198,10 @@ fun NavigationRoot(
 
     val windowAdaptiveInfo = currentWindowAdaptiveInfo()
     val customNavSuiteType = with(windowAdaptiveInfo) {
-        if (windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_EXPANDED_LOWER_BOUND)) {
-            NavigationSuiteType.NavigationRail
+        if (windowSizeClass.isWidthAtLeastBreakpoint(WIDTH_DP_EXPANDED_LOWER_BOUND)) {
+            NavigationSuiteType.WideNavigationRailCollapsed
+        } else if (windowSizeClass.isWidthAtLeastBreakpoint(WIDTH_DP_MEDIUM_LOWER_BOUND)) {
+            NavigationSuiteType.ShortNavigationBarMedium
         } else {
             NavigationSuiteScaffoldDefaults.calculateFromAdaptiveInfo(this)
         }
@@ -205,7 +213,7 @@ fun NavigationRoot(
                 item(
                     selected = currentRoute == item.route::class.qualifiedName,
                     onClick = {
-                        if (item.route is MediaRoute && currentRoute == MediaRoute::class.qualifiedName) {
+                        if (item.route is SearchRoute && currentRoute == SearchRoute::class.qualifiedName) {
                             searchExpanded = true
                         }
 
@@ -360,6 +368,13 @@ fun NavigationRoot(
                     },
                     onFavoritesClick = {
                         navController.safeNavigate(FavoritesRoute)
+                    },
+                )
+            }
+            composable<SearchRoute> {
+                SearchScreen(
+                    onItemClick = { item ->
+                        navigateToItem(navController = navController, item = item)
                     },
                     searchExpanded = searchExpanded,
                     onSearchExpand = { searchExpanded = it },
