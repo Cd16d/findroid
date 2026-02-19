@@ -20,7 +20,10 @@ android {
     }
 
     flavorDimensions += "variant"
-    productFlavors { register("libre") }
+    productFlavors {
+        register("proprietary")
+        register("libre")
+    }
 
     compileOptions {
         sourceCompatibility = Versions.JAVA
