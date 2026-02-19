@@ -17,12 +17,7 @@ class CastViewModel @Inject constructor(private val castManager: CastManager) : 
         MutableStateFlow(
             CastUiState(
                 isCastingEnabled = castManager.castingEnabled.value,
-                devices =
-                    listOf(
-                        CastDevice(id = "living-room", name = "Living Room TV", location = "TV"),
-                        CastDevice(id = "bedroom", name = "Bedroom Display", location = "Nest Hub"),
-                        CastDevice(id = "office", name = "Office Speaker", location = "Audio"),
-                    ),
+                devices = emptyList(),
                 connectedDevice = null,
                 playbackState = CastPlaybackState.Idle,
             )
@@ -35,6 +30,22 @@ class CastViewModel @Inject constructor(private val castManager: CastManager) : 
             castManager.castingEnabled.collectLatest { enabled ->
                 _state.update { it.copy(isCastingEnabled = enabled) }
             }
+        }
+    }
+
+    fun startDiscovery() {
+        if (_state.value.devices.isNotEmpty()) {
+            return
+        }
+        _state.update {
+            it.copy(
+                devices =
+                    listOf(
+                        CastDevice(id = "living-room", name = "Living Room TV", location = "TV"),
+                        CastDevice(id = "bedroom", name = "Bedroom Display", location = "Nest Hub"),
+                        CastDevice(id = "office", name = "Office Speaker", location = "Audio"),
+                    )
+            )
         }
     }
 

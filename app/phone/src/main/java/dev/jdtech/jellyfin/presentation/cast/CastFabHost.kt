@@ -27,6 +27,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -77,11 +78,24 @@ fun CastFabHost(
         }
 
 
+    val hasNearbyPermissions =
+        requiredPermissions.all { permission ->
+            ContextCompat.checkSelfPermission(context, permission) ==
+                PackageManager.PERMISSION_GRANTED
+        }
+
+    LaunchedEffect(state.isCastingEnabled, hasNearbyPermissions) {
+        if (state.isCastingEnabled && (requiredPermissions.isEmpty() || hasNearbyPermissions)) {
+            viewModel.startDiscovery()
+        }
+    }
+
     val permissionLauncher =
         rememberLauncherForActivityResult(
             contract = ActivityResultContracts.RequestMultiplePermissions()
         ) { result ->
             if (result.values.all { it }) {
+                viewModel.startDiscovery()
                 showSheet = true
             }
         }
@@ -89,12 +103,8 @@ fun CastFabHost(
     if (showFab && state.isCastingEnabled) {
         FloatingActionButton(
             onClick = {
-                val hasNearbyPermissions =
-                    requiredPermissions.all { permission ->
-                        ContextCompat.checkSelfPermission(context, permission) ==
-                            PackageManager.PERMISSION_GRANTED
-                    }
                 if (requiredPermissions.isEmpty() || hasNearbyPermissions) {
+                    viewModel.startDiscovery()
                     showSheet = true
                 } else {
                     permissionLauncher.launch(requiredPermissions)
