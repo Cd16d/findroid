@@ -4,7 +4,7 @@ import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
-import dev.jdtech.jellyfin.cast.DefaultCastManager
+import dev.jdtech.jellyfin.presentation.cast.DefaultCastManager
 import dev.jdtech.jellyfin.player.core.domain.CastManager
 import javax.inject.Singleton
 

@@ -1,4 +1,4 @@
-package dev.jdtech.jellyfin.cast
+package dev.jdtech.jellyfin.presentation.cast
 
 import dev.jdtech.jellyfin.player.core.domain.CastManager
 import dev.jdtech.jellyfin.settings.domain.AppPreferences
