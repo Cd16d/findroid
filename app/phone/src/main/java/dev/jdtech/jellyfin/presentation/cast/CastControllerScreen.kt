@@ -39,9 +39,9 @@ import androidx.window.core.layout.WindowSizeClass
 import androidx.compose.material3.Slider
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
-import dev.jdtech.jellyfin.cast.presentation.CastPlaybackState
-import dev.jdtech.jellyfin.cast.presentation.CastUiState
-import dev.jdtech.jellyfin.cast.presentation.CastViewModel
+import dev.jdtech.jellyfin.player.core.presentation.cast.CastPlaybackState
+import dev.jdtech.jellyfin.player.core.presentation.cast.CastUiState
+import dev.jdtech.jellyfin.player.core.presentation.cast.CastViewModel
 import dev.jdtech.jellyfin.core.R as CoreR
 import kotlinx.coroutines.launch
 

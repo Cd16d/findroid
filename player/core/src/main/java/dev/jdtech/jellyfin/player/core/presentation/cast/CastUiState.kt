@@ -1,4 +1,4 @@
-package dev.jdtech.jellyfin.cast.presentation
+package dev.jdtech.jellyfin.player.core.presentation.cast
 
 data class CastDevice(
     val id: String,

@@ -106,7 +106,6 @@ dependencies {
     implementation(projects.player.core)
     implementation(projects.player.local)
     implementation(projects.setup)
-    implementation(projects.modes.cast)
     implementation(projects.modes.film)
     implementation(projects.settings)
 

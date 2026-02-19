@@ -1,4 +1,4 @@
-package dev.jdtech.jellyfin.cast.presentation
+package dev.jdtech.jellyfin.player.core.presentation.cast
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
