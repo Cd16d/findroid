@@ -24,6 +24,7 @@ android {
 
 dependencies {
     implementation(libs.timber)
+    implementation(projects.player.core)
 
     implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.compose.runtime)

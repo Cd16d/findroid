@@ -20,6 +20,7 @@ hilt = "2.57.2"
 jellyfin = "1.8.5"
 kotlin = "2.3.0"
 kotlinx-serialization = "1.9.0"
+coroutines = "1.10.2"
 ksp = "2.3.4"
 ktfmt = "0.25.0"
 libmpv = "0.5.1"
@@ -69,6 +70,7 @@ hilt-compiler = { group = "com.google.dagger", name = "hilt-compiler", version.r
 jellyfin-core = { group = "org.jellyfin.sdk", name = "jellyfin-core", version.ref = "jellyfin" }
 kotlin-metadata-jvm = { group = "org.jetbrains.kotlin", name = "kotlin-metadata-jvm", version.ref = "kotlin"}
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
+kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "coroutines" }
 libmpv = { group = "dev.jdtech.mpv", name = "libmpv", version.ref = "libmpv" }
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 media3-ffmpeg-decoder = { group = "org.jellyfin.media3", name = "media3-ffmpeg-decoder", version.ref = "media3-ffmpeg-decoder" }

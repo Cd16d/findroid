@@ -1,19 +1,22 @@
 package dev.jdtech.jellyfin.presentation.cast
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.jdtech.jellyfin.player.core.domain.CastManager
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
 @HiltViewModel
 class CastViewModel @Inject constructor(private val castManager: CastManager) : ViewModel() {
     private val _state =
         MutableStateFlow(
             CastUiState(
-                isCastingEnabled = castManager.isCastingEnabled,
+                isCastingEnabled = castManager.castingEnabled.value,
                 devices =
                     listOf(
                         CastDevice(id = "living-room", name = "Living Room TV", location = "TV"),
@@ -26,6 +29,14 @@ class CastViewModel @Inject constructor(private val castManager: CastManager) : 
         )
 
     val state: StateFlow<CastUiState> = _state
+
+    init {
+        viewModelScope.launch {
+            castManager.castingEnabled.collectLatest { enabled ->
+                _state.update { it.copy(isCastingEnabled = enabled) }
+            }
+        }
+    }
 
     fun connect(device: CastDevice) {
         _state.update {

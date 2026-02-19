@@ -6,6 +6,7 @@ import android.provider.Settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dev.jdtech.jellyfin.player.core.domain.CastManager
 import dev.jdtech.jellyfin.settings.R
 import dev.jdtech.jellyfin.settings.domain.AppPreferences
 import dev.jdtech.jellyfin.settings.presentation.enums.DeviceType
@@ -25,8 +26,12 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 
 @HiltViewModel
-class SettingsViewModel @Inject constructor(private val appPreferences: AppPreferences) :
-    ViewModel() {
+class SettingsViewModel
+@Inject
+constructor(
+    private val appPreferences: AppPreferences,
+    private val castManager: CastManager,
+) : ViewModel() {
     private val _state = MutableStateFlow(SettingsState())
     val state = _state.asStateFlow()
 
@@ -766,9 +771,13 @@ class SettingsViewModel @Inject constructor(private val appPreferences: AppPrefe
                                                                 appPreferences.getValue(it)
                                                             },
                                                     value =
-                                                        appPreferences.getValue(
-                                                            preference.backendPreference
-                                                        ),
+                                                        if (preference.isCastToggle()) {
+                                                            castManager.castingEnabled.value
+                                                        } else {
+                                                            appPreferences.getValue(
+                                                                preference.backendPreference
+                                                            )
+                                                        },
                                                 )
                                             }
                                             is PreferenceSelect -> {
@@ -838,11 +847,16 @@ class SettingsViewModel @Inject constructor(private val appPreferences: AppPrefe
         when (action) {
             is SettingsAction.OnUpdate -> {
                 when (action.preference) {
-                    is PreferenceSwitch ->
-                        appPreferences.setValue(
-                            action.preference.backendPreference,
-                            action.preference.value,
-                        )
+                    is PreferenceSwitch -> {
+                        if (action.preference.isCastToggle()) {
+                            castManager.setCastingEnabled(action.preference.value)
+                        } else {
+                            appPreferences.setValue(
+                                action.preference.backendPreference,
+                                action.preference.value,
+                            )
+                        }
+                    }
                     is PreferenceSelect ->
                         appPreferences.setValue(
                             action.preference.backendPreference,
@@ -867,5 +881,10 @@ class SettingsViewModel @Inject constructor(private val appPreferences: AppPrefe
             }
             else -> Unit
         }
+    }
+
+    private fun PreferenceSwitch.isCastToggle(): Boolean {
+        return backendPreference.backendName ==
+            appPreferences.playerCastEnabled.backendName
     }
 }
