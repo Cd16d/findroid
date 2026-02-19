@@ -1,5 +1,12 @@
 package dev.jdtech.jellyfin.presentation.cast
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -47,11 +54,54 @@ fun CastFabHost(
     viewModel: CastViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val context = LocalContext.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var showSheet by rememberSaveable { mutableStateOf(false) }
 
+    val requiredPermissions =
+        remember {
+            when {
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU ->
+                    arrayOf(
+                        Manifest.permission.BLUETOOTH_SCAN,
+                        Manifest.permission.BLUETOOTH_CONNECT,
+                        Manifest.permission.NEARBY_WIFI_DEVICES,
+                    )
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ->
+                    arrayOf(
+                        Manifest.permission.BLUETOOTH_SCAN,
+                        Manifest.permission.BLUETOOTH_CONNECT,
+                    )
+                else -> emptyArray()
+            }
+        }
+
+
+    val permissionLauncher =
+        rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.RequestMultiplePermissions()
+        ) { result ->
+            if (result.values.all { it }) {
+                showSheet = true
+            }
+        }
+
     if (showFab && state.isCastingEnabled) {
-        FloatingActionButton(onClick = { showSheet = true }, modifier = modifier) {
+        FloatingActionButton(
+            onClick = {
+                val hasNearbyPermissions =
+                    requiredPermissions.all { permission ->
+                        ContextCompat.checkSelfPermission(context, permission) ==
+                            PackageManager.PERMISSION_GRANTED
+                    }
+                if (requiredPermissions.isEmpty() || hasNearbyPermissions) {
+                    showSheet = true
+                } else {
+                    permissionLauncher.launch(requiredPermissions)
+                }
+            },
+            modifier = modifier,
+        ) {
             Icon(
                 painter = painterResource(CoreR.drawable.ic_cast),
                 contentDescription = stringResource(CoreR.string.cast_devices),
