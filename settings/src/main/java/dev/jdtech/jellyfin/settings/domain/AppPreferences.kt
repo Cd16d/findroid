@@ -78,6 +78,9 @@ class AppPreferences @Inject constructor(val sharedPreferences: SharedPreference
     // Player - PiP
     val playerPipGesture = Preference("pref_player_picture_in_picture_gesture", false)
 
+    // Player - cast
+    val playerCastEnabled = Preference("pref_player_cast_enabled", true)
+
     // Downloads
     val downloadOverMobileData = Preference("pref_downloads_mobile_data", false)
     val downloadWhenRoaming = Preference("pref_downloads_roaming", false)

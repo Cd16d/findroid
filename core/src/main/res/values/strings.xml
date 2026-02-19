@@ -108,4 +108,23 @@
     <string name="download_paused">Paused</string>
     <string name="download_downloading">Downloading…</string>
     <string name="download_failed">Failed to download</string>
+    <string name="back">Back</string>
+    <string name="cast_devices">Cast devices</string>
+    <string name="cast_connected_to">Connected to %1$s</string>
+    <string name="cast_state_playing">Playing</string>
+    <string name="cast_state_paused">Paused</string>
+    <string name="cast_state_idle">Idle</string>
+    <string name="cast_toggle_playback">Toggle playback</string>
+    <string name="cast_open_controller">Open controller</string>
+    <string name="cast_disconnect">Disconnect</string>
+    <string name="cast_connected">Connected</string>
+    <string name="cast_connect">Connect</string>
+    <string name="cast_controller_title">Cast controller</string>
+    <string name="cast_controller_now_playing">Now playing</string>
+    <string name="cast_not_connected">Not connected</string>
+    <string name="cast_seek_back">Seek back</string>
+    <string name="cast_seek_forward">Seek forward</string>
+    <string name="cast_volume">Volume</string>
+    <string name="cast_audio_tracks">Audio</string>
+    <string name="cast_subtitle_tracks">Subtitles</string>
 </resources>

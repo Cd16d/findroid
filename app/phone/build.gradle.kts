@@ -43,10 +43,11 @@ android {
 
     flavorDimensions += "variant"
     productFlavors {
-        register("libre") {
+        register("proprietary") {
             dimension = "variant"
             isDefault = true
         }
+        register("libre") { dimension = "variant" }
     }
 
     splits {

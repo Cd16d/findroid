@@ -242,6 +242,23 @@ class SettingsViewModel @Inject constructor(private val appPreferences: AppPrefe
                                             )
                                     ),
                                     PreferenceGroup(
+                                        nameStringResource = R.string.casting,
+                                        preferences =
+                                            listOf(
+                                                PreferenceSwitch(
+                                                    nameStringResource =
+                                                        R.string.pref_player_cast_enabled,
+                                                    descriptionStringRes =
+                                                        R.string
+                                                            .pref_player_cast_enabled_summary,
+                                                    iconDrawableId = R.drawable.ic_play,
+                                                    supportedDeviceTypes = listOf(DeviceType.PHONE),
+                                                    backendPreference =
+                                                        appPreferences.playerCastEnabled,
+                                                )
+                                            ),
+                                    ),
+                                    PreferenceGroup(
                                         nameStringResource = R.string.mpv_player,
                                         preferences =
                                             listOf(
