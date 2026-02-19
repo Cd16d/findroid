@@ -9,6 +9,7 @@ include(":data")
 include(":player:core")
 include(":player:local")
 include(":setup")
+include(":modes:cast")
 include(":modes:film")
 include(":settings")
 

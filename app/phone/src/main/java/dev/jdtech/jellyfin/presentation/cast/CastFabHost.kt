@@ -32,6 +32,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.jdtech.jellyfin.cast.presentation.CastDevice
+import dev.jdtech.jellyfin.cast.presentation.CastPlaybackState
+import dev.jdtech.jellyfin.cast.presentation.CastUiState
+import dev.jdtech.jellyfin.cast.presentation.CastViewModel
 import dev.jdtech.jellyfin.core.R as CoreR
 
 @OptIn(ExperimentalMaterial3Api::class)
