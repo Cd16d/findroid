@@ -2,39 +2,44 @@ plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.parcelize)
     alias(libs.plugins.ksp)
-    alias(libs.plugins.hilt)
 }
 
 android {
-    namespace = "dev.jdtech.jellyfin.player.local"
+    namespace = "dev.jdtech.jellyfin.player.cast"
     compileSdk = Versions.COMPILE_SDK
-    buildToolsVersion = Versions.BUILD_TOOLS
 
     defaultConfig { minSdk = Versions.MIN_SDK }
-
-    buildTypes {
-        named("release") { isMinifyEnabled = false }
-        register("staging") { initWith(getByName("release")) }
-    }
 
     compileOptions {
         sourceCompatibility = Versions.JAVA
         targetCompatibility = Versions.JAVA
     }
+
+    flavorDimensions += "variant"
+    productFlavors {
+        register("libre") {
+            dimension = "variant"
+        }
+        register("proprietary") {
+            dimension = "variant"
+            isDefault = true
+            matchingFallbacks += listOf("libre")
+        }
+    }
 }
 
 dependencies {
     implementation(projects.core)
-    implementation(projects.player.core)
     implementation(projects.data)
+    implementation(projects.player.core)
     implementation(projects.settings)
-    implementation(libs.androidx.lifecycle.runtime)
     implementation(libs.androidx.lifecycle.viewmodel)
-    implementation(libs.androidx.media3.exoplayer)
-    implementation(libs.androidx.media3.exoplayer.hls)
+    api(libs.androidx.mediarouter)
+
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
     implementation(libs.jellyfin.core)
-    implementation(libs.libmpv)
     implementation(libs.timber)
+
+    "proprietaryImplementation"(libs.play.services.cast.framework)
 }
