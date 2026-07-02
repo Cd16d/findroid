@@ -1,5 +1,9 @@
 package dev.jdtech.jellyfin.player.cast.models
 
+import dev.jdtech.jellyfin.player.core.domain.models.PlayerItem
+import dev.jdtech.jellyfin.player.core.domain.models.Track
+import org.jellyfin.sdk.model.api.PlaybackInfoResponse
+
 enum class CastConnectionState {
     DISCONNECTED,
     CONNECTING,
@@ -9,12 +13,19 @@ enum class CastConnectionState {
 enum class CastPlaybackStatus {
     IDLE,
     BUFFERING,
-    READY,
     PAUSED,
     PLAYING,
     ENDED,
     ERROR
 }
+
+open class Device(
+    open val id: String,
+    open val name: String,
+    open val description: String? = null,
+    open val enabled: Boolean = true,
+    open val supportsH265: Boolean = false
+)
 
 data class CastPlayerState(
     val status: CastPlaybackStatus = CastPlaybackStatus.IDLE,
@@ -26,10 +37,9 @@ data class CastPlayerState(
     val hasPreviousItem: Boolean = false
 )
 
-open class Device(
-    open val id: String,
-    open val name: String,
-    open val description: String? = null,
-    open val enabled: Boolean = true,
-    open val supportsH265: Boolean = false
+data class CastMediaItem(
+    val item: PlayerItem,
+    val playbackInfo: PlaybackInfoResponse? = null,
+    val subtitleTracks: List<Track> = emptyList(),
+    val audioTracks: List<Track> = emptyList()
 )

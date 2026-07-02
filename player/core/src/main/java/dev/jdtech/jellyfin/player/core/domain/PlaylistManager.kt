@@ -4,12 +4,14 @@ import androidx.core.net.toUri
 import androidx.media3.common.MimeTypes
 import dev.jdtech.jellyfin.models.FindroidChapter
 import dev.jdtech.jellyfin.models.FindroidEpisode
+import dev.jdtech.jellyfin.models.FindroidImages
 import dev.jdtech.jellyfin.models.FindroidItem
 import dev.jdtech.jellyfin.models.FindroidMovie
 import dev.jdtech.jellyfin.models.FindroidSourceType
 import dev.jdtech.jellyfin.models.FindroidSources
 import dev.jdtech.jellyfin.player.core.domain.models.ExternalSubtitle
 import dev.jdtech.jellyfin.player.core.domain.models.PlayerChapter
+import dev.jdtech.jellyfin.player.core.domain.models.PlayerImages
 import dev.jdtech.jellyfin.player.core.domain.models.PlayerItem
 import dev.jdtech.jellyfin.player.core.domain.models.PlayerMediaType
 import dev.jdtech.jellyfin.player.core.domain.models.TrickplayInfo
@@ -265,8 +267,7 @@ class PlaylistManager @Inject internal constructor(private val repository: Jelly
             externalSubtitles = externalSubtitles,
             chapters = chapters.toPlayerChapters(),
             trickplayInfo = trickplayInfo,
-            posterUrl = images.primary?.toString() ?: images.backdrop?.toString(),
-            seriesPosterUrl = if (this is FindroidEpisode) images.showPrimary?.toString() else null
+            images = images.toPlayerImages()
         )
     }
 
@@ -275,4 +276,13 @@ class PlaylistManager @Inject internal constructor(private val repository: Jelly
             PlayerChapter(startPosition = chapter.startPosition, name = chapter.name)
         }
     }
+
+    private fun FindroidImages.toPlayerImages() = PlayerImages(
+        primary = primary,
+        backdrop = backdrop,
+        logo = logo,
+        showPrimary = showPrimary,
+        showBackdrop = showBackdrop,
+        showLogo = showLogo
+    )
 }

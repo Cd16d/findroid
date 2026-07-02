@@ -12,7 +12,7 @@ import com.google.android.gms.cast.framework.media.NotificationOptions
 
 class CastOptionsProvider : OptionsProvider {
     override fun getCastOptions(context: Context): CastOptions {
-        // Example showing 4 buttons: "rewind", "play/pause", "forward" and "stop casting".
+        // Show 4 buttons: "rewind", "play/pause", "forward" and "stop casting".
         val buttonActions = listOf(
             MediaIntentReceiver.ACTION_REWIND,
             MediaIntentReceiver.ACTION_TOGGLE_PLAYBACK,
@@ -24,7 +24,6 @@ class CastOptionsProvider : OptionsProvider {
         val compatButtonActionsIndices = intArrayOf(1, 3)
 
         // Builds a notification with the above actions. Each tap on the "rewind" and "forward" buttons skips 30 seconds.
-        // Tapping on the notification opens an Activity with class VideoBrowserActivity.
         val notificationOptions = NotificationOptions.Builder()
             .setActions(buttonActions, compatButtonActionsIndices)
             .setSkipStepMs(30 * DateUtils.SECOND_IN_MILLIS)

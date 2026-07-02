@@ -12,17 +12,11 @@ import javax.inject.Singleton
 
 @Singleton
 class CastPlayerControllerImpl @Inject constructor() : CastPlayerController {
-    private val _currentItem = MutableStateFlow<PlayerItem?>(null)
-    override val currentItem: StateFlow<PlayerItem?> = _currentItem.asStateFlow()
+    private val _currentItem = MutableStateFlow<CastMediaItem?>(null)
+    override val currentItem: StateFlow<CastMediaItem?> = _currentItem.asStateFlow()
 
     private val _playerState = MutableStateFlow(CastPlayerState())
     override val playerState: StateFlow<CastPlayerState> = _playerState.asStateFlow()
-
-    private val _subtitleTracks = MutableStateFlow<List<Track>>(emptyList())
-    override val subtitleTracks: StateFlow<List<Track>> = _subtitleTracks.asStateFlow()
-
-    private val _audioTracks = MutableStateFlow<List<Track>>(emptyList())
-    override val audioTracks: StateFlow<List<Track>> = _audioTracks.asStateFlow()
 
     override fun playItem(itemId: UUID, itemKind: String, startFromBeginning: Boolean) {}
     override fun play() {}

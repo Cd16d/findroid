@@ -1,5 +1,6 @@
 package dev.jdtech.jellyfin.presentation.cast
 
+import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -349,7 +350,7 @@ private fun previewUiState(
     title: String = "Title",
     seriesName: String? = null,
     episodeInfo: String? = null,
-    posterUrl: String? = "url",
+    posterUrl: Uri? = null,
     isMovie: Boolean = true,
     aspectRatio: Float = 16f / 9f,
     fileLoaded: Boolean = false

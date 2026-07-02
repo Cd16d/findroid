@@ -2,6 +2,7 @@ package dev.jdtech.jellyfin.player.cast.presentation
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -59,7 +60,7 @@ constructor(
         val availableDevices: List<Device> = emptyList(),
         val connectedDevice: Device? = null,
         val currentItemTitle: CurrentItemTitle,
-        val currentItemPosterUrl: String?,
+        val currentItemPosterUrl: Uri?,
         val isMovie: Boolean,
         val defaultAspectRatio: Float,
         val trickplayAspectRatio: Float?,
@@ -144,24 +145,19 @@ constructor(
             }
         }.launchIn(viewModelScope)
 
-        playerController.subtitleTracks.onEach { value ->
+        playerController.currentItem.onEach { value ->
             _internalUiState.update {
                 it.copy(
-                    subtitleTracks = value
+                    subtitleTracks = value?.subtitleTracks ?: emptyList(),
+                    audioTracks = value?.audioTracks ?: emptyList()
                 )
-            }
-        }.launchIn(viewModelScope)
-
-        playerController.audioTracks.onEach { value ->
-            _internalUiState.update {
-                it.copy(audioTracks = value)
             }
         }.launchIn(viewModelScope)
 
         viewModelScope.launch {
             playerController.currentItem.collect { item ->
                 if (item != null) {
-                    onMediaItemTransition(item)
+                    onMediaItemTransition(item.item)
                 } else {
                     onMediaItemCleared()
                 }
@@ -209,7 +205,7 @@ constructor(
         _internalUiState.update {
             it.copy(
                 currentItemTitle = itemTitle,
-                currentItemPosterUrl = item.posterUrl,
+                currentItemPosterUrl = item.images.primary,
                 isMovie = isMovie,
                 defaultAspectRatio = defaultRatio,
                 trickplayAspectRatio = trickplayRatio,

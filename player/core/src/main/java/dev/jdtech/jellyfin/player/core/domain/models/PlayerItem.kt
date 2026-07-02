@@ -1,6 +1,7 @@
 package dev.jdtech.jellyfin.player.core.domain.models
 
 import android.os.Parcelable
+import dev.jdtech.jellyfin.models.FindroidImages
 import java.util.UUID
 import kotlinx.parcelize.Parcelize
 
@@ -19,8 +20,7 @@ data class PlayerItem(
     val externalSubtitles: List<ExternalSubtitle> = emptyList(),
     val chapters: List<PlayerChapter> = emptyList(),
     val trickplayInfo: TrickplayInfo? = null,
-    val posterUrl: String? = null,
-    val seriesPosterUrl: String? = null
+    val images: PlayerImages
 ) : Parcelable
 
 enum class PlayerMediaType {

@@ -1,5 +1,6 @@
 package dev.jdtech.jellyfin.presentation.cast.components
 
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -70,7 +71,7 @@ private fun PlayerImage(
     uiState: CastPlayerViewModel.UiState,
     isScrubbing: Boolean,
     scrubPosition: Float,
-    posterUrl: String?,
+    posterUrl: Uri?,
     playbackState: CastPlayerState,
     modifier: Modifier = Modifier
 ) {
