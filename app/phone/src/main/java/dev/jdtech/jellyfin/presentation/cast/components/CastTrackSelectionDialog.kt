@@ -5,6 +5,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,6 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -32,6 +34,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
@@ -176,11 +184,49 @@ private fun TrackRow(
 
         Spacer(modifier = Modifier.width(8.dp))
 
-        Text(text = displayName, style = MaterialTheme.typography.bodyMedium)
+        Text(
+            text = displayName,
+            style = MaterialTheme.typography.bodyMedium,
+            maxLines = 1
+        )
 
         Spacer(modifier = Modifier.width(16.dp))
 
-        Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacings.small)) {
+        val scrollState = rememberScrollState()
+        Row(
+            modifier = Modifier
+                .weight(1f)
+                .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
+                .drawWithContent {
+                    drawContent()
+                    val edgeWidth = 16.dp.toPx()
+
+                    if (scrollState.value > 0) {
+                        drawRect(
+                            brush = Brush.horizontalGradient(
+                                colors = listOf(Color.Transparent, Color.Black),
+                                startX = 0f,
+                                endX = edgeWidth
+                            ),
+                            blendMode = BlendMode.DstIn
+                        )
+                    }
+
+                    if (scrollState.value < scrollState.maxValue) {
+                        drawRect(
+                            brush = Brush.horizontalGradient(
+                                colors = listOf(Color.Black, Color.Transparent),
+                                startX = size.width - edgeWidth,
+                                endX = size.width
+                            ),
+                            blendMode = BlendMode.DstIn
+                        )
+                    }
+                }
+                .horizontalScroll(scrollState),
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacings.small),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             if (track.isForced == true) {
                 TrackMetadataBarItem("Forced")
             }

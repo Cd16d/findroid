@@ -110,7 +110,9 @@ class CastPlayerControllerImpl @Inject constructor(
             super.onMetadataUpdated()
             val mediaStatus = remoteMediaClient?.mediaStatus ?: return
             val currentActiveItemId = mediaStatus.currentItemId
-            val itemIdStr = mediaStatus.getQueueItemById(currentActiveItemId)?.media?.customData?.optString("itemId") ?: return
+            val itemIdStr =
+                mediaStatus.getQueueItemById(currentActiveItemId)?.media?.customData?.optString("itemId")
+                    ?: return
 
             _currentItem.update { itemCache[itemIdStr.toUUID()] }
 
@@ -136,7 +138,7 @@ class CastPlayerControllerImpl @Inject constructor(
                                 itemId = itemIdStr.toUUID(),
                                 durationMs = durationMs,
                                 positionMs = null
-                                )
+                            )
                             hasStarted = false
                         }
                     }
@@ -144,7 +146,10 @@ class CastPlayerControllerImpl @Inject constructor(
 
                 lastActiveItemId = currentActiveItemId
 
-                val itemIdStr = mediaStatus.getQueueItemById(currentActiveItemId)?.media?.customData?.optString("itemId") ?: return
+                val itemIdStr =
+                    mediaStatus.getQueueItemById(currentActiveItemId)?.media?.customData?.optString(
+                        "itemId"
+                    ) ?: return
                 itemDuration[itemIdStr.toUUID()] = remoteMediaClient?.streamDuration ?: 0L
             }
         }
@@ -274,7 +279,6 @@ class CastPlayerControllerImpl @Inject constructor(
     }
 
     private fun mapPlaybackStatus(client: RemoteMediaClient): CastPlaybackStatus {
-        Timber.d("State: ${client.playerState}")
         return when (client.playerState) {
             MediaStatus.PLAYER_STATE_BUFFERING, MediaStatus.PLAYER_STATE_LOADING -> CastPlaybackStatus.BUFFERING
             MediaStatus.PLAYER_STATE_PLAYING -> CastPlaybackStatus.PLAYING
@@ -383,11 +387,11 @@ class CastPlayerControllerImpl @Inject constructor(
         val playbackInfo = currentItem.playbackInfo
 
         playbackManager.reportStop(
-                itemId = itemId,
-                positionMs = positionMs ?: durationMs, // Assume is finished
-                durationMs = durationMs,
-                mediaSourceId = playbackInfo?.mediaSources?.firstOrNull()?.id,
-                playSessionId = playbackInfo?.playSessionId
+            itemId = itemId,
+            positionMs = positionMs ?: durationMs, // Assume is finished
+            durationMs = durationMs,
+            mediaSourceId = playbackInfo?.mediaSources?.firstOrNull()?.id,
+            playSessionId = playbackInfo?.playSessionId
         )
     }
 
@@ -575,7 +579,7 @@ class CastPlayerControllerImpl @Inject constructor(
                     label = stream.title,
                     language = stream.language,
                     codec = stream.codec,
-                    selected = stream.isDefault,
+                    selected = if (audioStreamIndex != null) stream.index == audioStreamIndex else stream.isDefault,
                     supported = true,
                     isExternal = stream.isExternal,
                     isForced = stream.isForced,
@@ -777,10 +781,8 @@ class CastPlayerControllerImpl @Inject constructor(
 
         activeIds.remove(subtitleStreamIndex?.toLong())
 
-        if (track != null) {
-            activeIds.add(track.id.toLong())
-            subtitleStreamIndex = track.id
-        }
+        if (track != null) activeIds.add(track.id.toLong())
+        subtitleStreamIndex = track?.id
 
         client.setActiveMediaTracks(activeIds.toLongArray()).setResultCallback { result ->
             if (result.status.isSuccess) {
