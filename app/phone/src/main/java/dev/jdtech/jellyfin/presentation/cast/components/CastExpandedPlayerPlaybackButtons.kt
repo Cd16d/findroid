@@ -55,7 +55,9 @@ fun PlaybackButtons(
     Row(
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp),
     ) {
         val backInteractionSource = remember { MutableInteractionSource() }
         val nextInteractionSource = remember { MutableInteractionSource() }
@@ -67,13 +69,13 @@ fun PlaybackButtons(
 
         val playPauseWeight by animateFloatAsState(
             targetValue = if (isPlayPausePressed && !skippableSegment) 1.7f
-                else if (isPlayPausePressed && skippableSegment) 0.65f
-                else if (isBackPressed && !skippableSegment) 1.1f
-                else if (isBackPressed && skippableSegment) 0.25f
-                else if (isNextPressed && !skippableSegment) 1.1f
-                else if (isNextPressed && skippableSegment) 0.25f
-                else if (skippableSegment) 0.45f
-                else 1.3f,
+            else if (isPlayPausePressed && skippableSegment) 0.65f
+            else if (isBackPressed && !skippableSegment) 1.1f
+            else if (isBackPressed && skippableSegment) 0.25f
+            else if (isNextPressed && !skippableSegment) 1.1f
+            else if (isNextPressed && skippableSegment) 0.25f
+            else if (skippableSegment) 0.45f
+            else 1.3f,
             animationSpec = spring(
                 dampingRatio = 0.6f,
                 stiffness = 500f
@@ -83,9 +85,9 @@ fun PlaybackButtons(
 
         val backButtonWeight by animateFloatAsState(
             targetValue = if (isBackPressed) 0.65f
-                else if (isPlayPausePressed && !skippableSegment) 0.25f
-                else if (isPlayPausePressed && skippableSegment) 0.35f
-                else 0.45f,
+            else if (isPlayPausePressed && !skippableSegment) 0.25f
+            else if (isPlayPausePressed && skippableSegment) 0.35f
+            else 0.45f,
             animationSpec = spring(
                 dampingRatio = 0.6f,
                 stiffness = 500f
@@ -95,11 +97,11 @@ fun PlaybackButtons(
 
         val nextButtonWeight by animateFloatAsState(
             targetValue = if (isNextPressed && !skippableSegment) 0.65f
-                else if (isNextPressed && skippableSegment) 1.5f
-                else if (isPlayPausePressed && !skippableSegment) 0.25f
-                else if (isPlayPausePressed && skippableSegment) 1.2f
-                else if (skippableSegment) 1.3f
-                else 0.45f,
+            else if (isNextPressed && skippableSegment) 1.5f
+            else if (isPlayPausePressed && !skippableSegment) 0.25f
+            else if (isPlayPausePressed && skippableSegment) 1.2f
+            else if (skippableSegment) 1.3f
+            else 0.45f,
             animationSpec = spring(
                 dampingRatio = 0.6f,
                 stiffness = 500f
@@ -109,14 +111,16 @@ fun PlaybackButtons(
 
         FilledIconButton(
             onClick = onSeekBack,
-            enabled = playerState.hasPreviousItem,
+            enabled = (playerState.hasPreviousItem || uiState.playerState.currentPosition > 5000),
             shape = CircleShape,
             interactionSource = backInteractionSource,
             colors = IconButtonDefaults.filledIconButtonColors(
                 containerColor = MaterialTheme.colorScheme.surfaceVariant,
                 contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
             ),
-            modifier = Modifier.height(68.dp).weight(backButtonWeight),
+            modifier = Modifier
+                .height(68.dp)
+                .weight(backButtonWeight),
         ) {
             Icon(
                 painter = painterResource(CoreR.drawable.ic_skip_back),
@@ -135,7 +139,9 @@ fun PlaybackButtons(
                 containerColor = MaterialTheme.colorScheme.primaryContainer,
                 contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
             ),
-            modifier = Modifier.height(68.dp).weight(playPauseWeight),
+            modifier = Modifier
+                .height(68.dp)
+                .weight(playPauseWeight),
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -167,7 +173,9 @@ fun PlaybackButtons(
                 containerColor = if (skippableSegment) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceVariant,
                 contentColor = if (skippableSegment) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
             ),
-            modifier = Modifier.height(68.dp).weight(nextButtonWeight),
+            modifier = Modifier
+                .height(68.dp)
+                .weight(nextButtonWeight),
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,

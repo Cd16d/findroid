@@ -145,22 +145,21 @@ class PlaylistManager @Inject internal constructor(private val repository: Jelly
                         val item = items[itemIndex]
                         if (playerItems.firstOrNull { it.itemId == item.id } == null) {
                             try {
-                                item.toPlayerItem(null, 0L)
+                                val prevItem = item.toPlayerItem(null, 0L)
+                                playerItems.add(prevItem)
+
+                                prevItem
                             } catch (e: Exception) {
                                 Timber.e("Failed to retrieve previous player item: $e")
                                 null
                             }
                         } else {
-                            null
+                            playerItems.firstOrNull { it.itemId == item.id}
                         }
                     }
                 }
                 else -> null
             }
-
-        if (playerItem != null) {
-            playerItems.add(playerItem)
-        }
 
         return playerItem
     }
@@ -179,22 +178,21 @@ class PlaylistManager @Inject internal constructor(private val repository: Jelly
                         val item = items[itemIndex]
                         if (playerItems.firstOrNull { it.itemId == item.id } == null) {
                             try {
-                                item.toPlayerItem(null, 0L)
+                                val nextItem = item.toPlayerItem(null, 0L)
+                                playerItems.add(nextItem)
+
+                                nextItem
                             } catch (e: Exception) {
                                 Timber.e("Failed to retrieve next player item: $e")
                                 null
                             }
                         } else {
-                            null
+                            playerItems.firstOrNull { it.itemId == item.id }
                         }
                     }
                 }
                 else -> null
             }
-
-        if (playerItem != null) {
-            playerItems.add(playerItem)
-        }
 
         return playerItem
     }

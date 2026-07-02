@@ -22,7 +22,6 @@ import dev.jdtech.jellyfin.models.FindroidSegment
 import dev.jdtech.jellyfin.player.core.R
 import dev.jdtech.jellyfin.player.core.domain.PlaybackManager
 import dev.jdtech.jellyfin.player.core.domain.PlaylistManager
-import dev.jdtech.jellyfin.player.core.domain.models.PlaybackStatus
 import dev.jdtech.jellyfin.player.core.domain.models.PlayerChapter
 import dev.jdtech.jellyfin.player.core.domain.models.PlayerItem
 import dev.jdtech.jellyfin.player.core.domain.models.Trickplay
@@ -261,11 +260,9 @@ constructor(
 
         appScope.launch {
             playbackManager.reportStop(
-                PlaybackStatus(
-                    itemId = UUID.fromString(mediaId),
-                    positionMs = position,
-                    durationMs = duration
-                )
+                itemId = UUID.fromString(mediaId),
+                positionMs = position,
+                durationMs = duration
             )
         }
 
@@ -284,12 +281,9 @@ constructor(
             if (player.currentMediaItem != null && player.currentMediaItem!!.mediaId.isNotEmpty()) {
                 val itemId = UUID.fromString(player.currentMediaItem!!.mediaId)
                 playbackManager.reportProgress(
-                    PlaybackStatus(
-                        itemId = itemId,
-                        positionMs = player.currentPosition,
-                        durationMs = player.duration,
-                        isPaused = !player.isPlaying
-                    )
+                    itemId = itemId,
+                    positionMs = player.currentPosition,
+                    isPaused = !player.isPlaying
                 )
             }
         }
@@ -423,11 +417,9 @@ constructor(
                 val position = player.currentPosition
                 val duration = player.duration
                 playbackManager.reportStop(
-                    PlaybackStatus(
-                        itemId = UUID.fromString(mediaId),
-                        positionMs = position,
-                        durationMs = duration
-                    )
+                    itemId = UUID.fromString(mediaId),
+                    positionMs = position,
+                    durationMs = duration
                 )
                 player.seekToNextMediaItem()
                 player.play()
@@ -636,12 +628,8 @@ constructor(
             if (mediaId != null) {
                 viewModelScope.launch {
                     playbackManager.reportStart(
-                        PlaybackStatus(
-                            itemId = UUID.fromString(mediaId),
-                            positionMs = player.currentPosition,
-                            durationMs = player.duration,
-                            playMethod = PlayMethod.DIRECT_PLAY
-                        )
+                        itemId = UUID.fromString(mediaId),
+                        playMethod = PlayMethod.DIRECT_PLAY
                     )
                 }
                 hasReportedStart = true

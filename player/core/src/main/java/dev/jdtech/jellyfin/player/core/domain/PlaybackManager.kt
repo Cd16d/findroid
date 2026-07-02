@@ -1,9 +1,10 @@
 package dev.jdtech.jellyfin.player.core.domain
 
 import androidx.media3.common.C
-import dev.jdtech.jellyfin.player.core.domain.models.PlaybackStatus
 import dev.jdtech.jellyfin.repository.JellyfinRepository
+import org.jellyfin.sdk.model.api.PlayMethod
 import timber.log.Timber
+import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -18,48 +19,59 @@ class PlaybackManager @Inject constructor(
     /**
      * Reports that playback has started for a specific item.
      *
-     * @param status The current [PlaybackStatus] containing item and session details.
+     * @param itemId The UUID of the item being played.
+     * @param playMethod The [PlayMethod] used for playback (defaults to [PlayMethod.DIRECT_PLAY]).
+     * @param mediaSourceId The ID of the media source (defaults to null).
+     * @param playSessionId The ID of the play session (defaults to null).
      */
-    suspend fun reportStart(status: PlaybackStatus) {
-        if (status.itemId == null) {
-            Timber.w("Skipping playback start report: itemId is null.")
-            return
-        }
-
+    suspend fun reportStart(
+        itemId: UUID,
+        playMethod: PlayMethod = PlayMethod.DIRECT_PLAY,
+        mediaSourceId: String? = null,
+        playSessionId: String? = null
+    ) {
         try {
             repository.postPlaybackStart(
-                itemId = status.itemId,
-                playMethod = status.playMethod,
-                mediaSourceId = status.mediaSourceId,
-                playSessionId = status.playSessionId
+                itemId = itemId,
+                playMethod = playMethod,
+                mediaSourceId = mediaSourceId,
+                playSessionId = playSessionId
             )
         } catch (e: Exception) {
-            Timber.e(e, "Failed to report playback start for item: ${status.itemId}")
+            Timber.e(e, "Failed to report playback start for item: $itemId")
         }
     }
 
     /**
      * Reports the current playback progress (position and pause state).
      *
-     * @param status The current [PlaybackStatus] containing position and playback state.
+     * @param itemId The UUID of the item being played.
+     * @param positionMs The current playback position in milliseconds. Must be non-negative.
+     * @param isPaused Whether the playback is currently paused (defaults to false).
+     * @param playMethod The [PlayMethod] used for playback (defaults to [PlayMethod.DIRECT_PLAY]).
+     * @param mediaSourceId The ID of the media source (defaults to null).
+     * @param playSessionId The ID of the play session (defaults to null).
      */
-    suspend fun reportProgress(status: PlaybackStatus) {
-        if (status.itemId == null) {
-            Timber.w("Skipping playback progress report: itemId is null.")
-            return
-        }
-
+    suspend fun reportProgress(
+        itemId: UUID,
+        positionMs: Long,
+        isPaused: Boolean = false,
+        playMethod: PlayMethod = PlayMethod.DIRECT_PLAY,
+        mediaSourceId: String? = null,
+        playSessionId: String? = null
+    ) {
+        require(positionMs >= 0) { "positionMs must be non-negative: $positionMs" }
         try {
             repository.postPlaybackProgress(
-                itemId = status.itemId,
-                positionTicks = status.positionMs * 10000, // Convert ms to ticks (1 tick = 100 nanoseconds)
-                isPaused = status.isPaused,
-                playMethod = status.playMethod,
-                mediaSourceId = status.mediaSourceId,
-                playSessionId = status.playSessionId
+                itemId = itemId,
+                positionTicks = positionMs * 10000, // Convert ms to ticks (1 tick = 100 nanoseconds)
+                isPaused = isPaused,
+                playMethod = playMethod,
+                mediaSourceId = mediaSourceId,
+                playSessionId = playSessionId
             )
         } catch (e: Exception) {
-            Timber.e(e, "Failed to report playback progress for item: ${status.itemId}")
+            Timber.e(e, "Failed to report playback progress for item: $itemId")
         }
     }
 
@@ -67,31 +79,38 @@ class PlaybackManager @Inject constructor(
      * Reports that playback has stopped.
      * Calculates the played percentage based on current position and total duration.
      *
-     * @param status The current [PlaybackStatus] containing final position and duration.
+     * @param itemId The UUID of the item being played.
+     * @param positionMs The final playback position in milliseconds. Must be non-negative.
+     * @param durationMs The total duration of the item in milliseconds. Must be greater than 0.
+     * @param mediaSourceId The ID of the media source (defaults to null).
+     * @param playSessionId The ID of the play session (defaults to null).
      */
-    suspend fun reportStop(status: PlaybackStatus) {
-        if (status.itemId == null) {
-            Timber.w("Skipping playback stop report: itemId is null.")
-            return
-        }
-        if (status.durationMs == C.TIME_UNSET) {
-            Timber.w("Skipping playback stop report for item ${status.itemId}: invalid duration.")
+    suspend fun reportStop(
+        itemId: UUID,
+        positionMs: Long,
+        durationMs: Long,
+        mediaSourceId: String? = null,
+        playSessionId: String? = null
+    ) {
+        require(positionMs >= 0) { "positionMs must be non-negative: $positionMs" }
+        if (durationMs == C.TIME_UNSET || durationMs <= 0L) {
+            Timber.w("Skipping playback stop report for item ${itemId}: invalid duration.")
             return
         }
 
-        val positionTicks = status.positionMs * 10000 // Convert ms to ticks (1 tick = 100 nanoseconds)
-        val playedPercentage = (status.positionMs.toFloat() / status.durationMs.toFloat() * 100).toInt().coerceIn(0, 100)
+        val positionTicks = positionMs * 10000 // Convert ms to ticks (1 tick = 100 nanoseconds)
+        val playedPercentage = (positionMs.toFloat() / durationMs.toFloat() * 100).toInt().coerceIn(0, 100)
 
         try {
             repository.postPlaybackStop(
-                itemId = status.itemId,
+                itemId = itemId,
                 positionTicks = positionTicks,
                 playedPercentage = playedPercentage,
-                mediaSourceId = status.mediaSourceId,
-                playSessionId = status.playSessionId
+                mediaSourceId = mediaSourceId,
+                playSessionId = playSessionId
             )
         } catch (e: Exception) {
-            Timber.e(e, "Failed to report playback stop for item: ${status.itemId}")
+            Timber.e(e, "Failed to report playback stop for item: $itemId")
         }
     }
 }

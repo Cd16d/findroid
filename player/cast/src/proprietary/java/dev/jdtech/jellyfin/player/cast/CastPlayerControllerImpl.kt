@@ -2,6 +2,7 @@ package dev.jdtech.jellyfin.player.cast
 
 import android.content.Context
 import com.google.android.gms.cast.Cast
+import com.google.android.gms.cast.MediaError
 import com.google.android.gms.cast.MediaInfo
 import com.google.android.gms.cast.MediaLoadRequestData
 import com.google.android.gms.cast.MediaMetadata
@@ -23,7 +24,6 @@ import dev.jdtech.jellyfin.player.cast.models.CastPlaybackStatus
 import dev.jdtech.jellyfin.player.cast.models.CastPlayerState
 import dev.jdtech.jellyfin.player.core.domain.PlaybackManager
 import dev.jdtech.jellyfin.player.core.domain.PlaylistManager
-import dev.jdtech.jellyfin.player.core.domain.models.PlaybackStatus
 import dev.jdtech.jellyfin.player.core.domain.models.PlayerItem
 import dev.jdtech.jellyfin.player.core.domain.models.PlayerMediaType
 import dev.jdtech.jellyfin.player.core.domain.models.Track
@@ -81,6 +81,9 @@ class CastPlayerControllerImpl @Inject constructor(
 
     private var reportingJob: Job? = null
 
+    private var lastActiveItemId: Int = MediaQueueItem.INVALID_ITEM_ID
+    private val itemDuration = ConcurrentHashMap<UUID, Long>()
+
     private var maxBitrate: Int? = null
     private var hasStarted = false
     private var audioStreamIndex: Int? = null
@@ -104,11 +107,51 @@ class CastPlayerControllerImpl @Inject constructor(
         }
 
         override fun onMetadataUpdated() {
-            val itemId = remoteMediaClient?.currentItem?.customData?.optString("itemId")
-                ?.takeIf { it.isNotEmpty() }?.toUUID()
+            super.onMetadataUpdated()
+            val mediaStatus = remoteMediaClient?.mediaStatus ?: return
+            val currentActiveItemId = mediaStatus.currentItemId
+            val itemIdStr = mediaStatus.getQueueItemById(currentActiveItemId)?.media?.customData?.optString("itemId") ?: return
 
-            updatePlaybackStatus(itemId)
-            manageQueue(itemId)
+            _currentItem.update { itemCache[itemIdStr.toUUID()] }
+
+            manageQueue(itemIdStr.toUUID())
+        }
+
+        override fun onQueueStatusUpdated() {
+            val mediaStatus = remoteMediaClient?.mediaStatus ?: return
+            val currentActiveItemId = mediaStatus.currentItemId
+
+            if (currentActiveItemId != lastActiveItemId) {
+
+                if (lastActiveItemId != MediaQueueItem.INVALID_ITEM_ID) {
+
+                    val previousItem = mediaStatus.getQueueItemById(lastActiveItemId)
+                    val itemIdStr = previousItem?.media?.customData?.optString("itemId") ?: return
+
+                    val durationMs = itemDuration[itemIdStr.toUUID()] ?: return
+
+                    if (hasStarted) {
+                        scope.launch {
+                            reportPlaybackStop(
+                                itemId = itemIdStr.toUUID(),
+                                durationMs = durationMs,
+                                positionMs = null
+                                )
+                            hasStarted = false
+                        }
+                    }
+                }
+
+                lastActiveItemId = currentActiveItemId
+
+                val itemIdStr = mediaStatus.getQueueItemById(currentActiveItemId)?.media?.customData?.optString("itemId") ?: return
+                itemDuration[itemIdStr.toUUID()] = remoteMediaClient?.streamDuration ?: 0L
+            }
+        }
+
+        override fun onMediaError(p0: MediaError) {
+            super.onMediaError(p0)
+            Timber.e("Media Error: $p0")
         }
     }
 
@@ -184,23 +227,22 @@ class CastPlayerControllerImpl @Inject constructor(
     private fun clearSession() {
         val currentItem = _currentItem.value?.item
         val currentState = _playerState.value
-        val reportedStart = hasStarted
 
         remoteMediaClient?.unregisterCallback(remoteMediaClientCallback)
         remoteMediaClient?.removeProgressListener(remoteMediaClientProgressListener)
-        castSession?.removeCastListener(castSessionListener)
-
         remoteMediaClient = null
+
+        castSession?.removeCastListener(castSessionListener)
         castSession = null
 
         reportingJob?.cancel()
 
         scope.launch {
-            if (currentItem != null && reportedStart) {
+            if (currentItem != null && hasStarted) {
                 reportPlaybackStop(
                     itemId = currentItem.itemId,
-                    positionMs = currentState.currentPosition,
                     durationMs = currentState.duration,
+                    positionMs = currentState.currentPosition
                 )
             }
             _currentItem.value = null
@@ -217,9 +259,11 @@ class CastPlayerControllerImpl @Inject constructor(
         reportingJob = scope.launch {
             while (isActive) {
                 val client = remoteMediaClient
+                val itemId = _currentItem.value?.item?.itemId ?: return@launch
+
                 if (client != null && hasStarted) {
                     handleReporting(
-                        itemId = _currentItem.value?.item?.itemId,
+                        itemId = itemId,
                         status = mapPlaybackStatus(client),
                         positionMs = client.approximateStreamPosition,
                     )
@@ -230,8 +274,9 @@ class CastPlayerControllerImpl @Inject constructor(
     }
 
     private fun mapPlaybackStatus(client: RemoteMediaClient): CastPlaybackStatus {
+        Timber.d("State: ${client.playerState}")
         return when (client.playerState) {
-            MediaStatus.PLAYER_STATE_BUFFERING -> CastPlaybackStatus.BUFFERING
+            MediaStatus.PLAYER_STATE_BUFFERING, MediaStatus.PLAYER_STATE_LOADING -> CastPlaybackStatus.BUFFERING
             MediaStatus.PLAYER_STATE_PLAYING -> CastPlaybackStatus.PLAYING
             MediaStatus.PLAYER_STATE_PAUSED -> CastPlaybackStatus.PAUSED
             MediaStatus.PLAYER_STATE_IDLE -> {
@@ -264,8 +309,8 @@ class CastPlayerControllerImpl @Inject constructor(
                     scope.launch {
                         reportPlaybackStop(
                             itemId = itemId,
-                            positionMs = currentState.duration,
-                            durationMs = currentState.duration
+                            durationMs = currentState.duration,
+                            positionMs = null
                         )
                     }
                 }
@@ -290,7 +335,7 @@ class CastPlayerControllerImpl @Inject constructor(
     }
 
     private fun handleReporting(
-        itemId: UUID?,
+        itemId: UUID,
         status: CastPlaybackStatus,
         positionMs: Long,
     ) {
@@ -304,44 +349,45 @@ class CastPlayerControllerImpl @Inject constructor(
             else -> PlayMethod.TRANSCODE
         }
 
-        val playbackReportStatus = PlaybackStatus(
-            itemId = itemId,
-            positionMs = positionMs,
-            isPaused = status != CastPlaybackStatus.PLAYING,
-            playMethod = playMethod,
-            mediaSourceId = mediaSource?.id,
-            playSessionId = currentItem.playbackInfo?.playSessionId
-        )
-
         // Progress Reporting
         if (!hasStarted && status == CastPlaybackStatus.PLAYING) {
             hasStarted = true
             scope.launch {
-                playbackManager.reportStart(playbackReportStatus)
+                playbackManager.reportStart(
+                    itemId = itemId,
+                    playMethod = playMethod,
+                    mediaSourceId = mediaSource?.id,
+                    playSessionId = currentItem.playbackInfo?.playSessionId
+                )
             }
         } else {
             scope.launch {
-                playbackManager.reportProgress(playbackReportStatus)
+                playbackManager.reportProgress(
+                    itemId = itemId,
+                    positionMs = positionMs,
+                    isPaused = status != CastPlaybackStatus.PLAYING,
+                    playMethod = playMethod,
+                    mediaSourceId = mediaSource?.id,
+                    playSessionId = currentItem.playbackInfo?.playSessionId
+                )
             }
         }
     }
 
     private suspend fun reportPlaybackStop(
-        itemId: UUID?,
-        positionMs: Long,
+        itemId: UUID,
         durationMs: Long,
+        positionMs: Long?
     ) {
         val currentItem = itemCache[itemId] ?: return
         val playbackInfo = currentItem.playbackInfo
 
         playbackManager.reportStop(
-            PlaybackStatus(
                 itemId = itemId,
-                positionMs = positionMs,
+                positionMs = positionMs ?: durationMs, // Assume is finished
                 durationMs = durationMs,
                 mediaSourceId = playbackInfo?.mediaSources?.firstOrNull()?.id,
                 playSessionId = playbackInfo?.playSessionId
-            )
         )
     }
 
@@ -568,18 +614,18 @@ class CastPlayerControllerImpl @Inject constructor(
             )
 
             if (initialItem != null) {
+                val client = remoteMediaClient ?: return@launch
                 val result = buildMediaInfo(initialItem) ?: run {
                     _playerState.update { it.copy(status = CastPlaybackStatus.ERROR) }
                     return@launch
                 }
+
                 val castItem = CastMediaItem(
                     item = initialItem,
                     playbackInfo = result.playbackInfo,
                     subtitleTracks = result.subtitleTracks,
                     audioTracks = result.audioTracks
                 )
-
-                val client = remoteMediaClient ?: return@launch
 
                 val loadRequest = MediaLoadRequestData.Builder()
                     .setMediaInfo(result.mediaInfo)
@@ -592,15 +638,11 @@ class CastPlayerControllerImpl @Inject constructor(
                 client.load(loadRequest)
 
                 remoteMediaClient?.addProgressListener(remoteMediaClientProgressListener, 1000L)
-
-                manageQueue(initialItem.itemId)
             }
         }
     }
 
-    private fun manageQueue(itemId: UUID?) {
-        if (itemId == null) return
-
+    private fun manageQueue(itemId: UUID) {
         scope.launch {
             val status = remoteMediaClient?.mediaStatus ?: return@launch
             val queueItems = status.queueItems

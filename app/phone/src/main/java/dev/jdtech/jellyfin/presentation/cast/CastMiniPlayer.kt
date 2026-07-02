@@ -209,7 +209,6 @@ fun CastMiniPlayerLayout(
                 }
             }
 
-            if (uiState.fileLoaded) {
                 if (playbackState.status == CastPlaybackStatus.BUFFERING) {
                     LinearProgressIndicator(
                         modifier = Modifier
@@ -217,7 +216,7 @@ fun CastMiniPlayerLayout(
                             .align(Alignment.BottomCenter),
                         strokeCap = StrokeCap.Butt
                     )
-                } else {
+                } else if (uiState.fileLoaded) {
                     LinearProgressIndicator(
                         progress = {
                             if (playbackState.duration > 0) {
@@ -230,7 +229,6 @@ fun CastMiniPlayerLayout(
                         strokeCap = StrokeCap.Butt
                     )
                 }
-            }
 
         }
     }
