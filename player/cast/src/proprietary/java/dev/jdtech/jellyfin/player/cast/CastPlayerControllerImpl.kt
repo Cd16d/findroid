@@ -260,11 +260,11 @@ class CastPlayerControllerImpl @Inject constructor(
             CastPlaybackStatus.ENDED, CastPlaybackStatus.IDLE -> {
                 stopReporting()
                 remoteMediaClient?.removeProgressListener(remoteMediaClientProgressListener)
-                stop()
             }
 
             CastPlaybackStatus.PLAYING -> {
                 startReporting()
+                remoteMediaClient?.addProgressListener(remoteMediaClientProgressListener, 1000L)
             }
 
             CastPlaybackStatus.PAUSED -> {
@@ -273,6 +273,7 @@ class CastPlayerControllerImpl @Inject constructor(
                     reportingJob?.cancel()
                     reportingJob = null
                 }
+                remoteMediaClient?.removeProgressListener(remoteMediaClientProgressListener)
             }
 
             else -> {
@@ -578,10 +579,7 @@ class CastPlayerControllerImpl @Inject constructor(
 
             if (initialItem != null) {
                 val client = remoteMediaClient ?: return@launch
-                val result = buildMediaInfo(initialItem) ?: run {
-                    _playerState.update { it.copy(status = CastPlaybackStatus.ERROR) }
-                    return@launch
-                }
+                val result = buildMediaInfo(initialItem) ?: return@launch
 
                 val castItem = CastMediaItem(
                     item = initialItem,
@@ -599,8 +597,6 @@ class CastPlayerControllerImpl @Inject constructor(
                 itemCache[initialItem.itemId] = castItem
 
                 client.load(loadRequest)
-
-                remoteMediaClient?.addProgressListener(remoteMediaClientProgressListener, 1000L)
             }
         }
     }
