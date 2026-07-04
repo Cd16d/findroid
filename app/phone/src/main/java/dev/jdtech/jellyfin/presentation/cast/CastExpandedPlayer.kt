@@ -54,6 +54,7 @@ import dev.jdtech.jellyfin.presentation.cast.components.CastTrackSelectionSheet
 import dev.jdtech.jellyfin.presentation.cast.components.PlayerBottomSection
 import dev.jdtech.jellyfin.presentation.cast.components.PlayerTopSection
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
+import dev.jdtech.jellyfin.presentation.theme.spacings
 import dev.jdtech.jellyfin.presentation.utils.rememberSafePadding
 import dev.jdtech.jellyfin.player.core.R as PlayerCoreR
 
@@ -292,7 +293,7 @@ private fun CastExpandedPlayerLayout(
                 },
                 onDismiss = { showTrackSelection = false },
                 modifier = Modifier
-                    .padding(16.dp)
+                    .padding(MaterialTheme.spacings.small)
                     .widthIn(max = 500.dp)
                     .padding(bottom = safePadding.bottom)
                     .pointerInput(Unit) {

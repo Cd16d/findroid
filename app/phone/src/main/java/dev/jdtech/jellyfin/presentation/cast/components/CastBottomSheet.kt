@@ -90,8 +90,6 @@ fun CastBottomSheetLayout(
         modifier = Modifier
             .fillMaxWidth()
             .padding(
-                start = safePadding.start,
-                end = safePadding.end,
                 bottom = paddingBottom
             ),
     ) {
