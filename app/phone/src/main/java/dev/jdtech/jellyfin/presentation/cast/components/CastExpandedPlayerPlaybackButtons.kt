@@ -111,7 +111,7 @@ fun PlaybackButtons(
 
         FilledIconButton(
             onClick = onSeekBack,
-            enabled = (playerState.hasPreviousItem || uiState.playerState.currentPosition > 5000),
+            enabled = uiState.fileLoaded,
             shape = CircleShape,
             interactionSource = backInteractionSource,
             colors = IconButtonDefaults.filledIconButtonColors(
@@ -133,6 +133,7 @@ fun PlaybackButtons(
 
         FilledIconButton(
             onClick = { if (isPlaying) onPause() else onPlay() },
+            enabled = uiState.fileLoaded,
             shape = CircleShape,
             interactionSource = playPauseInteractionSource,
             colors = IconButtonDefaults.filledIconButtonColors(
@@ -166,7 +167,7 @@ fun PlaybackButtons(
 
         FilledIconButton(
             onClick = { if (skippableSegment) onSkipSegment() else onSeekForward() },
-            enabled = skippableSegment || playerState.hasNextItem,
+            enabled = uiState.fileLoaded && (skippableSegment || playerState.hasNextItem),
             shape = CircleShape,
             interactionSource = nextInteractionSource,
             colors = IconButtonDefaults.filledIconButtonColors(

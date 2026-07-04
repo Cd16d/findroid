@@ -15,13 +15,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.displayCutoutPadding
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -57,6 +54,7 @@ import dev.jdtech.jellyfin.presentation.cast.components.CastTrackSelectionSheet
 import dev.jdtech.jellyfin.presentation.cast.components.PlayerBottomSection
 import dev.jdtech.jellyfin.presentation.cast.components.PlayerTopSection
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
+import dev.jdtech.jellyfin.presentation.utils.rememberSafePadding
 import dev.jdtech.jellyfin.player.core.R as PlayerCoreR
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -78,7 +76,7 @@ fun CastExpandedPlayer(
             onPause = { viewModel.playerController.pause() },
             onSeek = { viewModel.playerController.seekTo(it) },
             onPlayPreviousItem = {
-                if (uiState.playerState.currentPosition > 5000) {
+                if (!uiState.playerState.hasPreviousItem || uiState.playerState.currentPosition > 5000) {
                     viewModel.playerController.seekTo(0)
                 } else {
                     viewModel.playPreviousItem()
@@ -154,14 +152,19 @@ private fun CastExpandedPlayerLayout(
 
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+    val safePadding = rememberSafePadding()
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .statusBarsPadding()
-                .displayCutoutPadding()
-                .navigationBarsPadding(), horizontalAlignment = Alignment.CenterHorizontally
+                .padding(
+                    top = safePadding.top,
+                    bottom = safePadding.bottom,
+                    start = safePadding.start,
+                    end = safePadding.end
+                ),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             if (isLandscape && !isExpandedScreen) {
                 Row(
@@ -291,8 +294,7 @@ private fun CastExpandedPlayerLayout(
                 modifier = Modifier
                     .padding(16.dp)
                     .widthIn(max = 500.dp)
-                    .navigationBarsPadding()
-                    .displayCutoutPadding()
+                    .padding(bottom = safePadding.bottom)
                     .pointerInput(Unit) {
                         detectTapGestures { }
                     })

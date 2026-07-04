@@ -32,6 +32,7 @@ import dev.jdtech.jellyfin.player.cast.models.Device
 import dev.jdtech.jellyfin.player.cast.presentation.CastPlayerViewModel
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
+import dev.jdtech.jellyfin.presentation.utils.rememberSafePadding
 import dev.jdtech.jellyfin.core.R as CoreR
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -81,10 +82,18 @@ fun CastBottomSheetLayout(
     onDeviceSelected: (Device) -> Unit,
     onDisconnect: () -> Unit,
 ) {
+    val safePadding = rememberSafePadding()
+
+    val paddingBottom = safePadding.bottom + MaterialTheme.spacings.default
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(bottom = MaterialTheme.spacings.large),
+            .padding(
+                start = safePadding.start,
+                end = safePadding.end,
+                bottom = paddingBottom
+            ),
     ) {
         Text(
             text = if (devices.isEmpty()) {

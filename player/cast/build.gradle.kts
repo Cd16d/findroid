@@ -32,6 +32,7 @@ dependencies {
     implementation(projects.player.core)
     implementation(projects.settings)
     implementation(libs.androidx.lifecycle.viewmodel)
+    implementation(libs.kotlinx.serialization.json)
     api(libs.androidx.mediarouter)
 
     implementation(libs.hilt.android)

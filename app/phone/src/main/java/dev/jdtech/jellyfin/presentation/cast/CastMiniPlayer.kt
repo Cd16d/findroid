@@ -42,13 +42,15 @@ import dev.jdtech.jellyfin.player.cast.models.Device
 import dev.jdtech.jellyfin.player.cast.presentation.CastPlayerViewModel
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
+import dev.jdtech.jellyfin.presentation.utils.rememberSafePadding
 import dev.jdtech.jellyfin.core.R as CoreR
 
 @Composable
 fun CastMiniPlayer(
     onClick: () -> Unit,
     modifier: Modifier,
-    viewModel: CastPlayerViewModel = hiltViewModel()
+    viewModel: CastPlayerViewModel = hiltViewModel(),
+    handleBottomInsets: Boolean = true
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val connectedDevice = uiState.connectedDevice
@@ -64,6 +66,7 @@ fun CastMiniPlayer(
                 if (isPlaying) viewModel.playerController.pause() else viewModel.playerController.play()
             },
             onClick = onClick,
+            handleBottomInsets = handleBottomInsets,
             modifier = modifier
         )
     }
@@ -76,18 +79,30 @@ fun CastMiniPlayerLayout(
     playbackState: CastPlayerState,
     onTogglePlayback: () -> Unit,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    handleBottomInsets: Boolean = true
 ) {
     val windowAdaptiveInfo = currentWindowAdaptiveInfo()
     val isMediumScreen = windowAdaptiveInfo.windowSizeClass.isWidthAtLeastBreakpoint(
         WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND
     )
 
+    val safePadding = rememberSafePadding(handleBottomInsets = handleBottomInsets)
+
+    val paddingStart = safePadding.start + MaterialTheme.spacings.medium
+    val paddingEnd = safePadding.end + MaterialTheme.spacings.medium
+    val paddingBottom = safePadding.bottom + MaterialTheme.spacings.medium
+
     Card(
         onClick = onClick,
         shape = MaterialTheme.shapes.large,
         modifier = modifier
-            .padding(MaterialTheme.spacings.medium)
+            .padding(
+                top = MaterialTheme.spacings.medium,
+                start = paddingStart,
+                end = paddingEnd,
+                bottom = paddingBottom,
+            )
             .then(
                 if (isMediumScreen) {
                     Modifier

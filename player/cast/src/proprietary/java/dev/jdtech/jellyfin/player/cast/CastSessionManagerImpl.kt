@@ -6,6 +6,7 @@ import androidx.mediarouter.media.MediaRouteSelector
 import androidx.mediarouter.media.MediaRouter
 import com.google.android.gms.cast.CastDevice
 import com.google.android.gms.cast.CastMediaControlIntent
+import com.google.android.gms.cast.CastStatusCodes
 import com.google.android.gms.cast.framework.CastContext
 import com.google.android.gms.cast.framework.CastSession
 import com.google.android.gms.cast.framework.CastState
@@ -17,6 +18,8 @@ import dev.jdtech.jellyfin.player.cast.models.Device
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -71,27 +74,66 @@ class CastSessionManagerImpl @Inject constructor(
     }
 
     private val sessionManagerListener = object : SessionManagerListener<CastSession> {
-        override fun onSessionStarting(session: CastSession) {}
-        override fun onSessionStarted(session: CastSession, sessionId: String) = updateDiscovery(0)
-        override fun onSessionResumed(session: CastSession, wasSuspended: Boolean) =
-            updateDiscovery(0)
+        override fun onSessionStarting(session: CastSession) {
+            Timber.d("Starting session")
+            _connectedDevice.value = ChromeCastDevice(mediaRouter.selectedRoute)
+        }
 
-        override fun onSessionEnded(session: CastSession, error: Int) = updateDiscovery()
-        override fun onSessionSuspended(session: CastSession, reason: Int) = updateDiscovery()
-        override fun onSessionStartFailed(session: CastSession, error: Int) {}
-        override fun onSessionEnding(session: CastSession) {}
-        override fun onSessionResuming(session: CastSession, sessionId: String) {}
-        override fun onSessionResumeFailed(session: CastSession, error: Int) {}
+        override fun onSessionStarted(session: CastSession, sessionId: String) {
+            Timber.d("Session started")
+            _connectedDevice.value = ChromeCastDevice(mediaRouter.selectedRoute)
+            updateDiscovery(0)
+        }
+
+        override fun onSessionResuming(session: CastSession, sessionId: String) {
+            Timber.d("Resuming session")
+            _connectedDevice.value = ChromeCastDevice(mediaRouter.selectedRoute)
+            updateDiscovery(MediaRouter.CALLBACK_FLAG_PERFORM_ACTIVE_SCAN)
+        }
+
+        override fun onSessionResumed(session: CastSession, wasSuspended: Boolean) {
+            Timber.d("Session resumed")
+            _connectedDevice.value = ChromeCastDevice(mediaRouter.selectedRoute)
+            updateDiscovery(0)
+        }
+
+        override fun onSessionEnding(session: CastSession) {
+            Timber.d("Session ending")
+            _connectedDevice.value = null
+        }
+        override fun onSessionEnded(session: CastSession, error: Int) {
+            Timber.d("Session ended")
+            _connectedDevice.value = null
+            updateDiscovery()
+        }
+
+        override fun onSessionSuspended(session: CastSession, reason: Int) {
+            val reasonMessage = CastStatusCodes.getStatusCodeString(reason)
+            Timber.d("Session suspended. Reason: $reasonMessage")
+            updateDiscovery()
+        }
+
+        override fun onSessionStartFailed(session: CastSession, error: Int) {
+            val errorMessage = CastStatusCodes.getStatusCodeString(error)
+            Timber.e("Session start failed: $errorMessage ($error)")
+            _connectedDevice.value = null
+            updateDiscovery()
+        }
+
+        override fun onSessionResumeFailed(session: CastSession, error: Int) {
+            val errorMessage = CastStatusCodes.getStatusCodeString(error)
+            Timber.e("Session resume failed: $errorMessage ($error)")
+            _connectedDevice.value = null
+            updateDiscovery()
+        }
     }
 
-
     private val castStateListener = CastStateListener { state ->
-        _connectionState.value = when (state) {
-            CastState.CONNECTED -> CastConnectionState.CONNECTED
-            CastState.CONNECTING -> CastConnectionState.CONNECTING
-            else -> {
-                _connectedDevice.value = null
-                CastConnectionState.DISCONNECTED
+        _connectionState.update {
+            when (state) {
+                CastState.CONNECTED -> CastConnectionState.CONNECTED
+                CastState.CONNECTING -> CastConnectionState.CONNECTING
+                else -> CastConnectionState.DISCONNECTED
             }
         }
     }
@@ -130,21 +172,18 @@ class CastSessionManagerImpl @Inject constructor(
             routeCallback,
             flags
         )
-        updateRoutes()
     }
 
     override fun connect(device: Device) {
-        if (_connectionState.value != CastConnectionState.DISCONNECTED) disconnect()
+        if (castContext.castState == CastState.CONNECTED) disconnect()
 
         if (device is ChromeCastDevice) {
-            _connectedDevice.value = device
             mediaRouter.selectRoute(device.route)
         }
     }
 
     override fun disconnect() {
         castContext.sessionManager.endCurrentSession(true)
-        _connectedDevice.value = null
     }
 
     override fun release() {

@@ -11,7 +11,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class CastSessionViewModel @Inject constructor(
-    sessionManager: CastSessionManager,
+    val sessionManager: CastSessionManager,
     private val playerController: CastPlayerController
 ) : ViewModel() {
 

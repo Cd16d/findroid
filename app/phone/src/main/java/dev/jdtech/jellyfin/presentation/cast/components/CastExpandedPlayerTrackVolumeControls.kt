@@ -39,12 +39,15 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
+import dev.jdtech.jellyfin.player.cast.presentation.CastPlayerViewModel
+import dev.jdtech.jellyfin.player.core.domain.models.Track
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
 import dev.jdtech.jellyfin.core.R as CoreR
 
 @Composable
 fun CastTrackVolumeControls(
+    uiState: CastPlayerViewModel.UiState,
     volume: Float,
     onVolumeChange: (Float) -> Unit,
     onClickAudio: () -> Unit,
@@ -80,6 +83,7 @@ fun CastTrackVolumeControls(
         ) {
             FilledIconButton(
                 onClick = onClickAudio,
+                enabled = uiState.audioTracks.isNotEmpty(),
                 shape = RoundedCornerShape(
                     topStart = 50.dp,
                     bottomStart = 50.dp,
@@ -102,6 +106,7 @@ fun CastTrackVolumeControls(
             }
             FilledIconButton(
                 onClick = onClickSubtitle,
+                enabled = uiState.subtitleTracks.isNotEmpty(),
                 shape = RoundedCornerShape(
                     topStart = subtitleButtonCornerShape.dp,
                     bottomStart = subtitleButtonCornerShape.dp,
@@ -257,6 +262,7 @@ private fun DrawScope.drawVolumeIcon(
 private fun CastTrackVolumeControlsPreview() {
     FindroidTheme {
         CastTrackVolumeControls(
+            uiState = mockUiStateEpisode(),
             volume = 0.5f,
             onVolumeChange = {},
             onClickAudio = {},
@@ -264,3 +270,30 @@ private fun CastTrackVolumeControlsPreview() {
         )
     }
 }
+
+private fun mockUiStateEpisode() = CastPlayerViewModel.UiState(
+    currentItemTitle = CastPlayerViewModel.CurrentItemTitle(
+        seriesName = "Series Name", episodeInfo = "S01E01", title = "Episode Title"
+    ),
+    currentItemPosterUrl = null,
+    isMovie = false,
+    defaultAspectRatio = 16f / 9f,
+    trickplayAspectRatio = null,
+    currentSegment = null,
+    currentSkipButtonStringRes = 0,
+    currentTrickplay = null,
+    currentChapters = emptyList(),
+    fileLoaded = true,
+    audioTracks = listOf(Track(
+        0, "English (AAC)", "eng",
+        codec = "aac",
+        selected = true,
+        supported = true,
+    )),
+    subtitleTracks = listOf(Track(
+        1, "English (SRT)", "eng",
+        codec = "srt",
+        selected = false,
+        supported = true,
+    )),
+)

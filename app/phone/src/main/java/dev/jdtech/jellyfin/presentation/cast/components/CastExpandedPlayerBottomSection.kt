@@ -77,6 +77,7 @@ fun PlayerBottomSection(
         Spacer(modifier = Modifier.height(24.dp))
 
         CastTrackVolumeControls(
+            uiState = uiState,
             volume = volume,
             onVolumeChange = onVolumeChange,
             onClickAudio = onClickAudio,

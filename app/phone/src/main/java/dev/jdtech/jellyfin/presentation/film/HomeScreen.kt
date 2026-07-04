@@ -84,7 +84,7 @@ private fun HomeScreenLayout(
     onAction: (HomeAction) -> Unit
 ) {
     val scope = rememberCoroutineScope()
-    val safePadding = rememberSafePadding(handleStartInsets = false)
+    val safePadding = rememberSafePadding(handleStartInsets = false, handleBottomInsets = false)
     val castPadding = LocalCastPlayerHeight.current
 
     val paddingStart = safePadding.start + MaterialTheme.spacings.default

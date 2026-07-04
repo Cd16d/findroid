@@ -380,7 +380,7 @@ constructor(
                         playlistManager.setCurrentMediaItemIndex(item.itemId)
 
                         val previousItem = playlistManager.getPreviousPlayerItem()
-                        if (previousItem != null) {
+                        if (previousItem != null && previousItem !in items) {
                             items.add(player.currentMediaItemIndex, previousItem)
                             player.addMediaItem(
                                 player.currentMediaItemIndex,
@@ -389,7 +389,7 @@ constructor(
                         }
 
                         val nextItem = playlistManager.getNextPlayerItem()
-                        if (nextItem != null) {
+                        if (nextItem != null && previousItem !in items) {
                             items.add(player.currentMediaItemIndex + 1, nextItem)
                             player.addMediaItem(
                                 player.currentMediaItemIndex + 1,

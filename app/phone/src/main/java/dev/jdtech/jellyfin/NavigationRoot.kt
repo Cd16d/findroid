@@ -8,7 +8,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -21,7 +20,6 @@ import androidx.compose.material3.adaptive.navigationsuite.rememberNavigationSui
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -63,7 +61,7 @@ import dev.jdtech.jellyfin.models.FindroidMovie
 import dev.jdtech.jellyfin.models.FindroidSeason
 import dev.jdtech.jellyfin.models.FindroidShow
 import dev.jdtech.jellyfin.player.cast.models.CastConnectionState
-import dev.jdtech.jellyfin.player.cast.presentation.CastPlayerViewModel
+import dev.jdtech.jellyfin.player.cast.presentation.CastSessionViewModel
 import dev.jdtech.jellyfin.presentation.cast.CastExpandedPlayer
 import dev.jdtech.jellyfin.presentation.cast.CastMiniPlayer
 import dev.jdtech.jellyfin.presentation.cast.components.CastBottomSheet
@@ -90,6 +88,7 @@ import dev.jdtech.jellyfin.presentation.setup.users.UsersScreen
 import dev.jdtech.jellyfin.presentation.setup.welcome.WelcomeScreen
 import dev.jdtech.jellyfin.presentation.theme.spacings
 import dev.jdtech.jellyfin.presentation.utils.LocalOfflineMode
+import dev.jdtech.jellyfin.presentation.utils.rememberSafePadding
 import kotlinx.serialization.Serializable
 import java.util.UUID
 import dev.jdtech.jellyfin.core.R as CoreR
@@ -193,7 +192,7 @@ fun NavigationRoot(
     hasCurrentUser: Boolean,
 ) {
     val context = LocalContext.current
-    val castViewModel: CastPlayerViewModel = hiltViewModel(context as ViewModelStoreOwner)
+    val castSessionViewModel: CastSessionViewModel = hiltViewModel(context as ViewModelStoreOwner)
     val isOfflineMode = LocalOfflineMode.current
 
     val startDestination =
@@ -218,6 +217,11 @@ fun NavigationRoot(
     val showBottomBar = navigationItems.any {
         currentDestination?.hasRoute(it.route::class) == true
     } && !searchExpanded
+
+    val safePadding = rememberSafePadding(
+        handleStartInsets = false,
+        handleBottomInsets = !showBottomBar
+    )
 
     var castExpanded by remember { mutableStateOf(true) }
 
@@ -250,10 +254,9 @@ fun NavigationRoot(
         CollectionRoute::class,
     )
 
-    val uiState by castViewModel.uiState.collectAsStateWithLifecycle()
-    val connectionState = uiState.connectionState
+    val connectionState by castSessionViewModel.connectionState.collectAsStateWithLifecycle()
     val showCastButton =
-        castRoutes.any { currentDestination?.hasRoute(it) == true } && !searchExpanded && castViewModel.sessionManager.isSupported
+        castRoutes.any { currentDestination?.hasRoute(it) == true } && !searchExpanded && !isOfflineMode && castSessionViewModel.sessionManager.isSupported
     var showCastSheet by remember { mutableStateOf(false) }
     var showCastExpandedPlayer by remember { mutableStateOf(false) }
 
@@ -265,8 +268,6 @@ fun NavigationRoot(
 
     val showCastMiniPlayer =
         showCastButton && !showCastExpandedPlayer && connectionState == CastConnectionState.CONNECTED
-
-    val currentItem = castViewModel.playerController.currentItem.collectAsState().value
 
     val navigationSuiteScaffoldState = rememberNavigationSuiteScaffoldState()
 
@@ -599,27 +600,26 @@ fun NavigationRoot(
                         CastButton(
                             expanded = castExpanded,
                             onClick = { showCastSheet = true },
-                            modifier = Modifier
-                                .align(Alignment.BottomEnd)
-                                .padding(bottom = 16.dp, end = 16.dp)
+                            modifier = Modifier.align(Alignment.BottomEnd),
+                            handleBottomInsets = !showBottomBar
                         )
                     }
 
                     // Cast Mini Player
                     if (showCastMiniPlayer) {
                         CastMiniPlayer(
-                            onClick = {
-                                if (currentItem != null) {
-                                    showCastExpandedPlayer = true
-                                } else {
-                                    showCastSheet = true
-                                }
-                            },
+                            onClick = { showCastExpandedPlayer = true },
                             modifier = Modifier
                                 .align(if (isMediumScreen) Alignment.BottomEnd else Alignment.BottomCenter)
                                 .onSizeChanged { size ->
-                                    castPlayerHeight = if (!isMediumScreen) with(density) { size.height.toDp() } else MaterialTheme.spacings.default
-                                }
+                                    val measuredHeight = with(density) { size.height.toDp() }
+                                    castPlayerHeight = if (!isMediumScreen) {
+                                        measuredHeight - safePadding.bottom
+                                    } else {
+                                        MaterialTheme.spacings.default
+                                    }
+                                },
+                            handleBottomInsets = !showBottomBar
                         )
                     }
 

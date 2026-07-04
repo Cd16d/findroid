@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -21,6 +22,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.jdtech.jellyfin.player.cast.models.Device
 import dev.jdtech.jellyfin.player.cast.presentation.CastPlayerViewModel
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
+import dev.jdtech.jellyfin.presentation.theme.spacings
+import dev.jdtech.jellyfin.presentation.utils.rememberSafePadding
 import dev.jdtech.jellyfin.core.R as CoreR
 
 @Composable
@@ -28,6 +31,7 @@ fun CastButton(
     expanded: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    handleBottomInsets: Boolean = true,
     viewModel: CastPlayerViewModel = hiltViewModel(LocalContext.current as ViewModelStoreOwner)
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -37,7 +41,8 @@ fun CastButton(
         devices = devices,
         expanded = expanded,
         onClick = onClick,
-        modifier = modifier
+        modifier = modifier,
+        handleBottomInsets = handleBottomInsets
     )
 }
 
@@ -46,8 +51,11 @@ fun CastButtonContent(
     devices: List<Device>,
     expanded: Boolean,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    handleBottomInsets: Boolean = true
 ) {
+    val safePadding = rememberSafePadding(handleBottomInsets = handleBottomInsets)
+
     ExtendedFloatingActionButton(
         onClick = onClick,
         expanded = expanded,
@@ -66,7 +74,10 @@ fun CastButtonContent(
                 }
             )
         },
-        modifier = modifier
+        modifier = modifier.padding(
+            bottom = safePadding.bottom + MaterialTheme.spacings.medium,
+            end = safePadding.end + MaterialTheme.spacings.medium
+        )
     )
 
 }

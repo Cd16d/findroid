@@ -59,6 +59,7 @@ fun CastScrubbingTimeline(
                 onValueChangeFinished = onScrubStop,
                 valueRange = 0f..duration.coerceAtLeast(1f),
                 modifier = Modifier.fillMaxWidth(),
+                enabled = duration > 0f,
                 track = { sliderState ->
                     SliderDefaults.Track(
                         sliderState = sliderState,
