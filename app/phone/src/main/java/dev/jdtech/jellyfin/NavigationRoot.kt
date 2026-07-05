@@ -266,8 +266,7 @@ fun NavigationRoot(
         }
     }
 
-    val showCastMiniPlayer =
-        showCastButton && !showCastExpandedPlayer && connectionState == CastConnectionState.CONNECTED
+    val showCastMiniPlayer = showCastButton && connectionState == CastConnectionState.CONNECTED
 
     val navigationSuiteScaffoldState = rememberNavigationSuiteScaffoldState()
 
