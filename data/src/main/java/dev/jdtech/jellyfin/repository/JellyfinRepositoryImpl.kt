@@ -422,11 +422,12 @@ class JellyfinRepositoryImpl(
 
     override suspend fun postPlaybackStart(
         itemId: UUID,
+        positionTicks: Long?,
         playMethod: PlayMethod,
         mediaSourceId: String?,
         playSessionId: String?
     ) {
-        Timber.d("Sending start $itemId")
+        Timber.d("Sending start $itemId, position: $positionTicks")
         withContext(Dispatchers.IO) {
             jellyfinApi.playStateApi.reportPlaybackStart(
                 PlaybackStartInfo(
@@ -434,6 +435,7 @@ class JellyfinRepositoryImpl(
                     canSeek = true,
                     isPaused = false,
                     isMuted = false,
+                    positionTicks = positionTicks,
                     playMethod = playMethod,
                     repeatMode = RepeatMode.REPEAT_NONE,
                     playbackOrder = PlaybackOrder.DEFAULT,
@@ -451,7 +453,7 @@ class JellyfinRepositoryImpl(
         mediaSourceId: String?,
         playSessionId: String?
     ) {
-        Timber.d("Sending stop $itemId")
+        Timber.d("Sending stop $itemId, position: $positionTicks")
         withContext(Dispatchers.IO) {
             when {
                 playedPercentage < 10 -> {

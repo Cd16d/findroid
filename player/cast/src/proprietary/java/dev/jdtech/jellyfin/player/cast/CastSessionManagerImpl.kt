@@ -19,7 +19,6 @@ import dev.jdtech.jellyfin.player.cast.models.Device
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
 import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -102,8 +101,8 @@ class CastSessionManagerImpl @Inject constructor(
 
         override fun onSessionEnding(session: CastSession) {
             Timber.d("Session ending")
-            _connectedDevice.value = null
         }
+
         override fun onSessionEnded(session: CastSession, error: Int) {
             Timber.d("Session ended")
             _connectedDevice.value = null
@@ -132,12 +131,10 @@ class CastSessionManagerImpl @Inject constructor(
     }
 
     private val castStateListener = CastStateListener { state ->
-        _connectionState.update {
-            when (state) {
-                CastState.CONNECTED -> CastConnectionState.CONNECTED
-                CastState.CONNECTING -> CastConnectionState.CONNECTING
-                else -> CastConnectionState.DISCONNECTED
-            }
+        _connectionState.value = when (state) {
+            CastState.CONNECTED -> CastConnectionState.CONNECTED
+            CastState.CONNECTING -> CastConnectionState.CONNECTING
+            else -> CastConnectionState.DISCONNECTED
         }
     }
 

@@ -20,12 +20,14 @@ class PlaybackManager @Inject constructor(
      * Reports that playback has started for a specific item.
      *
      * @param itemId The UUID of the item being played.
+     * @param positionMs The starting playback position in milliseconds.
      * @param playMethod The [PlayMethod] used for playback (defaults to [PlayMethod.DIRECT_PLAY]).
      * @param mediaSourceId The ID of the media source (defaults to null).
      * @param playSessionId The ID of the play session (defaults to null).
      */
     suspend fun reportStart(
         itemId: UUID,
+        positionMs: Long? = null,
         playMethod: PlayMethod = PlayMethod.DIRECT_PLAY,
         mediaSourceId: String? = null,
         playSessionId: String? = null
@@ -33,6 +35,7 @@ class PlaybackManager @Inject constructor(
         try {
             repository.postPlaybackStart(
                 itemId = itemId,
+                positionTicks = positionMs?.let { it * 10000 }, // Convert ms to ticks (1 tick = 100 nanoseconds)
                 playMethod = playMethod,
                 mediaSourceId = mediaSourceId,
                 playSessionId = playSessionId

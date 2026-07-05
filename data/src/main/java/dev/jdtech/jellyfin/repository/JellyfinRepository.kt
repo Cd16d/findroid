@@ -99,6 +99,7 @@ interface JellyfinRepository {
 
     suspend fun postPlaybackStart(
         itemId: UUID,
+        positionTicks: Long? = null,
         playMethod: PlayMethod = PlayMethod.DIRECT_PLAY,
         mediaSourceId: String? = null,
         playSessionId: String? = null

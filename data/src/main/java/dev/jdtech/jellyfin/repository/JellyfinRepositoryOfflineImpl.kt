@@ -232,6 +232,7 @@ class JellyfinRepositoryOfflineImpl(
 
     override suspend fun postPlaybackStart(
         itemId: UUID,
+        positionTicks: Long?,
         playMethod: PlayMethod,
         mediaSourceId: String?,
         playSessionId: String?
