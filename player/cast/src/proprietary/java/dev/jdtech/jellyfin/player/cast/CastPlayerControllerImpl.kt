@@ -1,6 +1,7 @@
 package dev.jdtech.jellyfin.player.cast
 
 import android.content.Context
+import android.net.Uri
 import com.google.android.gms.cast.Cast
 import com.google.android.gms.cast.MediaError
 import com.google.android.gms.cast.MediaInfo
@@ -521,6 +522,22 @@ class CastPlayerControllerImpl @Inject constructor(
         }
     }
 
+    private fun Uri.toCastOptimizeImageUri(mediaType: PlayerMediaType = PlayerMediaType.MOVIE, isBackdrop: Boolean = false): Uri {
+        val quality = 70
+
+        val (targetWidthPx, targetHeightPx) = if (mediaType == PlayerMediaType.EPISODE || isBackdrop) {
+            1280 to 720
+        } else {
+            480 to 720
+        }
+
+        return this.buildUpon()
+            .appendQueryParameter("fillWidth", targetWidthPx.toString())
+            .appendQueryParameter("fillHeight", targetHeightPx.toString())
+            .appendQueryParameter("quality", quality.toString())
+            .build()
+    }
+
     private suspend fun buildMediaInfo(item: PlayerItem): BuildMediaResult? {
         val baseUrl = jellyfinApi.api.baseUrl
 
@@ -533,10 +550,11 @@ class CastPlayerControllerImpl @Inject constructor(
             item.indexNumber?.let { putInt(MediaMetadata.KEY_EPISODE_NUMBER, it) }
             item.parentIndexNumber?.let { putInt(MediaMetadata.KEY_SEASON_NUMBER, it) }
 
-            item.images.showPrimary?.let { addImage(WebImage(it)) }
-            item.images.showBackdrop?.let { addImage(WebImage(it)) }
-            item.images.primary?.let { addImage(WebImage(it)) }
-            item.images.backdrop?.let { addImage(WebImage(it)) }
+            item.images.showPrimary?.let { addImage(WebImage(it.toCastOptimizeImageUri())) }
+            item.images.showBackdrop?.let { addImage(WebImage(it.toCastOptimizeImageUri(isBackdrop = true))) }
+
+            item.images.primary?.let { addImage(WebImage(it.toCastOptimizeImageUri(item.mediaType))) }
+            item.images.backdrop?.let { addImage(WebImage(it.toCastOptimizeImageUri(item.mediaType, isBackdrop = true))) }
         }
 
         val playbackInfo = getPlaybackInfo(item, audioStreamIndex) ?: return null
@@ -609,7 +627,7 @@ class CastPlayerControllerImpl @Inject constructor(
                 val trackId = (stream.index + 100)
                 val trackUrl = baseUrl + stream.deliveryUrl
 
-                if(subtitleStreamIndex == null && stream.isDefault) {
+                if (subtitleStreamIndex == null && stream.isDefault) {
                     subtitleStreamIndex = trackId
                 }
 
@@ -863,6 +881,7 @@ class CastPlayerControllerImpl @Inject constructor(
 
     override fun setAudioTrack(track: Track?, itemId: UUID?) {
         if (itemId == null || track == null) return
+        if (audioStreamIndex == track.id) return
         audioStreamIndex = track.id
 
         // Update to avoid Ui glitches

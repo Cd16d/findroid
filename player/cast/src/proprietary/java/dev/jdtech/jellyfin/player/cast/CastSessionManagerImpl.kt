@@ -13,6 +13,7 @@ import com.google.android.gms.cast.framework.CastState
 import com.google.android.gms.cast.framework.CastStateListener
 import com.google.android.gms.cast.framework.SessionManagerListener
 import dagger.hilt.android.qualifiers.ApplicationContext
+import dev.jdtech.jellyfin.api.JellyfinApi
 import dev.jdtech.jellyfin.player.cast.models.CastConnectionState
 import dev.jdtech.jellyfin.player.cast.models.Device
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -36,10 +37,12 @@ data class ChromeCastDevice(val route: MediaRouter.RouteInfo) : Device(
 
 @Singleton
 class CastSessionManagerImpl @Inject constructor(
-    @param:ApplicationContext private val context: Context
+    @param:ApplicationContext private val context: Context,
+    private val jellyfinApi: JellyfinApi,
 ) : CastSessionManager {
 
-    override val isSupported = true
+    override val isSupported: Boolean
+        get() = jellyfinApi.api.baseUrl?.startsWith("https://", ignoreCase = true) ?: false
 
     private val _connectionState = MutableStateFlow(CastConnectionState.DISCONNECTED)
     override val connectionState: StateFlow<CastConnectionState> = _connectionState.asStateFlow()
