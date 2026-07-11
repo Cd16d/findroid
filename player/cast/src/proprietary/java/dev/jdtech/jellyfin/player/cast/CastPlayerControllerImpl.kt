@@ -233,7 +233,6 @@ class CastPlayerControllerImpl @Inject constructor(
 
     private fun clearSession() {
         Timber.d("Clear session")
-        val client = remoteMediaClient
 
         stopReporting()
 
@@ -273,6 +272,7 @@ class CastPlayerControllerImpl @Inject constructor(
 
         when (playbackStatus) {
             CastPlaybackStatus.ENDED, CastPlaybackStatus.IDLE -> {
+                _currentItem.value = null
                 stopReporting()
                 remoteMediaClient?.removeProgressListener(remoteMediaClientProgressListener)
             }

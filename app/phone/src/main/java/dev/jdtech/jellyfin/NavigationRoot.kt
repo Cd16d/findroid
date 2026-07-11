@@ -21,6 +21,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -266,8 +267,6 @@ fun NavigationRoot(
         }
     }
 
-    val showCastMiniPlayer = showCastButton && connectionState == CastConnectionState.CONNECTED
-
     val navigationSuiteScaffoldState = rememberNavigationSuiteScaffoldState()
 
     LaunchedEffect(showBottomBar) {
@@ -300,6 +299,22 @@ fun NavigationRoot(
 
     val density = LocalDensity.current
     var castPlayerHeight by remember { mutableStateOf(MaterialTheme.spacings.default) }
+
+    val showCastMiniPlayer by remember(
+        showCastButton,
+        connectionState,
+        showCastExpandedPlayer,
+        isExpandedScreen
+    ) {
+        derivedStateOf {
+            val connected = showCastButton && connectionState == CastConnectionState.CONNECTED
+            if (isExpandedScreen) {
+                connected && !showCastExpandedPlayer
+            } else {
+                connected
+            }
+        }
+    }
 
     LaunchedEffect(showCastMiniPlayer) {
         if (!showCastMiniPlayer) castPlayerHeight = MaterialTheme.spacings.default
