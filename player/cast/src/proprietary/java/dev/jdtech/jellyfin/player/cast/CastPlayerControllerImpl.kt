@@ -272,6 +272,8 @@ class CastPlayerControllerImpl @Inject constructor(
 
         when (playbackStatus) {
             CastPlaybackStatus.ENDED, CastPlaybackStatus.IDLE -> {
+                val itemId = _currentItem.value?.item?.itemId
+                stopReporting(itemId)
                 _currentItem.value = null
                 stopReporting()
                 remoteMediaClient?.removeProgressListener(remoteMediaClientProgressListener)
