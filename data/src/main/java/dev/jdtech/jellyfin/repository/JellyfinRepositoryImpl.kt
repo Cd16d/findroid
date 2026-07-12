@@ -366,7 +366,7 @@ class JellyfinRepositoryImpl(
                         it.toFindroidSegment()
                     }
 
-                Timber.d("Segments: $apiSegments")
+                Timber.d("Segments count: ${apiSegments.size}")
 
                 return@withContext apiSegments
             } catch (e: Exception) {

@@ -254,7 +254,7 @@ constructor(
     }
 
     private fun releasePlayer() {
-        val mediaId = player.currentMediaItem?.mediaId
+        val mediaId = player.currentMediaItem?.mediaId ?: return
         val position = player.currentPosition
         val duration = player.duration
 
@@ -389,7 +389,7 @@ constructor(
                         }
 
                         val nextItem = playlistManager.getNextPlayerItem()
-                        if (nextItem != null && previousItem !in items) {
+                        if (nextItem != null && nextItem !in items) {
                             items.add(player.currentMediaItemIndex + 1, nextItem)
                             player.addMediaItem(
                                 player.currentMediaItemIndex + 1,
@@ -413,7 +413,7 @@ constructor(
             player.playbackState == ExoPlayer.STATE_READY
         ) {
             viewModelScope.launch {
-                val mediaId = player.currentMediaItem?.mediaId
+                val mediaId = player.currentMediaItem?.mediaId ?: return@launch
                 val position = player.currentPosition
                 val duration = player.duration
                 playbackManager.reportStop(

@@ -150,13 +150,13 @@ fun PlaybackButtons(
             ) {
                 Icon(
                     painter = painterResource(if (isPlaying) CoreR.drawable.ic_pause else CoreR.drawable.ic_play),
-                    contentDescription = if (isPlaying) "Pause" else "Play",
+                    contentDescription = stringResource(if (isPlaying) R.string.player_controls_play else R.string.player_controls_pause),
                     modifier = Modifier.size(32.dp),
                 )
                 if (!skippableSegment) {
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = if (isPlaying) "Pause" else "Play",
+                        text = stringResource(if (isPlaying) R.string.player_controls_play else R.string.player_controls_pause),
                         style = MaterialTheme.typography.titleMedium,
                     )
                 }

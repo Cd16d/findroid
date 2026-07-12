@@ -1,9 +1,8 @@
 package dev.jdtech.jellyfin.player.core.domain.models
 
 import android.os.Parcelable
-import dev.jdtech.jellyfin.models.FindroidImages
-import java.util.UUID
 import kotlinx.parcelize.Parcelize
+import java.util.UUID
 
 @Parcelize
 data class PlayerItem(
