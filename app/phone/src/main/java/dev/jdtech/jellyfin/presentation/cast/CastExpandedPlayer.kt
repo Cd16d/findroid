@@ -292,6 +292,7 @@ private fun CastExpandedPlayerLayout(
                     }
                 },
                 onDismiss = { showTrackSelection = false },
+                displayExtraInfo = uiState.displayExtraInfo,
                 modifier = Modifier
                     .padding(MaterialTheme.spacings.small)
                     .widthIn(max = 500.dp)

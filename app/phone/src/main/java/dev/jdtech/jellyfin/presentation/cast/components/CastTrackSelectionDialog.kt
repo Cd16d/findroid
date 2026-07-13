@@ -61,6 +61,7 @@ fun CastTrackSelectionSheet(
     tracks: List<Track>,
     onSetTrack: (Track?) -> Unit,
     onDismiss: () -> Unit,
+    displayExtraInfo: Boolean,
     modifier: Modifier = Modifier
 ) {
     var offsetY by remember { mutableFloatStateOf(0f) }
@@ -145,6 +146,7 @@ fun CastTrackSelectionSheet(
                 items(tracks, key = { it.id }) { track ->
                     TrackRow(
                         track = track,
+                        displayExtraInfo = displayExtraInfo,
                         onClick = { onSetTrack(track) },
                     )
                 }
@@ -156,10 +158,13 @@ fun CastTrackSelectionSheet(
 @Composable
 private fun TrackRow(
     track: Track,
+    displayExtraInfo: Boolean,
     onClick: (Track) -> Unit
 ) {
     val configuration = LocalConfiguration.current
     val currentLocale = configuration.locales[0]
+
+    val trackIndexName = stringResource(R.string.track_index, track.id)
 
     val displayName = remember(track, currentLocale) {
         val locale = track.language?.takeIf { it.isNotBlank() && it != "und" }?.let { lang ->
@@ -170,7 +175,7 @@ private fun TrackRow(
             if (it.isLowerCase()) it.titlecase(currentLocale) else it.toString()
         }
 
-        localizedLanguage ?: track.label ?: "Track ${track.id}"
+        localizedLanguage ?: track.label ?: trackIndexName
     }
 
     Row(
@@ -228,16 +233,18 @@ private fun TrackRow(
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (track.isForced == true) {
-                TrackMetadataBarItem("Forced")
+                TrackMetadataBarItem(stringResource(R.string.forced))
             }
             if (track.isHearingImpaired == true) {
-                TrackMetadataBarItem("SDH")
+                TrackMetadataBarItem(stringResource(R.string.hearing_impaired))
             }
-            if (track.isExternal == true) {
-                TrackMetadataBarItem(stringResource(R.string.external))
-            }
-            track.codec?.takeIf { it.isNotBlank() }?.let {
-                TrackMetadataBarItem(it)
+            if (displayExtraInfo) {
+                if (track.isExternal == true) {
+                    TrackMetadataBarItem(stringResource(R.string.external))
+                }
+                track.codec?.takeIf { it.isNotBlank() }?.let {
+                    TrackMetadataBarItem(it)
+                }
             }
         }
     }
@@ -275,7 +282,8 @@ private fun CastTrackSelectionSheetPreview() {
                 Track(4, "Spanish", "spa", "aac", selected = true, supported = true)
             ),
             onSetTrack = {},
-            onDismiss = {}
+            onDismiss = {},
+            displayExtraInfo = false
         )
     }
 }
@@ -305,10 +313,21 @@ private fun CastTrackSubsSelectionSheetPreview() {
                     supported = true,
                     isHearingImpaired = true,
                     isExternal = true
+                ),
+                Track(
+                    5,
+                    null,
+                    null,
+                    "webvvt",
+                    selected = false,
+                    supported = true,
+                    isHearingImpaired = false,
+                    isExternal = false
                 )
             ),
             onSetTrack = {},
-            onDismiss = {}
+            onDismiss = {},
+            displayExtraInfo = true
         )
     }
 }

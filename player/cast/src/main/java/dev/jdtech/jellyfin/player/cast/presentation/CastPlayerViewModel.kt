@@ -71,6 +71,7 @@ constructor(
         val fileLoaded: Boolean,
         val audioTracks: List<Track> = emptyList(),
         val subtitleTracks: List<Track> = emptyList(),
+        val displayExtraInfo: Boolean = false,
     )
 
     private val _internalUiState = MutableStateFlow(
@@ -91,12 +92,12 @@ constructor(
             currentChapters = emptyList(),
             fileLoaded = false,
             audioTracks = emptyList(),
-            subtitleTracks = emptyList()
+            subtitleTracks = emptyList(),
+            displayExtraInfo = appPreferences.getValue(appPreferences.displayExtraInfo)
         )
     )
 
     val uiState: StateFlow<UiState> = _internalUiState.asStateFlow()
-
 
     private var currentMediaItemSegments: List<FindroidSegment> = emptyList()
     var currentItemId: UUID? = null
