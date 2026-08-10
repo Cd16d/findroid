@@ -5,8 +5,13 @@ import androidx.annotation.StringRes
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteItem
@@ -14,14 +19,31 @@ import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffo
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
 import androidx.compose.material3.adaptive.navigationsuite.rememberNavigationSuiteScaffoldState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.ViewModelStoreOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavHostController
 import androidx.navigation.NavOptions
 import androidx.navigation.NavOptionsBuilder
@@ -31,7 +53,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.toRoute
 import androidx.window.core.layout.WindowSizeClass
-import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.models.CollectionType
 import dev.jdtech.jellyfin.models.FindroidBoxSet
 import dev.jdtech.jellyfin.models.FindroidCollection
@@ -41,6 +62,12 @@ import dev.jdtech.jellyfin.models.FindroidItem
 import dev.jdtech.jellyfin.models.FindroidMovie
 import dev.jdtech.jellyfin.models.FindroidSeason
 import dev.jdtech.jellyfin.models.FindroidShow
+import dev.jdtech.jellyfin.player.cast.models.CastConnectionState
+import dev.jdtech.jellyfin.player.cast.presentation.CastSessionViewModel
+import dev.jdtech.jellyfin.presentation.cast.CastExpandedPlayer
+import dev.jdtech.jellyfin.presentation.cast.CastMiniPlayer
+import dev.jdtech.jellyfin.presentation.cast.components.CastBottomSheet
+import dev.jdtech.jellyfin.presentation.cast.components.CastButton
 import dev.jdtech.jellyfin.presentation.film.CollectionScreen
 import dev.jdtech.jellyfin.presentation.film.DownloadsScreen
 import dev.jdtech.jellyfin.presentation.film.EpisodeScreen
@@ -61,27 +88,39 @@ import dev.jdtech.jellyfin.presentation.setup.login.LoginScreen
 import dev.jdtech.jellyfin.presentation.setup.servers.ServersScreen
 import dev.jdtech.jellyfin.presentation.setup.users.UsersScreen
 import dev.jdtech.jellyfin.presentation.setup.welcome.WelcomeScreen
+import dev.jdtech.jellyfin.presentation.theme.spacings
 import dev.jdtech.jellyfin.presentation.utils.LocalOfflineMode
-import java.util.UUID
+import dev.jdtech.jellyfin.presentation.utils.rememberSafePadding
 import kotlinx.serialization.Serializable
+import java.util.UUID
+import dev.jdtech.jellyfin.core.R as CoreR
 
-@Serializable data object WelcomeRoute
+@Serializable
+data object WelcomeRoute
 
-@Serializable data object ServersRoute
+@Serializable
+data object ServersRoute
 
-@Serializable data object AddServerRoute
+@Serializable
+data object AddServerRoute
 
-@Serializable data class ServerAddressesRoute(val serverId: String)
+@Serializable
+data class ServerAddressesRoute(val serverId: String)
 
-@Serializable data object UsersRoute
+@Serializable
+data object UsersRoute
 
-@Serializable data class LoginRoute(val username: String? = null)
+@Serializable
+data class LoginRoute(val username: String? = null)
 
-@Serializable data object HomeRoute
+@Serializable
+data object HomeRoute
 
-@Serializable data object MediaRoute
+@Serializable
+data object MediaRoute
 
-@Serializable data object DownloadsRoute
+@Serializable
+data object DownloadsRoute
 
 @Serializable
 data class LibraryRoute(
@@ -90,27 +129,37 @@ data class LibraryRoute(
     val libraryType: CollectionType,
 )
 
-@Serializable data class CollectionRoute(val collectionId: String, val collectionName: String)
+@Serializable
+data class CollectionRoute(val collectionId: String, val collectionName: String)
 
-@Serializable data object FavoritesRoute
+@Serializable
+data object FavoritesRoute
 
-@Serializable data class MovieRoute(val movieId: String)
+@Serializable
+data class MovieRoute(val movieId: String)
 
-@Serializable data class ShowRoute(val showId: String)
+@Serializable
+data class ShowRoute(val showId: String)
 
-@Serializable data class EpisodeRoute(val episodeId: String)
+@Serializable
+data class EpisodeRoute(val episodeId: String)
 
-@Serializable data class SeasonRoute(val seasonId: String)
+@Serializable
+data class SeasonRoute(val seasonId: String)
 
-@Serializable data class PersonRoute(val personId: String)
+@Serializable
+data class PersonRoute(val personId: String)
 
-@Serializable data class SettingsRoute(val indexes: IntArray)
+@Serializable
+data class SettingsRoute(val indexes: IntArray)
 
-@Serializable data class SettingsFileEditRoute(
+@Serializable
+data class SettingsFileEditRoute(
     val filePath: String,
 )
 
-@Serializable data object AboutRoute
+@Serializable
+data object AboutRoute
 
 data class TabBarItem(
     @param:StringRes val title: Int,
@@ -134,6 +183,9 @@ val downloadsTab =
         route = DownloadsRoute,
     )
 
+val LocalCastPlayerHeight = compositionLocalOf { 0.dp }
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NavigationRoot(
     navController: NavHostController,
@@ -141,6 +193,8 @@ fun NavigationRoot(
     hasCurrentServer: Boolean,
     hasCurrentUser: Boolean,
 ) {
+    val context = LocalContext.current
+    val castSessionViewModel: CastSessionViewModel = hiltViewModel(context as ViewModelStoreOwner)
     val isOfflineMode = LocalOfflineMode.current
 
     val startDestination =
@@ -156,14 +210,63 @@ fun NavigationRoot(
             false -> listOf(homeTab, mediaTab, downloadsTab)
             true -> listOf(homeTab, downloadsTab)
         }
-    val navigationItemClassNames = navigationItems.map { it.route::class.qualifiedName }
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
 
     var searchExpanded by remember { mutableStateOf(false) }
 
-    val currentRoute = navBackStackEntry?.destination?.route
-    val showBottomBar = currentRoute in navigationItemClassNames && !searchExpanded
+    val currentDestination = navBackStackEntry?.destination
+    val showBottomBar = navigationItems.any {
+        currentDestination?.hasRoute(it.route::class) == true
+    } && !searchExpanded
+
+    val safePadding = rememberSafePadding(
+        handleStartInsets = false,
+        handleBottomInsets = !showBottomBar
+    )
+
+    var castExpanded by remember { mutableStateOf(true) }
+
+    val nestedScrollConnection = remember {
+        object : NestedScrollConnection {
+            override fun onPostScroll(
+                consumed: Offset,
+                available: Offset,
+                source: NestedScrollSource
+            ): Offset {
+                if (consumed.y < -1f) {
+                    castExpanded = false // Scrolling down -> Collapse
+                } else if (consumed.y > 1f) {
+                    castExpanded = true // Scrolling up -> Expand
+                }
+                return Offset.Zero
+            }
+        }
+    }
+
+    val castRoutes = listOf(
+        HomeRoute::class,
+        ShowRoute::class,
+        MovieRoute::class,
+        MediaRoute::class,
+        LibraryRoute::class,
+        EpisodeRoute::class,
+        SeasonRoute::class,
+        FavoritesRoute::class,
+        CollectionRoute::class,
+    )
+
+    val connectionState by castSessionViewModel.connectionState.collectAsStateWithLifecycle()
+    val showCastButton =
+        castRoutes.any { currentDestination?.hasRoute(it) == true } && !searchExpanded && !isOfflineMode && castSessionViewModel.sessionManager.isSupported
+    var showCastSheet by remember { mutableStateOf(false) }
+    var showCastExpandedPlayer by remember { mutableStateOf(false) }
+
+    LaunchedEffect(connectionState) {
+        if (connectionState != CastConnectionState.CONNECTED) {
+            showCastExpandedPlayer = false
+        }
+    }
 
     val navigationSuiteScaffoldState = rememberNavigationSuiteScaffoldState()
 
@@ -176,6 +279,12 @@ fun NavigationRoot(
     }
 
     val windowAdaptiveInfo = currentWindowAdaptiveInfo()
+    val isExpandedScreen = windowAdaptiveInfo.windowSizeClass.isWidthAtLeastBreakpoint(
+        WindowSizeClass.WIDTH_DP_EXPANDED_LOWER_BOUND
+    )
+    val isMediumScreen = windowAdaptiveInfo.windowSizeClass.isWidthAtLeastBreakpoint(
+        WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND
+    )
     val customNavSuiteType =
         with(windowAdaptiveInfo.windowSizeClass) {
             when {
@@ -197,18 +306,42 @@ fun NavigationRoot(
             }
         }
 
-    NavigationSuiteScaffold(
-        navigationItems = {
-            navigationItems.forEach { item ->
-                NavigationSuiteItem(
-                    selected = currentRoute == item.route::class.qualifiedName,
-                    onClick = {
-                        if (
-                            item.route is MediaRoute &&
-                                currentRoute == MediaRoute::class.qualifiedName
-                        ) {
-                            searchExpanded = true
-                        }
+    val density = LocalDensity.current
+    var castPlayerHeight by remember { mutableStateOf(MaterialTheme.spacings.default) }
+
+    val showCastMiniPlayer by remember(
+        showCastButton,
+        connectionState,
+        showCastExpandedPlayer,
+        isExpandedScreen
+    ) {
+        derivedStateOf {
+            val connected = showCastButton && connectionState == CastConnectionState.CONNECTED
+            if (isExpandedScreen) {
+                connected && !showCastExpandedPlayer
+            } else {
+                connected
+            }
+        }
+    }
+
+    LaunchedEffect(showCastMiniPlayer) {
+        if (!showCastMiniPlayer) castPlayerHeight = MaterialTheme.spacings.default
+    }
+
+    CompositionLocalProvider(LocalCastPlayerHeight provides castPlayerHeight) {
+        NavigationSuiteScaffold(
+            navigationSuiteItems = {
+                navigationItems.forEach { item ->
+                    NavigationSuiteItem(
+                        selected = currentDestination?.hasRoute(item.route::class) == true,
+                        onClick = {
+                            if (
+                                item.route is MediaRoute &&
+                                currentDestination?.hasRoute<MediaRoute>() == true
+                            ) {
+                                searchExpanded = true
+                            }
 
                         navController.navigate(item.route) {
                             popUpTo(navController.graph.startDestinationId) { saveState = true }
@@ -491,11 +624,13 @@ private fun navigateToItem(navController: NavHostController, item: FindroidItem)
             navController.safeNavigate(
                 CollectionRoute(collectionId = item.id.toString(), collectionName = item.name)
             )
+
         is FindroidMovie -> navController.safeNavigate(MovieRoute(movieId = item.id.toString()))
         is FindroidShow -> navController.safeNavigate(ShowRoute(showId = item.id.toString()))
         is FindroidSeason -> navController.safeNavigate(SeasonRoute(seasonId = item.id.toString()))
         is FindroidEpisode ->
             navController.safeNavigate(EpisodeRoute(episodeId = item.id.toString()))
+
         is FindroidCollection ->
             navController.safeNavigate(
                 LibraryRoute(
@@ -504,6 +639,7 @@ private fun navigateToItem(navController: NavHostController, item: FindroidItem)
                     libraryType = item.type,
                 )
             )
+
         is FindroidFolder ->
             navController.safeNavigate(
                 LibraryRoute(
@@ -512,6 +648,7 @@ private fun navigateToItem(navController: NavHostController, item: FindroidItem)
                     libraryType = CollectionType.Folders,
                 )
             )
+
         else -> Unit
     }
 }
