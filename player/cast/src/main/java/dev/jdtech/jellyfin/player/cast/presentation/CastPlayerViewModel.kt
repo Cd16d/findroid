@@ -2,7 +2,6 @@ package dev.jdtech.jellyfin.player.cast.presentation
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -14,6 +13,7 @@ import dev.jdtech.jellyfin.player.cast.models.CastPlayerState
 import dev.jdtech.jellyfin.player.cast.models.Device
 import dev.jdtech.jellyfin.player.core.R
 import dev.jdtech.jellyfin.player.core.domain.models.PlayerChapter
+import dev.jdtech.jellyfin.player.core.domain.models.PlayerImage
 import dev.jdtech.jellyfin.player.core.domain.models.PlayerItem
 import dev.jdtech.jellyfin.player.core.domain.models.PlayerMediaType
 import dev.jdtech.jellyfin.player.core.domain.models.Track
@@ -60,7 +60,7 @@ constructor(
         val availableDevices: List<Device> = emptyList(),
         val connectedDevice: Device? = null,
         val currentItemTitle: CurrentItemTitle,
-        val currentItemPosterUrl: Uri?,
+        val currentItemPoster: PlayerImage?,
         val isMovie: Boolean,
         val defaultAspectRatio: Float,
         val trickplayAspectRatio: Float?,
@@ -82,7 +82,7 @@ constructor(
             playerState = playerController.playerState.value,
 
             currentItemTitle = CurrentItemTitle(title = ""),
-            currentItemPosterUrl = null,
+            currentItemPoster = null,
             isMovie = false,
             defaultAspectRatio = 16f / 10f,
             trickplayAspectRatio = null,
@@ -206,7 +206,7 @@ constructor(
         _internalUiState.update {
             it.copy(
                 currentItemTitle = itemTitle,
-                currentItemPosterUrl = item.images.primary,
+                currentItemPoster = item.images.primary,
                 isMovie = isMovie,
                 defaultAspectRatio = defaultRatio,
                 trickplayAspectRatio = trickplayRatio,
@@ -331,7 +331,7 @@ constructor(
         _internalUiState.update {
             it.copy(
                 currentItemTitle = CurrentItemTitle(title = ""),
-                currentItemPosterUrl = null,
+                currentItemPoster = null,
                 isMovie = false,
                 defaultAspectRatio = 16f / 10f,
                 trickplayAspectRatio = null,

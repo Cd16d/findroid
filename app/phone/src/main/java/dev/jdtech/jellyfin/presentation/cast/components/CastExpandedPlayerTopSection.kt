@@ -1,8 +1,8 @@
 package dev.jdtech.jellyfin.presentation.cast.components
 
-import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -22,6 +23,9 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import dev.jdtech.jellyfin.player.cast.models.CastPlayerState
 import dev.jdtech.jellyfin.player.cast.presentation.CastPlayerViewModel
+import dev.jdtech.jellyfin.player.core.domain.models.PlayerImage
+import dev.jdtech.jellyfin.utils.toBlurHashPainter
+import dev.jdtech.jellyfin.utils.toOptimizedImageUri
 import dev.jdtech.jellyfin.core.R as CoreR
 
 @Composable
@@ -35,7 +39,7 @@ fun PlayerTopSection(
 ) {
     val playerState = uiState.playerState
 
-    val posterUrl = uiState.currentItemPosterUrl
+    val poster = uiState.currentItemPoster
     val deviceName = uiState.connectedDevice?.name
 
     Column(
@@ -58,7 +62,7 @@ fun PlayerTopSection(
                 uiState = uiState,
                 isScrubbing = isScrubbing,
                 scrubPosition = scrubPosition,
-                posterUrl = posterUrl,
+                poster = poster,
                 playbackState = playerState,
                 modifier = Modifier.fillMaxSize()
             )
@@ -71,7 +75,7 @@ private fun PlayerImage(
     uiState: CastPlayerViewModel.UiState,
     isScrubbing: Boolean,
     scrubPosition: Float,
-    posterUrl: Uri?,
+    poster: PlayerImage?,
     playbackState: CastPlayerState,
     modifier: Modifier = Modifier
 ) {
@@ -83,7 +87,7 @@ private fun PlayerImage(
             uiState.defaultAspectRatio
         }
 
-    Box(
+    BoxWithConstraints(
         modifier = modifier
             .padding(horizontal = if (uiState.isMovie && (!isScrubbing || trickplay == null)) 88.dp else 24.dp)
             .aspectRatio(aspectRatio)
@@ -96,11 +100,19 @@ private fun PlayerImage(
                 trickplay = trickplay,
                 scrubPosition = scrubPosition
             )
-        } else if (posterUrl != null) {
+        } else if (poster != null) {
+            val blurPlaceholder = remember(poster.blurHash) {
+                poster.blurHash.toBlurHashPainter()
+            }
+
+            val optimizedUri = poster.uri.toOptimizedImageUri(widthDp = maxWidth, heightDp = maxHeight)
+
             AsyncImage(
-                model = posterUrl,
+                model = optimizedUri,
                 contentDescription = "Poster",
                 contentScale = ContentScale.Crop,
+                placeholder = blurPlaceholder,
+                error = blurPlaceholder,
                 modifier = Modifier.fillMaxSize()
             )
         } else {

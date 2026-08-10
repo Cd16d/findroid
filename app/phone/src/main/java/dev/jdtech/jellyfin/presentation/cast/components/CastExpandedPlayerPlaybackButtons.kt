@@ -255,7 +255,7 @@ private fun mockUiState() = CastPlayerViewModel.UiState(
     currentItemTitle = CastPlayerViewModel.CurrentItemTitle(
         seriesName = "Series Name", episodeInfo = "S01E01", title = "Episode Title"
     ),
-    currentItemPosterUrl = null,
+    currentItemPoster = null,
     isMovie = false,
     defaultAspectRatio = 16f / 9f,
     trickplayAspectRatio = null,

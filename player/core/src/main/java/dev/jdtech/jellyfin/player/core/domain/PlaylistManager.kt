@@ -4,6 +4,7 @@ import androidx.core.net.toUri
 import androidx.media3.common.MimeTypes
 import dev.jdtech.jellyfin.models.FindroidChapter
 import dev.jdtech.jellyfin.models.FindroidEpisode
+import dev.jdtech.jellyfin.models.FindroidImage
 import dev.jdtech.jellyfin.models.FindroidImages
 import dev.jdtech.jellyfin.models.FindroidItem
 import dev.jdtech.jellyfin.models.FindroidMovie
@@ -11,6 +12,7 @@ import dev.jdtech.jellyfin.models.FindroidSourceType
 import dev.jdtech.jellyfin.models.FindroidSources
 import dev.jdtech.jellyfin.player.core.domain.models.ExternalSubtitle
 import dev.jdtech.jellyfin.player.core.domain.models.PlayerChapter
+import dev.jdtech.jellyfin.player.core.domain.models.PlayerImage
 import dev.jdtech.jellyfin.player.core.domain.models.PlayerImages
 import dev.jdtech.jellyfin.player.core.domain.models.PlayerItem
 import dev.jdtech.jellyfin.player.core.domain.models.PlayerMediaType
@@ -275,12 +277,17 @@ class PlaylistManager @Inject internal constructor(private val repository: Jelly
         }
     }
 
+    private fun FindroidImage.toPlayerImage() = PlayerImage(
+        uri = uri,
+        blurHash = blurHash
+    )
+
     private fun FindroidImages.toPlayerImages() = PlayerImages(
-        primary = primary,
-        backdrop = backdrop,
-        logo = logo,
-        showPrimary = showPrimary,
-        showBackdrop = showBackdrop,
-        showLogo = showLogo
+        primary = primary?.toPlayerImage(),
+        backdrop = backdrop?.toPlayerImage(),
+        logo = logo?.toPlayerImage(),
+        showPrimary = showPrimary?.toPlayerImage(),
+        showBackdrop = showBackdrop?.toPlayerImage(),
+        showLogo = showLogo?.toPlayerImage()
     )
 }

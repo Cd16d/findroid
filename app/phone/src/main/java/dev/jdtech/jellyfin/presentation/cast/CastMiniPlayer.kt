@@ -1,12 +1,13 @@
 package dev.jdtech.jellyfin.presentation.cast
 
-import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -24,6 +25,7 @@ import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -40,9 +42,12 @@ import dev.jdtech.jellyfin.player.cast.models.CastPlaybackStatus
 import dev.jdtech.jellyfin.player.cast.models.CastPlayerState
 import dev.jdtech.jellyfin.player.cast.models.Device
 import dev.jdtech.jellyfin.player.cast.presentation.CastPlayerViewModel
+import dev.jdtech.jellyfin.player.core.domain.models.PlayerImage
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
 import dev.jdtech.jellyfin.presentation.utils.rememberSafePadding
+import dev.jdtech.jellyfin.utils.toBlurHashPainter
+import dev.jdtech.jellyfin.utils.toOptimizedImageUri
 import dev.jdtech.jellyfin.core.R as CoreR
 
 @Composable
@@ -123,15 +128,28 @@ fun CastMiniPlayerLayout(
                 horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacings.medium)
             ) {
                 if (uiState.fileLoaded) {
-                    AsyncImage(
-                        model = uiState.currentItemPosterUrl,
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
+                    val poster = uiState.currentItemPoster
+                    val blurPlaceholder = remember(poster?.blurHash) {
+                        poster?.blurHash.toBlurHashPainter()
+                    }
+
+                    BoxWithConstraints(
                         modifier = Modifier
                             .height(if (isMediumScreen) 80.dp else 64.dp)
                             .aspectRatio(uiState.defaultAspectRatio)
-                            .clip(MaterialTheme.shapes.medium),
-                    )
+                            .clip(MaterialTheme.shapes.medium)
+                    ) {
+                        val imageUri = poster?.uri.toOptimizedImageUri(widthDp = maxWidth, heightDp = maxHeight)
+
+                        AsyncImage(
+                            model = imageUri,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            placeholder = blurPlaceholder,
+                            error = blurPlaceholder,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
 
                     Column(
                         modifier = Modifier.weight(1f),
@@ -255,7 +273,7 @@ private fun CastMiniPlayerPhonePreview() {
     FindroidTheme {
         CastMiniPlayerLayout(
             connectedDevice = Device("1", "Living Room TV"),
-            uiState = previewUiState(posterUrl = null),
+            uiState = previewUiState(poster = null),
             playbackState = CastPlayerState(),
             onTogglePlayback = {},
             onClick = {}
@@ -363,7 +381,7 @@ private fun previewUiState(
     title: String = "Title",
     seriesName: String? = null,
     episodeInfo: String? = null,
-    posterUrl: Uri? = null,
+    poster: PlayerImage? = null,
     isMovie: Boolean = true,
     aspectRatio: Float = 16f / 9f,
     fileLoaded: Boolean = false
@@ -373,7 +391,7 @@ private fun previewUiState(
         episodeInfo = episodeInfo,
         title = title
     ),
-    currentItemPosterUrl = posterUrl,
+    currentItemPoster = poster,
     isMovie = isMovie,
     defaultAspectRatio = aspectRatio,
     trickplayAspectRatio = null,

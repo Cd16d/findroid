@@ -554,11 +554,11 @@ class CastPlayerControllerImpl @Inject constructor(
             item.indexNumber?.let { putInt(MediaMetadata.KEY_EPISODE_NUMBER, it) }
             item.parentIndexNumber?.let { putInt(MediaMetadata.KEY_SEASON_NUMBER, it) }
 
-            item.images.showPrimary?.let { addImage(WebImage(it.toCastOptimizeImageUri())) }
-            item.images.showBackdrop?.let { addImage(WebImage(it.toCastOptimizeImageUri(isBackdrop = true))) }
+            item.images.showPrimary?.uri?.let { addImage(WebImage(it.toCastOptimizeImageUri())) }
+            item.images.showBackdrop?.uri?.let { addImage(WebImage(it.toCastOptimizeImageUri(isBackdrop = true))) }
 
-            item.images.primary?.let { addImage(WebImage(it.toCastOptimizeImageUri(item.mediaType))) }
-            item.images.backdrop?.let {
+            item.images.primary?.uri?.let { addImage(WebImage(it.toCastOptimizeImageUri(item.mediaType))) }
+            item.images.backdrop?.uri?.let {
                 addImage(
                     WebImage(
                         it.toCastOptimizeImageUri(
