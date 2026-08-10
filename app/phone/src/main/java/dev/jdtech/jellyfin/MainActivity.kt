@@ -36,7 +36,9 @@ class MainActivity : AppCompatActivity() {
             FindroidTheme(dynamicColor = state.isDynamicColors) {
                 val navController = rememberNavController()
                 if (!state.isLoading) {
-                    CompositionLocalProvider(LocalOfflineMode provides state.isOfflineMode) {
+                    CompositionLocalProvider(
+                        LocalOfflineMode provides state.isOfflineMode,
+                    ) {
                         NavigationRoot(
                             navController = navController,
                             hasServers = state.hasServers,

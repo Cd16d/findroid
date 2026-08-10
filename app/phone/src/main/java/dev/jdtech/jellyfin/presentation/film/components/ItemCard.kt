@@ -53,7 +53,10 @@ fun ItemCard(
             shape = MaterialTheme.shapes.small,
         ) {
             Box {
-                ItemPoster(item = item, direction = direction)
+                ItemPoster(
+                    item = item,
+                    direction = direction,
+                )
                 Row(
                     modifier =
                         Modifier.align(Alignment.TopEnd).padding(MaterialTheme.spacings.small),
