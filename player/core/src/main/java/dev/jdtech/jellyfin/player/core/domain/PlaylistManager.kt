@@ -127,7 +127,7 @@ class PlaylistManager @Inject internal constructor(private val repository: Jelly
         currentItemIndex = items.indexOfFirst { it.id == initialItem.id }
 
         val playbackPosition =
-            if (!startFromBeginning) initialItem.playbackPositionTicks.div(10000) else 0
+            if (!startFromBeginning) initialItem.playbackPositionTicks / 10000 else 0
         val playerItem = initialItem.toPlayerItem(mediaSourceIndex, playbackPosition)
         playerItems.add(playerItem)
 
@@ -192,7 +192,7 @@ class PlaylistManager @Inject internal constructor(private val repository: Jelly
     ): PlayerItem {
         Timber.d("Converting FindroidItem ${this.id} to PlayerItem")
 
-        val mediaSources = repository.getMediaSources(id, true)
+        val mediaSources = repository.getMediaSources(id, includePath = true)
         val mediaSource =
             if (mediaSourceIndex == null) {
                 mediaSources.firstOrNull { it.type == FindroidSourceType.LOCAL } ?: mediaSources[0]
@@ -237,25 +237,21 @@ class PlaylistManager @Inject internal constructor(private val repository: Jelly
                 else -> null
             }
 
-        val mainName = if (this is FindroidPart) {
-            this.parentName
-        } else {
-            name
-        }
+        val mainName = (this as? FindroidPart)?.parentName ?: name
 
         val partName = if (mediaSource.name.isPartName()) mediaSource.name else null
 
-        val parentEpisodeInfo = when (this) {
+        val episodeInfo = when (this) {
             is FindroidPart -> {
-                Quadriple(parentIndexNumber, indexNumber, indexNumberEnd, seriesName)
+                EpisodeInfo(parentIndexNumber, indexNumber, indexNumberEnd, null)
             }
 
             is FindroidEpisode -> {
-                Quadriple(parentIndexNumber, indexNumber, indexNumberEnd, seriesName)
+                EpisodeInfo(parentIndexNumber, indexNumber, indexNumberEnd, seriesName)
             }
 
             else -> {
-                Quadriple(null, null, null, null)
+                EpisodeInfo(null, null, null, null)
             }
         }
 
@@ -267,14 +263,14 @@ class PlaylistManager @Inject internal constructor(private val repository: Jelly
             mediaSourceId = mediaSource.id,
             mediaSourceUri = mediaSource.path,
             playbackPosition = playbackPosition,
-            parentIndexNumber = parentEpisodeInfo.first,
-            indexNumber = parentEpisodeInfo.second,
-            indexNumberEnd = parentEpisodeInfo.third,
-            seriesName = parentEpisodeInfo.fourth,
+            parentIndexNumber = episodeInfo.parentIndexNumber,
+            indexNumber = episodeInfo.indexNumber,
+            indexNumberEnd = episodeInfo.indexNumberEnd,
+            seriesName = episodeInfo.seriesName,
             externalSubtitles = externalSubtitles,
             chapters = chapters.toPlayerChapters(),
             trickplayInfo = trickplayInfo,
-            images = images.toPlayerImages()
+            images = images.toPlayerImages(),
         )
     }
 
@@ -310,5 +306,12 @@ class PlaylistManager @Inject internal constructor(private val repository: Jelly
         showPrimary = showPrimary?.toPlayerImage(),
         showBackdrop = showBackdrop?.toPlayerImage(),
         showLogo = showLogo?.toPlayerImage()
+    )
+
+    private data class EpisodeInfo(
+        val parentIndexNumber: Int?,
+        val indexNumber: Int?,
+        val indexNumberEnd: Int?,
+        val seriesName: String?,
     )
 }
