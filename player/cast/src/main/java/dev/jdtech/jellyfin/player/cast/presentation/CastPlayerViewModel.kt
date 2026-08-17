@@ -192,29 +192,28 @@ constructor(
 
         val itemTitle =
             if (item.parentIndexNumber != null && item.indexNumber != null) {
-                val baseStr = if (item.indexNumberEnd == null) {
-                    "S${item.parentIndexNumber}:E${item.indexNumber}"
+                val parentIndex = item.parentIndexNumber.toString().padStart(2, '0')
+                val index = item.indexNumber.toString().padStart(2, '0')
+                val episodeInfoBaseStr = if (item.indexNumberEnd == null) {
+                    "S$parentIndex - E$index"
                 } else {
-                    "S${item.parentIndexNumber}:E${item.indexNumber}-${item.indexNumberEnd}"
+                    val indexEnd = item.indexNumberEnd.toString().padStart(2, '0')
+                    "S$parentIndex - E$index:$indexEnd"
                 }
+
                 val partName = item.partName
-                val title = if (partName != null) {
-                    "$baseStr - ${partName.getTranslatablePartName(context)} - ${item.name}"
+                val episodeInfo = if (partName != null) {
+                    "$episodeInfoBaseStr - ${partName.getTranslatablePartName(context)}"
                 } else {
-                    "$baseStr - ${item.name}"
+                    episodeInfoBaseStr
                 }
 
                 CurrentItemTitle(
-                    seriesName = item.seriesName, title = title
+                    seriesName = item.seriesName, episodeInfo = episodeInfo, title = item.name
                 )
             } else {
                 val partName = item.partName
-                val title = if (partName != null) {
-                    "${item.name} - ${partName.getTranslatablePartName(context)}"
-                } else {
-                    item.name
-                }
-                CurrentItemTitle(title = title)
+                CurrentItemTitle(title = item.name, episodeInfo = partName?.getTranslatablePartName(context))
             }
 
         _internalUiState.update {

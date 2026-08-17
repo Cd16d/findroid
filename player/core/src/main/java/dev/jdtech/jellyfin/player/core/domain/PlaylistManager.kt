@@ -255,11 +255,23 @@ class PlaylistManager @Inject internal constructor(private val repository: Jelly
             }
         }
 
+        val mediaType = when (this) {
+            is FindroidPart -> {
+                if (parentIndexNumber == null) {
+                    PlayerMediaType.MOVIE
+                } else {
+                    PlayerMediaType.EPISODE
+                }
+            }
+            is FindroidEpisode -> PlayerMediaType.EPISODE
+            else -> PlayerMediaType.MOVIE
+        }
+
         return PlayerItem(
             name = mainName,
             itemId = id,
             partName = partName,
-            mediaType = if (this is FindroidEpisode) PlayerMediaType.EPISODE else PlayerMediaType.MOVIE,
+            mediaType = mediaType,
             mediaSourceId = mediaSource.id,
             mediaSourceUri = mediaSource.path,
             playbackPosition = playbackPosition,
