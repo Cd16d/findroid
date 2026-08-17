@@ -232,7 +232,13 @@ fun FindroidEpisodeDto.toLocalFindroidImages(itemId: UUID): FindroidImages {
 
 fun FindroidPartDto.toLocalFindroidImages(itemId: UUID): FindroidImages {
     return FindroidImages(
-        primary = Uri.Builder().appendEncodedPath("images/$itemId/primary").build(),
-        backdrop = Uri.Builder().appendEncodedPath("images/$itemId/backdrop").build(),
+        primary = FindroidImage(
+            uri = Uri.Builder().appendEncodedPath("images/$itemId/primary").build(),
+            blurHash = null
+        ),
+        backdrop = FindroidImage(
+            uri = Uri.Builder().appendEncodedPath("images/$itemId/backdrop").build(),
+            blurHash = null
+        ),
     )
 }

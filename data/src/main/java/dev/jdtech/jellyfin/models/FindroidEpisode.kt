@@ -76,12 +76,23 @@ suspend fun BaseItemDto.toFindroidEpisode(
             trickplayInfo =
                 trickplay?.mapValues { it.value[it.value.keys.max()]!!.toFindroidTrickplayInfo() },
             additionalParts = if ((partCount ?: 0) > 1) {
-                jellyfinRepository.getAdditionalParts(id).map {
-                    it.copy(
+                val episodeImages = toFindroidImages(jellyfinRepository)
+                jellyfinRepository.getAdditionalParts(id).map { part ->
+                    part.copy(
                         parentName = name.orEmpty(),
-                        parentIndexNumber = parentIndexNumber,
-                        indexNumber = indexNumber,
-                        indexNumberEnd = indexNumberEnd
+                        parentIndexNumber = parentIndexNumber ?: 0,
+                        indexNumber = indexNumber ?: 0,
+                        indexNumberEnd = indexNumberEnd,
+                        images = if (part.images.primary == null) {
+                            part.images.copy(
+                                primary = episodeImages.primary,
+                                backdrop = part.images.backdrop ?: episodeImages.backdrop,
+                                logo = part.images.logo ?: episodeImages.logo,
+                                showPrimary = part.images.showPrimary ?: episodeImages.showPrimary,
+                                showBackdrop = part.images.showBackdrop ?: episodeImages.showBackdrop,
+                                showLogo = part.images.showLogo ?: episodeImages.showLogo
+                            )
+                        } else part.images
                     )
                 }
             } else {
@@ -131,11 +142,24 @@ fun FindroidEpisodeDto.toFindroidEpisode(
         chapters = chapters ?: emptyList(),
         trickplayInfo = trickplayInfos,
         additionalParts = additionalPartIds?.takeIf { it.isNotEmpty() }?.let { database.getParts(it) }?.map {
-            it.toFindroidPart(database, userId).copy(
+            val part = it.toFindroidPart(database, userId).copy(
                 parentName = name,
                 parentIndexNumber = parentIndexNumber,
                 indexNumber = indexNumber,
                 indexNumberEnd = indexNumberEnd
+            )
+            val episodeImages = toLocalFindroidImages(itemId = id)
+            part.copy(
+                images = if (part.images.primary == null) {
+                    part.images.copy(
+                        primary = episodeImages.primary,
+                        backdrop = part.images.backdrop ?: episodeImages.backdrop,
+                        logo = part.images.logo ?: episodeImages.logo,
+                        showPrimary = part.images.showPrimary ?: episodeImages.showPrimary,
+                        showBackdrop = part.images.showBackdrop ?: episodeImages.showBackdrop,
+                        showLogo = part.images.showLogo ?: episodeImages.showLogo
+                    )
+                } else part.images
             )
         } ?: emptyList(),
     )

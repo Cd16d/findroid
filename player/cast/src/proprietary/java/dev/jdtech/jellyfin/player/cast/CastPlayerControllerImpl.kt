@@ -29,6 +29,7 @@ import dev.jdtech.jellyfin.player.core.domain.models.PlayerItem
 import dev.jdtech.jellyfin.player.core.domain.models.PlayerMediaType
 import dev.jdtech.jellyfin.player.core.domain.models.Track
 import dev.jdtech.jellyfin.player.core.domain.utils.NetworkSpeedUtils.measureNetworkSpeed
+import dev.jdtech.jellyfin.utils.getTranslatablePartName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -547,8 +548,15 @@ class CastPlayerControllerImpl @Inject constructor(
 
         val mediaType =
             if (item.mediaType == PlayerMediaType.EPISODE) MediaMetadata.MEDIA_TYPE_TV_SHOW else MediaMetadata.MEDIA_TYPE_MOVIE
+        val partName = item.partName
+        val itemTitle = if (partName != null) {
+            "${item.name} - ${partName.getTranslatablePartName(context)}"
+        } else {
+            item.name
+        }
+
         val mediaMetadata = MediaMetadata(mediaType).apply {
-            putString(MediaMetadata.KEY_TITLE, item.name)
+            putString(MediaMetadata.KEY_TITLE, itemTitle)
             item.seriesName?.let { putString(MediaMetadata.KEY_SERIES_TITLE, it) }
 
             item.indexNumber?.let { putInt(MediaMetadata.KEY_EPISODE_NUMBER, it) }

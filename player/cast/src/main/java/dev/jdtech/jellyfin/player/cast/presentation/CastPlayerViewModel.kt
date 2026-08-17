@@ -1,10 +1,12 @@
 package dev.jdtech.jellyfin.player.cast.presentation
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.jdtech.jellyfin.models.FindroidSegment
 import dev.jdtech.jellyfin.player.cast.CastPlayerController
 import dev.jdtech.jellyfin.player.cast.CastSessionManager
@@ -24,6 +26,7 @@ import dev.jdtech.jellyfin.player.core.domain.utils.SegmentUtils.getSkipButtonTe
 import dev.jdtech.jellyfin.repository.JellyfinRepository
 import dev.jdtech.jellyfin.settings.domain.AppPreferences
 import dev.jdtech.jellyfin.settings.domain.Constants
+import dev.jdtech.jellyfin.utils.getTranslatablePartName
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -42,6 +45,7 @@ import kotlin.math.ceil
 class CastPlayerViewModel
 @Inject
 constructor(
+    @ApplicationContext private val context: Context,
     val sessionManager: CastSessionManager,
     val playerController: CastPlayerController,
     private val repository: JellyfinRepository,
@@ -186,22 +190,32 @@ constructor(
             if (it.width > 0 && it.height > 0) it.width.toFloat() / it.height.toFloat() else null
         }
 
-        val itemTitle = if (item.parentIndexNumber != null && item.indexNumber != null) {
-            val parentIndex = item.parentIndexNumber.toString().padStart(2, '0')
-            val index = item.indexNumber.toString().padStart(2, '0')
-            val episodeInfo = if (item.indexNumberEnd == null) {
-                "S$parentIndex - E$index"
-            } else {
-                val indexEnd = item.indexNumberEnd.toString().padStart(2, '0')
-                "S$parentIndex - E$index:$indexEnd"
-            }
+        val itemTitle =
+            if (item.parentIndexNumber != null && item.indexNumber != null) {
+                val baseStr = if (item.indexNumberEnd == null) {
+                    "S${item.parentIndexNumber}:E${item.indexNumber}"
+                } else {
+                    "S${item.parentIndexNumber}:E${item.indexNumber}-${item.indexNumberEnd}"
+                }
+                val partName = item.partName
+                val title = if (partName != null) {
+                    "$baseStr - ${partName.getTranslatablePartName(context)} - ${item.name}"
+                } else {
+                    "$baseStr - ${item.name}"
+                }
 
-            CurrentItemTitle(
-                seriesName = item.seriesName, episodeInfo = episodeInfo, title = item.name
-            )
-        } else {
-            CurrentItemTitle(title = item.name)
-        }
+                CurrentItemTitle(
+                    seriesName = item.seriesName, title = title
+                )
+            } else {
+                val partName = item.partName
+                val title = if (partName != null) {
+                    "${item.name} - ${partName.getTranslatablePartName(context)}"
+                } else {
+                    item.name
+                }
+                CurrentItemTitle(title = title)
+            }
 
         _internalUiState.update {
             it.copy(

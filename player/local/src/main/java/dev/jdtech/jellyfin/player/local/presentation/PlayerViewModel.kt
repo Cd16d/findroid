@@ -19,7 +19,6 @@ import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.jdtech.jellyfin.di.ApplicationScope
 import dev.jdtech.jellyfin.models.FindroidSegment
-import dev.jdtech.jellyfin.player.core.R
 import dev.jdtech.jellyfin.player.core.domain.PlaybackManager
 import dev.jdtech.jellyfin.player.core.domain.PlaylistManager
 import dev.jdtech.jellyfin.player.core.domain.models.PlayerChapter
@@ -29,13 +28,11 @@ import dev.jdtech.jellyfin.player.core.domain.utils.ChapterUtils
 import dev.jdtech.jellyfin.player.core.domain.utils.SegmentUtils
 import dev.jdtech.jellyfin.player.core.domain.utils.SegmentUtils.getSegments
 import dev.jdtech.jellyfin.player.core.domain.utils.SegmentUtils.getSkipButtonTextStringId
-import dev.jdtech.jellyfin.player.local.R
-import dev.jdtech.jellyfin.utils.getTranslatablePartName
-import dev.jdtech.jellyfin.player.local.domain.PlaylistManager
 import dev.jdtech.jellyfin.player.local.mpv.MPVPlayer
 import dev.jdtech.jellyfin.repository.JellyfinRepository
 import dev.jdtech.jellyfin.settings.domain.AppPreferences
 import dev.jdtech.jellyfin.settings.domain.Constants
+import dev.jdtech.jellyfin.utils.getTranslatablePartName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
@@ -51,7 +48,7 @@ import timber.log.Timber
 import java.util.UUID
 import javax.inject.Inject
 import kotlin.math.ceil
-import kotlin.time.Duration.Companion.milliseconds
+import dev.jdtech.jellyfin.player.core.R as CoreR
 
 @HiltViewModel
 class PlayerViewModel
@@ -72,7 +69,7 @@ constructor(
             UiState(
                 currentItemTitle = "",
                 currentSegment = null,
-                currentSkipButtonStringRes = R.string.player_controls_skip_intro,
+                currentSkipButtonStringRes = CoreR.string.player_controls_skip_intro,
                 currentTrickplay = null,
                 currentChapters = emptyList(),
                 fileLoaded = false,
@@ -238,7 +235,7 @@ constructor(
             externalSubtitles.map { externalSubtitle ->
                 MediaItem.SubtitleConfiguration.Builder(externalSubtitle.uri)
                     .setLabel(
-                        externalSubtitle.title.ifBlank { application.getString(R.string.external) }
+                        externalSubtitle.title.ifBlank { application.getString(CoreR.string.external) }
                     )
                     .setMimeType(externalSubtitle.mimeType)
                     .setLanguage(externalSubtitle.language)
@@ -246,11 +243,18 @@ constructor(
             }
 
         Timber.d("Stream url: $streamUrl")
+        val partName = this.partName
+        val title = if (partName != null) {
+            "$name - ${partName.getTranslatablePartName(application)}"
+        } else {
+            name
+        }
+
         val mediaItem =
             MediaItem.Builder()
                 .setMediaId(itemId.toString())
                 .setUri(streamUrl)
-                .setMediaMetadata(MediaMetadata.Builder().setTitle(name).build())
+                .setMediaMetadata(MediaMetadata.Builder().setTitle(title).build())
                 .setSubtitleConfigurations(mediaSubtitles)
                 .build()
 
@@ -359,14 +363,16 @@ constructor(
                                 } else {
                                     "S${item.parentIndexNumber}:E${item.indexNumber}-${item.indexNumberEnd}"
                                 }
-                                if (item.partName != null) {
-                                    "$baseStr - ${item.partName!!.getTranslatablePartName(application)} - ${item.name}"
+                                val partName = item.partName
+                                if (partName != null) {
+                                    "$baseStr - ${partName.getTranslatablePartName(application)} - ${item.name}"
                                 } else {
                                     "$baseStr - ${item.name}"
                                 }
                             } else {
-                                if (item.partName != null) {
-                                    "${item.name} - ${item.partName!!.getTranslatablePartName(application)}"
+                                val partName = item.partName
+                                if (partName != null) {
+                                    "${item.name} - ${partName.getTranslatablePartName(application)}"
                                 } else {
                                     item.name
                                 }
