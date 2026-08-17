@@ -16,6 +16,7 @@ import dev.jdtech.jellyfin.models.FindroidSegmentDto
 import dev.jdtech.jellyfin.models.FindroidShowDto
 import dev.jdtech.jellyfin.models.FindroidSourceDto
 import dev.jdtech.jellyfin.models.FindroidTrickplayInfoDto
+import dev.jdtech.jellyfin.models.FindroidPartDto
 import dev.jdtech.jellyfin.models.FindroidUserDataDto
 import dev.jdtech.jellyfin.models.Server
 import dev.jdtech.jellyfin.models.ServerAddress
@@ -36,6 +37,7 @@ import dev.jdtech.jellyfin.models.User
             FindroidUserDataDto::class,
             FindroidTrickplayInfoDto::class,
             FindroidSegmentDto::class,
+            FindroidPartDto::class,
         ],
     version = 9,
     autoMigrations =

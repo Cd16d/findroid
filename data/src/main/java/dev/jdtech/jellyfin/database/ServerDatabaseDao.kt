@@ -257,4 +257,13 @@ interface ServerDatabaseDao {
 
     @Query("SELECT * FROM trickplayInfos WHERE sourceId = :sourceId")
     fun getTrickplayInfo(sourceId: String): FindroidTrickplayInfoDto?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    fun insertPart(part: dev.jdtech.jellyfin.models.FindroidPartDto)
+
+    @Query("SELECT * FROM parts WHERE id IN (:ids)")
+    fun getParts(ids: List<UUID>): List<dev.jdtech.jellyfin.models.FindroidPartDto>
+
+    @Query("DELETE FROM parts WHERE id = :id")
+    fun deletePart(id: UUID)
 }

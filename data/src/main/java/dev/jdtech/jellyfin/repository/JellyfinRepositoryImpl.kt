@@ -10,6 +10,7 @@ import dev.jdtech.jellyfin.models.FindroidCollection
 import dev.jdtech.jellyfin.models.FindroidEpisode
 import dev.jdtech.jellyfin.models.FindroidItem
 import dev.jdtech.jellyfin.models.FindroidMovie
+import dev.jdtech.jellyfin.models.FindroidPart
 import dev.jdtech.jellyfin.models.FindroidPerson
 import dev.jdtech.jellyfin.models.FindroidSeason
 import dev.jdtech.jellyfin.models.FindroidSegment
@@ -21,6 +22,7 @@ import dev.jdtech.jellyfin.models.toFindroidCollection
 import dev.jdtech.jellyfin.models.toFindroidEpisode
 import dev.jdtech.jellyfin.models.toFindroidItem
 import dev.jdtech.jellyfin.models.toFindroidMovie
+import dev.jdtech.jellyfin.models.toFindroidPart
 import dev.jdtech.jellyfin.models.toFindroidPerson
 import dev.jdtech.jellyfin.models.toFindroidSeason
 import dev.jdtech.jellyfin.models.toFindroidSegment
@@ -61,6 +63,18 @@ class JellyfinRepositoryImpl(
     private val database: ServerDatabaseDao,
     private val appPreferences: AppPreferences,
 ) : JellyfinRepository {
+    override suspend fun getAdditionalParts(itemId: UUID): List<FindroidPart> =
+        withContext(Dispatchers.IO) {
+            try {
+                jellyfinApi.videosApi.getAdditionalPart(itemId, jellyfinApi.userId!!).content.items.mapNotNull {
+                    it.toFindroidPart(this@JellyfinRepositoryImpl, database)
+                }
+            } catch (e: Exception) {
+                Timber.e(e)
+                emptyList()
+            }
+        }
+
     override suspend fun getPublicSystemInfo(): PublicSystemInfo =
         withContext(Dispatchers.IO) { jellyfinApi.systemApi.getPublicSystemInfo().content }
 

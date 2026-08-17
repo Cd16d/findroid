@@ -8,6 +8,7 @@ import java.util.UUID
 data class PlayerItem(
     val name: String,
     val itemId: UUID,
+    val partName: String? = null,
     val mediaType: PlayerMediaType = PlayerMediaType.UNKNOWN,
     val mediaSourceId: String,
     val playbackPosition: Long,

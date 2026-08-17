@@ -29,6 +29,9 @@ import dev.jdtech.jellyfin.player.core.domain.utils.ChapterUtils
 import dev.jdtech.jellyfin.player.core.domain.utils.SegmentUtils
 import dev.jdtech.jellyfin.player.core.domain.utils.SegmentUtils.getSegments
 import dev.jdtech.jellyfin.player.core.domain.utils.SegmentUtils.getSkipButtonTextStringId
+import dev.jdtech.jellyfin.player.local.R
+import dev.jdtech.jellyfin.utils.getTranslatablePartName
+import dev.jdtech.jellyfin.player.local.domain.PlaylistManager
 import dev.jdtech.jellyfin.player.local.mpv.MPVPlayer
 import dev.jdtech.jellyfin.repository.JellyfinRepository
 import dev.jdtech.jellyfin.settings.domain.AppPreferences
@@ -48,6 +51,7 @@ import timber.log.Timber
 import java.util.UUID
 import javax.inject.Inject
 import kotlin.math.ceil
+import kotlin.time.Duration.Companion.milliseconds
 
 @HiltViewModel
 class PlayerViewModel
@@ -350,13 +354,22 @@ constructor(
                     .let { item ->
                         val itemTitle =
                             if (item.parentIndexNumber != null && item.indexNumber != null) {
-                                if (item.indexNumberEnd == null) {
-                                    "S${item.parentIndexNumber}:E${item.indexNumber} - ${item.name}"
+                                val baseStr = if (item.indexNumberEnd == null) {
+                                    "S${item.parentIndexNumber}:E${item.indexNumber}"
                                 } else {
-                                    "S${item.parentIndexNumber}:E${item.indexNumber}-${item.indexNumberEnd} - ${item.name}"
+                                    "S${item.parentIndexNumber}:E${item.indexNumber}-${item.indexNumberEnd}"
+                                }
+                                if (item.partName != null) {
+                                    "$baseStr - ${item.partName!!.getTranslatablePartName(application)} - ${item.name}"
+                                } else {
+                                    "$baseStr - ${item.name}"
                                 }
                             } else {
-                                item.name
+                                if (item.partName != null) {
+                                    "${item.name} - ${item.partName!!.getTranslatablePartName(application)}"
+                                } else {
+                                    item.name
+                                }
                             }
                         _uiState.update {
                             it.copy(
@@ -452,7 +465,6 @@ constructor(
     }
 
     override fun onCleared() {
-        super.onCleared()
         Timber.d("Clearing Player ViewModel")
         releasePlayer()
     }

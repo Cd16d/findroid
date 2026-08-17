@@ -50,7 +50,7 @@ import dev.jdtech.jellyfin.film.presentation.episode.EpisodeViewModel
 import dev.jdtech.jellyfin.player.cast.models.CastConnectionState
 import dev.jdtech.jellyfin.player.cast.presentation.CastSessionViewModel
 import dev.jdtech.jellyfin.presentation.film.components.ActorsRow
-import dev.jdtech.jellyfin.presentation.film.components.ExtraInfoText
+import dev.jdtech.jellyfin.presentation.film.components.ExtraInfoCard
 import dev.jdtech.jellyfin.presentation.film.components.ItemButtonsBar
 import dev.jdtech.jellyfin.presentation.film.components.ItemHeader
 import dev.jdtech.jellyfin.presentation.film.components.ItemTopBar
@@ -257,7 +257,10 @@ private fun EpisodeScreenLayout(
                     )
                     Spacer(Modifier.height(MaterialTheme.spacings.small))
                     if (state.displayExtraInfo && state.videoMetadata != null) {
-                        ExtraInfoText(videoMetadata = state.videoMetadata!!)
+                        ExtraInfoCard(
+                            videoMetadata = state.videoMetadata!!,
+                            additionalParts = episode.additionalParts
+                        )
                         Spacer(Modifier.height(MaterialTheme.spacings.medium))
                     }
                     OverviewText(text = episode.overview)
