@@ -24,6 +24,12 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v3
 
+      - name: Get Version Name
+        id: get_version
+        run: |
+          VERSION=$(grep "const val APP_NAME =" buildSrc/src/main/kotlin/Versions.kt | sed 's/.*"\(.*\)".*/\1/')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
       - name: Decode keystore file
         uses: timheuer/base64-to-file@v2
         id: beta_keystore
@@ -54,24 +60,22 @@ jobs:
           # Rename for clarity
           cd artifacts
           for f in *.apk; do
-            mv "$f" "findroid-beta-${f#*-}"
+            new_name=$(echo "$f" | sed 's/-beta//' | sed 's/phone-//' | sed 's/tv-//')
+            mv "$f" "findroid-beta-$new_name"
           done
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: beta-${{ github.run_number }}
-          name: "Findroid Beta Build ${{ github.run_number }}"
+          name: "Findroid ${{ steps.get_version.outputs.version }} (Beta ${{ github.run_number }})"
           body: |
-            ### 🛠 Findroid Beta Pre-release
-            
-            Automated beta build from branch `beta` at commit `${{ github.sha }}`. 
-            **Warning:** This is an automated build and may be unstable.
+            Automated beta build from branch `beta` at commit `${{ github.sha }}`. It may be unstable.
             
             #### 📦 Included Variants
-            - **Phone Libre:** Open-source version without proprietary libraries.
-            - **Phone Proprietary:** Includes features like Chromecast support.
-            - **TV Libre:** Optimized for Android TV / Leanback.
+            - **Libre:** Open-source version without proprietary libraries.
+            - **Proprietary:** Includes features like Chromecast support.
+            - **TV:** Optimized for Android TV / Leanback.
             
             ---
             

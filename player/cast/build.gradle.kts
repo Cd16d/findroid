@@ -15,6 +15,11 @@ android {
         targetCompatibility = Versions.JAVA
     }
 
+    buildTypes {
+        named("release") { isMinifyEnabled = false }
+        register("beta") { initWith(getByName("release")) }
+    }
+
     flavorDimensions += "variant"
     productFlavors {
         register("libre") { dimension = "variant" }

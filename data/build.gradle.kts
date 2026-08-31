@@ -25,7 +25,7 @@ android {
 
     buildTypes {
         named("release") { isMinifyEnabled = false }
-        register("staging") { initWith(getByName("release")) }
+        register("beta") { initWith(getByName("release")) }
     }
 
     compileOptions {

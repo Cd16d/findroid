@@ -36,7 +36,6 @@ android {
         register("beta") {
             initWith(getByName("release"))
             applicationIdSuffix = ".beta"
-            matchingFallbacks += listOf("release")
 
             isMinifyEnabled = true
             isShrinkResources = true
@@ -44,10 +43,6 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
-        }
-        register("staging") {
-            initWith(getByName("release"))
-            applicationIdSuffix = ".staging"
         }
     }
 
@@ -70,7 +65,7 @@ android {
             isEnable = !isBuildingBundle
 
             reset()
-            include("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
+            include("armeabi-v7a", "arm64-v8a")
         }
     }
 
