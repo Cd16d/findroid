@@ -25,6 +25,7 @@ dependencies {
     implementation(projects.core)
     implementation(projects.data)
     implementation(projects.settings)
+    implementation(libs.okhttp)
     implementation(libs.timber)
 
     implementation(libs.androidx.compose.foundation)
