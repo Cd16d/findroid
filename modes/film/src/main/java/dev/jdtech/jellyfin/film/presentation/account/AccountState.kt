@@ -6,4 +6,6 @@ data class AccountState(
     val user: User? = null,
     val userImageUrl: Any? = null,
     val baseUrl: String = "",
+    val isQuickConnectLoading: Boolean = false,
+    val quickConnectSuccess: Boolean? = null,
 )

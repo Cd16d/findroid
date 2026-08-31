@@ -59,12 +59,18 @@ class AccountViewModel @Inject constructor(
         )
     }
 
+    private fun authorizeQuickConnect(code: String) {
+        viewModelScope.launch {
+            _state.update { it.copy(isQuickConnectLoading = true, quickConnectSuccess = null) }
             val success = repository.authorizeQuickConnect(code)
             _state.update { it.copy(isQuickConnectLoading = false, quickConnectSuccess = success) }
         }
     }
 
-    }
-
+    fun onAction(action: AccountAction) {
+        when (action) {
+            is AccountAction.OnQuickConnectSubmit -> authorizeQuickConnect(action.code)
+            AccountAction.ClearQuickConnectStatus -> _state.update { it.copy(quickConnectSuccess = null) }
+        }
     }
 }

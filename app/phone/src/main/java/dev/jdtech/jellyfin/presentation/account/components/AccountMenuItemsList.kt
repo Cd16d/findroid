@@ -26,6 +26,7 @@ import dev.jdtech.jellyfin.presentation.utils.LocalOfflineMode
 
 @Composable
 fun AccountMenuItemsList(
+    onOpenQuickConnect: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onNavigateToAbout: () -> Unit,
     onNavigateToGithub: () -> Unit,
@@ -50,6 +51,36 @@ fun AccountMenuItemsList(
     val isOffline = LocalOfflineMode.current
     
     Column(modifier = modifier) {
+        // Block 1
+        Surface(
+            onClick = onOpenQuickConnect,
+            enabled = !isOffline,
+            shape = singleShape,
+            color = MaterialTheme.colorScheme.surface,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            ListItem(
+                headlineContent = {
+                    Text(
+                        text = stringResource(CoreR.string.quick_connect),
+                        color = if (isOffline) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f) else Color.Unspecified
+                    )
+                },
+                leadingContent = {
+                    Icon(
+                        ImageVector.vectorResource(CoreR.drawable.ic_quick_connect_code),
+                        contentDescription = null,
+                        tint = if (isOffline) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f) else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                },
+                colors = ListItemDefaults.colors(
+                    containerColor = Color.Transparent
+                )
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
         // Block 2
         Surface(
             onClick = onNavigateToSettings,

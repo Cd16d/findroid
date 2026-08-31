@@ -71,6 +71,7 @@ import dev.jdtech.jellyfin.presentation.account.components.AccountMenuFooter
 import dev.jdtech.jellyfin.presentation.account.components.AccountMenuItemsList
 import dev.jdtech.jellyfin.presentation.account.components.AccountMenuOfflineBadge
 import dev.jdtech.jellyfin.presentation.account.components.AccountMenuProfileSection
+import dev.jdtech.jellyfin.presentation.account.components.QuickConnectBottomSheet
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.utils.LocalOfflineMode
 import kotlinx.coroutines.delay
@@ -89,16 +90,12 @@ fun AccountMenuWrapper(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
+    var showQuickConnect by remember { mutableStateOf(false) }
+
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
     val configuration = LocalConfiguration.current
 
-    LaunchedEffect(viewModel.events) {
-        viewModel.events.collect { event ->
-            when (event) {
-            }
-        }
-    }
 
     LaunchedEffect(isMenuOpen) {
         if (isMenuOpen) {
@@ -112,6 +109,32 @@ fun AccountMenuWrapper(
         windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND) &&
                 windowSizeClass.isHeightAtLeastBreakpoint(WindowSizeClass.HEIGHT_DP_MEDIUM_LOWER_BOUND)
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+
+    if (showQuickConnect) {
+        QuickConnectBottomSheet(
+            onDismissRequest = {
+                showQuickConnect = false
+                viewModel.onAction(AccountAction.ClearQuickConnectStatus)
+            },
+            onSubmit = { code ->
+                viewModel.onAction(AccountAction.OnQuickConnectSubmit(code))
+            },
+            onClearError = {
+                viewModel.onAction(AccountAction.ClearQuickConnectStatus)
+            },
+            isLoading = state.isQuickConnectLoading,
+            error = if (state.quickConnectSuccess == false) stringResource(CoreR.string.invalid_code) else null,
+            isSuccess = state.quickConnectSuccess == true
+        )
+    }
+
+    LaunchedEffect(state.quickConnectSuccess) {
+        if (state.quickConnectSuccess == true) {
+            delay(1000.milliseconds)
+            showQuickConnect = false
+            viewModel.onAction(AccountAction.ClearQuickConnectStatus)
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         // Main content of the screen
@@ -163,6 +186,7 @@ fun AccountMenuWrapper(
                         isTablet = isTablet,
                         isLandscape = isLandscape,
                         onClose = onCloseMenu,
+                        onOpenQuickConnect = { showQuickConnect = true },
                         onNavigateToSettings = {
                             onNavigateToSettings()
                         },
@@ -212,6 +236,7 @@ fun AccountMenuContent(
     isTablet: Boolean,
     isLandscape: Boolean,
     onClose: () -> Unit,
+    onOpenQuickConnect: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onNavigateToAbout: () -> Unit,
     onNavigateToGithub: () -> Unit,
@@ -272,6 +297,7 @@ fun AccountMenuContent(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     AccountMenuItemsList(
+                        onOpenQuickConnect = onOpenQuickConnect,
                         onNavigateToSettings = onNavigateToSettings,
                         onNavigateToAbout = onNavigateToAbout,
                         onNavigateToGithub = onNavigateToGithub,
@@ -301,6 +327,7 @@ fun AccountMenuContent(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 AccountMenuItemsList(
+                    onOpenQuickConnect = onOpenQuickConnect,
                     onNavigateToSettings = onNavigateToSettings,
                     onNavigateToAbout = onNavigateToAbout,
                     onNavigateToGithub = onNavigateToGithub,
@@ -358,157 +385,3 @@ fun AccountMenuContent(
     }
 }
 
-@Preview
-@Composable
-fun AccountMenuContentExpandedPreview() {
-    FindroidTheme(darkTheme = false) {
-        CompositionLocalProvider(LocalOfflineMode provides false) {
-            Surface(color = MaterialTheme.colorScheme.primaryContainer) {
-                AccountMenuContent(
-                    userName = "Joe",
-                    userImageUrl = null,
-                    otherUsers = listOf(
-                        User(
-                            id = UUID.randomUUID(),
-                            name = "Jane",
-                            serverId = "server1"
-                        ),
-                        User(
-                            id = UUID.randomUUID(),
-                            name = "Bob",
-                            serverId = "server1"
-                        ),
-                        User(
-                            id = UUID.randomUUID(),
-                            name = "Alice",
-                            serverId = "server1"
-                        )
-                    ),
-                    isAccountListExpanded = true,
-                    baseUrl = "",
-                    isTablet = false,
-                    isLandscape = false,
-                    onClose = {},
-                    onNavigateToSettings = {},
-                    onNavigateToAbout = {},
-                    onNavigateToGithub = {},
-                    onNavigateToKofi = {},
-                    modifier = Modifier.padding(16.dp)
-                )
-            }
-        }
-    }
-}
-
-@Preview
-@Composable
-fun AccountMenuContentPreview() {
-    FindroidTheme(darkTheme = false) {
-        CompositionLocalProvider(LocalOfflineMode provides false) {
-            Surface(color = MaterialTheme.colorScheme.primaryContainer) {
-                AccountMenuContent(
-                    userName = "Joe",
-                    userImageUrl = null,
-                    otherUsers = listOf(
-                        User(
-                            id = UUID.randomUUID(),
-                            name = "Jane",
-                            serverId = "server1"
-                        ),
-                        User(
-                            id = UUID.randomUUID(),
-                            name = "Bob",
-                            serverId = "server1"
-                        ),
-                        User(
-                            id = UUID.randomUUID(),
-                            name = "Alice",
-                            serverId = "server1"
-                        )
-                    ),
-                    baseUrl = "",
-                    isTablet = false,
-                    isLandscape = false,
-                    onClose = {},
-                    onNavigateToSettings = {},
-                    onNavigateToAbout = {},
-                    onNavigateToGithub = {},
-                    onNavigateToKofi = {},
-                    modifier = Modifier.padding(16.dp)
-                )
-            }
-        }
-    }
-}
-
-@Preview
-@Composable
-fun AccountMenuContentDarkPreview() {
-    FindroidTheme(darkTheme = true) {
-        CompositionLocalProvider(LocalOfflineMode provides false) {
-            Surface(color = MaterialTheme.colorScheme.primaryContainer) {
-                AccountMenuContent(
-                    userName = "Joe",
-                    userImageUrl = null,
-                    otherUsers = listOf(
-                        User(
-                            id = UUID.randomUUID(),
-                            name = "Jane",
-                            serverId = "server1"
-                        ),
-                        User(
-                            id = UUID.randomUUID(),
-                            name = "Bob",
-                            serverId = "server1"
-                        ),
-                        User(
-                            id = UUID.randomUUID(),
-                            name = "Alice",
-                            serverId = "server1"
-                        )
-                    ),
-                    baseUrl = "",
-                    isTablet = false,
-                    isLandscape = false,
-                    onClose = {},
-                    onNavigateToSettings = {},
-                    onNavigateToAbout = {},
-                    onNavigateToGithub = {},
-                    onNavigateToKofi = {},
-                    modifier = Modifier.padding(16.dp)
-                )
-            }
-        }
-    }
-}
-
-@Preview
-@Composable
-fun AccountMenuContentOfflinePreview() {
-    FindroidTheme(darkTheme = false) {
-        CompositionLocalProvider(LocalOfflineMode provides true) {
-            Surface(color = MaterialTheme.colorScheme.primaryContainer) {
-                AccountMenuContent(
-                    userName = "Joe",
-                    userImageUrl = null,
-                    otherUsers = listOf(
-                        User(
-                            id = UUID.randomUUID(),
-                            name = "Jane",
-                            serverId = "server1"
-                        )
-                    ),
-                    baseUrl = "",
-                    isTablet = false,
-                    isLandscape = false,
-                    onClose = {},
-                    onNavigateToSettings = {},
-                    onNavigateToAbout = {},
-                    onNavigateToGithub = {},
-                    onNavigateToKofi = {},
-                    modifier = Modifier.padding(16.dp)
-                )
-            }
-        }
-    }
-}
