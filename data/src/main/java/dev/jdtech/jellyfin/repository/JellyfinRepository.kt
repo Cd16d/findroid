@@ -10,8 +10,10 @@ import dev.jdtech.jellyfin.models.FindroidSeason
 import dev.jdtech.jellyfin.models.FindroidSegment
 import dev.jdtech.jellyfin.models.FindroidShow
 import dev.jdtech.jellyfin.models.FindroidSource
+import dev.jdtech.jellyfin.models.Server
 import dev.jdtech.jellyfin.models.SortBy
 import dev.jdtech.jellyfin.models.SortOrder
+import dev.jdtech.jellyfin.models.User
 import java.util.UUID
 import kotlinx.coroutines.flow.Flow
 import org.jellyfin.sdk.model.api.BaseItemDto
@@ -22,6 +24,8 @@ import org.jellyfin.sdk.model.api.UserConfiguration
 
 interface JellyfinRepository {
     suspend fun getPublicSystemInfo(): PublicSystemInfo
+
+    suspend fun authorizeQuickConnect(code: String): Boolean
 
     suspend fun getUserViews(): List<BaseItemDto>
 

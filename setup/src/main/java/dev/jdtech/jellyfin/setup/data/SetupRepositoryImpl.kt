@@ -1,8 +1,8 @@
 package dev.jdtech.jellyfin.setup.data
 
 import dev.jdtech.jellyfin.api.JellyfinApi
-import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.database.ServerDatabaseDao
+import dev.jdtech.jellyfin.models.BrandingInfo
 import dev.jdtech.jellyfin.models.ExceptionUiText
 import dev.jdtech.jellyfin.models.ExceptionUiTexts
 import dev.jdtech.jellyfin.models.Server
@@ -11,9 +11,7 @@ import dev.jdtech.jellyfin.models.ServerWithAddresses
 import dev.jdtech.jellyfin.models.UiText
 import dev.jdtech.jellyfin.models.User
 import dev.jdtech.jellyfin.settings.domain.AppPreferences
-import dev.jdtech.jellyfin.setup.R as SetupR
 import dev.jdtech.jellyfin.setup.domain.SetupRepository
-import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
@@ -26,6 +24,9 @@ import org.jellyfin.sdk.model.api.QuickConnectDto
 import org.jellyfin.sdk.model.api.QuickConnectResult
 import org.jellyfin.sdk.model.api.ServerDiscoveryInfo
 import timber.log.Timber
+import java.util.UUID
+import dev.jdtech.jellyfin.core.R as CoreR
+import dev.jdtech.jellyfin.setup.R as SetupR
 
 class SetupRepositoryImpl(
     private val jellyfinApi: JellyfinApi,
@@ -206,6 +207,13 @@ class SetupRepositoryImpl(
             jellyfinApi.brandingApi.getBrandingOptions().content.loginDisclaimer
         }
 
+    override suspend fun loadBrandingInfo(): BrandingInfo = withContext(Dispatchers.IO) {
+        val baseUrl = getBaseUrl()
+        BrandingInfo(
+            splashscreenUrl = "$baseUrl/Branding/Splashscreen"
+        )
+    }
+
     override suspend fun login(username: String, password: String) {
         withContext(Dispatchers.IO) {
             val authenticationResult by
@@ -253,7 +261,11 @@ class SetupRepositoryImpl(
     override suspend fun getPublicUsers(serverId: String): List<User> =
         withContext(Dispatchers.IO) {
             jellyfinApi.userApi.getPublicUsers().content.mapNotNull {
-                User(id = it.id, name = it.name ?: return@mapNotNull null, serverId = serverId)
+                User(
+                    id = it.id,
+                    name = it.name ?: return@mapNotNull null,
+                    serverId = serverId,
+                )
             }
         }
 
@@ -294,4 +306,6 @@ class SetupRepositoryImpl(
         database.update(server)
         jellyfinApi.apply { api.update(baseUrl = address.address) }
     }
+
+    override fun getBaseUrl(): String = jellyfinApi.api.baseUrl.orEmpty()
 }
