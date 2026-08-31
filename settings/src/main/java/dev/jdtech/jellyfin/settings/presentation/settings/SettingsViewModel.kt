@@ -746,6 +746,7 @@ class SettingsViewModel @Inject constructor(private val appPreferences: AppPrefe
                         PreferenceCategory(
                             nameStringResource = R.string.about,
                             iconDrawableId = R.drawable.ic_info,
+                            supportedDeviceTypes = listOf(DeviceType.TV),
                             onClick = {
                                 viewModelScope.launch {
                                     eventsChannel.send(SettingsEvent.NavigateToAbout)

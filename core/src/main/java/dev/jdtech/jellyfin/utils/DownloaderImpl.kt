@@ -319,9 +319,25 @@ class DownloaderImpl(
     private fun startImagesDownloader(item: FindroidItem) {
         val downloadImagesRequest =
             OneTimeWorkRequestBuilder<ImagesDownloaderWorker>()
-                .setInputData(workDataOf(ImagesDownloaderWorker.KEY_ITEM_ID to item.id.toString()))
+                .setInputData(workDataOf(
+                    ImagesDownloaderWorker.KEY_ITEM_ID to item.id.toString(),
+                    ImagesDownloaderWorker.KEY_TYPE to ImagesDownloaderWorker.TYPE_ITEM
+                ))
                 .build()
 
         workManager.enqueue(downloadImagesRequest)
+    }
+
+    override fun downloadUserImage(userId: UUID, imageTag: String?) {
+        val request =
+            OneTimeWorkRequestBuilder<ImagesDownloaderWorker>()
+                .setInputData(workDataOf(
+                    ImagesDownloaderWorker.KEY_ITEM_ID to userId.toString(),
+                    ImagesDownloaderWorker.KEY_TYPE to ImagesDownloaderWorker.TYPE_USER,
+                    ImagesDownloaderWorker.KEY_IMAGE_TAG to imageTag
+                ))
+                .build()
+
+        workManager.enqueue(request)
     }
 }
