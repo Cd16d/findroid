@@ -15,6 +15,7 @@ import dev.jdtech.jellyfin.models.FindroidSeason
 import dev.jdtech.jellyfin.models.FindroidSegment
 import dev.jdtech.jellyfin.models.FindroidShow
 import dev.jdtech.jellyfin.models.FindroidSource
+import dev.jdtech.jellyfin.models.Server
 import dev.jdtech.jellyfin.models.SortBy
 import dev.jdtech.jellyfin.models.SortOrder
 import dev.jdtech.jellyfin.models.toFindroidCollection
@@ -27,8 +28,6 @@ import dev.jdtech.jellyfin.models.toFindroidSegment
 import dev.jdtech.jellyfin.models.toFindroidShow
 import dev.jdtech.jellyfin.models.toFindroidSource
 import dev.jdtech.jellyfin.settings.domain.AppPreferences
-import java.io.File
-import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
@@ -49,11 +48,13 @@ import org.jellyfin.sdk.model.api.PlaybackStartInfo
 import org.jellyfin.sdk.model.api.PlaybackStopInfo
 import org.jellyfin.sdk.model.api.PublicSystemInfo
 import org.jellyfin.sdk.model.api.RepeatMode
-import org.jellyfin.sdk.model.api.SortOrder as ItemSortOrder
 import org.jellyfin.sdk.model.api.SubtitleDeliveryMethod
 import org.jellyfin.sdk.model.api.SubtitleProfile
 import org.jellyfin.sdk.model.api.UserConfiguration
 import timber.log.Timber
+import java.io.File
+import java.util.UUID
+import org.jellyfin.sdk.model.api.SortOrder as ItemSortOrder
 
 class JellyfinRepositoryImpl(
     private val context: Context,
@@ -63,6 +64,15 @@ class JellyfinRepositoryImpl(
 ) : JellyfinRepository {
     override suspend fun getPublicSystemInfo(): PublicSystemInfo =
         withContext(Dispatchers.IO) { jellyfinApi.systemApi.getPublicSystemInfo().content }
+
+    override suspend fun authorizeQuickConnect(code: String): Boolean =
+        withContext(Dispatchers.IO) {
+            try {
+                jellyfinApi.quickConnectApi.authorizeQuickConnect(code).content
+            } catch (_: Exception) {
+                false
+            }
+        }
 
     override suspend fun getUserViews(): List<BaseItemDto> =
         withContext(Dispatchers.IO) {
@@ -570,5 +580,40 @@ class JellyfinRepositoryImpl(
 
     override fun getUserId(): UUID {
         return jellyfinApi.userId!!
+    }
+
+    override suspend fun getCurrentServer(): Server? {
+        return appPreferences.getValue(appPreferences.currentServer)?.let { id -> database.get(id) }
+    }
+
+    override suspend fun refreshUser(userId: UUID): String? {
+        return withContext(Dispatchers.IO) {
+            try {
+                val userDto = jellyfinApi.userApi.getUserById(userId).content
+                val existingUser = database.getUser(userId) ?: return@withContext null
+
+                val updatedUser = existingUser.copy(
+                    name = userDto.name ?: existingUser.name,
+                    primaryImageTag = userDto.primaryImageTag
+                )
+                database.insertUser(updatedUser)
+                userDto.primaryImageTag
+            } catch (e: Exception) {
+                Timber.e(e)
+                null
+            }
+        }
+    }
+
+    override suspend fun setCurrentUser(userId: UUID) {
+        val server = getCurrentServer() ?: return
+        val user = database.getUser(userId) ?: return
+        server.currentUserId = user.id
+        database.update(server)
+
+        jellyfinApi.apply {
+            api.update(accessToken = user.accessToken)
+            this.userId = user.id
+        }
     }
 }

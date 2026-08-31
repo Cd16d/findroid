@@ -13,12 +13,17 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import okhttp3.OkHttpClient
 import timber.log.Timber
 
 @HiltViewModel
 class ServerAddressesViewModel
 @Inject
-constructor(val application: Application, private val database: ServerDatabaseDao) : ViewModel() {
+constructor(
+    val application: Application,
+    private val database: ServerDatabaseDao,
+    private val okHttpClient: OkHttpClient,
+) : ViewModel() {
     private val _state = MutableStateFlow(ServerAddressesState())
     val state = _state.asStateFlow()
 
@@ -51,7 +56,11 @@ constructor(val application: Application, private val database: ServerDatabaseDa
     fun addAddress(address: String) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val jellyfinApi = JellyfinApi(application.applicationContext)
+                val jellyfinApi =
+                    JellyfinApi(
+                        androidContext = application.applicationContext,
+                        okHttpClient = okHttpClient,
+                    )
                 jellyfinApi.api.update(baseUrl = address)
                 val systemInfo by jellyfinApi.systemApi.getPublicSystemInfo()
                 if (systemInfo.id != currentServerId) {

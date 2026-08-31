@@ -5,6 +5,8 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.CardDefaults
@@ -21,6 +23,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImage
 import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
@@ -32,6 +35,7 @@ fun UserItem(
     modifier: Modifier = Modifier,
     onClick: () -> Unit = {},
     onLongClick: () -> Unit = {},
+    imageUrl: Any? = null,
 ) {
     val haptics = LocalHapticFeedback.current
 
@@ -58,7 +62,13 @@ fun UserItem(
                 Icon(
                     painter = painterResource(CoreR.drawable.ic_user),
                     contentDescription = null,
-                    modifier = Modifier.align(Alignment.Center),
+                    modifier = Modifier.align(Alignment.Center).padding(8.dp),
+                    tint = MaterialTheme.colorScheme.onPrimary
+                )
+                AsyncImage(
+                    model = imageUrl,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize()
                 )
             }
         }
@@ -69,5 +79,5 @@ fun UserItem(
 @Composable
 @Preview(showBackground = true)
 private fun UserItemPreview() {
-    FindroidTheme { UserItem(name = "Bob", modifier = Modifier.width(240.dp)) }
+    FindroidTheme { UserItem(name = "Bob", imageUrl = null, modifier = Modifier.width(240.dp)) }
 }

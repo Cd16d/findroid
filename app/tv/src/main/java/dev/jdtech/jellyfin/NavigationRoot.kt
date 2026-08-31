@@ -16,6 +16,7 @@ import dev.jdtech.jellyfin.presentation.settings.SettingsScreen
 import dev.jdtech.jellyfin.presentation.settings.SettingsSubScreen
 import dev.jdtech.jellyfin.presentation.setup.addserver.AddServerScreen
 import dev.jdtech.jellyfin.presentation.setup.login.LoginScreen
+import dev.jdtech.jellyfin.presentation.setup.login.QuickConnectScreen
 import dev.jdtech.jellyfin.presentation.setup.servers.ServersScreen
 import dev.jdtech.jellyfin.presentation.setup.users.UsersScreen
 import dev.jdtech.jellyfin.presentation.setup.welcome.WelcomeScreen
@@ -53,6 +54,8 @@ inline fun <reified T : Parcelable> String.base64ToParcelable(): T {
 @Serializable data object AddServerRoute
 
 @Serializable data object UsersRoute
+
+@Serializable data class QuickConnectRoute(val username: String? = null)
 
 @Serializable data class LoginRoute(val username: String? = null)
 
@@ -118,10 +121,23 @@ fun NavigationRoot(
                         launchSingleTop = true
                     }
                 },
-                onAddClick = { navController.navigate(LoginRoute()) },
+                onAddClick = { navController.navigate(QuickConnectRoute()) },
                 onPublicUserClick = { username ->
-                    navController.navigate(LoginRoute(username = username))
+                    navController.navigate(QuickConnectRoute(username = username))
                 },
+            )
+        }
+        composable<QuickConnectRoute> { backStackEntry ->
+            val route: QuickConnectRoute = backStackEntry.toRoute()
+            QuickConnectScreen(
+                onSuccess = {
+                    navController.navigate(MainRoute) {
+                        popUpTo(startDestination) { inclusive = true }
+                    }
+                },
+                onManualLoginClick = {
+                    navController.navigate(LoginRoute(username = route.username))
+                }
             )
         }
         composable<LoginRoute> { backStackEntry ->

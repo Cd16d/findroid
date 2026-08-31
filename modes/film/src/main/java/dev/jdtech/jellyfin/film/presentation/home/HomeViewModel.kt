@@ -1,29 +1,33 @@
 package dev.jdtech.jellyfin.film.presentation.home
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.jdtech.jellyfin.database.ServerDatabaseDao
-import dev.jdtech.jellyfin.film.R as FilmR
 import dev.jdtech.jellyfin.models.CollectionType
 import dev.jdtech.jellyfin.models.HomeItem
 import dev.jdtech.jellyfin.models.HomeSection
 import dev.jdtech.jellyfin.models.UiText
+import dev.jdtech.jellyfin.models.getProfileImageModel
 import dev.jdtech.jellyfin.repository.JellyfinRepository
 import dev.jdtech.jellyfin.settings.domain.AppPreferences
 import dev.jdtech.jellyfin.utils.toView
-import java.util.UUID
-import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import java.util.UUID
+import javax.inject.Inject
+import dev.jdtech.jellyfin.film.R as FilmR
 
 @HiltViewModel
 class HomeViewModel
 @Inject
 constructor(
+    @ApplicationContext private val context: Context,
     val repository: JellyfinRepository,
     val appPreferences: AppPreferences,
     val database: ServerDatabaseDao,
@@ -47,6 +51,7 @@ constructor(
             try {
                 appPreferences.getValue(appPreferences.currentServer)?.let { serverId ->
                     loadServerName(serverId)
+                    loadUserImage(serverId)
                 }
 
                 loadSuggestions()
@@ -65,6 +70,13 @@ constructor(
         if (server != null) {
             _state.emit(_state.value.copy(server = server))
         }
+    }
+
+    private suspend fun loadUserImage(serverId: String) {
+        val user = database.getServerCurrentUser(serverId)
+        val baseUrl = repository.getBaseUrl()
+        val imageUrl = user?.getProfileImageModel(context, baseUrl)
+        _state.emit(_state.value.copy(userImageUrl = imageUrl))
     }
 
     private suspend fun loadSuggestions() {

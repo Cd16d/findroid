@@ -48,7 +48,20 @@ class LoginViewModel @Inject constructor(private val repository: SetupRepository
         viewModelScope.launch {
             try {
                 val isEnabled = repository.getIsQuickConnectEnabled()
-                _state.emit(_state.value.copy(quickConnectEnabled = isEnabled))
+                _state.emit(_state.value.copy(quickConnectEnabled = isEnabled, isQuickConnectChecked = true))
+            } catch (_: Exception) {
+                _state.emit(_state.value.copy(isQuickConnectChecked = true))
+            }
+        }
+    }
+
+    fun loadBranding() {
+        viewModelScope.launch {
+            try {
+                val branding = repository.loadBrandingInfo()
+                _state.emit(_state.value.copy(
+                    splashscreenUrl = branding?.splashscreenUrl
+                ))
             } catch (_: Exception) {}
         }
     }

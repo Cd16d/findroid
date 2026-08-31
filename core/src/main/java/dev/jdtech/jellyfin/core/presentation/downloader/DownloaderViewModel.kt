@@ -121,7 +121,6 @@ class DownloaderViewModel @Inject constructor(private val downloader: Downloader
     }
 
     override fun onCleared() {
-        super.onCleared()
         handler.removeCallbacksAndMessages(null)
     }
 }
