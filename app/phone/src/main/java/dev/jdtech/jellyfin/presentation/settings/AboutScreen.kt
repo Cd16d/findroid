@@ -1,12 +1,9 @@
 package dev.jdtech.jellyfin.presentation.settings
 
-import android.widget.Toast
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.calculateEndPadding
@@ -21,7 +18,6 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -35,10 +31,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.PreviewScreenSizes
@@ -47,16 +41,14 @@ import com.mikepenz.aboutlibraries.ui.compose.android.produceLibraries
 import com.mikepenz.aboutlibraries.ui.compose.m3.LibrariesContainer
 import dev.jdtech.jellyfin.BuildConfig
 import dev.jdtech.jellyfin.R
-import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
+import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.settings.R as SettingsR
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
 fun AboutScreen(navigateBack: () -> Unit) {
-    val context = LocalContext.current
-    val uriHandler = LocalUriHandler.current
     val density = LocalDensity.current
     val layoutDirection = LocalLayoutDirection.current
 
@@ -119,62 +111,9 @@ fun AboutScreen(navigateBack: () -> Unit) {
                                 text = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
                                 style = MaterialTheme.typography.bodyLarge,
                             )
-                            Spacer(Modifier.height(MaterialTheme.spacings.small))
-                            Text(
-                                text = stringResource(CoreR.string.app_description),
-                                style = MaterialTheme.typography.bodyMedium,
-                            )
                             Spacer(Modifier.height(MaterialTheme.spacings.medium))
                             HorizontalDivider()
                             Spacer(Modifier.height(MaterialTheme.spacings.medium))
-                            Row(
-                                horizontalArrangement =
-                                    Arrangement.spacedBy(MaterialTheme.spacings.small)
-                            ) {
-                                FilledTonalIconButton(
-                                    onClick = {
-                                        try {
-                                            uriHandler.openUri(
-                                                "https://github.com/jarnedemeulemeester/findroid"
-                                            )
-                                        } catch (e: IllegalArgumentException) {
-                                            Toast.makeText(
-                                                    context,
-                                                    e.localizedMessage,
-                                                    Toast.LENGTH_SHORT,
-                                                )
-                                                .show()
-                                        }
-                                    }
-                                ) {
-                                    Icon(
-                                        painter = painterResource(CoreR.drawable.ic_github),
-                                        contentDescription = null,
-                                    )
-                                }
-                                FilledTonalIconButton(
-                                    onClick = {
-                                        try {
-                                            uriHandler.openUri(
-                                                "https://ko-fi.com/jarnedemeulemeester"
-                                            )
-                                        } catch (e: IllegalArgumentException) {
-                                            Toast.makeText(
-                                                    context,
-                                                    e.localizedMessage,
-                                                    Toast.LENGTH_SHORT,
-                                                )
-                                                .show()
-                                        }
-                                    }
-                                ) {
-                                    Icon(
-                                        painter = painterResource(CoreR.drawable.ic_coffee),
-                                        contentDescription = null,
-                                    )
-                                }
-                            }
-                            Spacer(Modifier.height(MaterialTheme.spacings.small))
                         }
                     }
                 }

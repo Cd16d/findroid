@@ -1,5 +1,6 @@
 package dev.jdtech.jellyfin.setup.domain
 
+import dev.jdtech.jellyfin.models.BrandingInfo
 import dev.jdtech.jellyfin.models.Server
 import dev.jdtech.jellyfin.models.ServerWithAddresses
 import dev.jdtech.jellyfin.models.User
@@ -29,6 +30,8 @@ interface SetupRepository {
 
     suspend fun loadDisclaimer(): String?
 
+    suspend fun loadBrandingInfo(): BrandingInfo?
+
     suspend fun login(username: String, password: String)
 
     suspend fun loginWithSecret(secret: String)
@@ -44,4 +47,6 @@ interface SetupRepository {
     suspend fun setCurrentUser(userId: UUID)
 
     suspend fun setCurrentAddress(addressId: UUID)
+
+    fun getBaseUrl(): String
 }

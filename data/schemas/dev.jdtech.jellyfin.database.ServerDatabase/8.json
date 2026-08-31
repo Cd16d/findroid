@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 8,
-    "identityHash": "bd2f1c2eddf2c4172a7075ac29bf7efc",
+    "identityHash": "5081ed2babfbe629de3c5e2c875300d8",
     "entities": [
       {
         "tableName": "servers",
@@ -94,7 +94,7 @@
       },
       {
         "tableName": "users",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `serverId` TEXT NOT NULL, `accessToken` TEXT, PRIMARY KEY(`id`), FOREIGN KEY(`serverId`) REFERENCES `servers`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `serverId` TEXT NOT NULL, `accessToken` TEXT, `primaryImageTag` TEXT, PRIMARY KEY(`id`), FOREIGN KEY(`serverId`) REFERENCES `servers`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
@@ -117,6 +117,11 @@
           {
             "fieldPath": "accessToken",
             "columnName": "accessToken",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "primaryImageTag",
+            "columnName": "primaryImageTag",
             "affinity": "TEXT"
           }
         ],
@@ -816,7 +821,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'bd2f1c2eddf2c4172a7075ac29bf7efc')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '5081ed2babfbe629de3c5e2c875300d8')"
     ]
   }
 }

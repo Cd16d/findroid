@@ -5,6 +5,7 @@ import dev.jdtech.jellyfin.models.Server
 
 data class HomeState(
     val server: Server? = null,
+    val userImageUrl: Any? = null,
     val suggestionsSection: HomeItem.Suggestions? = null,
     val resumeSection: HomeItem.Section? = null,
     val nextUpSection: HomeItem.Section? = null,
