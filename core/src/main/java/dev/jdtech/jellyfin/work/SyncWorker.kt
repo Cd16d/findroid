@@ -15,6 +15,7 @@ import dev.jdtech.jellyfin.models.toFindroidMovie
 import dev.jdtech.jellyfin.settings.domain.AppPreferences
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okhttp3.OkHttpClient
 import org.jellyfin.sdk.model.api.UpdateUserItemDataDto
 
 @HiltWorker
@@ -25,6 +26,7 @@ constructor(
     @Assisted private val workerParams: WorkerParameters,
     val database: ServerDatabaseDao,
     val appPreferences: AppPreferences,
+    private val okHttpClient: OkHttpClient,
 ) : CoroutineWorker(context, workerParams) {
 
     override suspend fun doWork(): Result {
@@ -34,6 +36,7 @@ constructor(
                 requestTimeout = appPreferences.getValue(appPreferences.requestTimeout),
                 connectTimeout = appPreferences.getValue(appPreferences.connectTimeout),
                 socketTimeout = appPreferences.getValue(appPreferences.socketTimeout),
+                okHttpClient = okHttpClient,
             )
 
         return withContext(Dispatchers.IO) {

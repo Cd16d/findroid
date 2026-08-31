@@ -27,24 +27,26 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.PreviewScreenSizes
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.models.User
+import dev.jdtech.jellyfin.models.getProfileImageModel
 import dev.jdtech.jellyfin.presentation.setup.components.RootLayout
 import dev.jdtech.jellyfin.presentation.setup.components.UserItem
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
-import dev.jdtech.jellyfin.setup.R as SetupR
 import dev.jdtech.jellyfin.setup.presentation.users.UsersAction
 import dev.jdtech.jellyfin.setup.presentation.users.UsersEvent
 import dev.jdtech.jellyfin.setup.presentation.users.UsersState
 import dev.jdtech.jellyfin.setup.presentation.users.UsersViewModel
 import dev.jdtech.jellyfin.utils.ObserveAsEvents
 import java.util.UUID
+import dev.jdtech.jellyfin.core.R as CoreR
+import dev.jdtech.jellyfin.setup.R as SetupR
 
 @Composable
 fun UsersScreen(
@@ -90,6 +92,7 @@ private fun UsersScreenLayout(
 ) {
     var openDeleteDialog by remember { mutableStateOf(false) }
     var selectedUser by remember { mutableStateOf<User?>(null) }
+    val context = LocalContext.current
 
     RootLayout {
         Column(
@@ -129,6 +132,7 @@ private fun UsersScreenLayout(
                     items(state.users) { user ->
                         UserItem(
                             name = user.name,
+                            imageUrl = user.getProfileImageModel(context, state.baseUrl),
                             modifier = Modifier.fillMaxWidth(),
                             onClick = { onAction(UsersAction.OnUserClick(userId = user.id)) },
                             onLongClick = {
@@ -140,6 +144,7 @@ private fun UsersScreenLayout(
                     items(state.publicUsers) { user ->
                         UserItem(
                             name = user.name,
+                            imageUrl = user.getProfileImageModel(context, state.baseUrl),
                             modifier = Modifier.fillMaxWidth().alpha(0.7f),
                             onClick = {
                                 onAction(UsersAction.OnPublicUserClick(username = user.name))
@@ -217,6 +222,7 @@ private fun UsersScreenLayoutPreview() {
                     users = listOf(User(id = UUID.randomUUID(), name = "Bob", serverId = "")),
                     publicUsers =
                         listOf(User(id = UUID.randomUUID(), name = "Alice", serverId = "")),
+                    baseUrl = "http://localhost:8096"
                 ),
             onAction = {},
         )

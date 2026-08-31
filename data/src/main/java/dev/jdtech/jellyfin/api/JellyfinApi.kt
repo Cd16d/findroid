@@ -6,6 +6,7 @@ import dev.jdtech.jellyfin.settings.domain.Constants
 import java.util.UUID
 import kotlin.time.DurationUnit
 import kotlin.time.toDuration
+import okhttp3.OkHttpClient
 import org.jellyfin.sdk.api.client.HttpClientOptions
 import org.jellyfin.sdk.api.client.extensions.brandingApi
 import org.jellyfin.sdk.api.client.extensions.devicesApi
@@ -23,6 +24,7 @@ import org.jellyfin.sdk.api.client.extensions.userApi
 import org.jellyfin.sdk.api.client.extensions.userLibraryApi
 import org.jellyfin.sdk.api.client.extensions.userViewsApi
 import org.jellyfin.sdk.api.client.extensions.videosApi
+import org.jellyfin.sdk.api.okhttp.OkHttpFactory
 import org.jellyfin.sdk.createJellyfin
 import org.jellyfin.sdk.model.ClientInfo
 
@@ -38,6 +40,7 @@ class JellyfinApi(
     requestTimeout: Long = Constants.NETWORK_DEFAULT_REQUEST_TIMEOUT,
     connectTimeout: Long = Constants.NETWORK_DEFAULT_CONNECT_TIMEOUT,
     socketTimeout: Long = Constants.NETWORK_DEFAULT_SOCKET_TIMEOUT,
+    okHttpClient: OkHttpClient? = null,
 ) {
     val jellyfin = createJellyfin {
         clientInfo =
@@ -49,6 +52,11 @@ class JellyfinApi(
                 version = BuildConfig.VERSION_NAME,
             )
         context = androidContext
+        if (okHttpClient != null) {
+            val factory = OkHttpFactory(okHttpClient)
+            apiClientFactory = factory
+            socketConnectionFactory = factory
+        }
     }
     val api =
         jellyfin.createApi(
@@ -86,6 +94,7 @@ class JellyfinApi(
             requestTimeout: Long = Constants.NETWORK_DEFAULT_REQUEST_TIMEOUT,
             connectTimeout: Long = Constants.NETWORK_DEFAULT_CONNECT_TIMEOUT,
             socketTimeout: Long = Constants.NETWORK_DEFAULT_SOCKET_TIMEOUT,
+            okHttpClient: OkHttpClient? = null,
         ): JellyfinApi {
             synchronized(this) {
                 var instance = INSTANCE
@@ -96,6 +105,7 @@ class JellyfinApi(
                             requestTimeout = requestTimeout,
                             connectTimeout = connectTimeout,
                             socketTimeout = socketTimeout,
+                            okHttpClient = okHttpClient,
                         )
                     INSTANCE = instance
                 }

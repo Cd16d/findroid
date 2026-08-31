@@ -52,7 +52,7 @@ import kotlinx.coroutines.launch
 fun HomeScreen(
     onLibraryClick: (library: FindroidCollection) -> Unit,
     onSearchClick: () -> Unit,
-    onSettingsClick: () -> Unit,
+    onUserClick: () -> Unit,
     onManageServers: () -> Unit,
     onItemClick: (item: FindroidItem) -> Unit,
     viewModel: HomeViewModel = hiltViewModel(),
@@ -68,12 +68,12 @@ fun HomeScreen(
                 is HomeAction.OnItemClick -> onItemClick(action.item)
                 is HomeAction.OnLibraryClick -> onLibraryClick(action.library)
                 is HomeAction.OnSearchClick -> onSearchClick()
-                is HomeAction.OnSettingsClick -> onSettingsClick()
+                is HomeAction.OnUserClick -> onUserClick()
                 is HomeAction.OnManageServers -> onManageServers()
                 else -> Unit
             }
             viewModel.onAction(action)
-        },
+        }
     )
 }
 
@@ -158,13 +158,14 @@ private fun HomeScreenLayout(
 
     HomeHeader(
         serverName = state.server?.name ?: "",
+        userImageUrl = state.userImageUrl,
         isLoading = state.isLoading,
         isError = state.error != null,
         onServerClick = { showServerSelectionBottomSheet = true },
         onErrorClick = { showErrorDialog = true },
         onRetryClick = { onAction(HomeAction.OnRetryClick) },
         onSearchClick = { onAction(HomeAction.OnSearchClick) },
-        onUserClick = { onAction(HomeAction.OnSettingsClick) },
+        onUserClick = { onAction(HomeAction.OnUserClick) },
         modifier = Modifier.padding(start = paddingStart, top = paddingTop, end = paddingEnd),
     )
 
@@ -197,13 +198,13 @@ private fun HomeScreenLayoutPreview() {
     FindroidTheme {
         HomeScreenLayout(
             state =
-                HomeState(
-                    server = dummyServer,
-                    suggestionsSection = dummyHomeSuggestions,
-                    resumeSection = dummyHomeSection,
-                    views = listOf(dummyHomeView),
-                    error = Exception("Failed to load data"),
-                ),
+            HomeState(
+                server = dummyServer,
+                suggestionsSection = dummyHomeSuggestions,
+                resumeSection = dummyHomeSection,
+                views = listOf(dummyHomeView),
+                error = Exception("Failed to load data"),
+            ),
             onAction = {},
         )
     }
