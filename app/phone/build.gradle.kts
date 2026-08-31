@@ -9,18 +9,20 @@ plugins {
     alias(libs.plugins.aboutlibraries.android)
 }
 
+val isBetaBuild = gradle.startParameter.taskNames.any { it.contains("Beta", ignoreCase = true) }
+
 android {
     namespace = "dev.jdtech.jellyfin"
     compileSdk = Versions.COMPILE_SDK
     buildToolsVersion = Versions.BUILD_TOOLS
 
     defaultConfig {
-        applicationId = "dev.jdtech.jellyfin"
+        applicationId = if (isBetaBuild) "dev.cd16d.jellyfin" else "dev.jdtech.jellyfin"
         minSdk = Versions.MIN_SDK
         targetSdk = Versions.TARGET_SDK
 
         versionCode = Versions.APP_CODE
-        versionName = Versions.APP_NAME
+        versionName = Versions.APP_NAME + (System.getenv("GITHUB_RUN_NUMBER")?.let { "-$it" } ?: "")
 
         testInstrumentationRunner = "dev.jdtech.jellyfin.HiltTestRunner"
     }
@@ -34,6 +36,10 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
+        }
+        register("beta") {
+            initWith(getByName("release"))
+            applicationIdSuffix = ".beta"
         }
         register("staging") {
             initWith(getByName("release"))
