@@ -1,6 +1,6 @@
 ![Findroid banner](images/findroid-banner.png)
 
-# Findroid
+# Findroid - Beta
 ![GitHub release (with filter)](https://img.shields.io/github/v/release/jarnedemeulemeester/findroid?style=for-the-badge)
 ![GitHub repo stars](https://img.shields.io/github/stars/jarnedemeulemeester/findroid?style=for-the-badge)
 ![GitHub issues](https://img.shields.io/github/issues/jarnedemeulemeester/findroid?style=for-the-badge)
