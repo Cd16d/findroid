@@ -160,7 +160,6 @@ fun AccountMenuItemsListPreview() {
     FindroidTheme {
         Surface {
             AccountMenuItemsList(
-                onOpenQuickConnect = {},
                 onNavigateToSettings = {},
                 onNavigateToAbout = {},
                 onNavigateToGithub = {},

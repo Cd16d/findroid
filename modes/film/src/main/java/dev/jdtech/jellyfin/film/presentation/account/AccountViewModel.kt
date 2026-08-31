@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import java.util.UUID
 import javax.inject.Inject
 
 @HiltViewModel
@@ -46,6 +47,8 @@ class AccountViewModel @Inject constructor(
 
     private suspend fun loadUser(serverId: String) {
         val user = database.getServerCurrentUser(serverId)
+        val otherUsers = database.getUsers(serverId).filter { it.id != user?.id }
+
         val baseUrl = repository.getBaseUrl()
 
         val imageUrl = user?.getProfileImageModel(context, baseUrl)
@@ -54,9 +57,25 @@ class AccountViewModel @Inject constructor(
             _state.value.copy(
                 user = user,
                 userImageUrl = imageUrl,
+                otherUsers = otherUsers,
                 baseUrl = baseUrl
             )
         )
     }
 
+    private fun switchUser(userId: java.util.UUID) {
+        viewModelScope.launch {
+            repository.setCurrentUser(userId)
+            val imageTag = repository.refreshUser(userId)
+            downloader.downloadUserImage(userId, imageTag)
+            eventsChannel.send(AccountEvent.UserSwitched)
+        }
+    }
+
+    fun onAction(action: AccountAction) {
+        when (action) {
+            is AccountAction.SwitchUser -> switchUser(action.userId)
+            AccountAction.ToggleAccountList -> _state.update { it.copy(isAccountListExpanded = !it.isAccountListExpanded) }
+        }
+    }
 }

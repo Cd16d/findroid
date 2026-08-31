@@ -13,8 +13,10 @@ import dev.jdtech.jellyfin.models.FindroidSeason
 import dev.jdtech.jellyfin.models.FindroidSegment
 import dev.jdtech.jellyfin.models.FindroidShow
 import dev.jdtech.jellyfin.models.FindroidSource
+import dev.jdtech.jellyfin.models.Server
 import dev.jdtech.jellyfin.models.SortBy
 import dev.jdtech.jellyfin.models.SortOrder
+import dev.jdtech.jellyfin.models.User
 import dev.jdtech.jellyfin.models.toFindroidEpisode
 import dev.jdtech.jellyfin.models.toFindroidMovie
 import dev.jdtech.jellyfin.models.toFindroidSeason
@@ -42,6 +44,10 @@ class JellyfinRepositoryOfflineImpl(
 
     override suspend fun getPublicSystemInfo(): PublicSystemInfo {
         throw Exception("System info not available in offline mode")
+    }
+
+    override suspend fun authorizeQuickConnect(code: String): Boolean {
+        throw Exception("Quick Connect not available in offline mode")
     }
 
     override suspend fun getUserViews(): List<BaseItemDto> {
@@ -296,7 +302,7 @@ class JellyfinRepositoryOfflineImpl(
     }
 
     override fun getBaseUrl(): String {
-        return ""
+        return jellyfinApi.api.baseUrl.orEmpty()
     }
 
     override suspend fun updateDeviceName(name: String) {
@@ -325,5 +331,24 @@ class JellyfinRepositoryOfflineImpl(
 
     override fun getUserId(): UUID {
         return jellyfinApi.userId!!
+    }
+
+    override suspend fun getCurrentServer(): Server? {
+        return appPreferences.getValue(appPreferences.currentServer)?.let { id -> database.get(id) }
+    }
+
+    override suspend fun refreshUser(userId: UUID): String? {
+        return null
+    }
+
+    override suspend fun setCurrentUser(userId: UUID) {
+        val server = getCurrentServer() ?: return
+        val user = database.getUser(userId) ?: return
+        server.currentUserId = user.id
+        database.update(server)
+
+        jellyfinApi.apply {
+            this.userId = user.id
+        }
     }
 }

@@ -1,3 +1,8 @@
 package dev.jdtech.jellyfin.film.presentation.account
 
-sealed class AccountAction
+import java.util.UUID
+
+sealed class AccountAction {
+    data class SwitchUser(val userId: UUID) : AccountAction()
+    data object ToggleAccountList : AccountAction()
+}

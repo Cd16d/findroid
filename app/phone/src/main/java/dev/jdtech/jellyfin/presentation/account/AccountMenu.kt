@@ -67,6 +67,7 @@ import dev.jdtech.jellyfin.film.presentation.account.AccountAction
 import dev.jdtech.jellyfin.film.presentation.account.AccountEvent
 import dev.jdtech.jellyfin.film.presentation.account.AccountViewModel
 import dev.jdtech.jellyfin.models.User
+import dev.jdtech.jellyfin.presentation.account.components.AccountMenuChangeAccountSection
 import dev.jdtech.jellyfin.presentation.account.components.AccountMenuFooter
 import dev.jdtech.jellyfin.presentation.account.components.AccountMenuItemsList
 import dev.jdtech.jellyfin.presentation.account.components.AccountMenuOfflineBadge
@@ -84,6 +85,9 @@ fun AccountMenuWrapper(
     onCloseMenu: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onNavigateToAbout: () -> Unit,
+    onAddUser: () -> Unit,
+    onManageAccounts: () -> Unit,
+    onSwitchUser: () -> Unit,
     viewModel: AccountViewModel = hiltViewModel(),
     content: @Composable () -> Unit
 ) {
@@ -96,6 +100,7 @@ fun AccountMenuWrapper(
     LaunchedEffect(viewModel.events) {
         viewModel.events.collect { event ->
             when (event) {
+                AccountEvent.UserSwitched -> onSwitchUser()
             }
         }
     }
@@ -159,6 +164,8 @@ fun AccountMenuWrapper(
                     AccountMenuContent(
                         userName = state.user?.name ?: stringResource(CoreR.string.user_default),
                         userImageUrl = state.userImageUrl,
+                        otherUsers = state.otherUsers,
+                        isAccountListExpanded = state.isAccountListExpanded,
                         baseUrl = state.baseUrl,
                         isTablet = isTablet,
                         isLandscape = isLandscape,
@@ -169,6 +176,10 @@ fun AccountMenuWrapper(
                         onNavigateToAbout = {
                             onNavigateToAbout()
                         },
+                        onAddUser = onAddUser,
+                        onManageAccounts = onManageAccounts,
+                        onSwitchUser = { user -> viewModel.onAction(AccountAction.SwitchUser(user.id)) },
+                        onToggleAccountList = { viewModel.onAction(AccountAction.ToggleAccountList) },
                         onNavigateToGithub = {
                             try {
                                 uriHandler.openUri(
@@ -208,12 +219,18 @@ fun AccountMenuWrapper(
 fun AccountMenuContent(
     userName: String,
     userImageUrl: Any?,
+    otherUsers: List<User>,
+    isAccountListExpanded: Boolean,
     baseUrl: String,
     isTablet: Boolean,
     isLandscape: Boolean,
     onClose: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onNavigateToAbout: () -> Unit,
+    onAddUser: () -> Unit,
+    onManageAccounts: () -> Unit,
+    onSwitchUser: (User) -> Unit,
+    onToggleAccountList: () -> Unit,
     onNavigateToGithub: () -> Unit,
     onNavigateToKofi: () -> Unit,
     modifier: Modifier = Modifier
@@ -268,6 +285,15 @@ fun AccountMenuContent(
                 ) {
                     Spacer(modifier = Modifier.height(48.dp)) // Space for close button
 
+                    AccountMenuChangeAccountSection(
+                        otherUsers = otherUsers,
+                        isExpanded = isAccountListExpanded,
+                        onToggleExpand = onToggleAccountList,
+                        onUserClick = onSwitchUser,
+                        onAddUserClick = onAddUser,
+                        onManageAccountsClick = onManageAccounts,
+                        baseUrl = baseUrl
+                    )
 
                     Spacer(modifier = Modifier.height(16.dp))
 
@@ -297,6 +323,15 @@ fun AccountMenuContent(
 
                 Spacer(modifier = Modifier.height(32.dp))
 
+                AccountMenuChangeAccountSection(
+                    otherUsers = otherUsers,
+                    isExpanded = isAccountListExpanded,
+                    onToggleExpand = onToggleAccountList,
+                    onUserClick = onSwitchUser,
+                    onAddUserClick = onAddUser,
+                    onManageAccountsClick = onManageAccounts,
+                    baseUrl = baseUrl
+                )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -391,6 +426,10 @@ fun AccountMenuContentExpandedPreview() {
                     onClose = {},
                     onNavigateToSettings = {},
                     onNavigateToAbout = {},
+                    onAddUser = {},
+                    onManageAccounts = {},
+                    onSwitchUser = {},
+                    onToggleAccountList = {},
                     onNavigateToGithub = {},
                     onNavigateToKofi = {},
                     modifier = Modifier.padding(16.dp)
@@ -426,12 +465,17 @@ fun AccountMenuContentPreview() {
                             serverId = "server1"
                         )
                     ),
+                    isAccountListExpanded = false,
                     baseUrl = "",
                     isTablet = false,
                     isLandscape = false,
                     onClose = {},
                     onNavigateToSettings = {},
                     onNavigateToAbout = {},
+                    onAddUser = {},
+                    onManageAccounts = {},
+                    onSwitchUser = {},
+                    onToggleAccountList = {},
                     onNavigateToGithub = {},
                     onNavigateToKofi = {},
                     modifier = Modifier.padding(16.dp)
@@ -467,12 +511,17 @@ fun AccountMenuContentDarkPreview() {
                             serverId = "server1"
                         )
                     ),
+                    isAccountListExpanded = false,
                     baseUrl = "",
                     isTablet = false,
                     isLandscape = false,
                     onClose = {},
                     onNavigateToSettings = {},
                     onNavigateToAbout = {},
+                    onAddUser = {},
+                    onManageAccounts = {},
+                    onSwitchUser = {},
+                    onToggleAccountList = {},
                     onNavigateToGithub = {},
                     onNavigateToKofi = {},
                     modifier = Modifier.padding(16.dp)
@@ -498,12 +547,17 @@ fun AccountMenuContentOfflinePreview() {
                             serverId = "server1"
                         )
                     ),
+                    isAccountListExpanded = false,
                     baseUrl = "",
                     isTablet = false,
                     isLandscape = false,
                     onClose = {},
                     onNavigateToSettings = {},
                     onNavigateToAbout = {},
+                    onAddUser = {},
+                    onManageAccounts = {},
+                    onSwitchUser = {},
+                    onToggleAccountList = {},
                     onNavigateToGithub = {},
                     onNavigateToKofi = {},
                     modifier = Modifier.padding(16.dp)

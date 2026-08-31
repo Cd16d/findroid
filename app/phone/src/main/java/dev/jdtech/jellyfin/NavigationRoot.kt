@@ -203,6 +203,21 @@ fun NavigationRoot(
             navController.safeNavigate(AboutRoute)
             isAccountMenuOpen = false
         },
+        onAddUser = {
+            navController.navigate(LoginRoute())
+            isAccountMenuOpen = false
+        },
+        onManageAccounts = {
+            navController.navigate(UsersRoute)
+            isAccountMenuOpen = false
+        },
+        onSwitchUser = {
+            navController.navigate(HomeRoute) {
+                popUpTo(0)
+                launchSingleTop = true
+            }
+            isAccountMenuOpen = false
+        }
     ) {
         NavigationSuiteScaffold(
             navigationSuiteItems = {
