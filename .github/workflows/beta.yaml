@@ -9,6 +9,8 @@ jobs:
   beta:
     name: Beta Build
     runs-on: ubuntu-24.04
+    permissions:
+      contents: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -59,7 +61,22 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: beta-${{ github.run_number }}
-          name: "Beta Build ${{ github.run_number }}"
+          name: "Findroid Beta Build ${{ github.run_number }}"
+          body: |
+            ### 🛠 Findroid Beta Pre-release
+            
+            Automated beta build from branch `beta` at commit `${{ github.sha }}`. 
+            **Warning:** This is an automated build and may be unstable.
+            
+            #### 📦 Included Variants
+            - **Phone Libre:** Open-source version without proprietary libraries.
+            - **Phone Proprietary:** Includes features like Chromecast support.
+            - **TV Libre:** Optimized for Android TV / Leanback.
+            
+            ---
+            
+            *Changes since previous build are listed below.*
+          generate_release_notes: true
           prerelease: true
           draft: false
           files: artifacts/*.apk
