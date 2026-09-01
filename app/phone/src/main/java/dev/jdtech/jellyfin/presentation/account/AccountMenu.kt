@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
@@ -37,6 +38,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -48,6 +50,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
@@ -64,6 +67,7 @@ import androidx.compose.ui.zIndex
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.window.core.layout.WindowSizeClass
+import coil3.compose.AsyncImage
 import dev.jdtech.jellyfin.film.presentation.account.AccountAction
 import dev.jdtech.jellyfin.film.presentation.account.AccountEvent
 import dev.jdtech.jellyfin.film.presentation.account.AccountViewModel
@@ -75,6 +79,7 @@ import dev.jdtech.jellyfin.presentation.account.components.AccountMenuOfflineBad
 import dev.jdtech.jellyfin.presentation.account.components.AccountMenuProfileSection
 import dev.jdtech.jellyfin.presentation.account.components.QuickConnectBottomSheet
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
+import dev.jdtech.jellyfin.presentation.theme.spacings
 import dev.jdtech.jellyfin.presentation.utils.LocalOfflineMode
 import kotlinx.coroutines.delay
 import java.util.UUID
@@ -271,9 +276,12 @@ fun AccountMenuContent(
     onNavigateToKofi: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val topPadding = if (!isTablet) WindowInsets.safeDrawing.asPaddingValues().calculateTopPadding() else 0.dp
-    val startPadding = WindowInsets.safeDrawing.asPaddingValues().calculateStartPadding(LocalLayoutDirection.current).coerceAtLeast(8.dp)
-    val endPadding = WindowInsets.safeDrawing.asPaddingValues().calculateEndPadding(LocalLayoutDirection.current).coerceAtLeast(8.dp)
+    val topPadding =
+        if (!isTablet) WindowInsets.safeDrawing.asPaddingValues().calculateTopPadding() else 0.dp
+    val startPadding = WindowInsets.safeDrawing.asPaddingValues()
+        .calculateStartPadding(LocalLayoutDirection.current)
+    val endPadding =
+        WindowInsets.safeDrawing.asPaddingValues().calculateEndPadding(LocalLayoutDirection.current)
     val useSplitLayout = !isTablet && isLandscape
     val scrollState = rememberScrollState()
     val showButtonBackground by remember { derivedStateOf { scrollState.value > 10 } }
@@ -291,6 +299,7 @@ fun AccountMenuContent(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .padding(start = 8.dp, end = 8.dp)
             ) {
                 // Left side: Profile + Footer
                 Column(
@@ -348,7 +357,7 @@ fun AccountMenuContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .verticalScroll(scrollState)
-                    .padding(horizontal = 8.dp),
+                    .padding(horizontal = 16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Spacer(modifier = Modifier.height(64.dp)) // Header space
@@ -383,26 +392,10 @@ fun AccountMenuContent(
                 Spacer(modifier = Modifier.height(24.dp))
 
                 AccountMenuFooter()
-                
+
                 Spacer(modifier = Modifier.height(64.dp))
             }
         }
-
-        // Fixed Footer
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(64.dp)
-                .align(Alignment.BottomCenter)
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Color.Transparent,
-                            MaterialTheme.colorScheme.primaryContainer
-                        )
-                    )
-                )
-        )
 
         // Fixed Header
         val shadowElevation by animateDpAsState(
@@ -415,26 +408,86 @@ fun AccountMenuContent(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(64.dp)
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            MaterialTheme.colorScheme.primaryContainer,
-                            Color.Transparent
+                .then(
+                    if (isTablet) {
+                        if (showButtonBackground) {
+                            Modifier
+                                .shadow(elevation = shadowElevation)
+                                .background(color = MaterialTheme.colorScheme.surfaceVariant)
+                        } else {
+                            Modifier
+                        }
+                    } else {
+                        Modifier.background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    MaterialTheme.colorScheme.primaryContainer,
+                                    Color.Transparent
+                                )
+                            )
                         )
-                    )
+                    }
                 )
         ) {
-            if (LocalOfflineMode.current) {
-                AccountMenuOfflineBadge(
-                    modifier = Modifier.align(Alignment.Center),
-                    shadowElevation = shadowElevation
-                )
+
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (showButtonBackground && isTablet) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            modifier = Modifier.size(32.dp),
+                            color = MaterialTheme.colorScheme.surface
+                        ) {
+                            if (userImageUrl != null) {
+                                AsyncImage(
+                                    model = userImageUrl,
+                                    contentDescription = null,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = ImageVector.vectorResource(CoreR.drawable.ic_user),
+                                    contentDescription = null,
+                                    modifier = Modifier.padding(4.dp)
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.width(MaterialTheme.spacings.small))
+
+                        Text(userName)
+                    }
+                }
+
+                // Offline badge
+                if (LocalOfflineMode.current) {
+                    AccountMenuOfflineBadge(
+                        shadowElevation = if (!isTablet) shadowElevation else 0.dp
+                    )
+                }
             }
+
             Surface(
                 shape = CircleShape,
-                color = if (showButtonBackground) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.primaryContainer,
-                shadowElevation = shadowElevation,
-                modifier = Modifier.align(Alignment.CenterEnd)
+                color = if (showButtonBackground) {
+                    if (isTablet) {
+                        MaterialTheme.colorScheme.surfaceVariant
+                    } else {
+                        MaterialTheme.colorScheme.surface
+                    }
+                } else MaterialTheme.colorScheme.primaryContainer,
+                shadowElevation = if (!isTablet) shadowElevation else 0.dp,
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .padding(horizontal = 8.dp)
             ) {
                 IconButton(onClick = onClose) {
                     Icon(
@@ -444,6 +497,24 @@ fun AccountMenuContent(
                 }
             }
         }
+
+        // Fixed Footer
+        if (!isTablet) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(64.dp)
+                    .align(Alignment.BottomCenter)
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                MaterialTheme.colorScheme.primaryContainer
+                            )
+                        )
+                    )
+            )
+        }
     }
 }
 
@@ -452,43 +523,72 @@ fun AccountMenuContent(
 fun AccountMenuContentExpandedPreview() {
     FindroidTheme(darkTheme = false) {
         CompositionLocalProvider(LocalOfflineMode provides false) {
-            Surface(color = MaterialTheme.colorScheme.primaryContainer) {
-                AccountMenuContent(
-                    userName = "Joe",
-                    userImageUrl = null,
-                    otherUsers = listOf(
-                        User(
-                            id = UUID.randomUUID(),
-                            name = "Jane",
-                            serverId = "server1"
-                        ),
-                        User(
-                            id = UUID.randomUUID(),
-                            name = "Bob",
-                            serverId = "server1"
-                        ),
-                        User(
-                            id = UUID.randomUUID(),
-                            name = "Alice",
-                            serverId = "server1"
-                        )
+            val isTablet = false
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.4f)) // Dim background
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = {}
                     ),
-                    isAccountListExpanded = true,
-                    baseUrl = "",
-                    isTablet = false,
-                    isLandscape = false,
-                    onClose = {},
-                    onOpenQuickConnect = {},
-                    onNavigateToSettings = {},
-                    onNavigateToAbout = {},
-                    onAddUser = {},
-                    onManageAccounts = {},
-                    onSwitchUser = {},
-                    onToggleAccountList = {},
-                    onNavigateToGithub = {},
-                    onNavigateToKofi = {},
-                    modifier = Modifier.padding(16.dp)
-                )
+                contentAlignment = Alignment.TopCenter
+            ) {
+                Surface(
+                    modifier = Modifier
+                        .then(
+                            if (isTablet) Modifier
+                                .width(420.dp)
+                                .wrapContentHeight()
+                                .padding(top = 64.dp, bottom = 16.dp)
+                            else Modifier.fillMaxSize()
+                        )
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = {} // Catch clicks to prevent closing when interacting with menu
+                        ),
+                    shape = if (isTablet) MaterialTheme.shapes.extraLarge else RectangleShape,
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    tonalElevation = 6.dp
+                ) {
+                    AccountMenuContent(
+                        userName = "Joe",
+                        userImageUrl = null,
+                        otherUsers = listOf(
+                            User(
+                                id = UUID.randomUUID(),
+                                name = "Jane",
+                                serverId = "server1"
+                            ),
+                            User(
+                                id = UUID.randomUUID(),
+                                name = "Bob",
+                                serverId = "server1"
+                            ),
+                            User(
+                                id = UUID.randomUUID(),
+                                name = "Alice",
+                                serverId = "server1"
+                            )
+                        ),
+                        isAccountListExpanded = true,
+                        baseUrl = "",
+                        isTablet = isTablet,
+                        isLandscape = false,
+                        onClose = {},
+                        onOpenQuickConnect = {},
+                        onNavigateToSettings = {},
+                        onNavigateToAbout = {},
+                        onAddUser = {},
+                        onManageAccounts = {},
+                        onSwitchUser = {},
+                        onToggleAccountList = {},
+                        onNavigateToGithub = {},
+                        onNavigateToKofi = {},
+                    )
+                }
             }
         }
     }
