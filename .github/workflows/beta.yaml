@@ -13,16 +13,16 @@ jobs:
       contents: write
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: 21
           distribution: temurin
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v3
+        uses: gradle/actions/setup-gradle@v6
 
       - name: Get Version Name
         id: get_version
@@ -50,39 +50,49 @@ jobs:
       - name: Prepare artifacts
         run: |
           mkdir -p artifacts
-          # Phone Libre
-          cp app/phone/build/outputs/apk/libre/beta/*.apk artifacts/
-          # Phone Proprietary
-          cp app/phone/build/outputs/apk/proprietary/beta/*.apk artifacts/
-          # TV Libre
-          cp app/tv/build/outputs/apk/libre/beta/*.apk artifacts/
-          
-          # Rename for clarity
-          cd artifacts
-          for f in *.apk; do
-            new_name=$(echo "$f" | sed 's/-beta//' | sed 's/phone-//' | sed 's/tv-//')
-            mv "$f" "findroid-beta-$new_name"
+          # Phone builds -> findroid-beta-...
+          for f in app/phone/build/outputs/apk/*/beta/*.apk; do
+            new_name=$(basename "$f" | sed 's/app-//' | sed 's/-beta//')
+            cp "$f" "artifacts/findroid-beta-$new_name"
+          done
+          # TV builds -> findroid-tv-beta-...
+          for f in app/tv/build/outputs/apk/*/beta/*.apk; do
+            new_name=$(basename "$f" | sed 's/app-//' | sed 's/-beta//')
+            cp "$f" "artifacts/findroid-tv-beta-$new_name"
           done
 
+      - name: Generate Release Notes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PREVIOUS_TAG=$(gh release list --limit 1 --exclude-drafts --json tagName --jq '.[0].tagName' 2>/dev/null || true)
+          PREVIOUS_SHA=$(gh release view "$PREVIOUS_TAG" --json targetCommitish --jq .targetCommitish 2>/dev/null || true)
+          
+          {
+            echo "Automated beta build from branch \`beta\` at commit \`${GITHUB_SHA}\`. It may be unstable."
+            echo
+            echo "#### 📦 Included Variants"
+            echo "- **Libre:** Open-source version without proprietary libraries."
+            echo "- **Proprietary:** Includes features like Chromecast support."
+            echo "- **TV:** Optimized for Android TV / Leanback."
+            
+            if [ -n "$PREVIOUS_SHA" ] && [ "$PREVIOUS_SHA" != "$GITHUB_SHA" ]; then
+              echo
+              echo "## Changes since $PREVIOUS_TAG"
+              gh api "repos/$GITHUB_REPOSITORY/compare/$PREVIOUS_SHA...$GITHUB_SHA" \
+                --jq '.commits[] | "* \(.commit.message | split("\n")[0]) (\(.sha[0:7]))"'
+            fi
+          } > release-notes.md
+
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: beta-${{ github.run_number }}
           name: "Findroid ${{ steps.get_version.outputs.version }} (Beta ${{ github.run_number }})"
-          body: |
-            Automated beta build from branch `beta` at commit `${{ github.sha }}`. It may be unstable.
-            
-            #### 📦 Included Variants
-            - **Libre:** Open-source version without proprietary libraries.
-            - **Proprietary:** Includes features like Chromecast support.
-            - **TV:** Optimized for Android TV / Leanback.
-            
-            ---
-            
-            *Changes since previous build are listed below.*
-          generate_release_notes: true
+          body_path: release-notes.md
           prerelease: true
           draft: false
           files: artifacts/*.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
