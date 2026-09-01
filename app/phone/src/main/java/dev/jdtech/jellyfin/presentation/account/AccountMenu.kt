@@ -2,6 +2,7 @@ package dev.jdtech.jellyfin.presentation.account
 
 import android.content.res.Configuration
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
@@ -145,6 +146,10 @@ fun AccountMenuWrapper(
             showQuickConnect = false
             viewModel.onAction(AccountAction.ClearQuickConnectStatus)
         }
+    }
+
+    BackHandler(enabled = isMenuOpen) {
+        onCloseMenu()
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -335,7 +340,7 @@ fun AccountMenuContent(
                         onNavigateToGithub = onNavigateToGithub,
                         onNavigateToKofi = onNavigateToKofi
                     )
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(64.dp))
                 }
             }
         } else {
@@ -379,9 +384,25 @@ fun AccountMenuContent(
 
                 AccountMenuFooter()
                 
-                Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.height(64.dp))
             }
         }
+
+        // Fixed Footer
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(64.dp)
+                .align(Alignment.BottomCenter)
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            MaterialTheme.colorScheme.primaryContainer
+                        )
+                    )
+                )
+        )
 
         // Fixed Header
         val shadowElevation by animateDpAsState(
