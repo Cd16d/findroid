@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.Flow
 import org.jellyfin.sdk.model.api.BaseItemDto
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.ItemFields
+import org.jellyfin.sdk.model.api.ItemFilter
 import org.jellyfin.sdk.model.api.PlayMethod
 import org.jellyfin.sdk.model.api.PublicSystemInfo
 import org.jellyfin.sdk.model.api.UserConfiguration
@@ -52,6 +53,7 @@ interface JellyfinRepository {
         recursive: Boolean = false,
         sortBy: SortBy = SortBy.defaultValue,
         sortOrder: SortOrder = SortOrder.ASCENDING,
+        filters: List<ItemFilter>? = null,
         startIndex: Int? = null,
         limit: Int? = null,
     ): List<FindroidItem>
@@ -62,6 +64,7 @@ interface JellyfinRepository {
         recursive: Boolean = false,
         sortBy: SortBy = SortBy.defaultValue,
         sortOrder: SortOrder = SortOrder.ASCENDING,
+        filters: List<ItemFilter>? = null,
     ): Flow<PagingData<FindroidItem>>
 
     suspend fun getPerson(personId: UUID): FindroidPerson
