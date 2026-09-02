@@ -182,10 +182,10 @@ private fun LoginScreenLayout(
                 visualTransformation = PasswordVisualTransformation(),
                 isError = state.error != null,
                 enabled = !state.isLoading,
-                supportingText = {
-                    if (state.error != null) {
+                supportingText = state.error?.let { error ->
+                    {
                         Text(
-                            text = state.error!!.asString(),
+                            text = error.asString(),
                             color = MaterialTheme.colorScheme.error,
                         )
                     }
