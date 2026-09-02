@@ -47,6 +47,7 @@ import dev.jdtech.jellyfin.presentation.setup.components.DiscoveredServerItem
 import dev.jdtech.jellyfin.presentation.setup.components.LoadingButton
 import dev.jdtech.jellyfin.presentation.setup.components.RootLayout
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
+import dev.jdtech.jellyfin.presentation.theme.spacings
 import dev.jdtech.jellyfin.setup.R as SetupR
 import dev.jdtech.jellyfin.setup.presentation.addserver.AddServerAction
 import dev.jdtech.jellyfin.setup.presentation.addserver.AddServerEvent
@@ -152,16 +153,17 @@ private fun AddServerScreenLayout(state: AddServerState, onAction: (AddServerAct
                 keyboardActions = KeyboardActions(onGo = { doConnect() }),
                 isError = state.error != null,
                 enabled = !state.isLoading,
-                supportingText = {
-                    if (state.error != null) {
+                supportingText = state.error?.let { errors ->
+                    {
                         Text(
-                            text = state.error!!.joinToString { it.asString(context.resources) },
+                            text = errors.joinToString { it.asString(context.resources) },
                             color = MaterialTheme.colorScheme.error,
                         )
                     }
                 },
                 modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
             )
+            Spacer(modifier = Modifier.height(MaterialTheme.spacings.medium))
             LoadingButton(
                 text = stringResource(SetupR.string.add_server_btn_connect),
                 onClick = { doConnect() },

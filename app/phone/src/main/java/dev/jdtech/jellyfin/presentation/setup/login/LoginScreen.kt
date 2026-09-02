@@ -50,6 +50,7 @@ import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.presentation.setup.components.LoadingButton
 import dev.jdtech.jellyfin.presentation.setup.components.RootLayout
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
+import dev.jdtech.jellyfin.presentation.theme.spacings
 import dev.jdtech.jellyfin.setup.R as SetupR
 import dev.jdtech.jellyfin.setup.presentation.login.LoginAction
 import dev.jdtech.jellyfin.setup.presentation.login.LoginEvent
@@ -183,16 +184,17 @@ private fun LoginScreenLayout(
                     else PasswordVisualTransformation(),
                 isError = state.error != null,
                 enabled = !state.isLoading,
-                supportingText = {
-                    if (state.error != null) {
+                supportingText = state.error?.let { error ->
+                    {
                         Text(
-                            text = state.error!!.asString(),
+                            text = error.asString(),
                             color = MaterialTheme.colorScheme.error,
                         )
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
             )
+            Spacer(modifier = Modifier.height(MaterialTheme.spacings.medium))
             LoadingButton(
                 text = stringResource(SetupR.string.login_btn_login),
                 onClick = { doLogin() },

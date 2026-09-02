@@ -130,10 +130,10 @@ private fun AddServerScreenLayout(state: AddServerState, onAction: (AddServerAct
                 keyboardActions = KeyboardActions(onGo = { doConnect() }),
                 isError = state.error != null,
                 enabled = !state.isLoading,
-                supportingText = {
-                    if (state.error != null) {
+                supportingText = state.error?.let { errors ->
+                    {
                         Text(
-                            text = state.error!!.joinToString { it.asString(context.resources) },
+                            text = errors.joinToString { it.asString(context.resources) },
                             color = MaterialTheme.colorScheme.error,
                         )
                     }
