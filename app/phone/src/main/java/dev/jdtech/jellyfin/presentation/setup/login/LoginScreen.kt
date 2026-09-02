@@ -50,6 +50,7 @@ import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.presentation.setup.components.LoadingButton
 import dev.jdtech.jellyfin.presentation.setup.components.RootLayout
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
+import dev.jdtech.jellyfin.presentation.theme.spacings
 import dev.jdtech.jellyfin.setup.R as SetupR
 import dev.jdtech.jellyfin.setup.presentation.login.LoginAction
 import dev.jdtech.jellyfin.setup.presentation.login.LoginEvent
@@ -193,6 +194,7 @@ private fun LoginScreenLayout(
                 },
                 modifier = Modifier.fillMaxWidth(),
             )
+            Spacer(modifier = Modifier.height(MaterialTheme.spacings.medium))
             LoadingButton(
                 text = stringResource(SetupR.string.login_btn_login),
                 onClick = { doLogin() },
