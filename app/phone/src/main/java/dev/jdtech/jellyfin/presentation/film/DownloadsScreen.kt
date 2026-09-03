@@ -1,9 +1,19 @@
 package dev.jdtech.jellyfin.presentation.film
 
+import android.content.res.Configuration
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.recalculateWindowInsets
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.union
@@ -11,19 +21,22 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.PreviewScreenSizes
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import dev.jdtech.jellyfin.core.R as CoreR
+import androidx.window.core.layout.WindowSizeClass
 import dev.jdtech.jellyfin.core.presentation.dummy.dummyMovies
 import dev.jdtech.jellyfin.film.presentation.collection.CollectionAction
 import dev.jdtech.jellyfin.film.presentation.collection.CollectionState
@@ -33,6 +46,8 @@ import dev.jdtech.jellyfin.models.FindroidItem
 import dev.jdtech.jellyfin.models.UiText
 import dev.jdtech.jellyfin.presentation.film.components.CollectionGrid
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
+import dev.jdtech.jellyfin.presentation.theme.spacings
+import dev.jdtech.jellyfin.core.R as CoreR
 
 @Composable
 fun DownloadsScreen(
@@ -57,33 +72,127 @@ fun DownloadsScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DownloadsScreenLayout(state: CollectionState, onAction: (CollectionAction) -> Unit) {
-    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
-
     Scaffold(
         modifier =
-            Modifier.fillMaxSize()
-                .recalculateWindowInsets()
-                .nestedScroll(scrollBehavior.nestedScrollConnection),
-        topBar = {
-            TopAppBar(
-                title = { Text(text = stringResource(CoreR.string.title_download)) },
-                windowInsets = WindowInsets.statusBars.union(WindowInsets.displayCutout),
-                scrollBehavior = scrollBehavior,
-            )
-        },
+            Modifier
+                .fillMaxSize()
+                .recalculateWindowInsets(),
         contentWindowInsets = WindowInsets.statusBars.union(WindowInsets.displayCutout),
     ) { innerPadding ->
-        Box(modifier = Modifier.fillMaxSize()) {
+        val configuration = LocalConfiguration.current
+        val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+        val windowSizeClass = currentWindowAdaptiveInfo().windowSizeClass
+        val isExpanded = windowSizeClass.isWidthAtLeastBreakpoint(
+            WindowSizeClass.WIDTH_DP_EXPANDED_LOWER_BOUND
+        )
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
             if (state.sections.isEmpty()) {
-                Text(
-                    text = stringResource(CoreR.string.no_downloads),
-                    modifier = Modifier.align(Alignment.Center),
-                    style = MaterialTheme.typography.bodyMedium,
-                )
+                if (isLandscape && !isExpanded) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(
+                                top = MaterialTheme.spacings.small,
+                                bottom = MaterialTheme.spacings.default
+                            )
+                            .padding(horizontal = MaterialTheme.spacings.default),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Text(
+                            text = stringResource(CoreR.string.title_download),
+                            style = MaterialTheme.typography.headlineLarge,
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(MaterialTheme.spacings.small))
+                        Row(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceEvenly,
+                        ) {
+                            Image(
+                                painter = painterResource(CoreR.drawable.download_page_placeholder),
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxHeight(),
+                                contentScale = ContentScale.FillHeight,
+                                alignment = Alignment.Center,
+                            )
+                            Text(
+                                text = stringResource(CoreR.string.no_downloads),
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                        }
+                    }
+                } else {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(vertical = MaterialTheme.spacings.extraLarge),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Text(
+                            text = stringResource(CoreR.string.title_download),
+                            style = MaterialTheme.typography.headlineLarge,
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(
+                            if (isExpanded) {
+                                MaterialTheme.spacings.large
+                            } else {
+                                MaterialTheme.spacings.extraLarge
+                            }
+                        ))
+                        Image(
+                            painter = painterResource(CoreR.drawable.download_page_placeholder),
+                            contentDescription = null,
+                            modifier = Modifier.then(
+                                if (isExpanded) {
+                                    Modifier.weight(1f)
+                                } else {
+                                    Modifier.fillMaxWidth()
+                                },
+                            ),
+                            contentScale = if (isExpanded) {
+                                ContentScale.FillHeight
+                            } else {
+                                ContentScale.FillWidth
+                            },
+                            alignment = Alignment.Center,
+                        )
+                        Spacer(modifier = Modifier.height(MaterialTheme.spacings.default))
+                        Text(
+                            text = stringResource(CoreR.string.no_downloads),
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    }
+                }
             }
         }
 
         CollectionGrid(sections = state.sections, innerPadding = innerPadding, onAction = onAction)
+    }
+}
+
+@PreviewScreenSizes
+@Composable
+private fun DownloadsScreenLayoutEmptyPreview() {
+    FindroidTheme {
+        DownloadsScreenLayout(
+            state =
+                CollectionState(
+                    sections = emptyList()
+                ),
+            onAction = {},
+        )
     }
 }
 
