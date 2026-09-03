@@ -100,20 +100,25 @@ private fun DownloadsScreenLayout(
             ) {
                 if (isLandscape && !isExpanded) {
                     Row(
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(MaterialTheme.spacings.default),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceEvenly,
                     ) {
                         Image(
                             painter = painterResource(CoreR.drawable.download_page_placeholder),
                             contentDescription = null,
-                            modifier = Modifier.fillMaxHeight(),
-                            contentScale = ContentScale.FillHeight,
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight(),
+                            contentScale = ContentScale.Fit,
                             alignment = Alignment.Center,
                         )
                         Column(
                             modifier = Modifier
-                                .fillMaxSize()
+                                .weight(1f)
+                                .fillMaxHeight()
                                 .padding(horizontal = MaterialTheme.spacings.default),
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center,
@@ -146,7 +151,7 @@ private fun DownloadsScreenLayout(
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(vertical = MaterialTheme.spacings.extraLarge),
+                            .padding(vertical = MaterialTheme.spacings.extraLarge, horizontal = MaterialTheme.spacings.default),
                         verticalArrangement = Arrangement.Center,
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
@@ -168,18 +173,10 @@ private fun DownloadsScreenLayout(
                         Image(
                             painter = painterResource(CoreR.drawable.download_page_placeholder),
                             contentDescription = null,
-                            modifier = Modifier.then(
-                                if (isExpanded) {
-                                    Modifier.weight(1f)
-                                } else {
-                                    Modifier.fillMaxWidth()
-                                },
-                            ),
-                            contentScale = if (isExpanded) {
-                                ContentScale.FillHeight
-                            } else {
-                                ContentScale.FillWidth
-                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f),
+                            contentScale = ContentScale.Fit,
                             alignment = Alignment.Center,
                         )
                         Spacer(modifier = Modifier.height(MaterialTheme.spacings.large))
