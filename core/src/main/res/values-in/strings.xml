@@ -28,7 +28,7 @@
     <string name="series_poster">Poster serial</string>
     <string name="collection_no_media">Koleksi ini tidak berisi media apa pun</string>
     <string name="no_favorites">Anda tidak memiliki favorit</string>
-    <string name="no_downloads">Anda tidak memiliki yang telah diunduh</string>
+
     <string name="search">Cari</string>
     <string name="no_search_results">Tidak ada hasil pencarian</string>
     <string name="device_name">Nama perangkat</string>

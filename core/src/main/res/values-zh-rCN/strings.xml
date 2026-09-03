@@ -21,7 +21,7 @@
     <string name="episode_name_extended">S%1$d:E%2$d - %3$s</string>
     <string name="next_up">接下来</string>
     <string name="series_poster">节目海报</string>
-    <string name="no_downloads">你没有下载过任何东西</string>
+
     <string name="search">搜索</string>
     <string name="no_search_results">无搜索结果</string>
     <string name="device_name">设备名</string>

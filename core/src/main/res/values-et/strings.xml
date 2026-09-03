@@ -35,7 +35,7 @@
     <string name="series_poster">Sarja plakat</string>
     <string name="collection_no_media">See kogumik ei sisalda meediat</string>
     <string name="no_favorites">Sul pole lemmikuid</string>
-    <string name="no_downloads">Sul pole midagi alla laaditud</string>
+
     <string name="search">Otsi</string>
     <string name="no_search_results">Otsingutulemusi pole</string>
     <string name="device_name">Seadme nimi</string>

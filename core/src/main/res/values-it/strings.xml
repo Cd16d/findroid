@@ -27,7 +27,7 @@
     <string name="view_details_underlined"><u>Vedi dettagli</u></string>
     <string name="app_description">Applicazione nativa di terze parti per Jellyfin</string>
     <string name="no_favorites">Non hai nessun preferito</string>
-    <string name="no_downloads">Non hai scaricato ancora nulla</string>
+
     <string name="device_name">Nome del dispositivo</string>
     <string name="error_loading_data">Errore nel caricamento dei dati</string>
     <string name="writers">Scrittori</string>

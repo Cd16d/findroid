@@ -36,7 +36,7 @@
     <string name="series_poster">Series poster</string>
     <string name="collection_no_media">This collection does not contain any media</string>
     <string name="no_favorites">You have no favorites</string>
-    <string name="no_downloads">You have nothing downloaded</string>
+
     <string name="search">Search</string>
     <string name="no_search_results">No search results</string>
     <string name="device_name">Device name</string>
@@ -137,4 +137,7 @@
     <string name="invalid_code">Invalid code</string>
     <string name="user_default">User</string>
     <string name="close_menu">Close menu</string>
+    <string name="no_downloads_title">No downloads yet</string>
+    <string name="no_downloads">Movies and shows you download for offline viewing will appear here.</string>
+    <string name="no_downloads_button">Explore library</string>
 </resources>

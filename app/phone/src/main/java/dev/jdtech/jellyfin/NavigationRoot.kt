@@ -519,6 +519,15 @@ fun NavigationRoot(
                                 DownloadsScreen(
                                     onItemClick = { item ->
                                         navigateToItem(navController = navController, item = item)
+                                    },
+                                    onExploreLibraryClick = {
+                                        navController.safeNavigate(MediaRoute) {
+                                            popUpTo(navController.graph.startDestinationId) {
+                                                saveState = true
+                                            }
+                                            launchSingleTop = true
+                                            restoreState = true
+                                        }
                                     }
                                 )
                             }

@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.recalculateWindowInsets
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.union
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -52,6 +53,7 @@ import dev.jdtech.jellyfin.core.R as CoreR
 @Composable
 fun DownloadsScreen(
     onItemClick: (item: FindroidItem) -> Unit,
+    onExploreLibraryClick: () -> Unit,
     viewModel: DownloadsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -60,6 +62,7 @@ fun DownloadsScreen(
 
     DownloadsScreenLayout(
         state = state,
+        onLibraryClick = onExploreLibraryClick,
         onAction = { action ->
             when (action) {
                 is CollectionAction.OnItemClick -> onItemClick(action.item)
@@ -71,7 +74,17 @@ fun DownloadsScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DownloadsScreenLayout(state: CollectionState, onAction: (CollectionAction) -> Unit) {
+private fun DownloadsScreenLayout(
+    state: CollectionState,
+    onLibraryClick: () -> Unit,
+    onAction: (CollectionAction) -> Unit,
+) {
+    val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
+    val windowAdaptiveInfo = currentWindowAdaptiveInfo()
+    val isExpanded = windowAdaptiveInfo.windowSizeClass.isWidthAtLeastBreakpoint(
+        WindowSizeClass.WIDTH_DP_EXPANDED_LOWER_BOUND
+    )
+
     Scaffold(
         modifier =
             Modifier
@@ -79,54 +92,54 @@ private fun DownloadsScreenLayout(state: CollectionState, onAction: (CollectionA
                 .recalculateWindowInsets(),
         contentWindowInsets = WindowInsets.statusBars.union(WindowInsets.displayCutout),
     ) { innerPadding ->
-        val configuration = LocalConfiguration.current
-        val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
-        val windowSizeClass = currentWindowAdaptiveInfo().windowSizeClass
-        val isExpanded = windowSizeClass.isWidthAtLeastBreakpoint(
-            WindowSizeClass.WIDTH_DP_EXPANDED_LOWER_BOUND
-        )
-
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-        ) {
-            if (state.sections.isEmpty()) {
+        if (state.sections.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+            ) {
                 if (isLandscape && !isExpanded) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(
-                                top = MaterialTheme.spacings.small,
-                                bottom = MaterialTheme.spacings.default
-                            )
-                            .padding(horizontal = MaterialTheme.spacings.default),
-                        horizontalAlignment = Alignment.CenterHorizontally,
+                    Row(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceEvenly,
                     ) {
-                        Text(
-                            text = stringResource(CoreR.string.title_download),
-                            style = MaterialTheme.typography.headlineLarge,
-                            textAlign = TextAlign.Center,
-                            color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.Bold
+                        Image(
+                            painter = painterResource(CoreR.drawable.download_page_placeholder),
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxHeight(),
+                            contentScale = ContentScale.FillHeight,
+                            alignment = Alignment.Center,
                         )
-                        Spacer(modifier = Modifier.height(MaterialTheme.spacings.small))
-                        Row(
-                            modifier = Modifier.fillMaxSize(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceEvenly,
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = MaterialTheme.spacings.default),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center,
                         ) {
-                            Image(
-                                painter = painterResource(CoreR.drawable.download_page_placeholder),
-                                contentDescription = null,
-                                modifier = Modifier.fillMaxHeight(),
-                                contentScale = ContentScale.FillHeight,
-                                alignment = Alignment.Center,
+                            Text(
+                                text = stringResource(CoreR.string.no_downloads_title),
+                                style = MaterialTheme.typography.headlineLarge,
+                                textAlign = TextAlign.Center,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold
                             )
+                            Spacer(modifier = Modifier.height(MaterialTheme.spacings.medium))
                             Text(
                                 text = stringResource(CoreR.string.no_downloads),
-                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(horizontal = MaterialTheme.spacings.default),
+                                style = MaterialTheme.typography.titleMedium,
+                                textAlign = TextAlign.Center,
                             )
+                            Spacer(modifier = Modifier.height(MaterialTheme.spacings.default))
+                            Button(
+                                onClick = onLibraryClick
+                            ) {
+                                Text(
+                                    text = stringResource(CoreR.string.no_downloads_button)
+                                )
+                            }
                         }
                     }
                 } else {
@@ -138,19 +151,20 @@ private fun DownloadsScreenLayout(state: CollectionState, onAction: (CollectionA
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         Text(
-                            text = stringResource(CoreR.string.title_download),
+                            text = stringResource(CoreR.string.no_downloads_title),
                             style = MaterialTheme.typography.headlineLarge,
                             textAlign = TextAlign.Center,
                             color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Bold
                         )
-                        Spacer(modifier = Modifier.height(
-                            if (isExpanded) {
-                                MaterialTheme.spacings.large
-                            } else {
-                                MaterialTheme.spacings.extraLarge
-                            }
-                        ))
+                        Spacer(modifier = Modifier.height(MaterialTheme.spacings.default))
+                        Text(
+                            text = stringResource(CoreR.string.no_downloads),
+                            modifier = Modifier.padding(horizontal = MaterialTheme.spacings.default),
+                            style = MaterialTheme.typography.titleMedium,
+                            textAlign = TextAlign.Center,
+                        )
+                        Spacer(modifier = Modifier.height(MaterialTheme.spacings.large))
                         Image(
                             painter = painterResource(CoreR.drawable.download_page_placeholder),
                             contentDescription = null,
@@ -168,17 +182,24 @@ private fun DownloadsScreenLayout(state: CollectionState, onAction: (CollectionA
                             },
                             alignment = Alignment.Center,
                         )
-                        Spacer(modifier = Modifier.height(MaterialTheme.spacings.default))
-                        Text(
-                            text = stringResource(CoreR.string.no_downloads),
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
+                        Spacer(modifier = Modifier.height(MaterialTheme.spacings.large))
+                        Button(
+                            onClick = onLibraryClick
+                        ) {
+                            Text(
+                                text = stringResource(CoreR.string.no_downloads_button)
+                            )
+                        }
                     }
                 }
             }
+        } else {
+            CollectionGrid(
+                sections = state.sections,
+                innerPadding = innerPadding,
+                onAction = onAction
+            )
         }
-
-        CollectionGrid(sections = state.sections, innerPadding = innerPadding, onAction = onAction)
     }
 }
 
@@ -192,6 +213,7 @@ private fun DownloadsScreenLayoutEmptyPreview() {
                     sections = emptyList()
                 ),
             onAction = {},
+            onLibraryClick = {},
         )
     }
 }
@@ -213,6 +235,7 @@ private fun DownloadsScreenLayoutPreview() {
                         )
                 ),
             onAction = {},
+            onLibraryClick = {},
         )
     }
 }

@@ -30,7 +30,7 @@
     <string name="series_poster">Sarjan juliste</string>
     <string name="collection_no_media">Tämä kokoelma on tyhjä</string>
     <string name="no_favorites">Sinulla ei ole suosikkeja</string>
-    <string name="no_downloads">Sinulla ei ole mitään ladattuna</string>
+
     <string name="search">Hae</string>
     <string name="no_search_results">Ei hakutuloksia</string>
     <string name="device_name">Laitteen nimi</string>

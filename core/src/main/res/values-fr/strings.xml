@@ -46,7 +46,7 @@
     <string name="jellyfin_banner">Bannière Jellyfin</string>
     <string name="check_button_description">Marquer comme vu ou non vu</string>
     <string name="favorite_button_description">Favori</string>
-    <string name="no_downloads">Vous n’avez rien téléchargé</string>
+
     <string name="episode_name_extended">S%1$d:E%2$d - %3$s</string>
     <string name="app_description">Application Jellyfin native tierce</string>
     <string name="image_description_poster">Affiche de %1$s</string>

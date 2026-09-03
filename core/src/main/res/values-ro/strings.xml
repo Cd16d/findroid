@@ -14,7 +14,7 @@
     <string name="next_up">Urmează</string>
     <string name="libraries">Biblioteci</string>
     <string name="series_poster">Posterul serialului</string>
-    <string name="no_downloads">Nu aveți nimic descărcat</string>
+
     <string name="search">Căutare</string>
     <string name="no_search_results">Niciun rezultat găsit</string>
     <string name="error_preparing_player_items">Eroare la pregătirea elementelor player-ului.</string>

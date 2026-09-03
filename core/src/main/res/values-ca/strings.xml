@@ -16,7 +16,7 @@
     <string name="libraries">Llibreries</string>
     <string name="collection_no_media">Aquesta col·lecció no conté cap mitjà multimèdia</string>
     <string name="no_favorites">No hi ha cap preferit</string>
-    <string name="no_downloads">No hi ha cap baixada</string>
+
     <string name="device_name">Nom del dispositiu</string>
     <string name="error_preparing_player_items">Error en preparar els elements del reproductor.</string>
     <string name="view_details">Veure\'n els detalls</string>

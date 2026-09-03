@@ -35,7 +35,7 @@
     <string name="series_poster">Serieplakat</string>
     <string name="collection_no_media">Denne samlinga inneheld ingen media</string>
     <string name="no_favorites">Du har ingen favorittar</string>
-    <string name="no_downloads">Du har ingenting nedlasta</string>
+
     <string name="search">Søk</string>
     <string name="no_search_results">Ingen søkeresultat</string>
     <string name="device_name">Einingnamn</string>
