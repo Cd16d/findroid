@@ -139,5 +139,5 @@
     <string name="close_menu">Close menu</string>
     <string name="no_downloads_title">No downloads yet</string>
     <string name="no_downloads">Movies and shows you download for offline viewing will appear here.</string>
-    <string name="no_downloads_button">Explore library</string>
+    <string name="explore_library">Explore library</string>
 </resources>

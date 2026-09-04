@@ -560,6 +560,18 @@ fun NavigationRoot(
                                         navigateToItem(navController = navController, item = item)
                                     },
                                     navigateBack = { navController.safePopBackStack() },
+                                    onExploreLibraryClick = {
+                                        val popped = navController.popBackStack(MediaRoute, inclusive = false)
+                                        if (!popped) {
+                                            navController.safeNavigate(MediaRoute) {
+                                                popUpTo(navController.graph.startDestinationId) {
+                                                    saveState = true
+                                                }
+                                                launchSingleTop = true
+                                                restoreState = true
+                                            }
+                                        }
+                                    },
                                 )
                             }
                             composable<MovieRoute> { backStackEntry ->

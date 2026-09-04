@@ -108,4 +108,5 @@
     <string name="download_paused">Pausa</string>
     <string name="download_downloading">Sto scaricando…</string>
     <string name="download_failed">Download non riuscito</string>
+    <string name="explore_library">Esplora la libreria</string>
 </resources>
