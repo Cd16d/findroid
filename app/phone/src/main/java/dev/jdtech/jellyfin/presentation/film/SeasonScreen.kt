@@ -23,12 +23,14 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.PreviewScreenSizes
 import androidx.compose.ui.unit.dp
@@ -36,6 +38,8 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.jdtech.jellyfin.LocalCastPlayerHeight
 import dev.jdtech.jellyfin.PlayerActivity
+import dev.jdtech.jellyfin.core.R as CoreR
+import dev.jdtech.jellyfin.core.presentation.downloader.DownloadQueue
 import dev.jdtech.jellyfin.core.presentation.downloader.DownloaderAction
 import dev.jdtech.jellyfin.core.presentation.downloader.DownloaderState
 import dev.jdtech.jellyfin.core.presentation.downloader.DownloaderViewModel
@@ -48,6 +52,8 @@ import dev.jdtech.jellyfin.models.isDownloaded
 import dev.jdtech.jellyfin.player.cast.models.CastConnectionState
 import dev.jdtech.jellyfin.player.cast.presentation.CastSessionViewModel
 import dev.jdtech.jellyfin.presentation.film.components.Direction
+import dev.jdtech.jellyfin.presentation.film.components.DownloadedBadge
+import dev.jdtech.jellyfin.presentation.film.components.DownloadingBadge
 import dev.jdtech.jellyfin.presentation.film.components.EpisodeCard
 import dev.jdtech.jellyfin.presentation.film.components.ItemButtonsBar
 import dev.jdtech.jellyfin.presentation.film.components.ItemHeader
@@ -57,6 +63,7 @@ import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
 import dev.jdtech.jellyfin.presentation.utils.rememberSafePadding
 import dev.jdtech.jellyfin.utils.ObserveAsEvents
+import dev.jdtech.jellyfin.utils.download.DownloadStatus
 import org.jellyfin.sdk.model.api.BaseItemKind
 import java.util.UUID
 
@@ -67,12 +74,14 @@ fun SeasonScreen(
     navigateHome: () -> Unit,
     navigateToItem: (item: FindroidItem) -> Unit,
     navigateToSeries: (seriesId: UUID) -> Unit,
+    navigateToDownloadPresets: () -> Unit = {},
     viewModel: SeasonViewModel = hiltViewModel(),
     downloaderViewModel: DownloaderViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
     val state by viewModel.state.collectAsStateWithLifecycle()
     val downloaderState by downloaderViewModel.state.collectAsStateWithLifecycle()
+    val queueEntries by downloaderViewModel.queueEntries.collectAsStateWithLifecycle()
 
     val castSessionViewModel: CastSessionViewModel = hiltViewModel()
     val castConnectionState by castSessionViewModel.connectionState.collectAsStateWithLifecycle()
@@ -88,6 +97,7 @@ fun SeasonScreen(
     SeasonScreenLayout(
         state = state,
         downloaderState = downloaderState,
+        queueEntries = queueEntries,
         onAction = { action ->
             when (action) {
                 is SeasonAction.Play -> {
@@ -110,6 +120,16 @@ fun SeasonScreen(
             viewModel.onAction(action)
         },
         onDownloaderAction = { action -> downloaderViewModel.onAction(action) },
+        askPresetBeforeDownload = downloaderViewModel.askPresetBeforeDownload,
+        defaultPresetId = downloaderViewModel.defaultTranscodePresetId,
+        defaultDownloadExternalAudio = downloaderViewModel.downloadExternalAudio,
+        onRememberSettings = { presetId, downloadExternalAudio ->
+            downloaderViewModel.saveDownloadSettings(presetId, downloadExternalAudio, true)
+        },
+        defaultStorageIndex = downloaderViewModel.defaultDownloadStorageIndex,
+        userCanTranscode = downloaderViewModel.userCanTranscode,
+        presets = downloaderViewModel.presets,
+        navigateToDownloadPresets = navigateToDownloadPresets,
     )
 }
 
@@ -117,8 +137,17 @@ fun SeasonScreen(
 private fun SeasonScreenLayout(
     state: SeasonState,
     downloaderState: DownloaderState,
+    queueEntries: List<DownloadQueue.Entry> = emptyList(),
     onAction: (SeasonAction) -> Unit,
     onDownloaderAction: (DownloaderAction) -> Unit,
+    askPresetBeforeDownload: Boolean = true,
+    defaultPresetId: String = "1080p_balanced",
+    defaultDownloadExternalAudio: Boolean = false,
+    onRememberSettings: (presetId: String, downloadExternalAudio: Boolean) -> Unit = { _, _ -> },
+    defaultStorageIndex: Int = -1,
+    userCanTranscode: Boolean = true,
+    presets: List<dev.jdtech.jellyfin.models.DownloadQualityPreset> = emptyList(),
+    navigateToDownloadPresets: () -> Unit = {},
 ) {
     val safePadding = rememberSafePadding()
     val castPadding = LocalCastPlayerHeight.current
@@ -131,6 +160,73 @@ private fun SeasonScreenLayout(
 
     Box(modifier = Modifier.fillMaxSize()) {
         state.season?.let { season ->
+            val context = LocalContext.current
+            val seasonEpisodeIds = remember(state.episodes) { state.episodes.map { it.id }.toSet() }
+            val seasonQueueEntries = remember(queueEntries, seasonEpisodeIds) {
+                queueEntries.filter { it.id in seasonEpisodeIds }
+            }
+
+            val convertingEp = seasonQueueEntries.firstOrNull { it.state is DownloadQueue.EntryState.Converting }
+            val downloadingEp = seasonQueueEntries.firstOrNull { it.state is DownloadQueue.EntryState.Downloading }
+            val pendingEps = seasonQueueEntries.filter { it.state is DownloadQueue.EntryState.Pending }
+            val failedEps = seasonQueueEntries.filter { it.state is DownloadQueue.EntryState.Failed }
+            val completedInQueue = seasonQueueEntries.count { it.state is DownloadQueue.EntryState.Completed }
+
+            val effectiveEp = downloadingEp ?: convertingEp
+            val activeProgress = if (effectiveEp != null) (effectiveEp.progress / 100f).coerceIn(0f, 1f) else 0f
+            val totalProgress = if (seasonQueueEntries.isNotEmpty()) {
+                ((completedInQueue.toFloat() + activeProgress) / seasonQueueEntries.size.toFloat()).coerceIn(0f, 1f)
+            } else {
+                activeProgress
+            }
+
+            val isAllPaused = seasonQueueEntries.isNotEmpty() && seasonQueueEntries.all { it.state is DownloadQueue.EntryState.Paused }
+            val allCompleted = seasonQueueEntries.isNotEmpty() && seasonQueueEntries.all { it.state is DownloadQueue.EntryState.Completed }
+
+            val isSeasonDownloading = seasonQueueEntries.any {
+                it.state is DownloadQueue.EntryState.Downloading ||
+                    it.state is DownloadQueue.EntryState.Converting ||
+                    it.state is DownloadQueue.EntryState.Pending ||
+                    it.state is DownloadQueue.EntryState.Paused
+            }
+            val isSeasonFullyDownloaded = state.episodes.isNotEmpty() && state.episodes.all { it.isDownloaded() }
+            val seasonDownloadProgress = if (isSeasonDownloading && seasonQueueEntries.isNotEmpty()) totalProgress else null
+
+            val seasonStatus = when {
+                allCompleted -> DownloadStatus.SUCCESSFUL
+                downloadingEp != null || convertingEp != null -> DownloadStatus.RUNNING
+                isAllPaused -> DownloadStatus.PAUSED
+                pendingEps.isNotEmpty() -> DownloadStatus.PENDING
+                failedEps.isNotEmpty() -> DownloadStatus.FAILED
+                else -> DownloadStatus.SUCCESSFUL
+            }
+
+            val downloadedPart = when {
+                completedInQueue > 0 -> context.resources.getQuantityString(CoreR.plurals.episodes_downloaded, completedInQueue, completedInQueue)
+                isAllPaused -> stringResource(CoreR.string.paused)
+                downloadingEp != null || convertingEp != null -> context.resources.getQuantityString(CoreR.plurals.episodes_downloading, 1, 1)
+                else -> ""
+            }
+            val queuePart = if (pendingEps.isNotEmpty()) {
+                context.resources.getQuantityString(CoreR.plurals.episodes_in_queue, pendingEps.size, pendingEps.size)
+            } else ""
+            val extraInfo = when {
+                downloadedPart.isNotEmpty() && queuePart.isNotEmpty() -> "$downloadedPart • $queuePart"
+                downloadedPart.isNotEmpty() -> downloadedPart
+                queuePart.isNotEmpty() -> queuePart
+                else -> null
+            }
+
+            val effectiveDownloaderState = if (seasonQueueEntries.isNotEmpty()) {
+                DownloaderState(
+                    status = seasonStatus,
+                    progress = totalProgress,
+                    extraInfo = if (seasonQueueEntries.size > 1) extraInfo else null,
+                )
+            } else {
+                downloaderState
+            }
+
             LazyColumn(
                 modifier = Modifier.fillMaxWidth(),
                 state = lazyListState,
@@ -148,12 +244,28 @@ private fun SeasonScreenLayout(
                                         .padding(start = paddingStart, end = paddingEnd),
                                 verticalAlignment = Alignment.Bottom,
                             ) {
-                                ItemPoster(
-                                    item = season,
-                                    direction = Direction.VERTICAL,
-                                    modifier =
-                                        Modifier.width(120.dp).clip(MaterialTheme.shapes.small),
-                                )
+                                Box {
+                                    ItemPoster(
+                                        item = season,
+                                        direction = Direction.VERTICAL,
+                                        modifier =
+                                            Modifier.width(120.dp).clip(MaterialTheme.shapes.small),
+                                    )
+                                    if (isSeasonFullyDownloaded) {
+                                        DownloadedBadge(
+                                            modifier = Modifier.align(Alignment.TopEnd).padding(MaterialTheme.spacings.small)
+                                        )
+                                    } else if (isSeasonDownloading) {
+                                        DownloadingBadge(
+                                            progress = seasonDownloadProgress,
+                                            modifier = Modifier.align(Alignment.TopEnd).padding(MaterialTheme.spacings.small)
+                                        )
+                                    } else if (state.episodes.any { it.isDownloaded() }) {
+                                        DownloadedBadge(
+                                            modifier = Modifier.align(Alignment.TopEnd).padding(MaterialTheme.spacings.small)
+                                        )
+                                    }
+                                }
                                 Spacer(Modifier.width(MaterialTheme.spacings.medium))
                                 Column(modifier = Modifier) {
                                     Text(
@@ -181,7 +293,8 @@ private fun SeasonScreenLayout(
                     val canSeasonBeDownloaded = state.episodes.any { it.canDownload } && !state.episodes.all { it.isDownloaded() }
                     ItemButtonsBar(
                         item = season,
-                        downloaderState = downloaderState,
+                        downloaderState = effectiveDownloaderState,
+                        defaultStorageIndex = defaultStorageIndex,
                         isItemDownloaded = isSeasonDownloaded,
                         canDownload = canSeasonBeDownloaded,
                         onPlayClick = { startFromBeginning ->
@@ -200,14 +313,20 @@ private fun SeasonScreenLayout(
                             }
                         },
                         onTrailerClick = {},
-                        onDownloadClick = { storageIndex ->
+                        onDownloadClick = { storageIndex, presetId, downloadExternalAudio, audioStreamIndex ->
                             onDownloaderAction(
-                                DownloaderAction.DownloadMany(state.episodes, storageIndex)
+                                DownloaderAction.DownloadMany(
+                                    items = state.episodes,
+                                    storageIndex = storageIndex,
+                                    presetId = presetId,
+                                    downloadExternalAudio = downloadExternalAudio,
+                                    audioStreamIndex = audioStreamIndex,
+                                )
                             )
                         },
                         onDownloadCancelClick = {
                             onDownloaderAction(
-                                DownloaderAction.CancelDownloadMany
+                                DownloaderAction.CancelDownloadMany(state.episodes)
                             )
                         },
                         onDownloadDeleteClick = {
@@ -215,16 +334,31 @@ private fun SeasonScreenLayout(
                                 DownloaderAction.DeleteDownloadMany(state.episodes)
                             )
                         },
+                        askPresetBeforeDownload = askPresetBeforeDownload,
+                        userCanTranscode = userCanTranscode,
+                        presets = presets,
+                        defaultPresetId = defaultPresetId,
+                        defaultDownloadExternalAudio = defaultDownloadExternalAudio,
+                        onRememberSettings = onRememberSettings,
+                        onNavigateToPresets = navigateToDownloadPresets,
                         modifier =
                             Modifier.padding(start = paddingStart, end = paddingEnd).fillMaxWidth(),
                         canPlay = state.episodes.isNotEmpty(),
                     )
                 }
                 items(items = state.episodes, key = { episode -> episode.id }) { episode ->
+                    val queueEntry = queueEntries.firstOrNull { it.id == episode.id }
+                    val isDownloading = queueEntry?.state is DownloadQueue.EntryState.Downloading ||
+                        queueEntry?.state is DownloadQueue.EntryState.Converting
+                    val isPending = queueEntry?.state is DownloadQueue.EntryState.Pending
+                    val downloadProgress = if (isDownloading) queueEntry.progress / 100f else null
                     EpisodeCard(
                         episode = episode,
                         onClick = { onAction(SeasonAction.NavigateToItem(episode)) },
                         modifier = Modifier.padding(start = paddingStart, end = paddingEnd),
+                        isDownloading = isDownloading,
+                        isPending = isPending,
+                        downloadProgress = downloadProgress,
                     )
                 }
             }

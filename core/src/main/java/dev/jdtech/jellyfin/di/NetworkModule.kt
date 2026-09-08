@@ -4,6 +4,9 @@ import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import dev.jdtech.jellyfin.utils.NetworkConnectivity
+import dev.jdtech.jellyfin.utils.NetworkConnectivityImpl
+import dev.jdtech.jellyfin.utils.NetworkPriorityManager
 import okhttp3.OkHttpClient
 import javax.inject.Singleton
 
@@ -12,7 +15,20 @@ import javax.inject.Singleton
 object NetworkModule {
     @Singleton
     @Provides
-    fun provideOkHttpClient(): OkHttpClient {
-        return OkHttpClient()
+    fun provideOkHttpClient(priorityManager: NetworkPriorityManager): OkHttpClient {
+        return OkHttpClient.Builder()
+            .addInterceptor { chain ->
+                priorityManager.onUiRequestStarted()
+                try {
+                    chain.proceed(chain.request())
+                } finally {
+                    priorityManager.onUiRequestFinished()
+                }
+            }
+            .build()
     }
+
+    @Singleton
+    @Provides
+    fun provideNetworkConnectivity(impl: NetworkConnectivityImpl): NetworkConnectivity = impl
 }

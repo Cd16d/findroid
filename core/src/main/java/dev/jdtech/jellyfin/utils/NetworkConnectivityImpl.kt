@@ -1,0 +1,41 @@
+package dev.jdtech.jellyfin.utils
+
+import android.app.Application
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
+import javax.inject.Inject
+
+/**
+ * Connectivity check backed by [ConnectivityManager]. Reports online when there is an active
+ * network that advertises internet capability.
+ */
+class NetworkConnectivityImpl
+@Inject
+constructor(private val application: Application) : NetworkConnectivity {
+    override fun isOnline(): Boolean {
+        val connectivityManager =
+            application.getSystemService(ConnectivityManager::class.java) ?: return false
+        val activeNetwork = connectivityManager.activeNetwork ?: return false
+        val capabilities =
+            connectivityManager.getNetworkCapabilities(activeNetwork) ?: return false
+        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+    }
+
+    override fun isMetered(): Boolean {
+        val connectivityManager =
+            application.getSystemService(ConnectivityManager::class.java) ?: return false
+        val activeNetwork = connectivityManager.activeNetwork ?: return false
+        val capabilities =
+            connectivityManager.getNetworkCapabilities(activeNetwork) ?: return false
+        return !capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
+    }
+
+    override fun isRoaming(): Boolean {
+        val connectivityManager =
+            application.getSystemService(ConnectivityManager::class.java) ?: return false
+        val activeNetwork = connectivityManager.activeNetwork ?: return false
+        val capabilities =
+            connectivityManager.getNetworkCapabilities(activeNetwork) ?: return false
+        return !capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_ROAMING)
+    }
+}

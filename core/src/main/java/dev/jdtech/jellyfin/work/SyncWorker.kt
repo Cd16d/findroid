@@ -18,6 +18,8 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import org.jellyfin.sdk.model.api.UpdateUserItemDataDto
 
+import timber.log.Timber
+
 @HiltWorker
 class SyncWorker
 @AssistedInject
@@ -54,46 +56,37 @@ constructor(
                         api.update(baseUrl = serverAddress.address, accessToken = user.accessToken)
                         userId = user.id
                     }
-                    val movies =
-                        database.getMoviesByServerId(server.id).map {
-                            it.toFindroidMovie(database, user.id)
-                        }
-                    val episodes =
-                        database.getEpisodesByServerId(server.id).map {
-                            it.toFindroidEpisode(database, user.id)
-                        }
 
-                    syncUserData(jellyfinApi, user, movies)
-                    syncUserData(jellyfinApi, user, episodes)
+                    val pendingUserData = database.getAllUserDataToBeSynced(user.id)
+                    for (userData in pendingUserData) {
+                        try {
+                            jellyfinApi.itemsApi.updateItemUserData(
+                                itemId = userData.itemId,
+                                userId = user.id,
+                                data =
+                                    UpdateUserItemDataDto(
+                                        playbackPositionTicks = userData.playbackPositionTicks,
+                                        isFavorite = userData.favorite,
+                                        played = userData.played,
+                                    ),
+                            )
+
+                            database.setUserDataToBeSynced(user.id, userData.itemId, false)
+
+                            // If this item was deleted and only kept to sync progress, clean up its userdata now
+                            if (database.getSources(userData.itemId).isEmpty() &&
+                                database.countUserDataToBeSynced(userData.itemId) == 0
+                            ) {
+                                database.deleteUserData(userData.itemId)
+                            }
+                        } catch (e: Exception) {
+                            Timber.e(e, "SyncWorker: failed to sync user data for item ${userData.itemId}")
+                        }
+                    }
                 }
             }
 
             Result.success()
-        }
-    }
-
-    private suspend fun syncUserData(
-        jellyfinApi: JellyfinApi,
-        user: User,
-        items: List<FindroidItem>,
-    ) {
-        for (item in items) {
-            val userData = database.getUserDataToBeSynced(user.id, item.id) ?: continue
-
-            try {
-                jellyfinApi.itemsApi.updateItemUserData(
-                    itemId = item.id,
-                    userId = user.id,
-                    data =
-                        UpdateUserItemDataDto(
-                            playbackPositionTicks = userData.playbackPositionTicks,
-                            isFavorite = userData.favorite,
-                            played = userData.played,
-                        ),
-                )
-
-                database.setUserDataToBeSynced(user.id, item.id, false)
-            } catch (_: Exception) {}
         }
     }
 }

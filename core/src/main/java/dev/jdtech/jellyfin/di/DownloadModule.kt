@@ -11,11 +11,35 @@ import dev.jdtech.jellyfin.repository.JellyfinRepository
 import dev.jdtech.jellyfin.settings.domain.AppPreferences
 import dev.jdtech.jellyfin.utils.Downloader
 import dev.jdtech.jellyfin.utils.DownloaderImpl
+import dev.jdtech.jellyfin.utils.download.MediaDownloadEngine
+import okhttp3.OkHttpClient
+import java.util.concurrent.TimeUnit
+import javax.inject.Qualifier
 import javax.inject.Singleton
+
+/**
+ * Hilt qualifier for the OkHttpClient used exclusively by MediaDownloadEngine.
+ * Has no overall call timeout (downloads are long-running) and retry on connection failure.
+ */
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class DownloadHttpClient
 
 @Module
 @InstallIn(SingletonComponent::class)
-object DownloaderModule {
+object DownloadModule {
+
+    @Singleton
+    @Provides
+    @DownloadHttpClient
+    fun provideDownloadOkHttpClient(): OkHttpClient =
+        OkHttpClient.Builder()
+            .callTimeout(0, TimeUnit.MILLISECONDS)
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(60, TimeUnit.SECONDS)
+            .retryOnConnectionFailure(true)
+            .build()
+
     @Singleton
     @Provides
     fun provideDownloader(
@@ -24,13 +48,14 @@ object DownloaderModule {
         jellyfinRepository: JellyfinRepository,
         appPreferences: AppPreferences,
         workManager: WorkManager,
-    ): Downloader {
-        return DownloaderImpl(
+        engine: MediaDownloadEngine,
+    ): Downloader =
+        DownloaderImpl(
             application,
             serverDatabase,
             jellyfinRepository,
             appPreferences,
             workManager,
+            engine,
         )
-    }
 }

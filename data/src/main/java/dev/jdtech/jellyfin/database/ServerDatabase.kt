@@ -21,6 +21,7 @@ import dev.jdtech.jellyfin.models.FindroidUserDataDto
 import dev.jdtech.jellyfin.models.Server
 import dev.jdtech.jellyfin.models.ServerAddress
 import dev.jdtech.jellyfin.models.User
+import dev.jdtech.jellyfin.models.UserDownloadDto
 
 @Database(
     entities =
@@ -38,8 +39,9 @@ import dev.jdtech.jellyfin.models.User
             FindroidTrickplayInfoDto::class,
             FindroidSegmentDto::class,
             FindroidPartDto::class,
+            UserDownloadDto::class,
         ],
-    version = 9,
+    version = 10,
     autoMigrations =
         [
             AutoMigration(from = 2, to = 3),
@@ -65,6 +67,43 @@ val MIGRATION_6_7 =
             db.execSQL("DROP TABLE segments")
             db.execSQL(
                 "CREATE TABLE segments (`itemId` TEXT NOT NULL, `type` TEXT NOT NULL, `startTicks` INTEGER NOT NULL, `endTicks` INTEGER NOT NULL, PRIMARY KEY(`itemId`, `type`), FOREIGN KEY(`itemId`) REFERENCES `episodes`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )"
+            )
+        }
+    }
+
+val MIGRATION_9_10 =
+    object : Migration(startVersion = 9, endVersion = 10) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `user_downloads` (`userId` TEXT NOT NULL, `itemId` TEXT NOT NULL, `downloadedAt` INTEGER NOT NULL, PRIMARY KEY(`userId`, `itemId`))"
+            )
+            db.execSQL(
+                """
+                INSERT OR IGNORE INTO user_downloads (userId, itemId, downloadedAt)
+                SELECT u.id, s.itemId, 0
+                FROM sources s
+                JOIN movies m ON s.itemId = m.id
+                JOIN servers srv ON m.serverId = srv.id
+                JOIN users u ON u.id = srv.currentUserId
+                """.trimIndent()
+            )
+            db.execSQL(
+                """
+                INSERT OR IGNORE INTO user_downloads (userId, itemId, downloadedAt)
+                SELECT u.id, s.itemId, 0
+                FROM sources s
+                JOIN episodes ep ON s.itemId = ep.id
+                JOIN servers srv ON ep.serverId = srv.id
+                JOIN users u ON u.id = srv.currentUserId
+                """.trimIndent()
+            )
+            db.execSQL(
+                """
+                INSERT OR IGNORE INTO user_downloads (userId, itemId, downloadedAt)
+                SELECT ud.userId, s.itemId, 0
+                FROM sources s
+                JOIN userdata ud ON s.itemId = ud.itemId
+                """.trimIndent()
             )
         }
     }

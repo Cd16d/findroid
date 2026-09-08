@@ -660,4 +660,14 @@ class JellyfinRepositoryImpl(
             this.userId = user.id
         }
     }
+
+    override suspend fun canTranscode(): Boolean =
+        withContext(Dispatchers.IO) {
+            try {
+                val policy = jellyfinApi.userApi.getCurrentUser().content.policy
+                (policy?.enableSyncTranscoding != false) && (policy?.enableVideoPlaybackTranscoding != false)
+            } catch (e: Exception) {
+                true
+            }
+        }
 }

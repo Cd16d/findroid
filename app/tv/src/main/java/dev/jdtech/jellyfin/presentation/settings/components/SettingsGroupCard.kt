@@ -95,6 +95,7 @@ fun SettingsGroupCard(
                                         onFocusChange(it, preference)
                                     },
                             )
+                        else -> Unit
                     }
                     if (index < group.preferences.lastIndex) {
                         HorizontalDivider(color = DividerDefaults.color.copy(alpha = 0.2f))

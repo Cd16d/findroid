@@ -1,6 +1,7 @@
 package dev.jdtech.jellyfin.player.core.domain
 
 import androidx.media3.common.C
+import dev.jdtech.jellyfin.core.presentation.downloader.DownloadQueue
 import dev.jdtech.jellyfin.repository.JellyfinRepository
 import org.jellyfin.sdk.model.api.PlayMethod
 import timber.log.Timber
@@ -14,7 +15,8 @@ import javax.inject.Singleton
  */
 @Singleton
 class PlaybackManager @Inject constructor(
-    private val repository: JellyfinRepository
+    private val repository: JellyfinRepository,
+    private val downloadQueue: dagger.Lazy<DownloadQueue>,
 ) {
     /**
      * Reports that playback has started for a specific item.
@@ -114,6 +116,25 @@ class PlaybackManager @Inject constructor(
             )
         } catch (e: Exception) {
             Timber.e(e, "Failed to report playback stop for item: $itemId")
+        }
+
+        if (playedPercentage >= 90) {
+            try {
+                downloadQueue.get().checkAutoDeleteWatched(itemId)
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to trigger auto delete for watched item: $itemId")
+            }
+            try {
+                downloadQueue.get().checkSmartDownloadOnWatched(itemId)
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to trigger smart download for watched item: $itemId")
+            }
+        }
+
+        try {
+            downloadQueue.get().scheduleUserDataSync()
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to schedule user data sync for item: $itemId")
         }
     }
 }

@@ -12,6 +12,7 @@ import dev.jdtech.jellyfin.models.FindroidMovieDto
 import dev.jdtech.jellyfin.models.FindroidSeasonDto
 import dev.jdtech.jellyfin.models.FindroidSegmentDto
 import dev.jdtech.jellyfin.models.FindroidShowDto
+import dev.jdtech.jellyfin.models.FindroidShowWithEpisodes
 import dev.jdtech.jellyfin.models.FindroidSourceDto
 import dev.jdtech.jellyfin.models.FindroidTrickplayInfoDto
 import dev.jdtech.jellyfin.models.FindroidUserDataDto
@@ -22,7 +23,9 @@ import dev.jdtech.jellyfin.models.ServerWithAddresses
 import dev.jdtech.jellyfin.models.ServerWithAddressesAndUsers
 import dev.jdtech.jellyfin.models.ServerWithUsers
 import dev.jdtech.jellyfin.models.User
+import dev.jdtech.jellyfin.models.UserDownloadDto
 import java.util.UUID
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface ServerDatabaseDao {
@@ -105,6 +108,9 @@ interface ServerDatabaseDao {
     @Query("SELECT * FROM sources WHERE downloadId = :downloadId")
     fun getSourceByDownloadId(downloadId: Long): FindroidSourceDto?
 
+    @Query("SELECT * FROM sources WHERE downloadId IS NOT NULL AND path LIKE '%.download'")
+    fun getIncompleteSources(): List<FindroidSourceDto>
+
     @Query("UPDATE sources SET downloadId = :downloadId WHERE id = :id")
     fun setSourceDownloadId(id: String, downloadId: Long)
 
@@ -160,6 +166,10 @@ interface ServerDatabaseDao {
     @Query("SELECT * FROM shows WHERE serverId = :serverId ORDER BY name ASC")
     fun getShowsByServerId(serverId: String): List<FindroidShowDto>
 
+    @Transaction
+    @Query("SELECT * FROM shows WHERE serverId = :serverId ORDER BY name ASC")
+    fun getDownloadedShowsWithEpisodes(serverId: String): List<FindroidShowWithEpisodes>
+
     @Query("DELETE FROM shows WHERE id = :id") fun deleteShow(id: UUID)
 
     @Insert(onConflict = OnConflictStrategy.IGNORE) fun insertSeason(show: FindroidSeasonDto)
@@ -179,6 +189,11 @@ interface ServerDatabaseDao {
         "SELECT * FROM episodes WHERE seriesId = :seriesId ORDER BY parentIndexNumber ASC, indexNumber ASC"
     )
     fun getEpisodesByShowId(seriesId: UUID): List<FindroidEpisodeDto>
+
+    @Query(
+        "SELECT * FROM episodes WHERE seriesId = :seriesId ORDER BY parentIndexNumber ASC, indexNumber ASC"
+    )
+    fun getDownloadedEpisodesByShowId(seriesId: UUID): Flow<List<FindroidEpisodeDto>>
 
     @Query("SELECT * FROM episodes WHERE seasonId = :seasonId ORDER BY indexNumber ASC")
     fun getEpisodesBySeasonId(seasonId: UUID): List<FindroidEpisodeDto>
@@ -238,6 +253,12 @@ interface ServerDatabaseDao {
     @Query("SELECT * FROM userdata WHERE userId = :userId AND itemId = :itemId AND toBeSynced = 1")
     fun getUserDataToBeSynced(userId: UUID, itemId: UUID): FindroidUserDataDto?
 
+    @Query("SELECT * FROM userdata WHERE userId = :userId AND toBeSynced = 1")
+    fun getAllUserDataToBeSynced(userId: UUID): List<FindroidUserDataDto>
+
+    @Query("SELECT COUNT(*) FROM userdata WHERE itemId = :itemId AND toBeSynced = 1")
+    fun countUserDataToBeSynced(itemId: UUID): Int
+
     @Query(
         "UPDATE userdata SET toBeSynced = :toBeSynced WHERE itemId = :itemId AND userId = :userId"
     )
@@ -266,4 +287,39 @@ interface ServerDatabaseDao {
 
     @Query("DELETE FROM parts WHERE id = :id")
     fun deletePart(id: UUID)
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    fun insertUserDownload(userDownload: UserDownloadDto)
+
+    @Query("DELETE FROM user_downloads WHERE userId = :userId AND itemId = :itemId")
+    fun deleteUserDownload(userId: UUID, itemId: UUID)
+
+    @Query("DELETE FROM user_downloads WHERE itemId = :itemId")
+    fun deleteUserDownloadsByItemId(itemId: UUID)
+
+    @Query("SELECT COUNT(*) FROM user_downloads WHERE itemId = :itemId")
+    fun countUserDownloads(itemId: UUID): Int
+
+    @Query("SELECT EXISTS(SELECT 1 FROM user_downloads WHERE userId = :userId AND itemId = :itemId)")
+    fun isItemDownloadedForUser(userId: UUID, itemId: UUID): Boolean
+
+    @Query(
+        "SELECT movies.* FROM movies INNER JOIN user_downloads ON movies.id = user_downloads.itemId WHERE movies.serverId = :serverId AND user_downloads.userId = :userId ORDER BY movies.name ASC"
+    )
+    fun getDownloadedMoviesByServerAndUser(serverId: String, userId: UUID): List<FindroidMovieDto>
+
+    @Query(
+        "SELECT DISTINCT shows.* FROM shows INNER JOIN episodes ON shows.id = episodes.seriesId INNER JOIN user_downloads ON episodes.id = user_downloads.itemId WHERE shows.serverId = :serverId AND user_downloads.userId = :userId ORDER BY shows.name ASC"
+    )
+    fun getDownloadedShowsByServerAndUser(serverId: String, userId: UUID): List<FindroidShowDto>
+
+    @Query(
+        "SELECT episodes.* FROM episodes INNER JOIN user_downloads ON episodes.id = user_downloads.itemId WHERE episodes.seriesId = :seriesId AND user_downloads.userId = :userId ORDER BY episodes.parentIndexNumber ASC, episodes.indexNumber ASC"
+    )
+    fun getDownloadedEpisodesByShowAndUser(seriesId: UUID, userId: UUID): List<FindroidEpisodeDto>
+
+    @Query(
+        "SELECT episodes.* FROM episodes INNER JOIN user_downloads ON episodes.id = user_downloads.itemId WHERE episodes.seasonId = :seasonId AND user_downloads.userId = :userId ORDER BY episodes.indexNumber ASC"
+    )
+    fun getDownloadedEpisodesBySeasonAndUser(seasonId: UUID, userId: UUID): List<FindroidEpisodeDto>
 }

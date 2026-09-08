@@ -1,4 +1,4 @@
-package dev.jdtech.jellyfin.presentation.components
+package dev.jdtech.jellyfin.presentation.film.components
 
 import android.content.res.Configuration
 import androidx.annotation.DrawableRes

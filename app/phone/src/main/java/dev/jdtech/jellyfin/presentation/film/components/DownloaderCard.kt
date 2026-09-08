@@ -1,6 +1,5 @@
 package dev.jdtech.jellyfin.presentation.film.components
 
-import android.app.DownloadManager
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -31,6 +30,7 @@ import dev.jdtech.jellyfin.core.presentation.downloader.DownloaderState
 import dev.jdtech.jellyfin.models.UiText
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
+import dev.jdtech.jellyfin.utils.download.DownloadStatus
 import kotlin.math.roundToInt
 
 @Composable
@@ -43,30 +43,30 @@ fun DownloaderCard(state: DownloaderState, onCancelClick: () -> Unit, onRetryCli
 
     val textColor =
         when (state.status) {
-            DownloadManager.STATUS_PAUSED -> Color.Yellow
-            DownloadManager.STATUS_FAILED -> MaterialTheme.colorScheme.error
+            DownloadStatus.PAUSED -> Color.Yellow
+            DownloadStatus.FAILED -> MaterialTheme.colorScheme.error
             else -> MaterialTheme.colorScheme.onSurface
         }
 
     val statusText =
         when (state.status) {
-            DownloadManager.STATUS_PENDING -> stringResource(CoreR.string.download_pending)
-            DownloadManager.STATUS_PAUSED -> stringResource(CoreR.string.download_paused)
-            DownloadManager.STATUS_FAILED -> stringResource(CoreR.string.download_failed)
+            DownloadStatus.PENDING -> stringResource(CoreR.string.download_pending)
+            DownloadStatus.PAUSED -> stringResource(CoreR.string.download_paused)
+            DownloadStatus.FAILED -> stringResource(CoreR.string.download_failed)
             else -> stringResource(CoreR.string.download_downloading)
         }
 
     val progressIndicatorColor =
         when (state.status) {
-            DownloadManager.STATUS_PAUSED -> Color.Yellow
-            DownloadManager.STATUS_SUCCESSFUL -> Color.Green
-            DownloadManager.STATUS_FAILED -> MaterialTheme.colorScheme.error
+            DownloadStatus.PAUSED -> Color.Yellow
+            DownloadStatus.SUCCESSFUL -> Color.Green
+            DownloadStatus.FAILED -> MaterialTheme.colorScheme.error
             else -> ProgressIndicatorDefaults.linearColor
         }
 
     val progressTrackColor =
         when (state.status) {
-            DownloadManager.STATUS_FAILED -> MaterialTheme.colorScheme.errorContainer
+            DownloadStatus.FAILED -> MaterialTheme.colorScheme.errorContainer
             else -> ProgressIndicatorDefaults.linearTrackColor
         }
 
@@ -93,7 +93,7 @@ fun DownloaderCard(state: DownloaderState, onCancelClick: () -> Unit, onRetryCli
                 }
                 Spacer(Modifier.height(MaterialTheme.spacings.small))
                 when (state.status) {
-                    DownloadManager.STATUS_PENDING -> {
+                    DownloadStatus.PENDING -> {
                         LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                     }
                     else -> {
@@ -105,10 +105,20 @@ fun DownloaderCard(state: DownloaderState, onCancelClick: () -> Unit, onRetryCli
                         )
                     }
                 }
-                Spacer(Modifier.height(MaterialTheme.spacings.small))
-                if (state.errorText != null) {
+                val extraInfo = state.extraInfo
+                if (extraInfo != null) {
+                    Spacer(Modifier.height(MaterialTheme.spacings.small))
                     Text(
-                        text = state.errorText!!.asString(),
+                        text = extraInfo,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+                val errorText = state.errorText
+                if (errorText != null) {
+                    Spacer(Modifier.height(MaterialTheme.spacings.small))
+                    Text(
+                        text = errorText.asString(),
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodyMedium,
                     )
@@ -116,8 +126,8 @@ fun DownloaderCard(state: DownloaderState, onCancelClick: () -> Unit, onRetryCli
             }
             CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 0.dp) {
                 when (state.status) {
-                    DownloadManager.STATUS_PENDING,
-                    DownloadManager.STATUS_RUNNING -> {
+                    DownloadStatus.PENDING,
+                    DownloadStatus.RUNNING -> {
                         FilledTonalIconButton(onClick = onCancelClick) {
                             Icon(
                                 painter = painterResource(CoreR.drawable.ic_x),
@@ -125,7 +135,7 @@ fun DownloaderCard(state: DownloaderState, onCancelClick: () -> Unit, onRetryCli
                             )
                         }
                     }
-                    DownloadManager.STATUS_FAILED -> {
+                    DownloadStatus.FAILED -> {
                         FilledTonalIconButton(onClick = onRetryClick) {
                             Icon(
                                 painter = painterResource(CoreR.drawable.ic_rotate_ccw),
@@ -144,7 +154,7 @@ fun DownloaderCard(state: DownloaderState, onCancelClick: () -> Unit, onRetryCli
 private fun DownloaderCardPendingPreview() {
     FindroidTheme {
         DownloaderCard(
-            state = DownloaderState(status = DownloadManager.STATUS_PENDING),
+            state = DownloaderState(status = DownloadStatus.PENDING),
             onCancelClick = {},
             onRetryClick = {},
         )
@@ -156,7 +166,7 @@ private fun DownloaderCardPendingPreview() {
 private fun DownloaderCardDownloadingPreview() {
     FindroidTheme {
         DownloaderCard(
-            state = DownloaderState(status = DownloadManager.STATUS_RUNNING, progress = 0.5f),
+            state = DownloaderState(status = DownloadStatus.RUNNING, progress = 0.5f),
             onCancelClick = {},
             onRetryClick = {},
         )
@@ -170,7 +180,7 @@ private fun DownloaderCardFailedPreview() {
         DownloaderCard(
             state =
                 DownloaderState(
-                    status = DownloadManager.STATUS_FAILED,
+                    status = DownloadStatus.FAILED,
                     progress = 0.5f,
                     errorText = UiText.DynamicString("Not enough storage space"),
                 ),

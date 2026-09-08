@@ -371,4 +371,6 @@ class JellyfinRepositoryOfflineImpl(
             this.userId = user.id
         }
     }
+
+    override suspend fun canTranscode(): Boolean = false
 }

@@ -216,7 +216,7 @@ private fun ShowScreenLayout(state: ShowState, onAction: (ShowAction) -> Unit) {
                             }
                         },
                         onTrailerClick = { uri -> onAction(ShowAction.PlayTrailer(uri)) },
-                        onDownloadClick = {},
+                        onDownloadClick = { _, _, _, _ -> },
                         onDownloadCancelClick = {},
                         onDownloadDeleteClick = {},
                         modifier = Modifier.fillMaxWidth(),

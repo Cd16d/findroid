@@ -1,11 +1,20 @@
 package dev.jdtech.jellyfin.settings.domain
 
+import android.content.Context
 import android.content.SharedPreferences
+import androidx.core.content.edit
 import dev.jdtech.jellyfin.settings.domain.models.Preference
 import javax.inject.Inject
 import timber.log.Timber
 
 class AppPreferences @Inject constructor(val sharedPreferences: SharedPreferences) {
+    constructor(context: Context) : this(
+        context.getSharedPreferences(
+            context.packageName + "_preferences",
+            Context.MODE_PRIVATE,
+        ),
+    )
+
     // Server
     val currentServer = Preference<String?>("pref_current_server", null)
 
@@ -82,6 +91,23 @@ class AppPreferences @Inject constructor(val sharedPreferences: SharedPreference
     // Downloads
     val downloadOverMobileData = Preference("pref_downloads_mobile_data", false)
     val downloadWhenRoaming = Preference("pref_downloads_roaming", false)
+    val defaultDownloadStorageIndex = Preference("pref_downloads_default_storage_index", "0")
+    val smartDownloadNextEpisode = Preference("smart_download_next_episode", true)
+    val smartDownloadNextEpisodesCount = Preference("smart_download_next_episodes_count", "3")
+    val smartDownloadStorageLimitGb = Preference("smart_download_storage_limit_gb", "20")
+    val autoDeleteWatched = Preference("auto_delete_watched", false)
+    val askPresetBeforeDownload = Preference("ask_preset_before_download", true)
+    val userCanTranscode = Preference("pref_user_can_transcode", true)
+    val downloadExternalAudio = Preference("pref_downloads_external_audio", false)
+    val defaultTranscodePresetId = Preference("default_transcode_preset_id", "1080p_balanced")
+    val defaultAudioTranscodeCodec = Preference("default_audio_transcode_codec", "aac")
+    val defaultAudioTranscodeChannels = Preference("default_audio_transcode_channels", "2")
+    val defaultAudioTranscodeBitrate = Preference("default_audio_transcode_bitrate", "0")
+    val customTranscodePresetsJson = Preference("custom_transcode_presets_json", "")
+    val maxConcurrentDownloads = Preference("pref_downloads_max_concurrent", 1)
+
+    // Device
+    val customDeviceName = Preference("pref_custom_device_name", "")
 
     // Network
     val requestTimeout =
@@ -141,17 +167,17 @@ class AppPreferences @Inject constructor(val sharedPreferences: SharedPreference
     }
 
     inline fun <reified T> setValue(preference: Preference<T>, value: T) {
-        val editor = sharedPreferences.edit()
-        @Suppress("UNCHECKED_CAST")
-        when (preference.defaultValue) {
-            is Boolean -> editor.putBoolean(preference.backendName, value as Boolean)
-            is Int -> editor.putInt(preference.backendName, value as Int)
-            is Long -> editor.putLong(preference.backendName, value as Long)
-            is Float -> editor.putFloat(preference.backendName, value as Float)
-            is String? -> editor.putString(preference.backendName, value as String?)
-            is Set<*> -> editor.putStringSet(preference.backendName, value as Set<String>)
-            else -> throw Exception()
+        sharedPreferences.edit {
+            @Suppress("UNCHECKED_CAST")
+            when (preference.defaultValue) {
+                is Boolean -> putBoolean(preference.backendName, value as Boolean)
+                is Int -> putInt(preference.backendName, value as Int)
+                is Long -> putLong(preference.backendName, value as Long)
+                is Float -> putFloat(preference.backendName, value as Float)
+                is String? -> putString(preference.backendName, value as String?)
+                is Set<*> -> putStringSet(preference.backendName, value as Set<String>)
+                else -> throw Exception()
+            }
         }
-        editor.apply()
     }
 }

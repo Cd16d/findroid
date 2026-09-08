@@ -14,8 +14,9 @@ data class PreferenceSelect(
     override val supportedDeviceTypes: List<DeviceType> = listOf(DeviceType.PHONE, DeviceType.TV),
     val onUpdate: (String?) -> Unit = {},
     val backendPreference: PreferenceBackend<String?>,
-    val options: Int,
-    val optionValues: Int,
+    val options: Int = 0,
+    val optionValues: Int = 0,
+    val dynamicOptions: List<Pair<String?, String>>? = null,
     val optionsIncludeNull: Boolean = false,
     val value: String? = null,
 ) : Preference

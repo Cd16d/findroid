@@ -71,6 +71,7 @@ import dev.jdtech.jellyfin.presentation.cast.components.CastBottomSheet
 import dev.jdtech.jellyfin.presentation.cast.components.CastButton
 import dev.jdtech.jellyfin.presentation.film.CollectionScreen
 import dev.jdtech.jellyfin.presentation.film.DownloadsScreen
+import dev.jdtech.jellyfin.presentation.film.components.ShowDownloadsScreen
 import dev.jdtech.jellyfin.presentation.film.EpisodeScreen
 import dev.jdtech.jellyfin.presentation.film.FavoritesScreen
 import dev.jdtech.jellyfin.presentation.film.HomeScreen
@@ -81,8 +82,11 @@ import dev.jdtech.jellyfin.presentation.film.PersonScreen
 import dev.jdtech.jellyfin.presentation.film.SeasonScreen
 import dev.jdtech.jellyfin.presentation.film.ShowScreen
 import dev.jdtech.jellyfin.presentation.settings.AboutScreen
+import dev.jdtech.jellyfin.presentation.settings.DeviceScreen
+import dev.jdtech.jellyfin.presentation.settings.DownloadPresetsScreen
 import dev.jdtech.jellyfin.presentation.settings.SettingsFileEditScreen
 import dev.jdtech.jellyfin.presentation.settings.SettingsScreen
+import dev.jdtech.jellyfin.presentation.settings.SmartDownloadsScreen
 import dev.jdtech.jellyfin.presentation.setup.addresses.ServerAddressesScreen
 import dev.jdtech.jellyfin.presentation.setup.addserver.AddServerScreen
 import dev.jdtech.jellyfin.presentation.setup.login.LoginScreen
@@ -95,6 +99,7 @@ import dev.jdtech.jellyfin.presentation.utils.rememberSafePadding
 import kotlinx.serialization.Serializable
 import java.util.UUID
 import dev.jdtech.jellyfin.core.R as CoreR
+import dev.jdtech.jellyfin.settings.R as SettingsR
 
 @Serializable
 data object WelcomeRoute
@@ -122,6 +127,9 @@ data object MediaRoute
 
 @Serializable
 data object DownloadsRoute
+
+@Serializable
+data class ShowDownloadsRoute(val showId: String, val showTitle: String)
 
 @Serializable
 data class LibraryRoute(
@@ -161,6 +169,15 @@ data class SettingsFileEditRoute(
 
 @Serializable
 data object AboutRoute
+
+@Serializable
+data object DeviceRoute
+
+@Serializable
+data object SmartDownloadsRoute
+
+@Serializable
+data object DownloadPresetsRoute
 
 data class TabBarItem(
     @param:StringRes val title: Int,
@@ -517,8 +534,19 @@ fun NavigationRoot(
                             }
                             composable<DownloadsRoute> {
                                 DownloadsScreen(
-                                    onItemClick = { item ->
-                                        navigateToItem(navController = navController, item = item)
+                                    onMovieClick = { movie ->
+                                        navController.safeNavigate(MovieRoute(movieId = movie.id.toString()))
+                                    },
+                                    onShowClick = { show ->
+                                        navController.safeNavigate(
+                                            ShowDownloadsRoute(showId = show.id.toString(), showTitle = show.name)
+                                        )
+                                    },
+                                    onStorageClick = {
+                                        navController.safeNavigate(SettingsRoute(intArrayOf(CoreR.string.title_download)))
+                                    },
+                                    onSmartDownloadsClick = {
+                                        navController.safeNavigate(SettingsRoute(intArrayOf(CoreR.string.title_download)))
                                     },
                                     onExploreLibraryClick = {
                                         navController.safeNavigate(MediaRoute) {
@@ -528,7 +556,18 @@ fun NavigationRoot(
                                             launchSingleTop = true
                                             restoreState = true
                                         }
-                                    }
+                                    },
+                                )
+                            }
+                            composable<ShowDownloadsRoute> { backStackEntry ->
+                                val route: ShowDownloadsRoute = backStackEntry.toRoute()
+                                ShowDownloadsScreen(
+                                    showId = UUID.fromString(route.showId),
+                                    showTitle = route.showTitle,
+                                    onEpisodeClick = { episode ->
+                                        navController.safeNavigate(EpisodeRoute(episodeId = episode.id.toString()))
+                                    },
+                                    navigateBack = { navController.safePopBackStack() },
                                 )
                             }
                             composable<LibraryRoute> { backStackEntry ->
@@ -583,6 +622,9 @@ fun NavigationRoot(
                                     navigateToPerson = { personId ->
                                         navController.safeNavigate(PersonRoute(personId.toString()))
                                     },
+                                    navigateToDownloadPresets = {
+                                        navController.safeNavigate(DownloadPresetsRoute)
+                                    },
                                 )
                             }
                             composable<ShowRoute> { backStackEntry ->
@@ -614,6 +656,9 @@ fun NavigationRoot(
                                             launchSingleTop = true
                                         }
                                     },
+                                    navigateToDownloadPresets = {
+                                        navController.safeNavigate(DownloadPresetsRoute)
+                                    },
                                 )
                             }
                             composable<EpisodeRoute> { backStackEntry ->
@@ -630,6 +675,9 @@ fun NavigationRoot(
                                             popUpTo(SeasonRoute(seasonId = seasonId.toString()))
                                             launchSingleTop = true
                                         }
+                                    },
+                                    navigateToDownloadPresets = {
+                                        navController.safeNavigate(DownloadPresetsRoute)
                                     },
                                 )
                             }
@@ -657,6 +705,8 @@ fun NavigationRoot(
                                     navigateToServers = { navController.safeNavigate(ServersRoute) },
                                     navigateToUsers = { navController.safeNavigate(UsersRoute) },
                                     navigateToAbout = { navController.safeNavigate(AboutRoute) },
+                                    navigateToDevice = { navController.safeNavigate(DeviceRoute) },
+                                    navigateToDownloadPresets = { navController.safeNavigate(DownloadPresetsRoute) },
                                     navigateBack = { navController.safePopBackStack() },
                                 )
                             }
@@ -668,6 +718,18 @@ fun NavigationRoot(
                             }
                             composable<AboutRoute> {
                                 AboutScreen(navigateBack = { navController.safePopBackStack() })
+                            }
+                            composable<DeviceRoute> {
+                                DeviceScreen(navigateBack = { navController.safePopBackStack() })
+                            }
+                            composable<SmartDownloadsRoute> {
+                                SmartDownloadsScreen(
+                                    navigateBack = { navController.safePopBackStack() },
+                                    onNavigateToPresets = { navController.safeNavigate(DownloadPresetsRoute) },
+                                )
+                            }
+                            composable<DownloadPresetsRoute> {
+                                DownloadPresetsScreen(navigateBack = { navController.safePopBackStack() })
                             }
                         }
 

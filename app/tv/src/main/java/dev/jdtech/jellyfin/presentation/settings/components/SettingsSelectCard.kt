@@ -39,18 +39,38 @@ fun SettingsSelectCard(
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
-    val optionValues = stringArrayResource(preference.optionValues)
-    val optionNames = stringArrayResource(preference.options)
+    val dynamicOptions = preference.dynamicOptions
+    val optionValues =
+        if (dynamicOptions == null && preference.optionValues != 0) {
+            stringArrayResource(preference.optionValues)
+        } else {
+            emptyArray()
+        }
+    val optionNames =
+        if (dynamicOptions == null && preference.options != 0) {
+            stringArrayResource(preference.options)
+        } else {
+            emptyArray()
+        }
     val notSetString = stringResource(CoreR.string.not_set)
 
     val options =
-        remember(preference.nameStringResource) {
+        remember(
+            preference.nameStringResource,
+            dynamicOptions,
+            preference.options,
+            preference.optionValues,
+        ) {
             val options = mutableListOf<Pair<String?, String>>()
 
-            if (preference.optionsIncludeNull) {
-                options.add(Pair(null, notSetString))
+            if (dynamicOptions != null) {
+                options.addAll(dynamicOptions)
+            } else {
+                if (preference.optionsIncludeNull) {
+                    options.add(Pair(null, notSetString))
+                }
+                options.addAll(optionValues.zip(optionNames))
             }
-            options.addAll(optionValues.zip(optionNames))
 
             options
         }
