@@ -45,7 +45,10 @@ suspend fun BaseItemDto.toFindroidEpisode(
     val sources = mutableListOf<FindroidSource>()
     sources.addAll(mediaSources?.map { it.toFindroidSource(jellyfinRepository, id) } ?: emptyList())
     if (database != null) {
-        sources.addAll(database.getSources(id).map { it.toFindroidSource(database) })
+        val currentUserId = try { jellyfinRepository.getUserId() } catch (_: Exception) { null }
+        if (currentUserId != null && database.isItemDownloadedForUser(currentUserId, id)) {
+            sources.addAll(database.getSources(id).map { it.toFindroidSource(database) })
+        }
     }
     return try {
         FindroidEpisode(
@@ -109,7 +112,8 @@ fun FindroidEpisodeDto.toFindroidEpisode(
     userId: UUID,
 ): FindroidEpisode {
     val userData = database.getUserDataOrCreateNew(id, userId)
-    val sources = database.getSources(id).map { it.toFindroidSource(database) }
+    val isDownloaded = database.isItemDownloadedForUser(userId, id)
+    val sources = if (isDownloaded) database.getSources(id).map { it.toFindroidSource(database) } else emptyList()
     val trickplayInfos = mutableMapOf<String, FindroidTrickplayInfo>()
     for (source in sources) {
         database.getTrickplayInfo(source.id)?.toFindroidTrickplayInfo()?.let {
@@ -127,7 +131,7 @@ fun FindroidEpisodeDto.toFindroidEpisode(
         sources = sources,
         played = userData.played,
         favorite = userData.favorite,
-        canPlay = true,
+        canPlay = isDownloaded,
         canDownload = false,
         runtimeTicks = runtimeTicks,
         playbackPositionTicks = userData.playbackPositionTicks,

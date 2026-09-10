@@ -29,13 +29,11 @@ constructor(
     override suspend fun doWork(): Result {
         val itemIdString = params.inputData.getString(KEY_ITEM_ID) ?: return Result.failure()
         val itemId = UUID.fromString(itemIdString)
-        val type = params.inputData.getString(KEY_TYPE) ?: TYPE_ITEM
+        val type = params.inputData.getString(KEY_TYPE) ?: TYPE_USER
         val imageTag = params.inputData.getString(KEY_IMAGE_TAG)
 
         if (type == TYPE_USER) {
             downloadUserImage(userId = itemId, imageTag = imageTag)
-        } else {
-            downloadImages(itemId = itemId)
         }
         return Result.success()
     }
@@ -59,23 +57,6 @@ constructor(
         }
     }
 
-    private suspend fun downloadImages(itemId: UUID) {
-        withContext(Dispatchers.IO) {
-            val item = repository.getItem(itemId) ?: return@withContext
-            val basePath = "images/${item.id}"
-
-            val imagesToDownload = mapOf(
-                "primary" to item.images.primary,
-                "backdrop" to item.images.backdrop,
-            )
-
-            for ((name, image) in imagesToDownload) {
-                val uri = image?.uri ?: continue
-                downloadAndSave(uri.toString(), basePath, name)
-            }
-        }
-    }
-
     private fun downloadAndSave(url: String, basePath: String, fileName: String) {
         val baseDir = File(appContext.filesDir, basePath)
         val file = File(baseDir, fileName)
@@ -93,8 +74,11 @@ constructor(
                     return
                 }
 
-                val imageBytes = response.body.bytes()
-                file.writeBytes(imageBytes)
+                response.body.byteStream().use { input ->
+                    file.outputStream().use { output ->
+                        input.copyTo(output)
+                    }
+                }
             }
         } catch (e: IOException) {
             Timber.e(e)
@@ -105,7 +89,6 @@ constructor(
         const val KEY_ITEM_ID = "KEY_ITEM_ID"
         const val KEY_TYPE = "KEY_TYPE"
         const val KEY_IMAGE_TAG = "KEY_IMAGE_TAG"
-        const val TYPE_ITEM = "ITEM"
         const val TYPE_USER = "USER"
     }
 }

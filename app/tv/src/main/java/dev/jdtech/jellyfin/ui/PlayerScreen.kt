@@ -114,7 +114,7 @@ fun PlayerScreen(
     var isPlaying by remember { mutableStateOf(viewModel.player.isPlaying) }
     LaunchedEffect(Unit) {
         while (true) {
-            delay(300)
+            delay(300.milliseconds)
             currentPosition = viewModel.player.currentPosition
             isPlaying = viewModel.player.isPlaying
         }
@@ -182,9 +182,7 @@ fun PlayerScreen(
                         itemKind = itemKind,
                         startFromBeginning = startFromBeginning,
                     )
-                    playerView.setBackgroundColor(
-                        context.resources.getColor(android.R.color.black, context.theme)
-                    )
+                    playerView.setBackgroundColor(android.graphics.Color.BLACK)
                 }
             },
             update = {

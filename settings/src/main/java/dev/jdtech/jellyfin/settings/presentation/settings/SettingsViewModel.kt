@@ -1,11 +1,15 @@
 package dev.jdtech.jellyfin.settings.presentation.settings
 
+import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.os.StatFs
 import android.provider.Settings
+import android.text.format.Formatter
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.jdtech.jellyfin.settings.R
 import dev.jdtech.jellyfin.settings.domain.AppPreferences
 import dev.jdtech.jellyfin.settings.presentation.enums.DeviceType
@@ -17,22 +21,33 @@ import dev.jdtech.jellyfin.settings.presentation.models.PreferenceIntInput
 import dev.jdtech.jellyfin.settings.presentation.models.PreferenceLongInput
 import dev.jdtech.jellyfin.settings.presentation.models.PreferenceMultiSelect
 import dev.jdtech.jellyfin.settings.presentation.models.PreferenceSelect
+import dev.jdtech.jellyfin.settings.presentation.models.PreferenceStepper
+import dev.jdtech.jellyfin.settings.presentation.models.PreferenceStorageInfo
 import dev.jdtech.jellyfin.settings.presentation.models.PreferenceSwitch
+import dev.jdtech.jellyfin.settings.utils.StorageUtils
+import java.io.File
 import javax.inject.Inject
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
+import timber.log.Timber
+
+import dev.jdtech.jellyfin.settings.presentation.models.StorageDevice
 
 @HiltViewModel
-class SettingsViewModel @Inject constructor(private val appPreferences: AppPreferences) :
-    ViewModel() {
+class SettingsViewModel @Inject constructor(
+    private val appPreferences: AppPreferences,
+    @ApplicationContext private val context: Context,
+) : ViewModel() {
     private val _state = MutableStateFlow(SettingsState())
     val state = _state.asStateFlow()
 
     private val eventsChannel = Channel<SettingsEvent>()
     val events = eventsChannel.receiveAsFlow()
+
+    private var initialStorageDeviceOrder: List<Int>? = null
 
     private val topLevelPreferences =
         listOf(
@@ -57,58 +72,28 @@ class SettingsViewModel @Inject constructor(private val appPreferences: AppPrefe
                 preferences =
                     listOf(
                         PreferenceCategory(
-                            nameStringResource = R.string.settings_category_language,
-                            iconDrawableId = R.drawable.ic_languages,
+                            nameStringResource = R.string.users,
+                            iconDrawableId = R.drawable.ic_user,
+                            supportedDeviceTypes = listOf(DeviceType.TV),
                             onClick = {
                                 viewModelScope.launch {
-                                    eventsChannel.send(
-                                        SettingsEvent.NavigateToSettings(
-                                            intArrayOf(it.nameStringResource)
-                                        )
-                                    )
+                                    eventsChannel.send(SettingsEvent.NavigateToUsers)
                                 }
                             },
-                            nestedPreferenceGroups =
-                                listOf(
-                                    PreferenceGroup(
-                                        preferences =
-                                            listOf(
-                                                PreferenceAppLanguage(
-                                                    nameStringResource = R.string.app_language,
-                                                    iconDrawableId = R.drawable.ic_languages,
-                                                    enabled =
-                                                        Build.VERSION.SDK_INT >=
-                                                            Build.VERSION_CODES.TIRAMISU,
-                                                )
-                                            )
-                                    ),
-                                    PreferenceGroup(
-                                        preferences =
-                                            listOf(
-                                                PreferenceSelect(
-                                                    nameStringResource =
-                                                        R.string.settings_preferred_audio_language,
-                                                    iconDrawableId = R.drawable.ic_speaker,
-                                                    backendPreference =
-                                                        appPreferences.preferredAudioLanguage,
-                                                    options = R.array.languages,
-                                                    optionValues = R.array.languages_values,
-                                                    optionsIncludeNull = true,
-                                                ),
-                                                PreferenceSelect(
-                                                    nameStringResource =
-                                                        R.string
-                                                            .settings_preferred_subtitle_language,
-                                                    iconDrawableId = R.drawable.ic_closed_caption,
-                                                    backendPreference =
-                                                        appPreferences.preferredSubtitleLanguage,
-                                                    options = R.array.languages,
-                                                    optionValues = R.array.languages_values,
-                                                    optionsIncludeNull = true,
-                                                ),
-                                            )
-                                    ),
-                                ),
+                        )
+                    )
+            ),
+            PreferenceGroup(
+                preferences =
+                    listOf(
+                        PreferenceCategory(
+                            nameStringResource = R.string.settings_category_servers,
+                            iconDrawableId = R.drawable.ic_server,
+                            onClick = {
+                                viewModelScope.launch {
+                                    eventsChannel.send(SettingsEvent.NavigateToServers)
+                                }
+                            },
                         )
                     )
             ),
@@ -196,6 +181,65 @@ class SettingsViewModel @Inject constructor(private val appPreferences: AppPrefe
                                                     backendPreference =
                                                         appPreferences.displayExtraInfo,
                                                 )
+                                            )
+                                    ),
+                                ),
+                        )
+                    )
+            ),
+            PreferenceGroup(
+                preferences =
+                    listOf(
+                        PreferenceCategory(
+                            nameStringResource = R.string.settings_category_language,
+                            iconDrawableId = R.drawable.ic_languages,
+                            onClick = {
+                                viewModelScope.launch {
+                                    eventsChannel.send(
+                                        SettingsEvent.NavigateToSettings(
+                                            intArrayOf(it.nameStringResource)
+                                        )
+                                    )
+                                }
+                            },
+                            nestedPreferenceGroups =
+                                listOf(
+                                    PreferenceGroup(
+                                        preferences =
+                                            listOf(
+                                                PreferenceAppLanguage(
+                                                    nameStringResource = R.string.app_language,
+                                                    iconDrawableId = R.drawable.ic_languages,
+                                                    enabled =
+                                                        Build.VERSION.SDK_INT >=
+                                                            Build.VERSION_CODES.TIRAMISU,
+                                                )
+                                            )
+                                    ),
+                                    PreferenceGroup(
+                                        preferences =
+                                            listOf(
+                                                PreferenceSelect(
+                                                    nameStringResource =
+                                                        R.string.settings_preferred_audio_language,
+                                                    iconDrawableId = R.drawable.ic_speaker,
+                                                    backendPreference =
+                                                        appPreferences.preferredAudioLanguage,
+                                                    options = R.array.languages,
+                                                    optionValues = R.array.languages_values,
+                                                    optionsIncludeNull = true,
+                                                ),
+                                                PreferenceSelect(
+                                                    nameStringResource =
+                                                        R.string
+                                                            .settings_preferred_subtitle_language,
+                                                    iconDrawableId = R.drawable.ic_closed_caption,
+                                                    backendPreference =
+                                                        appPreferences.preferredSubtitleLanguage,
+                                                    options = R.array.languages,
+                                                    optionValues = R.array.languages_values,
+                                                    optionsIncludeNull = true,
+                                                ),
                                             )
                                     ),
                                 ),
@@ -581,35 +625,6 @@ class SettingsViewModel @Inject constructor(private val appPreferences: AppPrefe
                 preferences =
                     listOf(
                         PreferenceCategory(
-                            nameStringResource = R.string.users,
-                            iconDrawableId = R.drawable.ic_user,
-                            supportedDeviceTypes = listOf(DeviceType.TV),
-                            onClick = {
-                                viewModelScope.launch {
-                                    eventsChannel.send(SettingsEvent.NavigateToUsers)
-                                }
-                            },
-                        )
-                    )
-            ),
-            PreferenceGroup(
-                preferences =
-                    listOf(
-                        PreferenceCategory(
-                            nameStringResource = R.string.settings_category_servers,
-                            iconDrawableId = R.drawable.ic_server,
-                            onClick = {
-                                viewModelScope.launch {
-                                    eventsChannel.send(SettingsEvent.NavigateToServers)
-                                }
-                            },
-                        )
-                    )
-            ),
-            PreferenceGroup(
-                preferences =
-                    listOf(
-                        PreferenceCategory(
                             nameStringResource = R.string.title_download,
                             iconDrawableId = R.drawable.ic_download,
                             supportedDeviceTypes = listOf(DeviceType.PHONE),
@@ -625,6 +640,23 @@ class SettingsViewModel @Inject constructor(private val appPreferences: AppPrefe
                             nestedPreferenceGroups =
                                 listOf(
                                     PreferenceGroup(
+                                        nameStringResource = R.string.downloads_storage_group,
+                                        preferences =
+                                            listOf(
+                                                PreferenceStorageInfo(),
+                                                PreferenceSelect(
+                                                    nameStringResource =
+                                                        R.string.downloads_storage_location,
+                                                    supportedDeviceTypes = listOf(DeviceType.PHONE),
+                                                    backendPreference =
+                                                        appPreferences.defaultDownloadStorageIndex,
+                                                    options = R.array.downloads_storage_locations,
+                                                    optionValues = R.array.downloads_storage_location_values,
+                                                ),
+                                            ),
+                                    ),
+                                    PreferenceGroup(
+                                        nameStringResource = R.string.downloads_network_group,
                                         preferences =
                                             listOf(
                                                 PreferenceSwitch(
@@ -644,9 +676,94 @@ class SettingsViewModel @Inject constructor(private val appPreferences: AppPrefe
                                                     backendPreference =
                                                         appPreferences.downloadWhenRoaming,
                                                 ),
+                                            ),
+                                    ),
+                                    PreferenceGroup(
+                                        nameStringResource = R.string.downloads_smart_group,
+                                        preferences =
+                                            listOf(
+                                                PreferenceSwitch(
+                                                    nameStringResource =
+                                                        R.string.downloads_smart_next_episode,
+                                                    descriptionStringRes =
+                                                        R.string.downloads_smart_next_episode_summary,
+                                                    supportedDeviceTypes = listOf(DeviceType.PHONE),
+                                                    backendPreference =
+                                                        appPreferences.smartDownloadNextEpisode,
+                                                ),
+                                                PreferenceStepper(
+                                                    nameStringResource = R.string.downloads_smart_count,
+                                                    descriptionStringRes = R.string.downloads_smart_count_summary,
+                                                    dependencies = listOf(appPreferences.smartDownloadNextEpisode),
+                                                    supportedDeviceTypes = listOf(DeviceType.PHONE),
+                                                    backendPreference = appPreferences.smartDownloadNextEpisodesCount,
+                                                    minValue = 1,
+                                                    maxValue = 10,
+                                                    step = 1,
+                                                ),
+                                                PreferenceStepper(
+                                                    nameStringResource = R.string.downloads_smart_storage_limit,
+                                                    descriptionStringRes = R.string.downloads_smart_storage_limit_summary,
+                                                    dependencies = listOf(appPreferences.smartDownloadNextEpisode),
+                                                    supportedDeviceTypes = listOf(DeviceType.PHONE),
+                                                    backendPreference = appPreferences.smartDownloadStorageLimitGb,
+                                                    minValue = 0,
+                                                    maxValue = 100,
+                                                    step = 5,
+                                                    zeroLabelRes = R.string.downloads_unlimited,
+                                                    suffix = " GB",
+                                                ),
+                                                PreferenceSwitch(
+                                                    nameStringResource =
+                                                        R.string.downloads_auto_delete_watched,
+                                                    descriptionStringRes =
+                                                        R.string.downloads_auto_delete_watched_summary,
+                                                    supportedDeviceTypes = listOf(DeviceType.PHONE),
+                                                    backendPreference =
+                                                        appPreferences.autoDeleteWatched,
+                                                ),
+                                            ),
+                                    ),
+                                )
+                                .let { groups ->
+                                    if (appPreferences.getValue(appPreferences.userCanTranscode)) {
+                                        groups +
+                                            PreferenceGroup(
+                                                nameStringResource =
+                                                    R.string.downloads_transcoding_group,
+                                                preferences =
+                                                    listOf(
+                                                        PreferenceCategory(
+                                                            nameStringResource =
+                                                                R.string.downloads_quality_presets,
+                                                            descriptionStringRes =
+                                                                R.string.downloads_quality_presets_summary,
+                                                            supportedDeviceTypes =
+                                                                listOf(DeviceType.PHONE),
+                                                            onClick = {
+                                                                viewModelScope.launch {
+                                                                    eventsChannel.send(
+                                                                        SettingsEvent.NavigateToDownloadPresets
+                                                                    )
+                                                                }
+                                                            },
+                                                        ),
+                                                        PreferenceSwitch(
+                                                            nameStringResource =
+                                                                R.string.downloads_ask_preset,
+                                                            descriptionStringRes =
+                                                                R.string.downloads_ask_preset_summary,
+                                                            supportedDeviceTypes =
+                                                                listOf(DeviceType.PHONE),
+                                                            backendPreference =
+                                                                appPreferences.askPresetBeforeDownload,
+                                                        ),
+                                                    ),
                                             )
-                                    )
-                                ),
+                                    } else {
+                                        groups
+                                    }
+                                },
                         )
                     )
             ),
@@ -745,6 +862,21 @@ class SettingsViewModel @Inject constructor(private val appPreferences: AppPrefe
                 preferences =
                     listOf(
                         PreferenceCategory(
+                            nameStringResource = R.string.settings_category_device,
+                            iconDrawableId = R.drawable.ic_smartphone,
+                            supportedDeviceTypes = listOf(DeviceType.PHONE),
+                            onClick = {
+                                viewModelScope.launch {
+                                    eventsChannel.send(SettingsEvent.NavigateToDevice)
+                                }
+                            },
+                        )
+                    )
+            ),
+            PreferenceGroup(
+                preferences =
+                    listOf(
+                        PreferenceCategory(
                             nameStringResource = R.string.about,
                             iconDrawableId = R.drawable.ic_info,
                             supportedDeviceTypes = listOf(DeviceType.TV),
@@ -778,6 +910,41 @@ class SettingsViewModel @Inject constructor(private val appPreferences: AppPrefe
                 }
             }
 
+            val isDownloadSettings = indexes.contains(R.string.title_download)
+            if (!isDownloadSettings) {
+                initialStorageDeviceOrder = null
+            }
+            var storageDevices = emptyList<StorageDevice>()
+            val defaultIndex =
+                appPreferences.getValue(appPreferences.defaultDownloadStorageIndex).toIntOrNull() ?: -1
+
+            if (isDownloadSettings) {
+                try {
+                    val rawDevices = StorageUtils.getStorageDevices(context, defaultIndex)
+                    val order = initialStorageDeviceOrder
+                    if (order == null) {
+                        // Initial screen visit: place the default device first if one is set
+                        val sorted =
+                            if (defaultIndex >= 0) {
+                                rawDevices.sortedByDescending { it.index == defaultIndex }
+                            } else {
+                                rawDevices
+                            }
+                        initialStorageDeviceOrder = sorted.map { it.index }
+                        storageDevices = sorted
+                    } else {
+                        // Subsequent updates on this screen: keep the order stable, only isDefault is updated
+                        storageDevices =
+                            rawDevices.sortedBy { device ->
+                                val pos = order.indexOf(device.index)
+                                if (pos >= 0) pos else Int.MAX_VALUE
+                            }
+                    }
+                } catch (e: Exception) {
+                    Timber.e(e, "Error calculating storage in SettingsViewModel")
+                }
+            }
+
             // Update all (visible) preferences with their current values
             preferences =
                 preferences
@@ -786,6 +953,16 @@ class SettingsViewModel @Inject constructor(private val appPreferences: AppPrefe
                             preferences =
                                 preferenceGroup.preferences
                                     .filter { it.supportedDeviceTypes.contains(deviceType) }
+                                    .filter { preference ->
+                                        if (preference is PreferenceSelect &&
+                                            preference.backendPreference ==
+                                                appPreferences.defaultDownloadStorageIndex
+                                        ) {
+                                            storageDevices.size > 1
+                                        } else {
+                                            true
+                                        }
+                                    }
                                     .map { preference ->
                                         when (preference) {
                                             is PreferenceSwitch -> {
@@ -802,6 +979,24 @@ class SettingsViewModel @Inject constructor(private val appPreferences: AppPrefe
                                                 )
                                             }
                                             is PreferenceSelect -> {
+                                                val dynamicOptions =
+                                                    if (preference.backendPreference ==
+                                                        appPreferences.defaultDownloadStorageIndex
+                                                    ) {
+                                                        buildList {
+                                                            add(
+                                                                "-1" to
+                                                                    context.getString(
+                                                                        R.string.downloads_storage_ask_every_time
+                                                                    )
+                                                            )
+                                                            storageDevices.forEach { device ->
+                                                                add(device.index.toString() to device.name)
+                                                            }
+                                                        }
+                                                    } else {
+                                                        preference.dynamicOptions
+                                                    }
                                                 preference.copy(
                                                     enabled =
                                                         preference.enabled &&
@@ -812,6 +1007,7 @@ class SettingsViewModel @Inject constructor(private val appPreferences: AppPrefe
                                                         appPreferences.getValue(
                                                             preference.backendPreference
                                                         ),
+                                                    dynamicOptions = dynamicOptions,
                                                 )
                                             }
                                             is PreferenceMultiSelect -> {
@@ -853,6 +1049,24 @@ class SettingsViewModel @Inject constructor(private val appPreferences: AppPrefe
                                                         ),
                                                 )
                                             }
+                                            is PreferenceStepper -> {
+                                                preference.copy(
+                                                    enabled =
+                                                        preference.enabled &&
+                                                            preference.dependencies.all {
+                                                                appPreferences.getValue(it)
+                                                            },
+                                                    value =
+                                                        appPreferences.getValue(
+                                                            preference.backendPreference
+                                                        ),
+                                                )
+                                            }
+                                            is PreferenceStorageInfo -> {
+                                                preference.copy(
+                                                    storages = storageDevices,
+                                                )
+                                            }
                                             else -> preference
                                         }
                                     }
@@ -860,7 +1074,13 @@ class SettingsViewModel @Inject constructor(private val appPreferences: AppPrefe
                     }
                     .filter { it.preferences.isNotEmpty() }
 
-            _state.emit(_state.value.copy(preferenceGroups = preferences))
+            _state.emit(
+                _state.value.copy(
+                    preferenceGroups = preferences,
+                    isDownloadSettings = isDownloadSettings,
+                    isSmartDownloadsActive = appPreferences.getValue(appPreferences.smartDownloadNextEpisode),
+                )
+            )
         }
     }
 
@@ -889,6 +1109,11 @@ class SettingsViewModel @Inject constructor(private val appPreferences: AppPrefe
                             action.preference.value,
                         )
                     is PreferenceLongInput ->
+                        appPreferences.setValue(
+                            action.preference.backendPreference,
+                            action.preference.value,
+                        )
+                    is PreferenceStepper ->
                         appPreferences.setValue(
                             action.preference.backendPreference,
                             action.preference.value,

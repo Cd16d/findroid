@@ -52,4 +52,66 @@
         <item>COMMERCIAL</item>
         <item>UNKNOWN</item>
     </string-array>
+    <string-array name="downloads_storage_locations">
+        <item>@string/downloads_storage_internal</item>
+        <item>@string/downloads_storage_sdcard</item>
+    </string-array>
+    <string-array name="downloads_storage_location_values">
+        <item>0</item>
+        <item>1</item>
+    </string-array>
+    <string-array name="downloads_storage_locations_internal_only">
+        <item>@string/downloads_storage_internal</item>
+    </string-array>
+    <string-array name="downloads_storage_location_values_internal_only">
+        <item>0</item>
+    </string-array>
+    <string-array name="downloads_presets">
+        <item>@string/downloads_preset_data_saver</item>
+        <item>@string/downloads_preset_mobile</item>
+        <item>@string/downloads_preset_balanced</item>
+        <item>@string/downloads_preset_high</item>
+        <item>@string/downloads_preset_direct</item>
+    </string-array>
+    <string-array name="downloads_preset_values">
+        <item>480p_data_saver</item>
+        <item>720p_mobile</item>
+        <item>1080p_balanced</item>
+        <item>1080p_high</item>
+        <item>original</item>
+    </string-array>
+    <string-array name="downloads_audio_codecs">
+        <item>@string/downloads_audio_codec_aac</item>
+        <item>@string/downloads_audio_codec_opus</item>
+        <item>@string/downloads_audio_codec_mp3</item>
+    </string-array>
+    <string-array name="downloads_audio_codec_values">
+        <item>aac</item>
+        <item>opus</item>
+        <item>mp3</item>
+    </string-array>
+    <string-array name="downloads_audio_channels_options">
+        <item>@string/downloads_audio_channels_stereo</item>
+        <item>@string/downloads_audio_channels_surround</item>
+    </string-array>
+    <string-array name="downloads_audio_channels_values">
+        <item>2</item>
+        <item>6</item>
+    </string-array>
+    <string-array name="downloads_audio_bitrates">
+        <item>@string/downloads_audio_bitrate_preset</item>
+        <item>@string/downloads_audio_bitrate_128k</item>
+        <item>@string/downloads_audio_bitrate_160k</item>
+        <item>@string/downloads_audio_bitrate_192k</item>
+        <item>@string/downloads_audio_bitrate_256k</item>
+        <item>@string/downloads_audio_bitrate_320k</item>
+    </string-array>
+    <string-array name="downloads_audio_bitrate_values">
+        <item>0</item>
+        <item>128000</item>
+        <item>160000</item>
+        <item>192000</item>
+        <item>256000</item>
+        <item>320000</item>
+    </string-array>
 </resources>

@@ -155,4 +155,6 @@ interface JellyfinRepository {
     suspend fun refreshUser(userId: UUID): String?
 
     suspend fun setCurrentUser(userId: UUID)
+
+    suspend fun canTranscode(): Boolean
 }

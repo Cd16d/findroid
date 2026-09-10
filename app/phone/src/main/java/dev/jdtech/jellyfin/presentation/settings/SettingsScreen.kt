@@ -59,6 +59,8 @@ fun SettingsScreen(
     navigateToServers: () -> Unit,
     navigateToUsers: () -> Unit,
     navigateToAbout: () -> Unit,
+    navigateToDevice: () -> Unit = {},
+    navigateToDownloadPresets: () -> Unit = {},
     navigateBack: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
@@ -75,6 +77,8 @@ fun SettingsScreen(
             is SettingsEvent.NavigateToUsers -> navigateToUsers()
             is SettingsEvent.NavigateToServers -> navigateToServers()
             is SettingsEvent.NavigateToAbout -> navigateToAbout()
+            is SettingsEvent.NavigateToDevice -> navigateToDevice()
+            is SettingsEvent.NavigateToDownloadPresets -> navigateToDownloadPresets()
             is SettingsEvent.UpdateTheme -> {
                 val uiModeManager = context.getSystemService(UiModeManager::class.java)
                 val nightMode =

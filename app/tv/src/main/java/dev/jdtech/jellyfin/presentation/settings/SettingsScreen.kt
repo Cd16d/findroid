@@ -72,6 +72,7 @@ fun SettingsScreen(
                     Timber.e(e)
                 }
             }
+            else -> Unit
         }
     }
 

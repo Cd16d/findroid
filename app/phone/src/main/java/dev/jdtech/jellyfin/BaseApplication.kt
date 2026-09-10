@@ -114,7 +114,7 @@ class BaseApplication : Application(), Configuration.Provider, SingletonImageLoa
         workManager
             .enqueueUniqueWork(
                 uniqueWorkName = "syncUserData",
-                existingWorkPolicy = ExistingWorkPolicy.KEEP,
+                existingWorkPolicy = ExistingWorkPolicy.REPLACE,
                 request = syncWorkRequest
             )
     }

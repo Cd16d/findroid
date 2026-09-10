@@ -70,6 +70,7 @@ fun MovieScreen(
     navigateBack: () -> Unit,
     navigateHome: () -> Unit,
     navigateToPerson: (personId: UUID) -> Unit,
+    navigateToDownloadPresets: () -> Unit = {},
     viewModel: MovieViewModel = hiltViewModel(),
     downloaderViewModel: DownloaderViewModel = hiltViewModel(),
 ) {
@@ -133,6 +134,16 @@ fun MovieScreen(
             viewModel.onAction(action)
         },
         onDownloaderAction = { action -> downloaderViewModel.onAction(action) },
+        askPresetBeforeDownload = downloaderViewModel.askPresetBeforeDownload,
+        defaultPresetId = downloaderViewModel.defaultTranscodePresetId,
+        defaultDownloadExternalAudio = downloaderViewModel.downloadExternalAudio,
+        onRememberSettings = { presetId, downloadExternalAudio ->
+            downloaderViewModel.saveDownloadSettings(presetId, downloadExternalAudio, true)
+        },
+        defaultStorageIndex = downloaderViewModel.defaultDownloadStorageIndex,
+        userCanTranscode = downloaderViewModel.userCanTranscode,
+        presets = downloaderViewModel.presets,
+        navigateToDownloadPresets = navigateToDownloadPresets,
     )
 }
 
@@ -142,6 +153,14 @@ private fun MovieScreenLayout(
     downloaderState: DownloaderState,
     onAction: (MovieAction) -> Unit,
     onDownloaderAction: (DownloaderAction) -> Unit,
+    askPresetBeforeDownload: Boolean = true,
+    defaultPresetId: String = "1080p_balanced",
+    defaultDownloadExternalAudio: Boolean = false,
+    onRememberSettings: (presetId: String, downloadExternalAudio: Boolean) -> Unit = { _, _ -> },
+    defaultStorageIndex: Int = -1,
+    userCanTranscode: Boolean = true,
+    presets: List<dev.jdtech.jellyfin.models.DownloadQualityPreset> = emptyList(),
+    navigateToDownloadPresets: () -> Unit = {},
 ) {
     val safePadding = rememberSafePadding()
     val castPadding = LocalCastPlayerHeight.current
@@ -230,6 +249,7 @@ private fun MovieScreenLayout(
                     ItemButtonsBar(
                         item = movie,
                         downloaderState = downloaderState,
+                        defaultStorageIndex = defaultStorageIndex,
                         onPlayClick = { startFromBeginning ->
                             onAction(MovieAction.Play(startFromBeginning = startFromBeginning))
                         },
@@ -246,8 +266,16 @@ private fun MovieScreenLayout(
                             }
                         },
                         onTrailerClick = { uri -> onAction(MovieAction.PlayTrailer(uri)) },
-                        onDownloadClick = { storageIndex ->
-                            onDownloaderAction(DownloaderAction.Download(movie, storageIndex))
+                        onDownloadClick = { storageIndex, presetId, downloadExternalAudio, audioStreamIndex ->
+                            onDownloaderAction(
+                                DownloaderAction.Download(
+                                    item = movie,
+                                    storageIndex = storageIndex,
+                                    presetId = presetId,
+                                    downloadExternalAudio = downloadExternalAudio,
+                                    audioStreamIndex = audioStreamIndex,
+                                )
+                            )
                         },
                         onDownloadCancelClick = {
                             onDownloaderAction(DownloaderAction.CancelDownload(movie))
@@ -255,6 +283,13 @@ private fun MovieScreenLayout(
                         onDownloadDeleteClick = {
                             onDownloaderAction(DownloaderAction.DeleteDownload(movie))
                         },
+                        askPresetBeforeDownload = askPresetBeforeDownload,
+                        userCanTranscode = userCanTranscode,
+                        presets = presets,
+                        defaultPresetId = defaultPresetId,
+                        defaultDownloadExternalAudio = defaultDownloadExternalAudio,
+                        onRememberSettings = onRememberSettings,
+                        onNavigateToPresets = navigateToDownloadPresets,
                         modifier = Modifier.fillMaxWidth(),
                     )
                     Spacer(Modifier.height(MaterialTheme.spacings.small))

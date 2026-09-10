@@ -8,4 +8,40 @@
         <item quantity="one">TV nearby</item>
         <item quantity="other">%d TVs nearby</item>
     </plurals>
+    <plurals name="downloads_in_progress_title">
+        <item quantity="one">%1$d download in progress</item>
+        <item quantity="other">%1$d downloads in progress</item>
+    </plurals>
+    <plurals name="download_items_count">
+        <item quantity="one">%1$d item</item>
+        <item quantity="other">%1$d items</item>
+    </plurals>
+    <plurals name="downloads_count">
+        <item quantity="one">%1$d download</item>
+        <item quantity="other">%1$d downloads</item>
+    </plurals>
+    <plurals name="episodes_downloaded">
+        <item quantity="one">%1$d downloaded</item>
+        <item quantity="other">%1$d downloaded</item>
+    </plurals>
+    <plurals name="episodes_downloading">
+        <item quantity="one">%1$d downloading</item>
+        <item quantity="other">%1$d downloading</item>
+    </plurals>
+    <plurals name="episodes_in_queue">
+        <item quantity="one">%1$d in queue</item>
+        <item quantity="other">%1$d in queue</item>
+    </plurals>
+    <plurals name="episodes_paused">
+        <item quantity="one">%1$d paused</item>
+        <item quantity="other">%1$d paused</item>
+    </plurals>
+    <plurals name="episodes_count">
+        <item quantity="one">%1$d episode</item>
+        <item quantity="other">%1$d episodes</item>
+    </plurals>
+    <plurals name="seasons_count">
+        <item quantity="one">%1$d season</item>
+        <item quantity="other">%1$d seasons</item>
+    </plurals>
 </resources>

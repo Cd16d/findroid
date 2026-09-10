@@ -1,5 +1,8 @@
 package dev.jdtech.jellyfin.presentation.film.components
 
+import dev.jdtech.jellyfin.presentation.download.components.DownloadedBadge
+import dev.jdtech.jellyfin.presentation.download.components.DownloadingBadge
+
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -32,7 +35,14 @@ import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
 
 @Composable
-fun EpisodeCard(episode: FindroidEpisode, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun EpisodeCard(
+    episode: FindroidEpisode,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    isDownloading: Boolean = false,
+    isPending: Boolean = false,
+    downloadProgress: Float? = null,
+) {
     val backgroundColor = MaterialTheme.colorScheme.background
 
     Row(
@@ -53,7 +63,11 @@ fun EpisodeCard(episode: FindroidEpisode, onClick: () -> Unit, modifier: Modifie
                 modifier = Modifier.align(Alignment.TopEnd).padding(MaterialTheme.spacings.small),
                 horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacings.small),
             ) {
-                if (episode.isDownloaded()) DownloadedBadge()
+                if (isDownloading || isPending) {
+                    DownloadingBadge(progress = downloadProgress, isPending = isPending)
+                } else if (episode.isDownloaded()) {
+                    DownloadedBadge()
+                }
                 if (episode.played) PlayedBadge()
             }
         }
