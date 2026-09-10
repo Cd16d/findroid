@@ -73,36 +73,12 @@ class DownloaderImpl(
                 sources.firstOrNull()
             } ?: return@coroutineScope Pair(-1L, UiText.StringResource(CoreR.string.unknown_error))
 
-            val effectiveSourceId = source.id
-            val segments = jellyfinRepository.getSegments(item.id)
-
-            val preferredStorageIndex =
-                appPreferences.getValue(appPreferences.defaultDownloadStorageIndex).toIntOrNull() ?: -1
-            val effectiveIndex =
-                if (storageIndex >= 0) storageIndex
-                else if (preferredStorageIndex >= 0) preferredStorageIndex
-                else 0
-            val dirs = context.getExternalFilesDirs(null)
-            val storageLocation = dirs.getOrNull(effectiveIndex) ?: dirs.getOrNull(0)
-            if (
-                storageLocation == null ||
-                Environment.getExternalStorageState(storageLocation) != Environment.MEDIA_MOUNTED
-            ) {
-                return@coroutineScope Pair(
-                    -1L,
-                    UiText.StringResource(CoreR.string.storage_unavailable),
-                )
-            }
+            val (storageLocation, effectiveIndex) = resolveStorageLocation(storageIndex)
+                ?: return@coroutineScope Pair(-1L, UiText.StringResource(CoreR.string.storage_unavailable))
 
             val currentUserId = jellyfinRepository.getUserId()
 
-            // Implementation B: Shared disk storage check!
-            // If the item is already completely downloaded on disk by any profile:
-            val existingSources = database.getSources(item.id).filter { !it.path.endsWith(".download") && File(it.path).exists() }
-            if (existingSources.isNotEmpty()) {
-                Timber.i("downloadItem: item ${item.name} already exists on disk, linking to user $currentUserId")
-                database.insertUserDownload(UserDownloadDto(userId = currentUserId, itemId = item.id))
-                database.insertUserData(item.toFindroidUserDataDto(currentUserId))
+            if (linkExistingDiskDownload(item, currentUserId)) {
                 return@coroutineScope Pair(0L, null)
             }
 
@@ -110,31 +86,16 @@ class DownloaderImpl(
             val downloadUrl = resolveDownloadUrl(item, source, activePresetId, audioStreamIndex)
 
             val isTranscoding = DownloadQualityPresets.isTranscodingPreset(activePresetId, appPreferences) && downloadUrl != source.path
-            val estimatedBytes = if (isTranscoding && item.runtimeTicks > 0) {
-                val preset = DownloadQualityPresets.getById(activePresetId, appPreferences)
-                val durationSec = (item.runtimeTicks / 10_000_000L).coerceAtLeast(1)
-                ((preset.maxBitrateBps + preset.audioBitrateBps) * durationSec) / 8L
-            } else {
-                source.size
-            }
+            val estimatedBytes = calculateEstimatedBytes(item, source, activePresetId, isTranscoding)
 
             val destFile = File(storageLocation, "downloads/${item.id}.${source.id}.download")
             destFile.parentFile?.mkdirs()
 
-            val requiredStorage = if (estimatedBytes > 0) estimatedBytes else source.size
-            val stats = StatFs(storageLocation.path)
-            if (requiredStorage > 0 && stats.availableBytes < requiredStorage) {
-                return@coroutineScope Pair(
-                    -1L,
-                    UiText.StringResource(
-                        CoreR.string.not_enough_storage,
-                        Formatter.formatFileSize(context, requiredStorage),
-                        Formatter.formatFileSize(context, stats.availableBytes),
-                    ),
-                )
+            val storageError = checkAvailableStorageSpace(storageLocation, estimatedBytes, source.size)
+            if (storageError != null) {
+                return@coroutineScope Pair(-1L, storageError)
             }
 
-            // Check if there's an existing download ID for resume
             val existingSourceDto = database.getSourceByDownloadId(source.downloadId ?: -1L)
             val downloadId = existingSourceDto?.downloadId ?: idCounter.incrementAndGet()
 
@@ -152,40 +113,16 @@ class DownloaderImpl(
                 )
             )
 
-            when (item) {
-                is FindroidMovie -> {
-                    database.insertMovie(
-                        item.toFindroidMovieDto(
-                            appPreferences.getValue(appPreferences.currentServer)
-                        )
-                    )
-                }
-
-                is FindroidEpisode -> {
-                    val show = jellyfinRepository.getShow(item.seriesId)
-                    database.insertShow(
-                        show.toFindroidShowDto(
-                            appPreferences.getValue(appPreferences.currentServer)
-                        )
-                    )
-                    val season = jellyfinRepository.getSeason(item.seasonId)
-                    database.insertSeason(season.toFindroidSeasonDto())
-                    database.insertEpisode(
-                        item.toFindroidEpisodeDto(
-                            appPreferences.getValue(appPreferences.currentServer)
-                        )
-                    )
-                }
-            }
+            insertItemMetadataToDb(item, appPreferences.getValue(appPreferences.currentServer))
 
             val sourceDto = source.toFindroidSourceDto(item.id, destFile.absolutePath)
             database.insertSource(sourceDto.copy(downloadId = downloadId))
             database.insertUserData(item.toFindroidUserDataDto(currentUserId))
             database.insertUserDownload(UserDownloadDto(userId = currentUserId, itemId = item.id))
 
-            // Delegate images, external subtitle/audio tracks, and trickplay to MediaAttachmentsWorker
             startAttachmentsWorker(item, source.id, effectiveIndex, downloadExternalAudio)
 
+            val segments = jellyfinRepository.getSegments(item.id)
             segments.forEach { database.insertSegment(it.toFindroidSegmentsDto(item.id)) }
 
             Timber.i("downloadItem enqueued for ${item.name}, downloadId=$downloadId")
@@ -273,6 +210,146 @@ class DownloaderImpl(
         engine.resume(downloadId)
     }
 
+    private suspend fun insertItemMetadataToDb(item: FindroidItem, serverId: String?, wrapShowInTryCatch: Boolean = false) {
+        when (item) {
+            is FindroidMovie -> database.insertMovie(item.toFindroidMovieDto(serverId))
+            is FindroidEpisode -> {
+                if (wrapShowInTryCatch) {
+                    try {
+                        val show = jellyfinRepository.getShow(item.seriesId)
+                        database.insertShow(show.toFindroidShowDto(serverId))
+                        val season = jellyfinRepository.getSeason(item.seasonId)
+                        database.insertSeason(season.toFindroidSeasonDto())
+                    } catch (e: Exception) {
+                        Timber.w(e, "Error inserting show/season for existing download")
+                    }
+                } else {
+                    val show = jellyfinRepository.getShow(item.seriesId)
+                    database.insertShow(show.toFindroidShowDto(serverId))
+                    val season = jellyfinRepository.getSeason(item.seasonId)
+                    database.insertSeason(season.toFindroidSeasonDto())
+                }
+                database.insertEpisode(item.toFindroidEpisodeDto(serverId))
+            }
+        }
+    }
+
+    private fun resolveStorageLocation(storageIndex: Int): Pair<File, Int>? {
+        val preferredStorageIndex =
+            appPreferences.getValue(appPreferences.defaultDownloadStorageIndex).toIntOrNull() ?: -1
+        val effectiveIndex =
+            if (storageIndex >= 0) storageIndex
+            else if (preferredStorageIndex >= 0) preferredStorageIndex
+            else 0
+        val dirs = context.getExternalFilesDirs(null)
+        val storageLocation = dirs.getOrNull(effectiveIndex) ?: dirs.getOrNull(0)
+        return if (
+            storageLocation != null &&
+            Environment.getExternalStorageState(storageLocation) == Environment.MEDIA_MOUNTED
+        ) {
+            storageLocation to effectiveIndex
+        } else {
+            null
+        }
+    }
+
+    private suspend fun linkExistingDiskDownload(item: FindroidItem, currentUserId: UUID): Boolean {
+        val existingSources = database.getSources(item.id).filter { !it.path.endsWith(".download") && File(it.path).exists() }
+        if (existingSources.isNotEmpty()) {
+            Timber.i("downloadItem: item ${item.name} already exists on disk, linking to user $currentUserId")
+            insertItemMetadataToDb(item, appPreferences.getValue(appPreferences.currentServer), wrapShowInTryCatch = true)
+            database.insertUserDownload(UserDownloadDto(userId = currentUserId, itemId = item.id))
+            database.insertUserData(item.toFindroidUserDataDto(currentUserId))
+            return true
+        }
+        return false
+    }
+
+    private fun calculateEstimatedBytes(
+        item: FindroidItem,
+        source: FindroidSource,
+        presetId: String,
+        isTranscoding: Boolean,
+    ): Long {
+        return if (isTranscoding && item.runtimeTicks > 0) {
+            val preset = DownloadQualityPresets.getById(presetId, appPreferences)
+            val durationSec = (item.runtimeTicks / 10_000_000L).coerceAtLeast(1)
+            ((preset.maxBitrateBps + preset.audioBitrateBps) * durationSec) / 8L
+        } else {
+            source.size
+        }
+    }
+
+    private fun checkAvailableStorageSpace(
+        storageLocation: File,
+        estimatedBytes: Long,
+        fallbackSourceSize: Long,
+    ): UiText? {
+        val requiredStorage = if (estimatedBytes > 0) estimatedBytes else fallbackSourceSize
+        val stats = StatFs(storageLocation.path)
+        return if (requiredStorage > 0 && stats.availableBytes < requiredStorage) {
+            UiText.StringResource(
+                CoreR.string.not_enough_storage,
+                Formatter.formatFileSize(context, requiredStorage),
+                Formatter.formatFileSize(context, stats.availableBytes),
+            )
+        } else {
+            null
+        }
+    }
+
+    private fun calculateProgressPercentage(bytesDownloaded: Long, totalBytes: Long): Int {
+        return if (totalBytes > 0) {
+            (bytesDownloaded * 100 / totalBytes).toInt().coerceIn(0, 100)
+        } else {
+            0
+        }
+    }
+
+    private fun cleanupShowData(seriesId: UUID) {
+        database.deleteShow(seriesId)
+        if (database.countUserDataToBeSynced(seriesId) == 0) {
+            database.deleteUserData(seriesId)
+        }
+        File(context.filesDir, "trickplay/$seriesId").deleteRecursively()
+        File(context.filesDir, "images/$seriesId").deleteRecursively()
+    }
+
+    private fun cleanupSeasonData(seasonId: UUID) {
+        database.deleteSeason(seasonId)
+        if (database.countUserDataToBeSynced(seasonId) == 0) {
+            database.deleteUserData(seasonId)
+        }
+        File(context.filesDir, "trickplay/$seasonId").deleteRecursively()
+        File(context.filesDir, "images/$seasonId").deleteRecursively()
+    }
+
+    private fun cleanupEpisodeParents(item: FindroidEpisode) {
+        val remainingEpisodes = database.getEpisodesBySeasonId(item.seasonId)
+        if (remainingEpisodes.isEmpty()) {
+            cleanupSeasonData(item.seasonId)
+            val remainingSeasons = database.getSeasonsByShowId(item.seriesId)
+            if (remainingSeasons.isEmpty()) {
+                cleanupShowData(item.seriesId)
+            }
+        }
+    }
+
+    private fun deleteSourcesAndStreamsFiles(itemId: UUID, source: FindroidSource) {
+        val allSources = database.getSources(itemId)
+        for (s in allSources.ifEmpty { listOf(source.toFindroidSourceDto(itemId, source.path)) }) {
+            database.deleteSource(s.id)
+            File(s.path).delete()
+            val mediaStreams = database.getMediaStreamsBySourceId(s.id)
+            for (mediaStream in mediaStreams) {
+                File(mediaStream.path).delete()
+            }
+            database.deleteMediaStreamsBySourceId(s.id)
+        }
+        database.deleteSource(source.id)
+        File(source.path).delete()
+    }
+
     override suspend fun deleteItem(item: FindroidItem, source: FindroidSource, userId: UUID?) {
         val targetUserId = userId ?: try { jellyfinRepository.getUserId() } catch (_: Exception) { null }
         if (targetUserId != null) {
@@ -281,8 +358,6 @@ class DownloaderImpl(
             database.deleteUserDownloadsByItemId(item.id)
         }
 
-        // Implementation B: Shared file check!
-        // If other profiles still have this item in their downloads, do NOT delete physical files!
         if (database.countUserDownloads(item.id) > 0) {
             Timber.i("deleteItem: item ${item.name} still downloaded by other user(s), preserving physical files")
             return
@@ -294,35 +369,11 @@ class DownloaderImpl(
             is FindroidMovie -> database.deleteMovie(item.id)
             is FindroidEpisode -> {
                 database.deleteEpisode(item.id)
-                val remainingEpisodes = database.getEpisodesBySeasonId(item.seasonId)
-                if (remainingEpisodes.isEmpty()) {
-                    database.deleteSeason(item.seasonId)
-                    if (database.countUserDataToBeSynced(item.seasonId) == 0) {
-                        database.deleteUserData(item.seasonId)
-                    }
-                    File(context.filesDir, "trickplay/${item.seasonId}").deleteRecursively()
-                    File(context.filesDir, "images/${item.seasonId}").deleteRecursively()
-                    val remainingSeasons = database.getSeasonsByShowId(item.seriesId)
-                    if (remainingSeasons.isEmpty()) {
-                        database.deleteShow(item.seriesId)
-                        if (database.countUserDataToBeSynced(item.seriesId) == 0) {
-                            database.deleteUserData(item.seriesId)
-                        }
-                        File(context.filesDir, "trickplay/${item.seriesId}").deleteRecursively()
-                        File(context.filesDir, "images/${item.seriesId}").deleteRecursively()
-                    }
-                }
+                cleanupEpisodeParents(item)
             }
         }
 
-        database.deleteSource(source.id)
-        File(source.path).delete()
-
-        val mediaStreams = database.getMediaStreamsBySourceId(source.id)
-        for (mediaStream in mediaStreams) {
-            File(mediaStream.path).delete()
-        }
-        database.deleteMediaStreamsBySourceId(source.id)
+        deleteSourcesAndStreamsFiles(item.id, source)
 
         if (database.countUserDataToBeSynced(item.id) == 0) {
             database.deleteUserData(item.id)
@@ -335,11 +386,7 @@ class DownloaderImpl(
         if (downloadId == null) return Downloader.Progress(DownloadStatus.FAILED, 0, -1L, -1L)
         val snap = engine.snapshot(downloadId)
             ?: return Downloader.Progress(DownloadStatus.FAILED, 0, -1L, -1L)
-        val progress = if (snap.totalBytes > 0) {
-            (snap.bytesDownloaded * 100 / snap.totalBytes).toInt().coerceIn(0, 100)
-        } else {
-            0
-        }
+        val progress = calculateProgressPercentage(snap.bytesDownloaded, snap.totalBytes)
         return Downloader.Progress(
             status = snap.status,
             progress = progress,
@@ -353,11 +400,7 @@ class DownloaderImpl(
         return downloadIds.associateWith { id ->
             val snap = snapshots[id]
             if (snap != null) {
-                val progress = if (snap.totalBytes > 0) {
-                    (snap.bytesDownloaded * 100 / snap.totalBytes).toInt().coerceIn(0, 100)
-                } else {
-                    0
-                }
+                val progress = calculateProgressPercentage(snap.bytesDownloaded, snap.totalBytes)
                 Downloader.Progress(
                     status = snap.status,
                     progress = progress,
@@ -398,11 +441,23 @@ class DownloaderImpl(
         val source = database.getSourceByDownloadId(downloadId) ?: return@withContext false
         if (!source.path.endsWith(".download")) return@withContext true
         val partialFile = File(source.path)
-        if (!partialFile.exists() || partialFile.length() == 0L) return@withContext false
 
-        val isFragmented = Mp4Remuxer.isFragmentedMp4(partialFile)
         val basePath = source.path.removeSuffix(".download")
-        val finalFile = if (isFragmented) File("$basePath.mp4") else File(basePath)
+        val isFragmented = if (partialFile.exists()) Mp4Remuxer.isFragmentedMp4(partialFile) else false
+        val finalFile = if (isFragmented || !basePath.substringAfterLast('/', "").contains('.')) {
+            File("$basePath.mp4")
+        } else {
+            File(basePath)
+        }
+
+        if (!partialFile.exists() || partialFile.length() == 0L) {
+            if (finalFile.exists() && finalFile.length() > 0L) {
+                database.setSourcePath(source.id, finalFile.absolutePath)
+                return@withContext true
+            }
+            Timber.w("finalizeDownload: partialFile ${partialFile.absolutePath} does not exist or is empty")
+            return@withContext false
+        }
 
         var success = false
         if (isFragmented) {
@@ -411,11 +466,14 @@ class DownloaderImpl(
             if (hasSpace) {
                 Timber.i("Remuxing fragmented MP4 for download $downloadId into seekable MP4: ${finalFile.name}")
                 val remuxed = Mp4Remuxer.remuxToStandardMp4(partialFile, finalFile)
-                if (remuxed) {
+                if (remuxed && finalFile.exists() && finalFile.length() > 0L) {
                     partialFile.delete()
                     success = true
                 } else {
                     Timber.w("Remux failed for download $downloadId; falling back to direct rename")
+                    if (finalFile.exists() && finalFile.length() == 0L) {
+                        finalFile.delete()
+                    }
                 }
             } else {
                 Timber.w("Insufficient storage to remux download $downloadId (available=${stats.availableBytes}, needed=${partialFile.length()}); falling back to rename")
@@ -423,14 +481,30 @@ class DownloaderImpl(
         }
 
         if (!success) {
-            if (finalFile.exists()) finalFile.delete()
+            if (finalFile.exists() && finalFile.canonicalPath != partialFile.canonicalPath) {
+                if (finalFile.length() == 0L) {
+                    finalFile.delete()
+                } else if (partialFile.exists() && partialFile.length() > 0L) {
+                    finalFile.delete()
+                }
+            }
             success = partialFile.renameTo(finalFile)
+            if (!success && partialFile.exists()) {
+                try {
+                    partialFile.copyTo(finalFile, overwrite = true)
+                    partialFile.delete()
+                    success = true
+                } catch (e: Exception) {
+                    Timber.e(e, "Failed to copy partialFile to finalFile: ${finalFile.absolutePath}")
+                }
+            }
         }
 
-        if (success) {
+        if (success && finalFile.exists() && finalFile.length() > 0L) {
             database.setSourcePath(source.id, finalFile.absolutePath)
             true
         } else {
+            Timber.e("finalizeDownload failed for $downloadId: finalFile exists=${finalFile.exists()} length=${finalFile.length()}")
             false
         }
     }

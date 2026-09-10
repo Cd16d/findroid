@@ -359,9 +359,12 @@ class JellyfinRepositoryImpl(
                     )
                     .content
                     .mediaSources
-                    .map { it.toFindroidSource(this@JellyfinRepositoryImpl, itemId, includePath) }
+                    .map { it.toFindroidSource(this@JellyfinRepositoryImpl, itemId, includePath) },
             )
-            sources.addAll(database.getSources(itemId).map { it.toFindroidSource(database) })
+            val currentUserId = jellyfinApi.userId
+            if (currentUserId != null && database.isItemDownloadedForUser(currentUserId, itemId)) {
+                sources.addAll(database.getSources(itemId).map { it.toFindroidSource(database) })
+            }
             sources
         }
 
@@ -609,16 +612,20 @@ class JellyfinRepositoryImpl(
     override suspend fun getDownloads(): List<FindroidItem> =
         withContext(Dispatchers.IO) {
             val items = mutableListOf<FindroidItem>()
-            items.addAll(
-                database
-                    .getMoviesByServerId(appPreferences.getValue(appPreferences.currentServer)!!)
-                    .map { it.toFindroidMovie(database, jellyfinApi.userId!!) }
-            )
-            items.addAll(
-                database
-                    .getShowsByServerId(appPreferences.getValue(appPreferences.currentServer)!!)
-                    .map { it.toFindroidShow(database, jellyfinApi.userId!!) }
-            )
+            val serverId = appPreferences.getValue(appPreferences.currentServer)
+            val userId = jellyfinApi.userId
+            if (serverId != null && userId != null) {
+                items.addAll(
+                    database
+                        .getDownloadedMoviesByServerAndUser(serverId, userId)
+                        .map { it.toFindroidMovie(database, userId) }
+                )
+                items.addAll(
+                    database
+                        .getDownloadedShowsByServerAndUser(serverId, userId)
+                        .map { it.toFindroidShow(database, userId) }
+                )
+            }
             items
         }
 

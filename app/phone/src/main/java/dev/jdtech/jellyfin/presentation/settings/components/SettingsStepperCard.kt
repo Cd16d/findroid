@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.FilledTonalIconButton
@@ -97,8 +96,8 @@ fun SettingsStepperCard(
                     ),
                 ) {
                     Icon(
-                        painter = painterResource(CoreR.drawable.ic_minus_fat),
-                        contentDescription = "Minus",
+                        painter = painterResource(CoreR.drawable.ic_minus),
+                        contentDescription = stringResource(CoreR.string.download_minus),
                     )
                 }
 
@@ -148,7 +147,7 @@ fun SettingsStepperCard(
                 ) {
                     Icon(
                         painter = painterResource(CoreR.drawable.ic_plus),
-                        contentDescription = "Plus",
+                        contentDescription = stringResource(CoreR.string.download_plus),
                     )
                 }
             }
@@ -161,16 +160,15 @@ fun SettingsStepperCard(
 private fun SettingsStepperCardPreview() {
     FindroidTheme {
         SettingsStepperCard(
-            preference =
-                PreferenceStepper(
-                    nameStringResource = SettingsR.string.downloads_smart_count,
-                    descriptionStringRes = SettingsR.string.downloads_smart_count_summary,
-                    backendPreference = Preference("", ""),
-                    value = 3,
-                    minValue = 1,
-                    maxValue = 10,
-                    step = 1,
-                ),
+            preference = PreferenceStepper(
+                nameStringResource = SettingsR.string.downloads_smart_count,
+                descriptionStringRes = SettingsR.string.downloads_smart_count_summary,
+                backendPreference = Preference("preview_int", 3),
+                value = 3,
+                minValue = 1,
+                maxValue = 10,
+                step = 1,
+            ),
             onUpdate = {},
         )
     }
@@ -185,7 +183,7 @@ private fun SettingsStepperCardDisabledPreview() {
                 PreferenceStepper(
                     nameStringResource = SettingsR.string.downloads_smart_count,
                     descriptionStringRes = SettingsR.string.downloads_smart_count_summary,
-                    backendPreference = Preference("", ""),
+                    backendPreference = Preference("", 0),
                     value = 3,
                     minValue = 1,
                     maxValue = 10,

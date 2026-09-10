@@ -1,4 +1,4 @@
-package dev.jdtech.jellyfin.presentation.film.components
+package dev.jdtech.jellyfin.presentation.download
 
 import android.text.format.Formatter
 import androidx.compose.animation.AnimatedVisibility
@@ -65,7 +65,6 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.jdtech.jellyfin.LocalCastPlayerHeight
 import dev.jdtech.jellyfin.core.presentation.downloader.DownloadQueue
-import dev.jdtech.jellyfin.core.presentation.downloader.formatStableEta
 import dev.jdtech.jellyfin.core.presentation.dummy.dummyEpisode
 import dev.jdtech.jellyfin.film.presentation.downloads.SeasonEpisodeGroup
 import dev.jdtech.jellyfin.film.presentation.downloads.ShowDownloadsAction
@@ -74,6 +73,14 @@ import dev.jdtech.jellyfin.film.presentation.downloads.ShowDownloadsViewModel
 import dev.jdtech.jellyfin.models.FindroidEpisode
 import dev.jdtech.jellyfin.models.diskSize
 import dev.jdtech.jellyfin.models.isDownloading
+import dev.jdtech.jellyfin.presentation.download.components.ConfirmDeleteDialog
+import dev.jdtech.jellyfin.presentation.download.components.DownloadEpisodeTile
+import dev.jdtech.jellyfin.presentation.download.components.FloatingSelectionToolbar
+import dev.jdtech.jellyfin.presentation.download.components.StickySeasonHeader
+import dev.jdtech.jellyfin.presentation.download.models.DownloadCardActions
+import dev.jdtech.jellyfin.presentation.download.models.DownloadEpisodeTileState
+import dev.jdtech.jellyfin.presentation.download.models.DownloadStatus
+import dev.jdtech.jellyfin.presentation.film.components.PlaceholderScreen
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.utils.rememberSafePadding
 import dev.jdtech.jellyfin.utils.ObserveAsEvents
@@ -93,9 +100,6 @@ fun ShowDownloadsScreen(
 
     LaunchedEffect(showId) {
         viewModel.loadShow(showId)
-    }
-
-    ObserveAsEvents(viewModel.uiEvents) { _ ->
     }
 
     ShowDownloadsScreenLayout(
@@ -424,11 +428,10 @@ private fun ShowDownloadsScreenLayout(
                                 else -> 0f
                             }
 
-                            val speedFormatted = if (queueEntry != null && queueEntry.bytesPerSecond > 0) Formatter.formatFileSize(context, queueEntry.bytesPerSecond) + "/s" else ""
-                            val downloadedFormatted = when {
-                                transfer != null -> Formatter.formatFileSize(context, transfer.bytesTransferred)
-                                queueEntry != null && queueEntry.bytesDownloaded > 0 -> Formatter.formatFileSize(context, queueEntry.bytesDownloaded)
-                                else -> "0 B"
+                            val downloadedSizeBytes = when {
+                                transfer != null -> transfer.bytesTransferred
+                                queueEntry != null && queueEntry.bytesDownloaded > 0 -> queueEntry.bytesDownloaded
+                                else -> 0L
                             }
                             val sizeBytes = when {
                                 transfer != null -> transfer.totalBytes
@@ -442,44 +445,49 @@ private fun ShowDownloadsScreenLayout(
 
                             DownloadEpisodeTile(
                                 episode = episode,
-                                status = status,
-                                downloadProgress = downloadProgress,
-                                playbackProgress = playbackProgress,
-                                isSelected = state.selectedEpisodeIds.contains(episode.id),
-                                isSelectionMode = state.isSelectionMode,
-                                sizeBytes = sizeBytes,
-                                downloadSpeedFormatted = speedFormatted,
-                                downloadEtaFormatted = queueEntry?.etaSeconds?.let { formatStableEta(it) } ?: "",
-                                downloadedSizeFormatted = downloadedFormatted,
-                                isPaused = isMoviePaused,
-                                pendingDeletionSeconds = state.pendingDeletionIds[episode.id],
-                                onUndoDelete = {
-                                    onAction(ShowDownloadsAction.UndoDelete(episode.id))
-                                },
-                                displayExtraInfo = state.displayExtraInfo,
-                                onClick = {
-                                    if (state.isSelectionMode) {
+                                state = DownloadEpisodeTileState(
+                                    status = status,
+                                    downloadProgress = downloadProgress,
+                                    playbackProgress = playbackProgress,
+                                    isSelected = state.selectedEpisodeIds.contains(episode.id),
+                                    isSelectionMode = state.isSelectionMode,
+                                    sizeBytes = sizeBytes,
+                                    durationTicks = episode.runtimeTicks,
+                                    downloadSpeedBytesPerSec = queueEntry?.bytesPerSecond ?: 0L,
+                                    etaSeconds = queueEntry?.etaSeconds,
+                                    downloadedSizeBytes = downloadedSizeBytes,
+                                    isPaused = isMoviePaused,
+                                    pendingDeletionSeconds = state.pendingDeletionIds[episode.id],
+                                    displayExtraInfo = state.displayExtraInfo,
+                                ),
+                                actions = DownloadCardActions(
+                                    onClick = {
+                                        if (state.isSelectionMode) {
+                                            onAction(ShowDownloadsAction.ToggleSelection(episode.id))
+                                        } else if (status == DownloadStatus.DOWNLOADED) {
+                                            onEpisodeClick(episode)
+                                        }
+                                    },
+                                    onLongClick = {
+                                        onAction(ShowDownloadsAction.EnterSelectionMode)
                                         onAction(ShowDownloadsAction.ToggleSelection(episode.id))
-                                    } else if (status == DownloadStatus.DOWNLOADED) {
-                                        onEpisodeClick(episode)
-                                    }
-                                },
-                                onLongClick = {
-                                    onAction(ShowDownloadsAction.EnterSelectionMode)
-                                    onAction(ShowDownloadsAction.ToggleSelection(episode.id))
-                                },
-                                onSwipeDelete = {
-                                    onAction(ShowDownloadsAction.StageDeleteEpisode(episode))
-                                },
-                                onPauseDownload = {
-                                    onAction(ShowDownloadsAction.PauseDownload(episode.id))
-                                },
-                                onResumeDownload = {
-                                    onAction(ShowDownloadsAction.ResumeDownload(episode.id))
-                                },
-                                onRetryDownload = {
-                                    onAction(ShowDownloadsAction.ResumeDownload(episode.id))
-                                },
+                                    },
+                                    onSwipeDelete = {
+                                        onAction(ShowDownloadsAction.StageDeleteEpisode(episode))
+                                    },
+                                    onPauseDownload = {
+                                        onAction(ShowDownloadsAction.PauseDownload(episode.id))
+                                    },
+                                    onResumeDownload = {
+                                        onAction(ShowDownloadsAction.ResumeDownload(episode.id))
+                                    },
+                                    onRetryDownload = {
+                                        onAction(ShowDownloadsAction.ResumeDownload(episode.id))
+                                    },
+                                    onUndoDelete = {
+                                        onAction(ShowDownloadsAction.UndoDelete(episode.id))
+                                    },
+                                ),
                                 modifier = Modifier.padding(start = paddingStart, end = paddingEnd),
                             )
                         }

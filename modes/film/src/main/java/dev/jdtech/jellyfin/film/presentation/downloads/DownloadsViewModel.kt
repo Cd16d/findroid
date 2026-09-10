@@ -1,16 +1,21 @@
 package dev.jdtech.jellyfin.film.presentation.downloads
 
 import android.content.Context
+import android.os.Environment
 import android.os.StatFs
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import dev.jdtech.jellyfin.core.R as CoreR
+import dev.jdtech.jellyfin.core.presentation.downloader.DownloadQueue
 import dev.jdtech.jellyfin.database.ServerDatabaseDao
 import dev.jdtech.jellyfin.models.FindroidEpisode
+import dev.jdtech.jellyfin.models.FindroidItem
 import dev.jdtech.jellyfin.models.FindroidMovie
 import dev.jdtech.jellyfin.models.FindroidShow
 import dev.jdtech.jellyfin.models.FindroidSourceType
+import dev.jdtech.jellyfin.models.StorageTransferProgress
 import dev.jdtech.jellyfin.models.diskSize
 import dev.jdtech.jellyfin.models.formatSeasonsString
 import dev.jdtech.jellyfin.models.toFindroidEpisode
@@ -26,19 +31,13 @@ import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-
-import dev.jdtech.jellyfin.core.presentation.downloader.DownloadQueue
 import timber.log.Timber
 
-sealed interface DownloadsUiEvent {
-    data class ShowUndoSnackbar(val message: String) : DownloadsUiEvent
-}
 
 @HiltViewModel
 class DownloadsViewModel @Inject constructor(
@@ -53,12 +52,7 @@ class DownloadsViewModel @Inject constructor(
     private val _state = MutableStateFlow(DownloadsState())
     val state = _state.asStateFlow()
 
-    private val _uiEvents = MutableSharedFlow<DownloadsUiEvent>()
-    val uiEvents = _uiEvents.asSharedFlow()
-
-    private var pendingDeleteJob: Job? = null
-    private var stagedMovies = mutableListOf<FindroidMovie>()
-    private var stagedShows = mutableListOf<DownloadedShowItem>()
+    
     private var lastCompletedCount = -1
 
     init {
@@ -68,7 +62,7 @@ class DownloadsViewModel @Inject constructor(
                 val active = queueEntries.filter { it.state !is DownloadQueue.EntryState.Completed }
                 val completedCount = queueEntries.count { it.state is DownloadQueue.EntryState.Completed }
 
-                _state.value = _state.value.copy(activeDownloads = active, allQueueEntries = queueEntries)
+                _state.update { it.copy(activeDownloads = active, allQueueEntries = queueEntries) }
 
                 if (lastCompletedCount == -1) {
                     lastCompletedCount = completedCount
@@ -92,7 +86,7 @@ class DownloadsViewModel @Inject constructor(
             is DownloadsAction.ClearSelection -> clearSelection()
             is DownloadsAction.DeleteSelected -> deleteSelected()
             is DownloadsAction.PauseOrResumeSelected -> pauseOrResumeSelected(action.pause)
-            is DownloadsAction.EnterSelectionMode -> _state.value = _state.value.copy(isSelectionMode = true)
+            is DownloadsAction.EnterSelectionMode -> _state.update { it.copy(isSelectionMode = true) }
             is DownloadsAction.ExitSelectionMode -> clearSelection()
             is DownloadsAction.MoveItemStorage -> moveItemStorage(action.id, action.targetStorageIndex)
             is DownloadsAction.MoveSelected -> moveSelected(action.targetStorageIndex)
@@ -105,105 +99,149 @@ class DownloadsViewModel @Inject constructor(
     fun loadItems(showLoading: Boolean = true) {
         viewModelScope.launch {
             if (showLoading) {
-                _state.value = _state.value.copy(isLoading = true, error = null)
+                _state.update { it.copy(isLoading = true, error = null) }
             }
             try {
                 val currentServerId = appPreferences.getValue(appPreferences.currentServer)
                 if (currentServerId == null) {
-                    _state.value = _state.value.copy(isLoading = false)
+                    _state.update { it.copy(isLoading = false) }
                     return@launch
                 }
                 val currentUserId = repository.getUserId()
 
                 withContext(Dispatchers.IO) {
-                    val moviesDto = database.getDownloadedMoviesByServerAndUser(currentServerId, currentUserId)
-                    val movies = moviesDto.map { it.toFindroidMovie(database, currentUserId) }
+                    val movies = fetchDownloadedMovies(currentUserId)
+                    val showItems = fetchDownloadedShows(currentUserId)
 
-                    val showsDto = database.getDownloadedShowsByServerAndUser(currentServerId, currentUserId)
-                    val showItems = mutableListOf<DownloadedShowItem>()
-                    for (showDto in showsDto) {
-                        val show = showDto.toFindroidShow(database, currentUserId)
-                        val episodes = database.getDownloadedEpisodesByShowAndUser(show.id, currentUserId)
-                            .map { it.toFindroidEpisode(database, currentUserId) }
-                        if (episodes.isNotEmpty()) {
-                            val totalSize = show.totalDiskSize(episodes)
-                            val seasonNumbers = episodes.mapNotNull { it.parentIndexNumber }.distinct().sorted()
-                            val seasonsFormatted = formatSeasonsString(seasonNumbers, episodes.size)
-                            showItems.add(
-                                DownloadedShowItem(
-                                    show = show,
-                                    episodes = episodes,
-                                    totalDiskSize = totalSize,
-                                    seasonsFormatted = seasonsFormatted,
-                                )
-                            )
-                        }
-                    }
-
-                    // Storage calculations
                     val totalUsedBytes = movies.sumOf { it.diskSize() } + showItems.sumOf { it.totalDiskSize }
-                    val usedStorageFormatted = StorageUtils.formatDecimalFileSize(totalUsedBytes)
+                    val storageInfo = computeStorageInfo(totalUsedBytes)
 
-                    val preferredStorageIndex =
-                        appPreferences.getValue(appPreferences.defaultDownloadStorageIndex).toIntOrNull() ?: 0
-                    val dirs = context.getExternalFilesDirs(null)
-                    val hasSdCard = dirs.size > 1 && dirs[1] != null && android.os.Environment.getExternalStorageState(dirs[1]) == android.os.Environment.MEDIA_MOUNTED
-                    val mountedDirs = dirs.filterNotNull().filter { android.os.Environment.getExternalStorageState(it) == android.os.Environment.MEDIA_MOUNTED }
-                    val storageDir = dirs.getOrNull(preferredStorageIndex)?.takeIf { android.os.Environment.getExternalStorageState(it) == android.os.Environment.MEDIA_MOUNTED }
-                        ?: mountedDirs.firstOrNull()
-                        ?: context.filesDir
-                    var availableBytes = 0L
-                    var totalDeviceBytes = 0L
-                    try {
-                        val statFs = StatFs(storageDir.path)
-                        availableBytes = statFs.availableBlocksLong * statFs.blockSizeLong
-                        totalDeviceBytes = StorageUtils.getTotalStorageBytes(context, storageDir.path)
-                    } catch (e: Exception) {
-                        Timber.e(e, "Error calculating StatFs in DownloadsViewModel")
+                    _state.update {
+                        it.copy(
+                            isLoading = false,
+                            movies = movies,
+                            shows = showItems,
+                            usedStorageFormatted = storageInfo.usedStorageFormatted,
+                            freeStorageFormatted = storageInfo.freeStorageFormatted,
+                            deviceUsedFormatted = storageInfo.deviceUsedFormatted,
+                            deviceTotalFormatted = storageInfo.deviceTotalFormatted,
+                            downloadedFraction = storageInfo.downloadedFraction,
+                            otherUsedFraction = storageInfo.otherUsedFraction,
+                            freeFraction = storageInfo.freeFraction,
+                            hasSdCard = storageInfo.hasSdCard,
+                            displayExtraInfo = appPreferences.getValue(appPreferences.displayExtraInfo),
+                            isSmartDownloadsActive = appPreferences.getValue(appPreferences.smartDownloadNextEpisode),
+                        )
                     }
-                    val freeStorageFormatted = StorageUtils.formatDecimalFileSize(availableBytes)
-                    val deviceUsedBytes = (totalDeviceBytes - availableBytes).coerceAtLeast(0L)
-                    val deviceUsedFormatted = if (totalDeviceBytes > 0) StorageUtils.formatDecimalFileSize(deviceUsedBytes) else ""
-                    val deviceTotalFormatted = if (totalDeviceBytes > 0) StorageUtils.formatDecimalFileSize(totalDeviceBytes) else ""
-                    val displayExtraInfo = appPreferences.getValue(appPreferences.displayExtraInfo)
-
-                    val downloadedFraction = if (totalDeviceBytes > 0) (totalUsedBytes.toFloat() / totalDeviceBytes).coerceIn(0f, 1f) else 0f
-                    val freeFraction = if (totalDeviceBytes > 0) (availableBytes.toFloat() / totalDeviceBytes).coerceIn(0f, 1f) else 0f
-                    val otherUsedFraction = (1f - downloadedFraction - freeFraction).coerceAtLeast(0f)
-
-                    _state.value = _state.value.copy(
-                        isLoading = false,
-                        movies = movies,
-                        shows = showItems,
-                        usedStorageFormatted = usedStorageFormatted,
-                        freeStorageFormatted = freeStorageFormatted,
-                        deviceUsedFormatted = deviceUsedFormatted,
-                        deviceTotalFormatted = deviceTotalFormatted,
-                        downloadedFraction = downloadedFraction,
-                        otherUsedFraction = otherUsedFraction,
-                        freeFraction = freeFraction,
-                        hasSdCard = hasSdCard,
-                        displayExtraInfo = displayExtraInfo,
-                        isSmartDownloadsActive = appPreferences.getValue(appPreferences.smartDownloadNextEpisode),
-                    )
                 }
             } catch (e: Exception) {
-                _state.value = _state.value.copy(isLoading = false, error = e)
+                _state.update { it.copy(isLoading = false, error = e) }
             }
         }
     }
 
+    private suspend fun fetchDownloadedMovies(currentUserId: UUID): List<FindroidMovie> {
+        val moviesDto = database.getDownloadedMoviesByUser(currentUserId)
+        return moviesDto.map { it.toFindroidMovie(database, currentUserId) }
+    }
+
+    private suspend fun fetchDownloadedShows(currentUserId: UUID): List<DownloadedShowItem> {
+        val showsDto = database.getDownloadedShowsByUser(currentUserId)
+        val showItems = mutableListOf<DownloadedShowItem>()
+        for (showDto in showsDto) {
+            val show = showDto.toFindroidShow(database, currentUserId)
+            val episodes = database.getDownloadedEpisodesByShowAndUser(show.id, currentUserId)
+                .map { it.toFindroidEpisode(database, currentUserId) }
+            if (episodes.isNotEmpty()) {
+                val totalSize = show.totalDiskSize(episodes)
+                val seasonNumbers = episodes.mapNotNull { it.parentIndexNumber }.distinct().sorted()
+                val seasonsFormatted = formatSeasonsString(
+                    seasonNumbers = seasonNumbers,
+                    episodeCount = episodes.size,
+                    context = context,
+                    seasonSingleRes = CoreR.string.season_range_single,
+                    seasonPairRes = CoreR.string.season_range_pair,
+                    seasonMultipleRes = CoreR.string.season_range_multiple,
+                    episodesPluralRes = CoreR.plurals.episodes_count,
+                )
+                showItems.add(
+                    DownloadedShowItem(
+                        show = show,
+                        episodes = episodes,
+                        totalDiskSize = totalSize,
+                        seasonsFormatted = seasonsFormatted,
+                    )
+                )
+            }
+        }
+        return showItems
+    }
+
+    private data class StorageInfo(
+        val usedStorageFormatted: String,
+        val freeStorageFormatted: String,
+        val deviceUsedFormatted: String,
+        val deviceTotalFormatted: String,
+        val downloadedFraction: Float,
+        val otherUsedFraction: Float,
+        val freeFraction: Float,
+        val hasSdCard: Boolean,
+    )
+
+    private fun computeStorageInfo(totalUsedBytes: Long): StorageInfo {
+        val usedStorageFormatted = StorageUtils.formatDecimalFileSize(totalUsedBytes)
+
+        val preferredStorageIndex =
+            appPreferences.getValue(appPreferences.defaultDownloadStorageIndex).toIntOrNull() ?: 0
+        val dirs = context.getExternalFilesDirs(null)
+        val hasSdCard = dirs.size > 1 && dirs[1] != null && Environment.getExternalStorageState(dirs[1]) == Environment.MEDIA_MOUNTED
+        val mountedDirs = dirs.filterNotNull().filter { Environment.getExternalStorageState(it) == Environment.MEDIA_MOUNTED }
+        val storageDir = dirs.getOrNull(preferredStorageIndex)?.takeIf { Environment.getExternalStorageState(it) == Environment.MEDIA_MOUNTED }
+            ?: mountedDirs.firstOrNull()
+            ?: context.filesDir
+        var availableBytes = 0L
+        var totalDeviceBytes = 0L
+        try {
+            val statFs = StatFs(storageDir.path)
+            availableBytes = statFs.availableBlocksLong * statFs.blockSizeLong
+            totalDeviceBytes = StorageUtils.getTotalStorageBytes(context, storageDir.path)
+        } catch (e: Exception) {
+            Timber.e(e, "Error calculating StatFs in DownloadsViewModel")
+        }
+        val freeStorageFormatted = StorageUtils.formatDecimalFileSize(availableBytes)
+        val deviceUsedBytes = (totalDeviceBytes - availableBytes).coerceAtLeast(0L)
+        val deviceUsedFormatted = if (totalDeviceBytes > 0) StorageUtils.formatDecimalFileSize(deviceUsedBytes) else ""
+        val deviceTotalFormatted = if (totalDeviceBytes > 0) StorageUtils.formatDecimalFileSize(totalDeviceBytes) else ""
+
+        val downloadedFraction = if (totalDeviceBytes > 0) (totalUsedBytes.toFloat() / totalDeviceBytes).coerceIn(0f, 1f) else 0f
+        val freeFraction = if (totalDeviceBytes > 0) (availableBytes.toFloat() / totalDeviceBytes).coerceIn(0f, 1f) else 0f
+        val otherUsedFraction = (1f - downloadedFraction - freeFraction).coerceAtLeast(0f)
+
+        return StorageInfo(
+            usedStorageFormatted = usedStorageFormatted,
+            freeStorageFormatted = freeStorageFormatted,
+            deviceUsedFormatted = deviceUsedFormatted,
+            deviceTotalFormatted = deviceTotalFormatted,
+            downloadedFraction = downloadedFraction,
+            otherUsedFraction = otherUsedFraction,
+            freeFraction = freeFraction,
+            hasSdCard = hasSdCard,
+        )
+    }
+
     private val deletionJobs = mutableMapOf<UUID, Job>()
+
+    private suspend fun deleteMediaItem(item: FindroidItem, currentUserId: UUID) {
+        val source = item.sources.firstOrNull { it.type == FindroidSourceType.LOCAL }
+            ?: item.sources.firstOrNull() ?: return
+        downloader.deleteItem(item, source, currentUserId)
+    }
 
     private fun deleteMovie(movie: FindroidMovie) {
         viewModelScope.launch(Dispatchers.IO) {
             val currentUserId = repository.getUserId()
             downloadQueue.cancel(movie.id)
-            val source = movie.sources.firstOrNull { it.type == FindroidSourceType.LOCAL }
-                ?: movie.sources.firstOrNull()
-            if (source != null) {
-                downloader.deleteItem(movie, source, currentUserId)
-            }
+            deleteMediaItem(movie, currentUserId)
             loadItems(showLoading = false)
         }
     }
@@ -211,7 +249,6 @@ class DownloadsViewModel @Inject constructor(
     private fun deleteShow(showItem: DownloadedShowItem) {
         viewModelScope.launch(Dispatchers.IO) {
             val currentUserId = repository.getUserId()
-            // Cancel all queue entries of this series
             val queued = downloadQueue.entries.value.filter {
                 it.item is FindroidEpisode && (it.item as FindroidEpisode).seriesId == showItem.show.id
             }
@@ -219,11 +256,7 @@ class DownloadsViewModel @Inject constructor(
                 downloadQueue.cancel(entry.id)
             }
             for (episode in showItem.episodes) {
-                val source = episode.sources.firstOrNull { it.type == FindroidSourceType.LOCAL }
-                    ?: episode.sources.firstOrNull()
-                if (source != null) {
-                    downloader.deleteItem(episode, source, currentUserId)
-                }
+                deleteMediaItem(episode, currentUserId)
             }
             loadItems(showLoading = false)
         }
@@ -251,11 +284,7 @@ class DownloadsViewModel @Inject constructor(
                 downloadQueue.cancel(entry.id)
             }
             for (episode in showItem.episodes) {
-                val source = episode.sources.firstOrNull { it.type == FindroidSourceType.LOCAL }
-                    ?: episode.sources.firstOrNull()
-                if (source != null) {
-                    downloader.deleteItem(episode, source, currentUserId)
-                }
+                deleteMediaItem(episode, currentUserId)
             }
         }
     }
@@ -264,19 +293,19 @@ class DownloadsViewModel @Inject constructor(
         deletionJobs[id]?.cancel()
         val currentMap = _state.value.pendingDeletionIds.toMutableMap()
         currentMap[id] = 5
-        _state.value = _state.value.copy(pendingDeletionIds = currentMap)
+        _state.update { it.copy(pendingDeletionIds = currentMap) }
 
         val job = viewModelScope.launch {
             for (sec in 4 downTo 1) {
                 delay(1000L)
-                _state.value = _state.value.copy(
-                    pendingDeletionIds = _state.value.pendingDeletionIds + (id to sec)
-                )
+                _state.update {
+                    it.copy(pendingDeletionIds = it.pendingDeletionIds + (id to sec))
+                }
             }
             delay(1000L)
-            _state.value = _state.value.copy(
-                pendingDeletionIds = _state.value.pendingDeletionIds - id
-            )
+            _state.update {
+                it.copy(pendingDeletionIds = it.pendingDeletionIds - id)
+            }
             deletionJobs.remove(id)
             withContext(Dispatchers.IO) {
                 onCommit()
@@ -290,13 +319,11 @@ class DownloadsViewModel @Inject constructor(
         if (id != null) {
             deletionJobs[id]?.cancel()
             deletionJobs.remove(id)
-            _state.value = _state.value.copy(
-                pendingDeletionIds = _state.value.pendingDeletionIds - id
-            )
+            _state.update { it.copy(pendingDeletionIds = it.pendingDeletionIds - id) }
         } else {
             deletionJobs.values.forEach { it.cancel() }
             deletionJobs.clear()
-            _state.value = _state.value.copy(pendingDeletionIds = emptyMap())
+            _state.update { it.copy(pendingDeletionIds = emptyMap()) }
         }
     }
 
@@ -323,10 +350,12 @@ class DownloadsViewModel @Inject constructor(
     private fun toggleSelection(id: UUID) {
         val current = _state.value.selectedItemIds
         val updated = if (current.contains(id)) current - id else current + id
-        _state.value = _state.value.copy(
-            selectedItemIds = updated,
-            isSelectionMode = updated.isNotEmpty(),
-        )
+        _state.update {
+            it.copy(
+                selectedItemIds = updated,
+                isSelectionMode = updated.isNotEmpty(),
+            )
+        }
     }
 
     private fun selectAll() {
@@ -344,10 +373,12 @@ class DownloadsViewModel @Inject constructor(
         if (_state.value.selectedItemIds.size == allIds.size && allIds.isNotEmpty()) {
             clearSelection()
         } else {
-            _state.value = _state.value.copy(
-                selectedItemIds = allIds,
-                isSelectionMode = true,
-            )
+            _state.update {
+                it.copy(
+                    selectedItemIds = allIds,
+                    isSelectionMode = true,
+                )
+            }
         }
     }
 
@@ -359,10 +390,12 @@ class DownloadsViewModel @Inject constructor(
     }
 
     private fun clearSelection() {
-        _state.value = _state.value.copy(
-            selectedItemIds = emptySet(),
-            isSelectionMode = false,
-        )
+        _state.update {
+            it.copy(
+                selectedItemIds = emptySet(),
+                isSelectionMode = false,
+            )
+        }
     }
 
     private fun deleteSelected() {
@@ -379,24 +412,13 @@ class DownloadsViewModel @Inject constructor(
                     downloadQueue.cancel(entry.id)
                 }
             }
-            val moviesToDelete = _state.value.movies.filter { selected.contains(it.id) }
-            val showsToDelete = _state.value.shows.filter { selected.contains(it.show.id) }
-
             val currentUserId = repository.getUserId()
-            for (movie in moviesToDelete) {
-                val source = movie.sources.firstOrNull { it.type == FindroidSourceType.LOCAL }
-                    ?: movie.sources.firstOrNull()
-                if (source != null) {
-                    downloader.deleteItem(movie, source, currentUserId)
-                }
+            for (movie in _state.value.movies.filter { selected.contains(it.id) }) {
+                deleteMediaItem(movie, currentUserId)
             }
-            for (showItem in showsToDelete) {
+            for (showItem in _state.value.shows.filter { selected.contains(it.show.id) }) {
                 for (episode in showItem.episodes) {
-                    val source = episode.sources.firstOrNull { it.type == FindroidSourceType.LOCAL }
-                        ?: episode.sources.firstOrNull()
-                    if (source != null) {
-                        downloader.deleteItem(episode, source, currentUserId)
-                    }
+                    deleteMediaItem(episode, currentUserId)
                 }
             }
             clearSelection()
@@ -404,35 +426,34 @@ class DownloadsViewModel @Inject constructor(
         }
     }
 
+    private suspend fun performMoveStorage(
+        id: UUID,
+        item: FindroidItem,
+        targetStorageIndex: Int,
+    ) {
+        _state.update { it.copy(activeTransfers = it.activeTransfers + (id to StorageTransferProgress(itemId = id))) }
+        downloader.moveItemStorage(item, targetStorageIndex) { bytesTransferred, totalBytes ->
+            val progress = if (totalBytes > 0L) (bytesTransferred.toFloat() / totalBytes).coerceIn(0f, 1f) else 0f
+            _state.update {
+                it.copy(
+                    activeTransfers = it.activeTransfers + (id to StorageTransferProgress(
+                        itemId = id,
+                        bytesTransferred = bytesTransferred,
+                        totalBytes = totalBytes,
+                        progress = progress,
+                    ))
+                )
+            }
+        }
+        _state.update { it.copy(activeTransfers = it.activeTransfers - id) }
+    }
+
     private fun moveItemStorage(id: UUID, targetStorageIndex: Int) {
         viewModelScope.launch {
             val movie = _state.value.movies.firstOrNull { it.id == id }
             val showItem = _state.value.shows.firstOrNull { it.show.id == id }
             val item = movie ?: showItem?.show ?: return@launch
-
-            _state.value =
-                _state.value.copy(
-                    activeTransfers =
-                        _state.value.activeTransfers +
-                            (id to dev.jdtech.jellyfin.models.StorageTransferProgress(itemId = id))
-                )
-            downloader.moveItemStorage(item, targetStorageIndex) { bytesTransferred, totalBytes ->
-                val progress =
-                    if (totalBytes > 0L) (bytesTransferred.toFloat() / totalBytes).coerceIn(0f, 1f) else 0f
-                _state.value =
-                    _state.value.copy(
-                        activeTransfers =
-                            _state.value.activeTransfers +
-                                (id to
-                                    dev.jdtech.jellyfin.models.StorageTransferProgress(
-                                        itemId = id,
-                                        bytesTransferred = bytesTransferred,
-                                        totalBytes = totalBytes,
-                                        progress = progress,
-                                    ))
-                    )
-            }
-            _state.value = _state.value.copy(activeTransfers = _state.value.activeTransfers - id)
+            performMoveStorage(id, item, targetStorageIndex)
             loadItems()
         }
     }
@@ -445,30 +466,7 @@ class DownloadsViewModel @Inject constructor(
                 val movie = _state.value.movies.firstOrNull { it.id == id }
                 val showItem = _state.value.shows.firstOrNull { it.show.id == id }
                 val item = movie ?: showItem?.show ?: continue
-
-                _state.value =
-                    _state.value.copy(
-                        activeTransfers =
-                            _state.value.activeTransfers +
-                                (id to dev.jdtech.jellyfin.models.StorageTransferProgress(itemId = id))
-                    )
-                downloader.moveItemStorage(item, targetStorageIndex) { bytesTransferred, totalBytes ->
-                    val progress =
-                        if (totalBytes > 0L) (bytesTransferred.toFloat() / totalBytes).coerceIn(0f, 1f) else 0f
-                    _state.value =
-                        _state.value.copy(
-                            activeTransfers =
-                                _state.value.activeTransfers +
-                                    (id to
-                                        dev.jdtech.jellyfin.models.StorageTransferProgress(
-                                            itemId = id,
-                                            bytesTransferred = bytesTransferred,
-                                            totalBytes = totalBytes,
-                                            progress = progress,
-                                        ))
-                        )
-                }
-                _state.value = _state.value.copy(activeTransfers = _state.value.activeTransfers - id)
+                performMoveStorage(id, item, targetStorageIndex)
             }
             loadItems()
         }

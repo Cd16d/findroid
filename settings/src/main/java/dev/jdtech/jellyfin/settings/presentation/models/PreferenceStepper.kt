@@ -12,7 +12,7 @@ data class PreferenceStepper(
     override val enabled: Boolean = true,
     override val dependencies: List<PreferenceBackend<Boolean>> = emptyList(),
     override val supportedDeviceTypes: List<DeviceType> = listOf(DeviceType.PHONE, DeviceType.TV),
-    val backendPreference: PreferenceBackend<String>,
+    val backendPreference: PreferenceBackend<Int>,
     val value: Int = 0,
     val minValue: Int = 0,
     val maxValue: Int = 100,

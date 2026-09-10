@@ -3,6 +3,8 @@ package dev.jdtech.jellyfin.core.presentation.downloader
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dev.jdtech.jellyfin.models.DownloadQualityPreset
+import dev.jdtech.jellyfin.models.DownloadQualityPresets
 import dev.jdtech.jellyfin.models.FindroidItem
 import dev.jdtech.jellyfin.models.FindroidSourceType
 import dev.jdtech.jellyfin.models.isDownloading
@@ -11,13 +13,12 @@ import dev.jdtech.jellyfin.settings.domain.AppPreferences
 import dev.jdtech.jellyfin.utils.Downloader
 import dev.jdtech.jellyfin.utils.download.DownloadStatus
 import javax.inject.Inject
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 @HiltViewModel
@@ -42,8 +43,8 @@ class DownloaderViewModel @Inject constructor(
     val defaultDownloadStorageIndex: Int
         get() = appPreferences.getValue(appPreferences.defaultDownloadStorageIndex).toIntOrNull() ?: -1
 
-    val presets: List<dev.jdtech.jellyfin.models.DownloadQualityPreset>
-        get() = dev.jdtech.jellyfin.models.DownloadQualityPresets.loadPresets(appPreferences)
+    val presets: List<DownloadQualityPreset>
+        get() = DownloadQualityPresets.loadPresets(appPreferences)
 
     fun saveDownloadSettings(presetId: String, downloadExternalAudio: Boolean, rememberSettings: Boolean) {
         if (rememberSettings) {
@@ -64,13 +65,11 @@ class DownloaderViewModel @Inject constructor(
     var downloadId: Long? = null
     var downloadItem: FindroidItem? = null
 
-    private var itemsDownloaderJob: Job? = null
-
     init {
         viewModelScope.launch {
             try {
                 appPreferences.setValue(appPreferences.userCanTranscode, jellyfinRepository.canTranscode())
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 // Keep default
             }
         }
@@ -83,35 +82,49 @@ class DownloaderViewModel @Inject constructor(
                         when (val s = entry.state) {
                             is DownloadQueue.EntryState.Downloading,
                             is DownloadQueue.EntryState.Converting -> {
-                                _state.value = DownloaderState(
-                                    status = DownloadStatus.RUNNING,
-                                    progress = entry.progress / 100f,
-                                )
+                                _state.update {
+                                    it.copy(
+                                        status = DownloadStatus.RUNNING,
+                                        progress = entry.progress / 100f,
+                                        errorText = null,
+                                    )
+                                }
                             }
                             is DownloadQueue.EntryState.Pending -> {
-                                _state.value = DownloaderState(
-                                    status = DownloadStatus.PENDING,
-                                    progress = 0f,
-                                )
+                                _state.update {
+                                    it.copy(
+                                        status = DownloadStatus.PENDING,
+                                        progress = 0f,
+                                        errorText = null,
+                                    )
+                                }
                             }
                             is DownloadQueue.EntryState.Paused -> {
-                                _state.value = DownloaderState(
-                                    status = DownloadStatus.PAUSED,
-                                    progress = entry.progress / 100f,
-                                )
+                                _state.update {
+                                    it.copy(
+                                        status = DownloadStatus.PAUSED,
+                                        progress = entry.progress / 100f,
+                                        errorText = null,
+                                    )
+                                }
                             }
                             is DownloadQueue.EntryState.Completed -> {
-                                _state.value = DownloaderState(
-                                    status = DownloadStatus.SUCCESSFUL,
-                                    progress = 1f,
-                                )
+                                _state.update {
+                                    it.copy(
+                                        status = DownloadStatus.SUCCESSFUL,
+                                        progress = 1f,
+                                        errorText = null,
+                                    )
+                                }
                                 eventsChannel.trySend(DownloaderEvent.Successful)
                             }
                             is DownloadQueue.EntryState.Failed -> {
-                                _state.value = DownloaderState(
-                                    status = DownloadStatus.FAILED,
-                                    errorText = s.error,
-                                )
+                                _state.update {
+                                    it.copy(
+                                        status = DownloadStatus.FAILED,
+                                        errorText = s.error,
+                                    )
+                                }
                             }
                         }
                     }
@@ -127,11 +140,11 @@ class DownloaderViewModel @Inject constructor(
             if (entry != null) {
                 when (entry.state) {
                     is DownloadQueue.EntryState.Downloading,
-                    is DownloadQueue.EntryState.Converting -> _state.value = DownloaderState(status = DownloadStatus.RUNNING, progress = entry.progress / 100f)
-                    is DownloadQueue.EntryState.Pending -> _state.value = DownloaderState(status = DownloadStatus.PENDING, progress = 0f)
-                    is DownloadQueue.EntryState.Paused -> _state.value = DownloaderState(status = DownloadStatus.PAUSED, progress = entry.progress / 100f)
-                    is DownloadQueue.EntryState.Completed -> _state.value = DownloaderState(status = DownloadStatus.SUCCESSFUL, progress = 1f)
-                    is DownloadQueue.EntryState.Failed -> _state.value = DownloaderState(status = DownloadStatus.FAILED)
+                    is DownloadQueue.EntryState.Converting -> _state.update { it.copy(status = DownloadStatus.RUNNING, progress = entry.progress / 100f, errorText = null) }
+                    is DownloadQueue.EntryState.Pending -> _state.update { it.copy(status = DownloadStatus.PENDING, progress = 0f, errorText = null) }
+                    is DownloadQueue.EntryState.Paused -> _state.update { it.copy(status = DownloadStatus.PAUSED, progress = entry.progress / 100f, errorText = null) }
+                    is DownloadQueue.EntryState.Completed -> _state.update { it.copy(status = DownloadStatus.SUCCESSFUL, progress = 1f, errorText = null) }
+                    is DownloadQueue.EntryState.Failed -> _state.update { it.copy(status = DownloadStatus.FAILED) }
                 }
             } else if (item.isDownloading()) {
                 val source =
@@ -139,10 +152,13 @@ class DownloaderViewModel @Inject constructor(
                         ?: return@launch
                 this@DownloaderViewModel.downloadId = source.downloadId
                 val progressObj = downloader.getProgress(source.downloadId)
-                _state.value = DownloaderState(
-                    status = progressObj.status,
-                    progress = progressObj.progress.coerceAtLeast(0) / 100f,
-                )
+                _state.update {
+                    it.copy(
+                        status = progressObj.status,
+                        progress = progressObj.progress.coerceAtLeast(0) / 100f,
+                        errorText = null,
+                    )
+                }
             }
         }
     }
@@ -156,7 +172,7 @@ class DownloaderViewModel @Inject constructor(
     ) {
         this.downloadItem = item
         viewModelScope.launch {
-            _state.emit(DownloaderState(status = DownloadStatus.PENDING))
+            _state.update { it.copy(status = DownloadStatus.PENDING, progress = 0f, errorText = null) }
             downloadQueue.enqueue(
                 item = item,
                 presetId = presetId,
@@ -175,7 +191,7 @@ class DownloaderViewModel @Inject constructor(
         audioStreamIndex: Int? = null,
     ) {
         viewModelScope.launch {
-            _state.emit(DownloaderState(status = DownloadStatus.PENDING))
+            _state.update { it.copy(status = DownloadStatus.PENDING, progress = 0f, errorText = null) }
             val toDownload = items.filter { !it.sources.any { src -> src.type == FindroidSourceType.LOCAL } }
             for (item in toDownload) {
                 downloadQueue.enqueue(
@@ -193,7 +209,7 @@ class DownloaderViewModel @Inject constructor(
         viewModelScope.launch {
             downloadQueue.cancel(item.id)
             downloadId?.let { downloader.cancelDownload(item = item, downloadId = it) }
-            _state.emit(DownloaderState())
+            _state.update { DownloaderState() }
         }
     }
 
@@ -202,10 +218,9 @@ class DownloaderViewModel @Inject constructor(
             if (items.isNotEmpty()) {
                 items.forEach { downloadQueue.cancel(it.id) }
             } else {
-                itemsDownloaderJob?.cancel("User pressed cancel button")
                 downloadQueue.cancelAll()
             }
-            _state.emit(DownloaderState())
+            _state.update { DownloaderState() }
             eventsChannel.send(DownloaderEvent.Deleted)
         }
     }
@@ -251,6 +266,6 @@ class DownloaderViewModel @Inject constructor(
     }
 
     override fun onCleared() {
-        itemsDownloaderJob?.cancel("onCleared")
+        super.onCleared()
     }
 }

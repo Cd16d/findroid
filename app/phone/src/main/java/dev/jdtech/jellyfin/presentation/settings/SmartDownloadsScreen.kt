@@ -45,11 +45,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.jdtech.jellyfin.core.R as CoreR
-import dev.jdtech.jellyfin.presentation.film.components.StorageSummaryCard
+import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
+import dev.jdtech.jellyfin.presentation.theme.spacings
 import dev.jdtech.jellyfin.presentation.utils.rememberSafePadding
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -60,10 +62,26 @@ fun SmartDownloadsScreen(
     viewModel: SmartDownloadsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    SmartDownloadsScreenLayout(
+        state = state,
+        onAction = viewModel::onAction,
+        navigateBack = navigateBack,
+        onNavigateToPresets = onNavigateToPresets,
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@Composable
+private fun SmartDownloadsScreenLayout(
+    state: SmartDownloadsState,
+    onAction: (SmartDownloadsAction) -> Unit,
+    navigateBack: () -> Unit,
+    onNavigateToPresets: () -> Unit,
+) {
     val safePadding = rememberSafePadding()
-    val paddingStart = safePadding.start + 20.dp
-    val paddingEnd = safePadding.end + 20.dp
-    val paddingBottom = safePadding.bottom + 20.dp
+    val paddingStart = safePadding.start + MaterialTheme.spacings.medium
+    val paddingEnd = safePadding.end + MaterialTheme.spacings.medium
+    val paddingBottom = safePadding.bottom + MaterialTheme.spacings.medium
 
     Scaffold(
         contentWindowInsets = WindowInsets.statusBars.union(WindowInsets.displayCutout),
@@ -71,7 +89,7 @@ fun SmartDownloadsScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Smart Downloads",
+                        text = stringResource(CoreR.string.download_smart_downloads_title),
                         style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                     )
                 },
@@ -115,13 +133,13 @@ fun SmartDownloadsScreen(
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = "Scarica episodi successivi",
+                                    text = stringResource(CoreR.string.download_smart_downloads_title),
                                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                                     color = MaterialTheme.colorScheme.onSurface,
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(
-                                    text = "Mantiene automaticamente in download i prossimi episodi della serie che stai guardando.",
+                                    text = stringResource(CoreR.string.download_smart_downloads_desc),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
@@ -129,7 +147,7 @@ fun SmartDownloadsScreen(
                             Spacer(modifier = Modifier.width(12.dp))
                             Switch(
                                 checked = state.smartDownloadNextEpisode,
-                                onCheckedChange = { viewModel.setSmartDownloadNextEpisode(it) },
+                                onCheckedChange = { onAction(SmartDownloadsAction.SetSmartDownloadNextEpisode(it)) },
                             )
                         }
 
@@ -143,7 +161,7 @@ fun SmartDownloadsScreen(
 
                                 // Number of Next Episodes
                                 Text(
-                                    text = "Numero di episodi successivi",
+                                    text = stringResource(CoreR.string.download_next_episodes_label),
                                     style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
                                     color = MaterialTheme.colorScheme.onSurface,
                                 )
@@ -156,9 +174,10 @@ fun SmartDownloadsScreen(
                                         val isSelected = state.nextEpisodesCount == count
                                         FilterChip(
                                             selected = isSelected,
-                                            onClick = { viewModel.setNextEpisodesCount(count) },
+                                            onClick = { onAction(SmartDownloadsAction.SetNextEpisodesCount(count)) },
                                             label = {
-                                                Text(text = if (count == 1) "1 episodio" else "$count episodi")
+                                                val labelText = if (count == 1) stringResource(CoreR.string.download_next_episodes_one) else stringResource(CoreR.string.download_next_episodes_many, count)
+                                                Text(text = labelText)
                                             },
                                             colors = FilterChipDefaults.filterChipColors(
                                                 selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
@@ -172,13 +191,13 @@ fun SmartDownloadsScreen(
 
                                 // Storage Quota Limit
                                 Text(
-                                    text = "Limite di spazio per Smart Download",
+                                    text = stringResource(CoreR.string.download_storage_limit_label),
                                     style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
                                     color = MaterialTheme.colorScheme.onSurface,
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
-                                    text = "I download automatici verranno sospesi se lo spazio occupato supera questo limite.",
+                                    text = stringResource(CoreR.string.download_storage_limit_desc),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
@@ -197,7 +216,7 @@ fun SmartDownloadsScreen(
                                         val isSelected = state.storageLimitGb == limitGb
                                         FilterChip(
                                             selected = isSelected,
-                                            onClick = { viewModel.setStorageLimitGb(limitGb) },
+                                            onClick = { onAction(SmartDownloadsAction.SetStorageLimitGb(limitGb)) },
                                             label = { Text(text = label) },
                                             colors = FilterChipDefaults.filterChipColors(
                                                 selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
@@ -234,13 +253,13 @@ fun SmartDownloadsScreen(
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = "Elimina episodi già visti",
+                                    text = stringResource(CoreR.string.download_auto_delete_title),
                                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                                     color = MaterialTheme.colorScheme.onSurface,
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(
-                                    text = "Libera spazio cancellando gli episodi della serie una volta terminata la visione.",
+                                    text = stringResource(CoreR.string.download_auto_delete_desc),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
@@ -248,7 +267,7 @@ fun SmartDownloadsScreen(
                             Spacer(modifier = Modifier.width(12.dp))
                             Switch(
                                 checked = state.autoDeleteWatched,
-                                onCheckedChange = { viewModel.setAutoDeleteWatched(it) },
+                                onCheckedChange = { onAction(SmartDownloadsAction.SetAutoDeleteWatched(it)) },
                             )
                         }
 
@@ -273,7 +292,7 @@ fun SmartDownloadsScreen(
                                 )
                                 Spacer(modifier = Modifier.width(10.dp))
                                 Text(
-                                    text = "Cancellazione sicura: l'episodio viene eliminato soltanto dopo aver completato l'episodio successivo (>= 90%), così da permetterti di rivedere l'episodio in caso di necessità.",
+                                    text = stringResource(CoreR.string.download_safe_deletion_note),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSecondaryContainer,
                                 )
@@ -324,13 +343,13 @@ fun SmartDownloadsScreen(
                             Spacer(modifier = Modifier.width(14.dp))
                             Column {
                                 Text(
-                                    text = "Profili di qualità",
+                                    text = stringResource(CoreR.string.download_quality_presets_title),
                                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                                     color = MaterialTheme.colorScheme.onSurface,
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(
-                                    text = "Visualizza i preset ed esporta la configurazione",
+                                    text = stringResource(CoreR.string.download_quality_presets_desc),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
@@ -351,5 +370,23 @@ fun SmartDownloadsScreen(
                 Spacer(modifier = Modifier.height(safePadding.bottom + 24.dp))
             }
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun SmartDownloadsScreenPreview() {
+    FindroidTheme {
+        SmartDownloadsScreenLayout(
+            state = SmartDownloadsState(
+                smartDownloadNextEpisode = true,
+                nextEpisodesCount = 3,
+                storageLimitGb = 10,
+                autoDeleteWatched = true,
+            ),
+            onAction = {},
+            navigateBack = {},
+            onNavigateToPresets = {},
+        )
     }
 }

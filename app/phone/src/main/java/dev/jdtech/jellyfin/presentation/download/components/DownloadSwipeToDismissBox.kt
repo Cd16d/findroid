@@ -1,4 +1,4 @@
-package dev.jdtech.jellyfin.presentation.film.components
+package dev.jdtech.jellyfin.presentation.download.components
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
@@ -362,4 +362,3 @@ private fun DownloadEliminatingCardPreview() {
         )
     }
 }
-

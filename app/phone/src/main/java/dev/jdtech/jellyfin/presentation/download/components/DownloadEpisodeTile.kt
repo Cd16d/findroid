@@ -1,4 +1,4 @@
-package dev.jdtech.jellyfin.presentation.film.components
+package dev.jdtech.jellyfin.presentation.download.components
 
 import android.text.format.Formatter
 import androidx.compose.animation.AnimatedVisibility
@@ -46,48 +46,47 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import dev.jdtech.jellyfin.core.R as CoreR
+import dev.jdtech.jellyfin.core.presentation.downloader.formatStableEta
 import dev.jdtech.jellyfin.core.presentation.dummy.dummyEpisode
 import dev.jdtech.jellyfin.models.FindroidEpisode
 import dev.jdtech.jellyfin.models.diskSize
 import dev.jdtech.jellyfin.models.formatDuration
+import dev.jdtech.jellyfin.presentation.download.models.DownloadCardActions
+import dev.jdtech.jellyfin.presentation.download.models.DownloadEpisodeTileState
+import dev.jdtech.jellyfin.presentation.download.models.DownloadStatus
+import dev.jdtech.jellyfin.presentation.film.components.Direction
+import dev.jdtech.jellyfin.presentation.film.components.ItemPoster
+import dev.jdtech.jellyfin.presentation.film.components.PlayedBadge
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DownloadEpisodeTile(
     episode: FindroidEpisode,
-    status: DownloadStatus,
-    downloadProgress: Float,
-    playbackProgress: Float,
-    isSelected: Boolean,
-    isSelectionMode: Boolean,
-    onClick: () -> Unit,
-    onLongClick: () -> Unit,
-    onSwipeDelete: () -> Unit,
+    state: DownloadEpisodeTileState,
     modifier: Modifier = Modifier,
-    sizeBytes: Long = 0L,
-    durationTicks: Long = episode.runtimeTicks,
-    onPauseDownload: () -> Unit = {},
-    onResumeDownload: () -> Unit = {},
-    onRetryDownload: () -> Unit = {},
-    downloadSpeedFormatted: String = "",
-    downloadEtaFormatted: String = "",
-    downloadedSizeFormatted: String = "",
-    isPaused: Boolean = false,
-    pendingDeletionSeconds: Int? = null,
-    onUndoDelete: () -> Unit = {},
-    displayExtraInfo: Boolean = false,
+    actions: DownloadCardActions = DownloadCardActions(),
 ) {
     val context = LocalContext.current
-    val actualSizeBytes = remember(sizeBytes, episode) {
-        if (sizeBytes > 0L) sizeBytes
+    val actualSizeBytes = remember(state.sizeBytes, episode) {
+        if (state.sizeBytes > 0L) state.sizeBytes
         else episode.diskSize().takeIf { it > 0 } ?: (episode.sources.maxOfOrNull { it.size } ?: 0L)
     }
     val sizeFormatted = remember(actualSizeBytes, context) {
         if (actualSizeBytes > 0L) Formatter.formatFileSize(context, actualSizeBytes) else ""
     }
+    val downloadedSizeFormatted = remember(state.downloadedSizeBytes, context) {
+        if (state.downloadedSizeBytes > 0L) Formatter.formatFileSize(context, state.downloadedSizeBytes) else ""
+    }
+    val speedFormatted = remember(state.downloadSpeedBytesPerSec, context) {
+        if (state.downloadSpeedBytesPerSec > 0L) "${Formatter.formatFileSize(context, state.downloadSpeedBytesPerSec)}/s" else ""
+    }
+    val durationTicks = if (state.durationTicks > 0L) state.durationTicks else episode.runtimeTicks
     val durationFormatted = remember(durationTicks) {
         formatDuration(durationTicks)
+    }
+    val etaFormatted = remember(state.etaSeconds) {
+        state.etaSeconds?.let { formatStableEta(it) } ?: ""
     }
 
     val epNumber = episode.indexNumber
@@ -98,10 +97,10 @@ fun DownloadEpisodeTile(
     DownloadSwipeToDismissBox(
         itemId = episode.id.toString(),
         title = titleText,
-        isSelectionMode = isSelectionMode,
-        pendingDeletionSeconds = pendingDeletionSeconds,
-        onSwipeDelete = onSwipeDelete,
-        onUndoDelete = onUndoDelete,
+        isSelectionMode = state.isSelectionMode,
+        pendingDeletionSeconds = state.pendingDeletionSeconds,
+        onSwipeDelete = actions.onSwipeDelete,
+        onUndoDelete = actions.onUndoDelete,
         cardShape = cardShape,
         cardHeight = cardHeight,
         modifier = modifier,
@@ -111,7 +110,7 @@ fun DownloadEpisodeTile(
             colors =
                 CardDefaults.cardColors(
                     containerColor =
-                        if (isSelected) MaterialTheme.colorScheme.primaryContainer
+                        if (state.isSelected) MaterialTheme.colorScheme.primaryContainer
                         else MaterialTheme.colorScheme.surfaceContainer,
                 ),
             modifier =
@@ -120,7 +119,7 @@ fun DownloadEpisodeTile(
                     .height(cardHeight)
                     .clip(cardShape)
                     .then(
-                        if (isSelected) Modifier.border(
+                        if (state.isSelected) Modifier.border(
                             1.5.dp,
                             MaterialTheme.colorScheme.primary,
                             cardShape
@@ -128,8 +127,8 @@ fun DownloadEpisodeTile(
                         else Modifier
                     )
                     .combinedClickable(
-                        onClick = onClick,
-                        onLongClick = onLongClick,
+                        onClick = actions.onClick,
+                        onLongClick = actions.onLongClick,
                     ),
         ) {
             Row(
@@ -138,11 +137,11 @@ fun DownloadEpisodeTile(
                     .padding(10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                AnimatedVisibility(visible = isSelectionMode) {
+                AnimatedVisibility(visible = state.isSelectionMode) {
                     Row {
                         Checkbox(
-                            checked = isSelected,
-                            onCheckedChange = { onClick() },
+                            checked = state.isSelected,
+                            onCheckedChange = { actions.onClick() },
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                     }
@@ -162,7 +161,7 @@ fun DownloadEpisodeTile(
                         modifier = Modifier.fillMaxHeight(),
                     )
 
-                    if (status == DownloadStatus.DOWNLOADED) {
+                    if (state.status == DownloadStatus.DOWNLOADED) {
                         if (episode.played) {
                             PlayedBadge(
                                 modifier =
@@ -170,9 +169,9 @@ fun DownloadEpisodeTile(
                                         .align(Alignment.TopEnd)
                                         .padding(4.dp)
                             )
-                        } else if (playbackProgress in 0.02f..0.98f) {
+                        } else if (state.playbackProgress in 0.02f..0.98f) {
                             LinearProgressIndicator(
-                                progress = { playbackProgress },
+                                progress = { state.playbackProgress },
                                 modifier =
                                     Modifier
                                         .align(Alignment.BottomCenter)
@@ -192,19 +191,19 @@ fun DownloadEpisodeTile(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.Center,
                 ) {
-                    val percentStr = "${(downloadProgress * 100).toInt()}%"
+                    val percentStr = "${(state.downloadProgress * 100).toInt()}%"
                     val percentText =
-                        if (isPaused) "$percentStr • ${stringResource(CoreR.string.paused)}" else percentStr
+                        if (state.isPaused) "$percentStr • ${stringResource(CoreR.string.paused)}" else percentStr
                     val etaText =
-                        if (downloadEtaFormatted.isNotEmpty() && !isPaused) downloadEtaFormatted else ""
+                        if (etaFormatted.isNotEmpty() && !state.isPaused) etaFormatted else ""
 
-                    val metaRow = when (status) {
+                    val metaRow = when (state.status) {
                         DownloadStatus.PENDING -> {
                             buildString {
                                 append("E$epNumber")
                                 append(" • ")
                                 append(
-                                    if (isPaused) stringResource(CoreR.string.paused) else stringResource(
+                                    if (state.isPaused) stringResource(CoreR.string.paused) else stringResource(
                                         CoreR.string.pending_in_queue
                                     )
                                 )
@@ -220,7 +219,7 @@ fun DownloadEpisodeTile(
                                 append("E$epNumber")
                                 append(" • ")
                                 append(
-                                    if (isPaused) stringResource(CoreR.string.paused) else stringResource(
+                                    if (state.isPaused) stringResource(CoreR.string.paused) else stringResource(
                                         CoreR.string.converting
                                     )
                                 )
@@ -276,7 +275,7 @@ fun DownloadEpisodeTile(
                         }
                     }
 
-                    val metaColor = when (status) {
+                    val metaColor = when (state.status) {
                         DownloadStatus.PENDING -> MaterialTheme.colorScheme.tertiary
                         DownloadStatus.CONVERTING -> MaterialTheme.colorScheme.secondary
                         DownloadStatus.FAILED -> MaterialTheme.colorScheme.error
@@ -311,10 +310,10 @@ fun DownloadEpisodeTile(
                             append(sizePart)
                         }
 
-                        val speedStr = if (isPaused) {
+                        val speedStr = if (state.isPaused) {
                             stringResource(CoreR.string.paused)
                         } else {
-                            downloadSpeedFormatted
+                            speedFormatted
                         }
 
                         if (speedStr.isNotEmpty()) {
@@ -323,7 +322,7 @@ fun DownloadEpisodeTile(
                         }
                     }
 
-                    if (displayExtraInfo && (status == DownloadStatus.DOWNLOADING || status == DownloadStatus.TRANSFERRING)) {
+                    if (state.displayExtraInfo && (state.status == DownloadStatus.DOWNLOADING || state.status == DownloadStatus.TRANSFERRING)) {
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = downloadInfo,
@@ -338,14 +337,14 @@ fun DownloadEpisodeTile(
                 Spacer(modifier = Modifier.width(6.dp))
 
                 // Right action slot
-                if (!isSelectionMode) {
-                    when (status) {
+                if (!state.isSelectionMode) {
+                    when (state.status) {
                         DownloadStatus.DOWNLOADED -> {}
 
                         DownloadStatus.TRANSFERRING -> {
                             val tintColor = MaterialTheme.colorScheme.primary
                             val animatedProgress by animateFloatAsState(
-                                targetValue = downloadProgress,
+                                targetValue = state.downloadProgress,
                                 animationSpec = tween(400, easing = FastOutSlowInEasing),
                                 label = "epTransferProgress",
                             )
@@ -372,10 +371,10 @@ fun DownloadEpisodeTile(
                         DownloadStatus.DOWNLOADING,
                         DownloadStatus.CONVERTING -> {
                             val tintColor =
-                                if (status == DownloadStatus.CONVERTING) MaterialTheme.colorScheme.secondary
+                                if (state.status == DownloadStatus.CONVERTING) MaterialTheme.colorScheme.secondary
                                 else MaterialTheme.colorScheme.primary
                             val animatedDownloadProgress by animateFloatAsState(
-                                targetValue = downloadProgress,
+                                targetValue = state.downloadProgress,
                                 animationSpec = tween(400, easing = FastOutSlowInEasing),
                                 label = "epDlProgress",
                             )
@@ -383,7 +382,7 @@ fun DownloadEpisodeTile(
                                 contentAlignment = Alignment.Center,
                                 modifier = Modifier.size(36.dp),
                             ) {
-                                if (status == DownloadStatus.CONVERTING && downloadProgress <= 0f) {
+                                if (state.status == DownloadStatus.CONVERTING && state.downloadProgress <= 0f) {
                                     CircularProgressIndicator(
                                         modifier = Modifier.fillMaxSize(),
                                         strokeWidth = 3.dp,
@@ -400,15 +399,15 @@ fun DownloadEpisodeTile(
                                     )
                                 }
                                 IconButton(
-                                    onClick = if (isPaused) onResumeDownload else onPauseDownload,
+                                    onClick = if (state.isPaused) actions.onResumeDownload else actions.onPauseDownload,
                                     modifier = Modifier.fillMaxSize(),
                                 ) {
                                     Icon(
                                         painter = painterResource(
-                                            if (isPaused) CoreR.drawable.ic_play else CoreR.drawable.ic_pause
+                                            if (state.isPaused) CoreR.drawable.ic_play else CoreR.drawable.ic_pause
                                         ),
                                         contentDescription = stringResource(
-                                            if (isPaused) CoreR.string.resume else CoreR.string.pause
+                                            if (state.isPaused) CoreR.string.resume else CoreR.string.pause
                                         ),
                                         tint = tintColor,
                                         modifier = Modifier.size(20.dp)
@@ -423,15 +422,15 @@ fun DownloadEpisodeTile(
                                 modifier = Modifier.size(36.dp),
                             ) {
                                 IconButton(
-                                    onClick = if (isPaused) onResumeDownload else onPauseDownload,
+                                    onClick = if (state.isPaused) actions.onResumeDownload else actions.onPauseDownload,
                                     modifier = Modifier.fillMaxSize(),
                                 ) {
                                     Icon(
                                         painter = painterResource(
-                                            if (isPaused) CoreR.drawable.ic_play else CoreR.drawable.ic_hourglass
+                                            if (state.isPaused) CoreR.drawable.ic_play else CoreR.drawable.ic_hourglass
                                         ),
                                         contentDescription = stringResource(
-                                            if (isPaused) CoreR.string.resume else CoreR.string.pending_in_queue
+                                            if (state.isPaused) CoreR.string.resume else CoreR.string.pending_in_queue
                                         ),
                                         tint = MaterialTheme.colorScheme.tertiary,
                                         modifier = Modifier.size(20.dp)
@@ -441,20 +440,20 @@ fun DownloadEpisodeTile(
                         }
 
                         DownloadStatus.FAILED -> {
-                                IconButton(
-                                    onClick = onRetryDownload,
-                                    colors = IconButtonDefaults.iconButtonColors(
-                                        containerColor = MaterialTheme.colorScheme.errorContainer,
-                                        contentColor = MaterialTheme.colorScheme.onErrorContainer,
-                                    ),
-                                    modifier = Modifier.size(36.dp),
-                                ) {
-                                    Icon(
-                                        painter = painterResource(CoreR.drawable.ic_rotate_ccw),
-                                        contentDescription = stringResource(CoreR.string.retry),
-                                        modifier = Modifier.size(20.dp),
-                                    )
-                                }
+                            IconButton(
+                                onClick = actions.onRetryDownload,
+                                colors = IconButtonDefaults.iconButtonColors(
+                                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                                    contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                                ),
+                                modifier = Modifier.size(36.dp),
+                            ) {
+                                Icon(
+                                    painter = painterResource(CoreR.drawable.ic_rotate_ccw),
+                                    contentDescription = stringResource(CoreR.string.retry),
+                                    modifier = Modifier.size(20.dp),
+                                )
+                            }
                         }
                     }
                 }
@@ -469,14 +468,10 @@ private fun DownloadEpisodeTileDownloadedPreview() {
     FindroidTheme {
         DownloadEpisodeTile(
             episode = dummyEpisode,
-            status = DownloadStatus.DOWNLOADED,
-            downloadProgress = 0f,
-            playbackProgress = 0.3f,
-            isSelected = false,
-            isSelectionMode = false,
-            onClick = {},
-            onLongClick = {},
-            onSwipeDelete = {},
+            state = DownloadEpisodeTileState(
+                status = DownloadStatus.DOWNLOADED,
+                playbackProgress = 0.3f,
+            ),
         )
     }
 }
@@ -487,18 +482,10 @@ private fun DownloadEpisodeTileDownloadingPreview() {
     FindroidTheme {
         DownloadEpisodeTile(
             episode = dummyEpisode,
-            downloadedSizeFormatted = "540 MB",
-            downloadSpeedFormatted = "2.8 MB/s",
-            downloadEtaFormatted = "3m 15s",
-            status = DownloadStatus.DOWNLOADING,
-            downloadProgress = 0.52f,
-            playbackProgress = 0f,
-            isSelected = false,
-            isSelectionMode = false,
-            onClick = {},
-            onLongClick = {},
-            onSwipeDelete = {},
-            onPauseDownload = {},
+            state = DownloadEpisodeTileState(
+                status = DownloadStatus.DOWNLOADING,
+                downloadProgress = 0.52f,
+            ),
         )
     }
 }
@@ -509,19 +496,11 @@ private fun DownloadEpisodeTileDownloadingExtraInfoPreview() {
     FindroidTheme {
         DownloadEpisodeTile(
             episode = dummyEpisode,
-            downloadedSizeFormatted = "540 MB",
-            downloadSpeedFormatted = "2.8 MB/s",
-            downloadEtaFormatted = "3m 15s",
-            status = DownloadStatus.DOWNLOADING,
-            downloadProgress = 0.52f,
-            playbackProgress = 0f,
-            isSelected = false,
-            isSelectionMode = false,
-            onClick = {},
-            onLongClick = {},
-            onSwipeDelete = {},
-            onPauseDownload = {},
-            displayExtraInfo = true,
+            state = DownloadEpisodeTileState(
+                status = DownloadStatus.DOWNLOADING,
+                downloadProgress = 0.52f,
+                displayExtraInfo = true,
+            ),
         )
     }
 }
@@ -532,15 +511,9 @@ private fun DownloadEpisodeTilePendingPreview() {
     FindroidTheme {
         DownloadEpisodeTile(
             episode = dummyEpisode,
-            status = DownloadStatus.PENDING,
-            downloadProgress = 0f,
-            playbackProgress = 0f,
-            isSelected = false,
-            isSelectionMode = false,
-            onClick = {},
-            onLongClick = {},
-            onSwipeDelete = {},
-            onPauseDownload = {},
+            state = DownloadEpisodeTileState(
+                status = DownloadStatus.PENDING,
+            ),
         )
     }
 }
@@ -551,15 +524,9 @@ private fun DownloadEpisodeTileFailedPreview() {
     FindroidTheme {
         DownloadEpisodeTile(
             episode = dummyEpisode,
-            status = DownloadStatus.FAILED,
-            downloadProgress = 0f,
-            playbackProgress = 0f,
-            isSelected = false,
-            isSelectionMode = false,
-            onClick = {},
-            onLongClick = {},
-            onSwipeDelete = {},
-            onPauseDownload = {},
+            state = DownloadEpisodeTileState(
+                status = DownloadStatus.FAILED,
+            ),
         )
     }
 }
@@ -570,18 +537,11 @@ private fun DownloadEpisodeTileSelectionPreview() {
     FindroidTheme {
         DownloadEpisodeTile(
             episode = dummyEpisode,
-            downloadedSizeFormatted = "540 MB",
-            downloadSpeedFormatted = "2.8 MB/s",
-            downloadEtaFormatted = "3m 15s",
-            status = DownloadStatus.DOWNLOADED,
-            downloadProgress = 0.52f,
-            playbackProgress = 0f,
-            isSelected = false,
-            isSelectionMode = true,
-            onClick = {},
-            onLongClick = {},
-            onSwipeDelete = {},
-            onPauseDownload = {},
+            state = DownloadEpisodeTileState(
+                status = DownloadStatus.DOWNLOADED,
+                downloadProgress = 0.52f,
+                isSelectionMode = true,
+            ),
         )
     }
 }
@@ -592,18 +552,13 @@ private fun DownloadEpisodeTileSelectedPreview() {
     FindroidTheme {
         DownloadEpisodeTile(
             episode = dummyEpisode,
-            downloadedSizeFormatted = "540 MB",
-            downloadSpeedFormatted = "2.8 MB/s",
-            downloadEtaFormatted = "3m 15s",
-            status = DownloadStatus.DOWNLOADED,
-            downloadProgress = 0.52f,
-            playbackProgress = 0.5f,
-            isSelected = true,
-            isSelectionMode = true,
-            onClick = {},
-            onLongClick = {},
-            onSwipeDelete = {},
-            onPauseDownload = {},
+            state = DownloadEpisodeTileState(
+                status = DownloadStatus.DOWNLOADED,
+                downloadProgress = 0.52f,
+                playbackProgress = 0.5f,
+                isSelected = true,
+                isSelectionMode = true,
+            ),
         )
     }
 }
@@ -614,16 +569,10 @@ private fun DownloadEpisodeTileEliminatingPreview() {
     FindroidTheme {
         DownloadEpisodeTile(
             episode = dummyEpisode,
-            status = DownloadStatus.DOWNLOADED,
-            downloadProgress = 0f,
-            playbackProgress = 0f,
-            isSelected = false,
-            isSelectionMode = false,
-            pendingDeletionSeconds = 5,
-            onClick = {},
-            onLongClick = {},
-            onSwipeDelete = {},
-            onUndoDelete = {},
+            state = DownloadEpisodeTileState(
+                status = DownloadStatus.DOWNLOADED,
+                pendingDeletionSeconds = 5,
+            ),
         )
     }
 }

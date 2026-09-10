@@ -1,5 +1,11 @@
 package dev.jdtech.jellyfin.presentation.film.components
 
+import dev.jdtech.jellyfin.presentation.download.components.CancelDownloadDialog
+import dev.jdtech.jellyfin.presentation.download.components.DeleteDownloadDialog
+import dev.jdtech.jellyfin.presentation.download.components.DownloadPresetBottomSheet
+import dev.jdtech.jellyfin.presentation.download.components.DownloaderCard
+import dev.jdtech.jellyfin.presentation.download.components.StorageSelectionDialog
+
 import android.os.Environment
 import android.os.StatFs
 import dev.jdtech.jellyfin.utils.download.DownloadStatus
@@ -105,11 +111,11 @@ fun ItemButtonsBar(
                     val locationStringRes =
                         if (Environment.isExternalStorageRemovable(dir)) CoreR.string.external
                         else CoreR.string.internal
-                    val locationString = context.getString(locationStringRes)
+                    val locationString = context.applicationContext.getString(locationStringRes)
                     val availableMegaBytes = stat.availableBytes.div(1000000)
-                    val label = context.getString(CoreR.string.storage_name, locationString, availableMegaBytes)
+                    val label = context.applicationContext.getString(CoreR.string.storage_name, locationString, availableMegaBytes)
                     StorageOption(index, label)
-                } catch (e: Exception) {
+                } catch (_: Exception) {
                     null
                 }
             } else {

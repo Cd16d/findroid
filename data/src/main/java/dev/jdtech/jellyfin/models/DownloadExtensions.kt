@@ -1,54 +1,80 @@
 package dev.jdtech.jellyfin.models
 
+import android.content.Context
 import org.jellyfin.sdk.model.api.MediaStreamType
 import org.jellyfin.sdk.model.api.VideoRangeType
 
-fun FindroidMovie.diskSize(): Long = sources.sumOf { it.size }
-
-fun FindroidEpisode.diskSize(): Long = sources.sumOf { it.size }
+fun FindroidSources.diskSize(): Long = sources.sumOf { it.size }
 
 fun FindroidShow.totalDiskSize(episodes: List<FindroidEpisode>): Long =
     episodes.sumOf { it.diskSize() }
 
-fun formatSeasonRanges(seasonNumbers: List<Int>): String {
+fun formatSeasonRanges(
+    seasonNumbers: List<Int>,
+    context: Context? = null,
+    seasonSingleRes: Int? = null,
+    seasonPairRes: Int? = null,
+    seasonMultipleRes: Int? = null,
+): String {
     val sorted = seasonNumbers.filter { it > 0 }.distinct().sorted()
     if (sorted.isEmpty()) return ""
-    if (sorted.size == 1) return "Season ${sorted[0]}"
-    if (sorted.size == 2 && sorted[1] == sorted[0] + 1) {
-        return "Seasons ${sorted[0]} & ${sorted[1]}"
+    if (context != null && seasonSingleRes != null && seasonPairRes != null && seasonMultipleRes != null) {
+        if (sorted.size == 1) return context.getString(seasonSingleRes, sorted[0])
+        if (sorted.size == 2 && sorted[1] == sorted[0] + 1) {
+            return context.getString(seasonPairRes, sorted[0], sorted[1])
+        }
+    } else {
+        if (sorted.size == 1) return "Season ${sorted[0]}"
+        if (sorted.size == 2 && sorted[1] == sorted[0] + 1) {
+            return "Seasons ${sorted[0]} & ${sorted[1]}"
+        }
     }
     val ranges = mutableListOf<String>()
     var start = sorted[0]
     var prev = sorted[0]
+
+    fun addRange(s: Int, p: Int) {
+        when {
+            p == s -> ranges.add("$s")
+            p == s + 1 -> ranges.add("$s, $p")
+            else -> ranges.add("$s–$p")
+        }
+    }
+
     for (i in 1 until sorted.size) {
         val curr = sorted[i]
         if (curr == prev + 1) {
             prev = curr
         } else {
-            if (prev == start) {
-                ranges.add("$start")
-            } else if (prev == start + 1) {
-                ranges.add("$start, $prev")
-            } else {
-                ranges.add("$start–$prev")
-            }
+            addRange(start, prev)
             start = curr
             prev = curr
         }
     }
-    if (prev == start) {
-        ranges.add("$start")
-    } else if (prev == start + 1) {
-        ranges.add("$start, $prev")
+    addRange(start, prev)
+    val joined = ranges.joinToString(", ")
+    return if (context != null && seasonMultipleRes != null) {
+        context.getString(seasonMultipleRes, joined)
     } else {
-        ranges.add("$start–$prev")
+        "Seasons $joined"
     }
-    return "Seasons ${ranges.joinToString(", ")}"
 }
 
-fun formatSeasonsString(seasonNumbers: List<Int>, episodeCount: Int): String {
-    val seasonsPart = formatSeasonRanges(seasonNumbers)
-    val epString = if (episodeCount == 1) "1 episode" else "$episodeCount episodes"
+fun formatSeasonsString(
+    seasonNumbers: List<Int>,
+    episodeCount: Int,
+    context: Context? = null,
+    seasonSingleRes: Int? = null,
+    seasonPairRes: Int? = null,
+    seasonMultipleRes: Int? = null,
+    episodesPluralRes: Int? = null,
+): String {
+    val seasonsPart = formatSeasonRanges(seasonNumbers, context, seasonSingleRes, seasonPairRes, seasonMultipleRes)
+    val epString = if (context != null && episodesPluralRes != null) {
+        context.resources.getQuantityString(episodesPluralRes, episodeCount, episodeCount)
+    } else {
+        if (episodeCount == 1) "1 episode" else "$episodeCount episodes"
+    }
     return if (seasonsPart.isEmpty()) epString else "$seasonsPart • $epString"
 }
 

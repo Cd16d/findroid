@@ -1,4 +1,4 @@
-package dev.jdtech.jellyfin.presentation.film.components
+package dev.jdtech.jellyfin.presentation.download.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
@@ -46,55 +46,55 @@ fun FloatingSelectionToolbar(
             shadowElevation = 8.dp,
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
         ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            if (anyDownloadingOrPending != null && onPauseOrResume != null) {
-                IconButton(
-                    onClick = { onPauseOrResume(anyDownloadingOrPending) },
-                ) {
-                    Icon(
-                        painter = painterResource(
-                            if (anyDownloadingOrPending) CoreR.drawable.ic_pause else CoreR.drawable.ic_play
-                        ),
-                        contentDescription = stringResource(
-                            if (anyDownloadingOrPending) CoreR.string.pause_all else CoreR.string.resume_all
-                        ),
-                        tint = MaterialTheme.colorScheme.primary,
-                    )
+            Row(
+                modifier = Modifier.padding(horizontal = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (anyDownloadingOrPending != null && onPauseOrResume != null) {
+                    IconButton(
+                        onClick = { onPauseOrResume(anyDownloadingOrPending) },
+                    ) {
+                        Icon(
+                            painter = painterResource(
+                                if (anyDownloadingOrPending) CoreR.drawable.ic_pause else CoreR.drawable.ic_play
+                            ),
+                            contentDescription = stringResource(
+                                if (anyDownloadingOrPending) CoreR.string.pause_all else CoreR.string.resume_all
+                            ),
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                    }
                 }
-            }
 
-            if (hasSdCard && onMoveStorage != null) {
+                if (hasSdCard && onMoveStorage != null) {
+                    IconButton(
+                        onClick = onMoveStorage,
+                        enabled = selectedCount > 0,
+                    ) {
+                        Icon(
+                            painter = painterResource(CoreR.drawable.ic_hard_drive),
+                            contentDescription = stringResource(CoreR.string.move_storage),
+                            tint = if (selectedCount > 0) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+                        )
+                    }
+                }
+
                 IconButton(
-                    onClick = onMoveStorage,
+                    onClick = onDelete,
                     enabled = selectedCount > 0,
                 ) {
                     Icon(
-                        painter = painterResource(CoreR.drawable.ic_hard_drive),
-                        contentDescription = stringResource(CoreR.string.move_storage),
-                        tint = if (selectedCount > 0) MaterialTheme.colorScheme.primary
+                        painter = painterResource(CoreR.drawable.ic_trash),
+                        contentDescription = stringResource(CoreR.string.delete),
+                        tint = if (selectedCount > 0) DeleteRed
                         else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                     )
                 }
             }
-
-            IconButton(
-                onClick = onDelete,
-                enabled = selectedCount > 0,
-            ) {
-                Icon(
-                    painter = painterResource(CoreR.drawable.ic_trash),
-                    contentDescription = stringResource(CoreR.string.delete),
-                    tint = if (selectedCount > 0) DeleteRed
-                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
-                )
-            }
         }
     }
-}
 }
 
 @Preview(showBackground = true)
@@ -111,4 +111,3 @@ private fun FloatingSelectionToolbarPreview() {
         )
     }
 }
-

@@ -30,6 +30,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.PreviewScreenSizes
@@ -51,9 +52,9 @@ import dev.jdtech.jellyfin.models.FindroidItem
 import dev.jdtech.jellyfin.models.isDownloaded
 import dev.jdtech.jellyfin.player.cast.models.CastConnectionState
 import dev.jdtech.jellyfin.player.cast.presentation.CastSessionViewModel
+import dev.jdtech.jellyfin.presentation.download.components.DownloadedBadge
+import dev.jdtech.jellyfin.presentation.download.components.DownloadingBadge
 import dev.jdtech.jellyfin.presentation.film.components.Direction
-import dev.jdtech.jellyfin.presentation.film.components.DownloadedBadge
-import dev.jdtech.jellyfin.presentation.film.components.DownloadingBadge
 import dev.jdtech.jellyfin.presentation.film.components.EpisodeCard
 import dev.jdtech.jellyfin.presentation.film.components.ItemButtonsBar
 import dev.jdtech.jellyfin.presentation.film.components.ItemHeader
@@ -160,7 +161,6 @@ private fun SeasonScreenLayout(
 
     Box(modifier = Modifier.fillMaxSize()) {
         state.season?.let { season ->
-            val context = LocalContext.current
             val seasonEpisodeIds = remember(state.episodes) { state.episodes.map { it.id }.toSet() }
             val seasonQueueEntries = remember(queueEntries, seasonEpisodeIds) {
                 queueEntries.filter { it.id in seasonEpisodeIds }
@@ -202,13 +202,13 @@ private fun SeasonScreenLayout(
             }
 
             val downloadedPart = when {
-                completedInQueue > 0 -> context.resources.getQuantityString(CoreR.plurals.episodes_downloaded, completedInQueue, completedInQueue)
+                completedInQueue > 0 -> pluralStringResource(CoreR.plurals.episodes_downloaded, completedInQueue, completedInQueue)
                 isAllPaused -> stringResource(CoreR.string.paused)
-                downloadingEp != null || convertingEp != null -> context.resources.getQuantityString(CoreR.plurals.episodes_downloading, 1, 1)
+                downloadingEp != null || convertingEp != null -> pluralStringResource(CoreR.plurals.episodes_downloading, 1, 1)
                 else -> ""
             }
             val queuePart = if (pendingEps.isNotEmpty()) {
-                context.resources.getQuantityString(CoreR.plurals.episodes_in_queue, pendingEps.size, pendingEps.size)
+                pluralStringResource(CoreR.plurals.episodes_in_queue, pendingEps.size, pendingEps.size)
             } else ""
             val extraInfo = when {
                 downloadedPart.isNotEmpty() && queuePart.isNotEmpty() -> "$downloadedPart • $queuePart"

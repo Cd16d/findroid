@@ -67,6 +67,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewScreenSizes
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -75,6 +76,7 @@ import dev.jdtech.jellyfin.models.DownloadQualityPreset
 import dev.jdtech.jellyfin.models.DownloadQualityPresets
 import dev.jdtech.jellyfin.models.UiText
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
+import dev.jdtech.jellyfin.presentation.theme.spacings
 import dev.jdtech.jellyfin.presentation.utils.rememberSafePadding
 import dev.jdtech.jellyfin.utils.DeviceCodecCapabilities
 import kotlinx.coroutines.launch
@@ -92,10 +94,7 @@ fun DownloadPresetsScreen(
     DownloadPresetsScreenContent(
         presets = presets,
         navigateBack = navigateBack,
-        onSavePreset = viewModel::savePreset,
-        onDeletePreset = viewModel::deletePreset,
-        onImportPresets = viewModel::importPresets,
-        onResetToDefaults = viewModel::resetToDefaults,
+        onAction = viewModel::onAction,
     )
 }
 
@@ -104,18 +103,15 @@ fun DownloadPresetsScreen(
 private fun DownloadPresetsScreenContent(
     presets: List<DownloadQualityPreset>,
     navigateBack: () -> Unit,
-    onSavePreset: (DownloadQualityPreset) -> Unit = {},
-    onDeletePreset: (String) -> Unit = {},
-    onImportPresets: (String) -> Boolean = { true },
-    onResetToDefaults: () -> Unit = {},
+    onAction: (DownloadPresetsAction) -> Boolean = { true },
 ) {
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val safePadding = rememberSafePadding()
-    val paddingStart = safePadding.start + 20.dp
-    val paddingEnd = safePadding.end + 20.dp
-    val paddingBottom = safePadding.bottom + 20.dp
+    val paddingStart = safePadding.start + MaterialTheme.spacings.medium
+    val paddingEnd = safePadding.end + MaterialTheme.spacings.medium
+    val paddingBottom = safePadding.bottom + MaterialTheme.spacings.medium
 
     var showExtraInfo by remember { mutableStateOf(false) }
     var presetToEdit by remember { mutableStateOf<DownloadQualityPreset?>(null) }
@@ -152,12 +148,12 @@ private fun DownloadPresetsScreenContent(
             preset = presetToEdit!!,
             isNew = isNewPreset,
             onSave = { updated ->
-                onSavePreset(updated)
+                onAction(DownloadPresetsAction.SavePreset(updated))
                 presetToEdit = null
             },
             onDelete = if (!isNewPreset && !presetToEdit!!.isOriginal) {
                 {
-                    onDeletePreset(presetToEdit!!.id)
+                    onAction(DownloadPresetsAction.DeletePreset(presetToEdit!!.id))
                     presetToEdit = null
                 }
             } else null,
@@ -167,7 +163,7 @@ private fun DownloadPresetsScreenContent(
 
     if (showImportDialog) {
         ImportPresetsDialog(
-            onImport = { json -> onImportPresets(json) },
+            onImport = { json -> onAction(DownloadPresetsAction.ImportPresets(json)) },
             onDismiss = { showImportDialog = false },
             onSuccess = {
                 scope.launch { snackbarHostState.showSnackbar(importSuccessMessage) }
@@ -209,7 +205,7 @@ private fun DownloadPresetsScreenContent(
                             modifier = Modifier.size(20.dp),
                         )
                     }
-                    IconButton(onClick = { onResetToDefaults() }) {
+                    IconButton(onClick = { onAction(DownloadPresetsAction.ResetToDefaults) }) {
                         Icon(
                             painter = painterResource(CoreR.drawable.ic_rotate_ccw),
                             contentDescription = stringResource(CoreR.string.download_preset_reset_defaults),
@@ -806,6 +802,7 @@ private fun ImportPresetsDialog(
     )
 }
 
+@Preview(showBackground = true)
 @PreviewScreenSizes
 @Composable
 private fun DownloadPresetsScreenPreview() {

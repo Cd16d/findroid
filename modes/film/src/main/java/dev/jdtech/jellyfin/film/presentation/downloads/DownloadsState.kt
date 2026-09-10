@@ -2,6 +2,7 @@ package dev.jdtech.jellyfin.film.presentation.downloads
 
 import dev.jdtech.jellyfin.core.presentation.downloader.DownloadQueue
 import dev.jdtech.jellyfin.models.FindroidMovie
+import dev.jdtech.jellyfin.models.StorageTransferProgress
 import java.util.UUID
 
 data class DownloadsState(
@@ -22,9 +23,8 @@ data class DownloadsState(
     val selectedItemIds: Set<UUID> = emptySet(),
     val isSelectionMode: Boolean = false,
     val pendingDeletionIds: Map<UUID, Int> = emptyMap(),
-    val isSearching: Boolean = false,
     val isSmartDownloadsActive: Boolean = false,
-    val activeTransfers: Map<UUID, dev.jdtech.jellyfin.models.StorageTransferProgress> = emptyMap(),
+    val activeTransfers: Map<UUID, StorageTransferProgress> = emptyMap(),
     val error: Exception? = null,
 ) {
     val isEmpty: Boolean

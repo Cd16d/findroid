@@ -1,4 +1,4 @@
-package dev.jdtech.jellyfin.presentation.film.components
+package dev.jdtech.jellyfin.presentation.download.components
 
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
@@ -6,8 +6,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
-import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.core.R as CoreR
+import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 
 @Composable
 fun ConfirmDeleteDialog(
@@ -45,4 +45,3 @@ private fun ConfirmDeleteDialogPreview() {
         )
     }
 }
-

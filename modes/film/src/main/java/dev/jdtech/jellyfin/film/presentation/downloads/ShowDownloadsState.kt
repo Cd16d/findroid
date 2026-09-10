@@ -3,6 +3,7 @@ package dev.jdtech.jellyfin.film.presentation.downloads
 import dev.jdtech.jellyfin.core.presentation.downloader.DownloadQueue
 import dev.jdtech.jellyfin.models.FindroidEpisode
 import dev.jdtech.jellyfin.models.FindroidShow
+import dev.jdtech.jellyfin.models.StorageTransferProgress
 import java.util.UUID
 
 data class SeasonEpisodeGroup(
@@ -23,7 +24,7 @@ data class ShowDownloadsState(
     val hasSdCard: Boolean = false,
     val displayExtraInfo: Boolean = false,
     val activeDownloads: List<DownloadQueue.Entry> = emptyList(),
-    val activeTransfers: Map<UUID, dev.jdtech.jellyfin.models.StorageTransferProgress> = emptyMap(),
+    val activeTransfers: Map<UUID, StorageTransferProgress> = emptyMap(),
     val error: Exception? = null,
 ) {
     val subtitle: String

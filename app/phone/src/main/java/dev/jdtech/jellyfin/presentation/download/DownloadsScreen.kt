@@ -1,4 +1,4 @@
-package dev.jdtech.jellyfin.presentation.film
+package dev.jdtech.jellyfin.presentation.download
 
 import android.text.format.Formatter
 import androidx.compose.animation.AnimatedVisibility
@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.recalculateWindowInsets
@@ -39,8 +38,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -74,13 +71,15 @@ import dev.jdtech.jellyfin.models.FindroidShow
 import dev.jdtech.jellyfin.models.diskSize
 import dev.jdtech.jellyfin.models.formatDuration
 import dev.jdtech.jellyfin.models.isDownloading
-import dev.jdtech.jellyfin.presentation.film.components.ConfirmDeleteDialog
-import dev.jdtech.jellyfin.presentation.film.components.DownloadItemCard
-import dev.jdtech.jellyfin.presentation.film.components.DownloadSectionHeader
-import dev.jdtech.jellyfin.presentation.film.components.DownloadStatus
-import dev.jdtech.jellyfin.presentation.film.components.FloatingSelectionToolbar
+import dev.jdtech.jellyfin.presentation.download.components.ConfirmDeleteDialog
+import dev.jdtech.jellyfin.presentation.download.components.DownloadItemCard
+import dev.jdtech.jellyfin.presentation.download.components.DownloadSectionHeader
+import dev.jdtech.jellyfin.presentation.download.components.FloatingSelectionToolbar
+import dev.jdtech.jellyfin.presentation.download.components.StorageSummaryCard
+import dev.jdtech.jellyfin.presentation.download.models.DownloadCardActions
+import dev.jdtech.jellyfin.presentation.download.models.DownloadItemCardState
+import dev.jdtech.jellyfin.presentation.download.models.DownloadStatus
 import dev.jdtech.jellyfin.presentation.film.components.PlaceholderScreen
-import dev.jdtech.jellyfin.presentation.film.components.StorageSummaryCard
 import dev.jdtech.jellyfin.presentation.utils.rememberSafePadding
 import java.util.UUID
 import dev.jdtech.jellyfin.core.R as CoreR
@@ -91,13 +90,11 @@ fun DownloadsScreen(
     onMovieClick: (movie: FindroidMovie) -> Unit,
     onShowClick: (show: FindroidShow) -> Unit,
     onStorageClick: () -> Unit,
-    onSmartDownloadsClick: () -> Unit = onStorageClick,
     onExploreLibraryClick: () -> Unit,
     viewModel: DownloadsViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val snackbarHostState = remember { SnackbarHostState() }
     val listState = rememberLazyListState()
     val canScrollForward by remember { derivedStateOf { listState.canScrollForward } }
 
@@ -120,9 +117,6 @@ fun DownloadsScreen(
 
     LaunchedEffect(true) {
         viewModel.loadItems()
-    }
-
-    dev.jdtech.jellyfin.utils.ObserveAsEvents(viewModel.uiEvents) { _ ->
     }
 
     // Single movie delete confirmation dialog
@@ -228,6 +222,7 @@ fun DownloadsScreen(
     val allShows = remember(state.shows, state.activeDownloads) {
         val dbShowIds = state.shows.map { it.show.id }.toSet()
         val queuedEpisodeShows = state.activeDownloads
+            .asSequence()
             .map { it.item }
             .filterIsInstance<FindroidEpisode>()
             .filter { it.seriesId !in dbShowIds }
@@ -264,13 +259,13 @@ fun DownloadsScreen(
                     seasonsFormatted = "",
                 )
             }
+            .toList()
         state.shows + queuedEpisodeShows
     }
 
     Scaffold(
         modifier = Modifier.fillMaxSize().recalculateWindowInsets(),
         contentWindowInsets = WindowInsets.statusBars.union(WindowInsets.displayCutout),
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             if (allMovies.isNotEmpty() || allShows.isNotEmpty() || state.isSelectionMode) {
                 TopAppBar(
@@ -365,7 +360,7 @@ fun DownloadsScreen(
                         usedStorageFormatted = state.usedStorageFormatted,
                         freeStorageFormatted = state.freeStorageFormatted,
                         isSmartDownloadsActive = state.isSmartDownloadsActive,
-                        onClick = null,
+                        onClick = onStorageClick,
                     )
                 }
 
@@ -413,35 +408,23 @@ fun DownloadsScreen(
                         activeEntry != null -> (activeEntry.progress / 100f).coerceIn(0f, 1f)
                         else -> 0f
                     }
-                    val speedFormatted = if (activeEntry != null && activeEntry.bytesPerSecond > 0) Formatter.formatFileSize(context, activeEntry.bytesPerSecond) + "/s" else ""
-                    val downloadedFormatted = if (activeEntry != null && activeEntry.bytesDownloaded > 0) Formatter.formatFileSize(context, activeEntry.bytesDownloaded) else "0 B"
-                    val totalFormatted = if (activeEntry != null && activeEntry.totalBytes > 0) Formatter.formatFileSize(context, activeEntry.totalBytes) else ""
                     val etaFormatted = if (activeEntry != null && activeEntry.bytesPerSecond > 0 && activeEntry.totalBytes > activeEntry.bytesDownloaded) {
                         val remainingSec = (activeEntry.totalBytes - activeEntry.bytesDownloaded) / activeEntry.bytesPerSecond
                         formatStableEta(remainingSec)
                     } else ""
 
                     val metadataText: String
-                    val sizeFormatted: String
-                    val qualityLabel: String?
                     val playbackProgress: Float
 
                     when (status) {
                         DownloadStatus.TRANSFERRING -> {
                             val transferPercent = (dlProgress * 100).toInt()
                             metadataText = "$transferPercent% • ${stringResource(CoreR.string.moving_storage_short)}"
-                            sizeFormatted = if (!state.displayExtraInfo || transfer == null) "" else {
-                                "${Formatter.formatFileSize(context, transfer.bytesTransferred)} / ${Formatter.formatFileSize(context, transfer.totalBytes)}"
-                            }
-                            qualityLabel = null
                             playbackProgress = 0f
                         }
                         DownloadStatus.CONVERTING -> {
                             val convProgressStr = if (dlProgress > 0f) "${(dlProgress * 100).toInt()}% • " else ""
                             metadataText = "$convProgressStr${stringResource(CoreR.string.converting)}"
-                            val estimatedMovieSize = if (movie.diskSize() > 0) movie.diskSize() else (movie.sources.maxOfOrNull { it.size } ?: 0L)
-                            sizeFormatted = if (!state.displayExtraInfo) "" else if (totalFormatted.isNotEmpty()) totalFormatted else if (estimatedMovieSize > 0) Formatter.formatFileSize(context, estimatedMovieSize) else ""
-                            qualityLabel = null
                             playbackProgress = 0f
                         }
                         DownloadStatus.DOWNLOADING -> {
@@ -450,26 +433,14 @@ fun DownloadsScreen(
                                 etaFormatted.isNotEmpty() -> "${(dlProgress * 100).toInt()}% • $etaFormatted"
                                 else -> "${(dlProgress * 100).toInt()}%"
                             }
-                            val sizeBase = if (totalFormatted.isNotEmpty()) "$downloadedFormatted / $totalFormatted" else downloadedFormatted
-                            sizeFormatted = when {
-                                !state.displayExtraInfo -> ""
-                                speedFormatted.isNotEmpty() -> "$sizeBase • $speedFormatted"
-                                else -> sizeBase
-                            }
-                            qualityLabel = null
                             playbackProgress = 0f
                         }
                         DownloadStatus.PENDING -> {
                             metadataText = stringResource(CoreR.string.pending_in_queue)
-                            val estimatedMovieSize = if (movie.diskSize() > 0) movie.diskSize() else (movie.sources.maxOfOrNull { it.size } ?: 0L)
-                            sizeFormatted = if (!state.displayExtraInfo) "" else if (totalFormatted.isNotEmpty()) totalFormatted else if (estimatedMovieSize > 0) Formatter.formatFileSize(context, estimatedMovieSize) else ""
-                            qualityLabel = null
                             playbackProgress = 0f
                         }
                         DownloadStatus.FAILED -> {
                             metadataText = stringResource(CoreR.string.downloading_error)
-                            sizeFormatted = if (state.displayExtraInfo) Formatter.formatFileSize(context, movie.diskSize()) else ""
-                            qualityLabel = null
                             playbackProgress = 0f
                         }
                         DownloadStatus.DOWNLOADED -> {
@@ -480,8 +451,6 @@ fun DownloadsScreen(
                                 yearText.isNotEmpty() -> yearText
                                 else -> durationText
                             }
-                            sizeFormatted = if (state.displayExtraInfo) Formatter.formatFileSize(context, movie.diskSize()) else ""
-                            qualityLabel = null
                             playbackProgress = if (movie.runtimeTicks > 0) {
                                 (movie.playbackPositionTicks.toFloat() / movie.runtimeTicks).coerceIn(0f, 1f)
                             } else 0f
@@ -490,47 +459,47 @@ fun DownloadsScreen(
 
                     DownloadItemCard(
                         item = movie,
-                        title = movie.name,
-                        metadataText = metadataText,
-                        sizeFormatted = sizeFormatted,
-                        qualityLabel = qualityLabel,
-                        status = status,
-                        downloadProgress = dlProgress,
-                        playbackProgress = playbackProgress,
-                        isSelected = state.selectedItemIds.contains(movie.id),
-                        isSelectionMode = state.isSelectionMode,
-                        displayExtraInfo = state.displayExtraInfo,
-                        isPaused = activeEntry?.state is DownloadQueue.EntryState.Paused,
-                        pendingDeletionSeconds = state.pendingDeletionIds[movie.id],
-                        onUndoDelete = { viewModel.onAction(DownloadsAction.UndoDelete(movie.id)) },
-                        onClick = {
-                            if (state.isSelectionMode) {
+                        state = DownloadItemCardState(
+                            title = movie.name,
+                            metadataText = metadataText,
+                            sizeBytes = if (state.displayExtraInfo) movie.diskSize() else 0L,
+                            status = status,
+                            downloadProgress = dlProgress,
+                            playbackProgress = playbackProgress,
+                            isSelected = state.selectedItemIds.contains(movie.id),
+                            isSelectionMode = state.isSelectionMode,
+                            displayExtraInfo = state.displayExtraInfo,
+                            isPaused = activeEntry?.state is DownloadQueue.EntryState.Paused,
+                            pendingDeletionSeconds = state.pendingDeletionIds[movie.id],
+                        ),
+                        actions = DownloadCardActions(
+                            onClick = {
+                                if (state.isSelectionMode) {
+                                    viewModel.onAction(DownloadsAction.ToggleSelection(movie.id))
+                                } else if (status == DownloadStatus.DOWNLOADED) {
+                                    onMovieClick(movie)
+                                }
+                            },
+                            onLongClick = {
+                                viewModel.onAction(DownloadsAction.EnterSelectionMode)
                                 viewModel.onAction(DownloadsAction.ToggleSelection(movie.id))
-                            } else if (status == DownloadStatus.DOWNLOADED) {
-                                onMovieClick(movie)
-                            }
-                        },
-                        onLongClick = {
-                            viewModel.onAction(DownloadsAction.EnterSelectionMode)
-                            viewModel.onAction(DownloadsAction.ToggleSelection(movie.id))
-                        },
-                        onDeleteClick = { movieToDelete = movie },
-                        onSwipeDelete = {
-                            viewModel.onAction(DownloadsAction.StageDeleteMovie(movie))
-                        },
-                        onPauseDownload = {
-                            viewModel.onAction(DownloadsAction.PauseDownload(movie.id))
-                        },
-                        onResumeDownload = {
-                            viewModel.onAction(DownloadsAction.ResumeDownload(movie.id))
-                        },
-                        onCancelDownload = {
-                            viewModel.onAction(DownloadsAction.CancelDownload(movie.id))
-                        },
-                        onRetryDownload = {
-                            viewModel.onAction(DownloadsAction.ResumeDownload(movie.id))
-                        },
-                        onMoveStorageClick = null,
+                            },
+                            onSwipeDelete = {
+                                viewModel.onAction(DownloadsAction.StageDeleteMovie(movie))
+                            },
+                            onPauseDownload = {
+                                viewModel.onAction(DownloadsAction.PauseDownload(movie.id))
+                            },
+                            onResumeDownload = {
+                                viewModel.onAction(DownloadsAction.ResumeDownload(movie.id))
+                            },
+                            onRetryDownload = {
+                                viewModel.onAction(DownloadsAction.ResumeDownload(movie.id))
+                            },
+                            onUndoDelete = {
+                                viewModel.onAction(DownloadsAction.UndoDelete(movie.id))
+                            },
+                        ),
                     )
                 }
 
@@ -593,49 +562,18 @@ fun DownloadsScreen(
                         activeProgress
                     }
 
-                    val speedFormatted = if (downloadingEp != null && downloadingEp.bytesPerSecond > 0) {
-                        Formatter.formatFileSize(context, downloadingEp.bytesPerSecond) + "/s"
-                    } else ""
-                    val downloadedFormatted = if (downloadingEp != null && downloadingEp.bytesDownloaded > 0) {
-                        Formatter.formatFileSize(context, downloadingEp.bytesDownloaded)
-                    } else "0 B"
-                    val totalFormatted = if (downloadingEp != null && downloadingEp.totalBytes > 0) {
-                        Formatter.formatFileSize(context, downloadingEp.totalBytes)
-                    } else ""
-
-                    val downloadedPart = when {
-                        completedInQueue > 0 -> context.resources.getQuantityString(CoreR.plurals.episodes_downloaded, completedInQueue, completedInQueue)
-                        isAllPaused -> stringResource(CoreR.string.paused)
-                        downloadingEp != null || convertingEp != null -> context.resources.getQuantityString(CoreR.plurals.episodes_downloading, 1, 1)
-                        else -> ""
-                    }
-                    val queuePart = if (pendingEps.isNotEmpty()) {
-                        context.resources.getQuantityString(CoreR.plurals.episodes_in_queue, pendingEps.size, pendingEps.size)
-                    } else ""
-                    val seriesChipText = when {
-                        downloadedPart.isNotEmpty() && queuePart.isNotEmpty() -> "$downloadedPart • $queuePart"
-                        downloadedPart.isNotEmpty() -> downloadedPart
-                        queuePart.isNotEmpty() -> queuePart
-                        else -> ""
-                    }
-
                     val metadataText: String
-                    val sizeFormatted: String
 
                     when (status) {
                         DownloadStatus.TRANSFERRING -> {
                             val transferPercent = ((showTransfer?.progress ?: 0f) * 100).toInt()
                             metadataText = "$transferPercent% • ${stringResource(CoreR.string.moving_storage_short)}"
-                            sizeFormatted = if (!state.displayExtraInfo || showTransfer == null) "" else {
-                                "${Formatter.formatFileSize(context, showTransfer.bytesTransferred)} / ${Formatter.formatFileSize(context, showTransfer.totalBytes)}"
-                            }
                         }
                         DownloadStatus.CONVERTING -> {
                             val ep = convertingEp?.item as? FindroidEpisode
                             val epLabel = if (ep != null && ep.indexNumber > 0) "E${ep.indexNumber}" else ep?.name ?: ""
                             val convProgressStr = if (totalProgress > 0f) "${(totalProgress * 100).toInt()}% • " else ""
                             metadataText = if (epLabel.isNotEmpty()) "$epLabel • $convProgressStr${stringResource(CoreR.string.converting)}" else "$convProgressStr${stringResource(CoreR.string.converting)}"
-                            sizeFormatted = seriesChipText.ifEmpty { "${activeEpisodes.size} ${stringResource(CoreR.string.episodes_label).lowercase()}" }
                         }
                         DownloadStatus.DOWNLOADING -> {
                             val ep = downloadingEp?.item as? FindroidEpisode
@@ -644,17 +582,9 @@ fun DownloadsScreen(
                             val epEtaFormatted = downloadingEp?.etaSeconds?.let { formatStableEta(it) } ?: ""
                             val totalProgressInt = (totalProgress * 100).toInt()
                             metadataText = when {
-                                isEpPaused -> if (epLabel.isNotEmpty()) "$epLabel • $totalProgressInt% • ${stringResource(CoreR.string.paused)}" else "${stringResource(CoreR.string.paused)}"
+                                isEpPaused -> if (epLabel.isNotEmpty()) "$epLabel • $totalProgressInt% • ${stringResource(CoreR.string.paused)}" else stringResource(CoreR.string.paused)
                                 epEtaFormatted.isNotEmpty() -> "$epLabel • $totalProgressInt% • $epEtaFormatted"
                                 else -> if (epLabel.isNotEmpty()) "$epLabel • $totalProgressInt%" else "$totalProgressInt%"
-                            }
-                            sizeFormatted = if (showQueue.size > 1 || activeEpisodes.size > 1) {
-                                seriesChipText
-                            } else if (!state.displayExtraInfo) {
-                                ""
-                            } else {
-                                val sizeBase = if (totalFormatted.isNotEmpty()) "$downloadedFormatted / $totalFormatted" else downloadedFormatted
-                                if (speedFormatted.isNotEmpty()) "$sizeBase • $speedFormatted" else sizeBase
                             }
                         }
                         DownloadStatus.PENDING -> {
@@ -665,11 +595,9 @@ fun DownloadsScreen(
                             } else {
                                 stringResource(CoreR.string.pending_in_queue)
                             }
-                            sizeFormatted = seriesChipText.ifEmpty { "${activeEpisodes.size} ${stringResource(CoreR.string.episodes_label).lowercase()}" }
                         }
                         DownloadStatus.FAILED -> {
                             metadataText = stringResource(CoreR.string.downloading_error)
-                            sizeFormatted = "${activeEpisodes.size} ${stringResource(CoreR.string.episodes_label).lowercase()}"
                         }
                         DownloadStatus.DOWNLOADED -> {
                             val yearText = showItem.show.productionYear?.toString() ?: ""
@@ -679,50 +607,49 @@ fun DownloadsScreen(
                                 yearText.isNotEmpty() -> yearText
                                 else -> showItem.seasonsFormatted
                             }
-                            sizeFormatted = if (state.displayExtraInfo) Formatter.formatFileSize(context, showItem.totalDiskSize) else ""
                         }
                     }
 
                     DownloadItemCard(
                         item = showItem.show,
-                        title = showItem.show.name,
-                        metadataText = metadataText,
-                        sizeFormatted = sizeFormatted,
-                        qualityLabel = null,
-                        status = status,
-                        downloadProgress = totalProgress,
-                        playbackProgress = 0f,
-                        isSelected = state.selectedItemIds.contains(showItem.show.id),
-                        isSelectionMode = state.isSelectionMode,
-                        displayExtraInfo = state.displayExtraInfo,
-                        isPaused = isAllPaused,
-                        pendingDeletionSeconds = state.pendingDeletionIds[showItem.show.id],
-                        onUndoDelete = { viewModel.onAction(DownloadsAction.UndoDelete(showItem.show.id)) },
-                        onClick = {
-                            if (state.isSelectionMode) {
+                        state = DownloadItemCardState(
+                            title = showItem.show.name,
+                            metadataText = metadataText,
+                            sizeBytes = if (state.displayExtraInfo) showItem.totalDiskSize else 0L,
+                            status = status,
+                            downloadProgress = totalProgress,
+                            playbackProgress = 0f,
+                            isSelected = state.selectedItemIds.contains(showItem.show.id),
+                            isSelectionMode = state.isSelectionMode,
+                            displayExtraInfo = state.displayExtraInfo,
+                            isPaused = isAllPaused,
+                            pendingDeletionSeconds = state.pendingDeletionIds[showItem.show.id],
+                        ),
+                        actions = DownloadCardActions(
+                            onClick = {
+                                if (state.isSelectionMode) {
+                                    viewModel.onAction(DownloadsAction.ToggleSelection(showItem.show.id))
+                                } else {
+                                    onShowClick(showItem.show)
+                                }
+                            },
+                            onLongClick = {
+                                viewModel.onAction(DownloadsAction.EnterSelectionMode)
                                 viewModel.onAction(DownloadsAction.ToggleSelection(showItem.show.id))
-                            } else {
-                                onShowClick(showItem.show)
-                            }
-                        },
-                        onLongClick = {
-                            viewModel.onAction(DownloadsAction.EnterSelectionMode)
-                            viewModel.onAction(DownloadsAction.ToggleSelection(showItem.show.id))
-                        },
-                        onDeleteClick = { showToDelete = showItem },
-                        onSwipeDelete = {
-                            viewModel.onAction(DownloadsAction.StageDeleteShow(showItem))
-                        },
-                        onPauseDownload = {
-                            viewModel.onAction(DownloadsAction.PauseDownload(showItem.show.id))
-                        },
-                        onResumeDownload = {
-                            viewModel.onAction(DownloadsAction.ResumeDownload(showItem.show.id))
-                        },
-                        onCancelDownload = {
-                            (downloadingEp ?: convertingEp)?.let { viewModel.onAction(DownloadsAction.CancelDownload(it.id)) }
-                        },
-                        onMoveStorageClick = null,
+                            },
+                            onSwipeDelete = {
+                                viewModel.onAction(DownloadsAction.StageDeleteShow(showItem))
+                            },
+                            onPauseDownload = {
+                                viewModel.onAction(DownloadsAction.PauseDownload(showItem.show.id))
+                            },
+                            onResumeDownload = {
+                                viewModel.onAction(DownloadsAction.ResumeDownload(showItem.show.id))
+                            },
+                            onUndoDelete = {
+                                viewModel.onAction(DownloadsAction.UndoDelete(showItem.show.id))
+                            },
+                        ),
                     )
                 }
             }

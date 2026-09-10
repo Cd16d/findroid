@@ -1,13 +1,5 @@
 package dev.jdtech.jellyfin.core.presentation.downloader
 
-/** Outcome of one download-speed sample. */
-data class SpeedSample(
-    /** Transfer rate in bytes/sec to display. */
-    val bytesPerSecond: Long,
-    /** True when real progress was observed and the sample clock should advance. */
-    val advanced: Boolean,
-)
-
 /**
  * Computes a smoothed download speed using a multi-second sliding window and exponential moving average.
  *
@@ -96,29 +88,5 @@ fun formatStableEta(etaSeconds: Long): String {
             val mins = (etaSeconds % 3600) / 60
             if (mins > 0) "${hours}h ${mins}m" else "${hours}h"
         }
-    }
-}
-
-/**
- * Computes the download speed for one poll tick.
- *
- * Keeps the last known speed across flat polls and only advances the sample clock on real progress,
- * so the speed + ETA don't flash 0 in the UI.
- */
-fun nextDownloadSpeed(
-    prevSample: Pair<Long, Long>?,
-    currentBytes: Long,
-    nowMs: Long,
-    previousSpeed: Long,
-): SpeedSample {
-    if (currentBytes < 0) return SpeedSample(previousSpeed, advanced = false)
-    if (prevSample == null) return SpeedSample(previousSpeed, advanced = true)
-    val (prevBytes, prevAt) = prevSample
-    val deltaBytes = currentBytes - prevBytes
-    val elapsedMs = nowMs - prevAt
-    return if (deltaBytes > 0 && elapsedMs > 0) {
-        SpeedSample((deltaBytes * 1000L / elapsedMs).coerceAtLeast(0L), advanced = true)
-    } else {
-        SpeedSample(previousSpeed, advanced = false)
     }
 }

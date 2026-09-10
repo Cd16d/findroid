@@ -69,9 +69,9 @@ import dev.jdtech.jellyfin.presentation.cast.CastExpandedPlayer
 import dev.jdtech.jellyfin.presentation.cast.CastMiniPlayer
 import dev.jdtech.jellyfin.presentation.cast.components.CastBottomSheet
 import dev.jdtech.jellyfin.presentation.cast.components.CastButton
+import dev.jdtech.jellyfin.presentation.download.DownloadsScreen
+import dev.jdtech.jellyfin.presentation.download.ShowDownloadsScreen
 import dev.jdtech.jellyfin.presentation.film.CollectionScreen
-import dev.jdtech.jellyfin.presentation.film.DownloadsScreen
-import dev.jdtech.jellyfin.presentation.film.components.ShowDownloadsScreen
 import dev.jdtech.jellyfin.presentation.film.EpisodeScreen
 import dev.jdtech.jellyfin.presentation.film.FavoritesScreen
 import dev.jdtech.jellyfin.presentation.film.HomeScreen
@@ -543,9 +543,6 @@ fun NavigationRoot(
                                         )
                                     },
                                     onStorageClick = {
-                                        navController.safeNavigate(SettingsRoute(intArrayOf(CoreR.string.title_download)))
-                                    },
-                                    onSmartDownloadsClick = {
                                         navController.safeNavigate(SettingsRoute(intArrayOf(CoreR.string.title_download)))
                                     },
                                     onExploreLibraryClick = {

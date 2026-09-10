@@ -9,10 +9,12 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
+import android.text.format.Formatter
 import androidx.core.app.NotificationCompat
 import androidx.core.content.getSystemService
 import dagger.hilt.android.AndroidEntryPoint
 import dev.jdtech.jellyfin.core.R as CoreR
+import dev.jdtech.jellyfin.models.FindroidEpisode
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -23,10 +25,6 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import timber.log.Timber
-
-import android.text.format.Formatter
-import androidx.core.content.ContextCompat
-import dev.jdtech.jellyfin.models.FindroidEpisode
 
 /**
  * Foreground service that keeps the app process alive while the DownloadQueue has

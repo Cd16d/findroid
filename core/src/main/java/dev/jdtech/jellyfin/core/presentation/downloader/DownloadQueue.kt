@@ -5,12 +5,12 @@ import android.app.NotificationManager
 import android.content.Context
 import android.os.Build
 import androidx.core.app.NotificationCompat
-import dagger.hilt.android.qualifiers.ApplicationContext
 import androidx.work.Constraints
 import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.jdtech.jellyfin.core.Constants
 import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.database.ServerDatabaseDao
@@ -27,7 +27,9 @@ import dev.jdtech.jellyfin.settings.domain.AppPreferences
 import dev.jdtech.jellyfin.utils.Downloader
 import dev.jdtech.jellyfin.utils.download.DownloadStatus
 import dev.jdtech.jellyfin.work.SyncWorker
+import java.io.File
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Provider
 import javax.inject.Singleton
@@ -101,6 +103,7 @@ constructor(
     private var pumpJob: Job? = null
 
     private val speedTrackers = mutableMapOf<Long, DownloadSpeedTracker>()
+    private val activeFinalizations = ConcurrentHashMap.newKeySet<Long>()
 
     suspend fun enqueue(
         item: FindroidItem,
@@ -288,19 +291,7 @@ constructor(
         }
     }
 
-    private fun sort(entries: List<Entry>): List<Entry> {
-        fun priority(state: EntryState): Int =
-            when (state) {
-                is EntryState.Downloading, is EntryState.Converting -> 0
-                is EntryState.Paused -> 0
-                is EntryState.Pending -> 1
-                is EntryState.Failed -> 2
-                is EntryState.Completed -> 3
-            }
-        return entries.sortedWith(
-            compareBy({ priority(it.state) }, { it.startedAt ?: it.addedAt }, { it.addedAt })
-        )
-    }
+    private fun sort(entries: List<Entry>): List<Entry> = entries.sortedWith(ENTRY_COMPARATOR)
 
     private suspend fun ensurePump() {
         mutex.withLock {
@@ -418,6 +409,7 @@ constructor(
                         updates.values.filter { it.state is EntryState.Converting }
                     for (entry in convertingNow) {
                         val dlId = entry.downloadId ?: continue
+                        if (!activeFinalizations.add(dlId)) continue
                         scope.launch(Dispatchers.IO) {
                             try {
                                 downloader.finalizeDownload(dlId)
@@ -426,6 +418,8 @@ constructor(
                                     e,
                                     "finalizeDownload failed for ${entry.item.name} (id=$dlId)",
                                 )
+                            } finally {
+                                activeFinalizations.remove(dlId)
                             }
                             mutex.withLock {
                                 _entries.value =
@@ -441,13 +435,18 @@ constructor(
                         updates.values.filter { it.state is EntryState.Completed }
                     for (entry in completedNow) {
                         val dlId = entry.downloadId ?: continue
-                        try {
-                            downloader.finalizeDownload(dlId)
-                        } catch (e: Exception) {
-                            Timber.e(
-                                e,
-                                "finalizeDownload failed for ${entry.item.name} (id=$dlId)",
-                            )
+                        if (!activeFinalizations.add(dlId)) continue
+                        scope.launch(Dispatchers.IO) {
+                            try {
+                                downloader.finalizeDownload(dlId)
+                            } catch (e: Exception) {
+                                Timber.e(
+                                    e,
+                                    "finalizeDownload failed for ${entry.item.name} (id=$dlId)",
+                                )
+                            } finally {
+                                activeFinalizations.remove(dlId)
+                            }
                         }
                     }
                     mutex.withLock {
@@ -558,7 +557,7 @@ constructor(
         mutex.withLock {
             val stillPresent = _entries.value.any { it.id == entry.id }
             if (!stillPresent) {
-                orphaned = downloadId != -1L
+                orphaned = downloadId > 0L
                 return@withLock
             }
             val activeState = EntryState.Downloading
@@ -567,6 +566,12 @@ constructor(
                     _entries.value.map { e ->
                         if (e.id != entry.id) {
                             e
+                        } else if (downloadId == 0L) {
+                            e.copy(
+                                state = EntryState.Completed,
+                                progress = 100,
+                                downloadId = 0L,
+                            )
                         } else if (downloadId != -1L) {
                             e.copy(
                                 state = activeState,
@@ -578,6 +583,12 @@ constructor(
                         }
                     }
                 )
+        }
+        if (downloadId == 0L) {
+            val item = entry.item
+            if (item is FindroidEpisode) {
+                scope.launch { smartEnqueueNext(item) }
+            }
         }
         if (orphaned) {
             try {
@@ -617,7 +628,7 @@ constructor(
     private fun isStorageLimitReached(limitGb: Long): Boolean {
         if (limitGb <= 0) return false
         val totalDownloadedBytes = database.getMoviesAndSources().values.flatten().sumOf { s ->
-            val f = java.io.File(s.path)
+            val f = File(s.path)
             if (f.exists()) f.length() else 0L
         }
         val limitBytes = limitGb * 1024L * 1024L * 1024L
@@ -627,13 +638,13 @@ constructor(
     suspend fun smartEnqueueNext(episode: FindroidEpisode) {
         if (!appPreferences.getValue(appPreferences.smartDownloadNextEpisode)) return
         try {
-            val limitGb = appPreferences.getValue(appPreferences.smartDownloadStorageLimitGb).toLongOrNull() ?: 20L
+            val limitGb = appPreferences.getValue(appPreferences.smartDownloadStorageLimitGb).toLong()
             if (isStorageLimitReached(limitGb)) {
                 Timber.i("Smart Downloads: storage limit reached ($limitGb GB), skipping auto-enqueue")
                 return
             }
 
-            val targetCount = appPreferences.getValue(appPreferences.smartDownloadNextEpisodesCount).toIntOrNull() ?: 3
+            val targetCount = appPreferences.getValue(appPreferences.smartDownloadNextEpisodesCount)
             val currentUserId = repository.getUserId()
 
             // Count existing unwatched episodes (downloaded or queued)
@@ -700,7 +711,7 @@ constructor(
         if (!appPreferences.getValue(appPreferences.autoDeleteWatched)) return
         try {
             val currentUserId = repository.getUserId()
-            val episode = try { database.getEpisode(completedItemId) } catch (e: Exception) { null }
+            val episode = try { database.getEpisode(completedItemId) } catch (_: Exception) { null }
             if (episode != null) {
                 val seasonEpisodes = try {
                     repository.getEpisodes(seriesId = episode.seriesId, seasonId = episode.seasonId)
@@ -776,5 +787,20 @@ constructor(
         private const val FAILURE_CHANNEL_ID = "download_failures"
         private const val MAX_AUTO_RETRIES = 3
         private val RETRY_BACKOFF_MS = longArrayOf(30_000L, 120_000L, 600_000L)
+
+        private fun priority(state: EntryState): Int =
+            when (state) {
+                is EntryState.Downloading, is EntryState.Converting -> 0
+                is EntryState.Paused -> 0
+                is EntryState.Pending -> 1
+                is EntryState.Failed -> 2
+                is EntryState.Completed -> 3
+            }
+
+        private val ENTRY_COMPARATOR = compareBy<Entry>(
+            { priority(it.state) },
+            { it.startedAt ?: it.addedAt },
+            { it.addedAt },
+        )
     }
 }

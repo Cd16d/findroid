@@ -304,9 +304,19 @@ interface ServerDatabaseDao {
     fun isItemDownloadedForUser(userId: UUID, itemId: UUID): Boolean
 
     @Query(
+        "SELECT movies.* FROM movies INNER JOIN user_downloads ON movies.id = user_downloads.itemId WHERE user_downloads.userId = :userId ORDER BY movies.name ASC"
+    )
+    fun getDownloadedMoviesByUser(userId: UUID): List<FindroidMovieDto>
+
+    @Query(
         "SELECT movies.* FROM movies INNER JOIN user_downloads ON movies.id = user_downloads.itemId WHERE movies.serverId = :serverId AND user_downloads.userId = :userId ORDER BY movies.name ASC"
     )
     fun getDownloadedMoviesByServerAndUser(serverId: String, userId: UUID): List<FindroidMovieDto>
+
+    @Query(
+        "SELECT DISTINCT shows.* FROM shows INNER JOIN episodes ON shows.id = episodes.seriesId INNER JOIN user_downloads ON episodes.id = user_downloads.itemId WHERE user_downloads.userId = :userId ORDER BY shows.name ASC"
+    )
+    fun getDownloadedShowsByUser(userId: UUID): List<FindroidShowDto>
 
     @Query(
         "SELECT DISTINCT shows.* FROM shows INNER JOIN episodes ON shows.id = episodes.seriesId INNER JOIN user_downloads ON episodes.id = user_downloads.itemId WHERE shows.serverId = :serverId AND user_downloads.userId = :userId ORDER BY shows.name ASC"
@@ -322,4 +332,37 @@ interface ServerDatabaseDao {
         "SELECT episodes.* FROM episodes INNER JOIN user_downloads ON episodes.id = user_downloads.itemId WHERE episodes.seasonId = :seasonId AND user_downloads.userId = :userId ORDER BY episodes.indexNumber ASC"
     )
     fun getDownloadedEpisodesBySeasonAndUser(seasonId: UUID, userId: UUID): List<FindroidEpisodeDto>
+
+    @Query(
+        "SELECT episodes.* FROM episodes INNER JOIN user_downloads ON episodes.id = user_downloads.itemId WHERE episodes.serverId = :serverId AND user_downloads.userId = :userId ORDER BY episodes.seriesName ASC, episodes.parentIndexNumber ASC, episodes.indexNumber ASC"
+    )
+    fun getDownloadedEpisodesByServerAndUser(serverId: String, userId: UUID): List<FindroidEpisodeDto>
+
+    @Query(
+        "SELECT movies.* FROM movies INNER JOIN user_downloads ON movies.id = user_downloads.itemId WHERE movies.serverId = :serverId AND user_downloads.userId = :userId AND movies.name LIKE '%' || :name || '%' ORDER BY movies.name ASC"
+    )
+    fun searchDownloadedMovies(serverId: String, userId: UUID, name: String): List<FindroidMovieDto>
+
+    @Query(
+        "SELECT DISTINCT shows.* FROM shows INNER JOIN episodes ON shows.id = episodes.seriesId INNER JOIN user_downloads ON episodes.id = user_downloads.itemId WHERE shows.serverId = :serverId AND user_downloads.userId = :userId AND shows.name LIKE '%' || :name || '%' ORDER BY shows.name ASC"
+    )
+    fun searchDownloadedShows(serverId: String, userId: UUID, name: String): List<FindroidShowDto>
+
+    @Query(
+        "SELECT episodes.* FROM episodes INNER JOIN user_downloads ON episodes.id = user_downloads.itemId WHERE episodes.serverId = :serverId AND user_downloads.userId = :userId AND episodes.name LIKE '%' || :name || '%' ORDER BY episodes.seriesName ASC, episodes.parentIndexNumber ASC, episodes.indexNumber ASC"
+    )
+    fun searchDownloadedEpisodes(serverId: String, userId: UUID, name: String): List<FindroidEpisodeDto>
+
+    @Transaction
+    fun linkServerDownloadsToUser(serverId: String, userId: UUID) {
+        val movies = getMoviesByServerId(serverId)
+        val now = System.currentTimeMillis()
+        for (movie in movies) {
+            insertUserDownload(UserDownloadDto(userId = userId, itemId = movie.id, downloadedAt = now))
+        }
+        val episodes = getEpisodesByServerId(serverId)
+        for (episode in episodes) {
+            insertUserDownload(UserDownloadDto(userId = userId, itemId = episode.id, downloadedAt = now))
+        }
+    }
 }

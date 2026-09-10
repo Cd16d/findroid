@@ -74,8 +74,11 @@ constructor(
                     return
                 }
 
-                val imageBytes = response.body.bytes()
-                file.writeBytes(imageBytes)
+                response.body.byteStream().use { input ->
+                    file.outputStream().use { output ->
+                        input.copyTo(output)
+                    }
+                }
             }
         } catch (e: IOException) {
             Timber.e(e)

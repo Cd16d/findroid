@@ -1,4 +1,4 @@
-package dev.jdtech.jellyfin.presentation.film.components
+package dev.jdtech.jellyfin.presentation.download.components
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement

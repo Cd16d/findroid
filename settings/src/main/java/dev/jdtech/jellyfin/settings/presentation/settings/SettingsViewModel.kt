@@ -72,58 +72,28 @@ class SettingsViewModel @Inject constructor(
                 preferences =
                     listOf(
                         PreferenceCategory(
-                            nameStringResource = R.string.settings_category_language,
-                            iconDrawableId = R.drawable.ic_languages,
+                            nameStringResource = R.string.users,
+                            iconDrawableId = R.drawable.ic_user,
+                            supportedDeviceTypes = listOf(DeviceType.TV),
                             onClick = {
                                 viewModelScope.launch {
-                                    eventsChannel.send(
-                                        SettingsEvent.NavigateToSettings(
-                                            intArrayOf(it.nameStringResource)
-                                        )
-                                    )
+                                    eventsChannel.send(SettingsEvent.NavigateToUsers)
                                 }
                             },
-                            nestedPreferenceGroups =
-                                listOf(
-                                    PreferenceGroup(
-                                        preferences =
-                                            listOf(
-                                                PreferenceAppLanguage(
-                                                    nameStringResource = R.string.app_language,
-                                                    iconDrawableId = R.drawable.ic_languages,
-                                                    enabled =
-                                                        Build.VERSION.SDK_INT >=
-                                                            Build.VERSION_CODES.TIRAMISU,
-                                                )
-                                            )
-                                    ),
-                                    PreferenceGroup(
-                                        preferences =
-                                            listOf(
-                                                PreferenceSelect(
-                                                    nameStringResource =
-                                                        R.string.settings_preferred_audio_language,
-                                                    iconDrawableId = R.drawable.ic_speaker,
-                                                    backendPreference =
-                                                        appPreferences.preferredAudioLanguage,
-                                                    options = R.array.languages,
-                                                    optionValues = R.array.languages_values,
-                                                    optionsIncludeNull = true,
-                                                ),
-                                                PreferenceSelect(
-                                                    nameStringResource =
-                                                        R.string
-                                                            .settings_preferred_subtitle_language,
-                                                    iconDrawableId = R.drawable.ic_closed_caption,
-                                                    backendPreference =
-                                                        appPreferences.preferredSubtitleLanguage,
-                                                    options = R.array.languages,
-                                                    optionValues = R.array.languages_values,
-                                                    optionsIncludeNull = true,
-                                                ),
-                                            )
-                                    ),
-                                ),
+                        )
+                    )
+            ),
+            PreferenceGroup(
+                preferences =
+                    listOf(
+                        PreferenceCategory(
+                            nameStringResource = R.string.settings_category_servers,
+                            iconDrawableId = R.drawable.ic_server,
+                            onClick = {
+                                viewModelScope.launch {
+                                    eventsChannel.send(SettingsEvent.NavigateToServers)
+                                }
+                            },
                         )
                     )
             ),
@@ -211,6 +181,65 @@ class SettingsViewModel @Inject constructor(
                                                     backendPreference =
                                                         appPreferences.displayExtraInfo,
                                                 )
+                                            )
+                                    ),
+                                ),
+                        )
+                    )
+            ),
+            PreferenceGroup(
+                preferences =
+                    listOf(
+                        PreferenceCategory(
+                            nameStringResource = R.string.settings_category_language,
+                            iconDrawableId = R.drawable.ic_languages,
+                            onClick = {
+                                viewModelScope.launch {
+                                    eventsChannel.send(
+                                        SettingsEvent.NavigateToSettings(
+                                            intArrayOf(it.nameStringResource)
+                                        )
+                                    )
+                                }
+                            },
+                            nestedPreferenceGroups =
+                                listOf(
+                                    PreferenceGroup(
+                                        preferences =
+                                            listOf(
+                                                PreferenceAppLanguage(
+                                                    nameStringResource = R.string.app_language,
+                                                    iconDrawableId = R.drawable.ic_languages,
+                                                    enabled =
+                                                        Build.VERSION.SDK_INT >=
+                                                            Build.VERSION_CODES.TIRAMISU,
+                                                )
+                                            )
+                                    ),
+                                    PreferenceGroup(
+                                        preferences =
+                                            listOf(
+                                                PreferenceSelect(
+                                                    nameStringResource =
+                                                        R.string.settings_preferred_audio_language,
+                                                    iconDrawableId = R.drawable.ic_speaker,
+                                                    backendPreference =
+                                                        appPreferences.preferredAudioLanguage,
+                                                    options = R.array.languages,
+                                                    optionValues = R.array.languages_values,
+                                                    optionsIncludeNull = true,
+                                                ),
+                                                PreferenceSelect(
+                                                    nameStringResource =
+                                                        R.string
+                                                            .settings_preferred_subtitle_language,
+                                                    iconDrawableId = R.drawable.ic_closed_caption,
+                                                    backendPreference =
+                                                        appPreferences.preferredSubtitleLanguage,
+                                                    options = R.array.languages,
+                                                    optionValues = R.array.languages_values,
+                                                    optionsIncludeNull = true,
+                                                ),
                                             )
                                     ),
                                 ),
@@ -596,35 +625,6 @@ class SettingsViewModel @Inject constructor(
                 preferences =
                     listOf(
                         PreferenceCategory(
-                            nameStringResource = R.string.users,
-                            iconDrawableId = R.drawable.ic_user,
-                            supportedDeviceTypes = listOf(DeviceType.TV),
-                            onClick = {
-                                viewModelScope.launch {
-                                    eventsChannel.send(SettingsEvent.NavigateToUsers)
-                                }
-                            },
-                        )
-                    )
-            ),
-            PreferenceGroup(
-                preferences =
-                    listOf(
-                        PreferenceCategory(
-                            nameStringResource = R.string.settings_category_servers,
-                            iconDrawableId = R.drawable.ic_server,
-                            onClick = {
-                                viewModelScope.launch {
-                                    eventsChannel.send(SettingsEvent.NavigateToServers)
-                                }
-                            },
-                        )
-                    )
-            ),
-            PreferenceGroup(
-                preferences =
-                    listOf(
-                        PreferenceCategory(
                             nameStringResource = R.string.title_download,
                             iconDrawableId = R.drawable.ic_download,
                             supportedDeviceTypes = listOf(DeviceType.PHONE),
@@ -692,33 +692,21 @@ class SettingsViewModel @Inject constructor(
                                                         appPreferences.smartDownloadNextEpisode,
                                                 ),
                                                 PreferenceStepper(
-                                                    nameStringResource =
-                                                        R.string.downloads_smart_count,
-                                                    descriptionStringRes =
-                                                        R.string.downloads_smart_count_summary,
-                                                    dependencies =
-                                                        listOf(
-                                                            appPreferences.smartDownloadNextEpisode
-                                                        ),
+                                                    nameStringResource = R.string.downloads_smart_count,
+                                                    descriptionStringRes = R.string.downloads_smart_count_summary,
+                                                    dependencies = listOf(appPreferences.smartDownloadNextEpisode),
                                                     supportedDeviceTypes = listOf(DeviceType.PHONE),
-                                                    backendPreference =
-                                                        appPreferences.smartDownloadNextEpisodesCount,
+                                                    backendPreference = appPreferences.smartDownloadNextEpisodesCount,
                                                     minValue = 1,
                                                     maxValue = 10,
                                                     step = 1,
                                                 ),
                                                 PreferenceStepper(
-                                                    nameStringResource =
-                                                        R.string.downloads_smart_storage_limit,
-                                                    descriptionStringRes =
-                                                        R.string.downloads_smart_storage_limit_summary,
-                                                    dependencies =
-                                                        listOf(
-                                                            appPreferences.smartDownloadNextEpisode
-                                                        ),
+                                                    nameStringResource = R.string.downloads_smart_storage_limit,
+                                                    descriptionStringRes = R.string.downloads_smart_storage_limit_summary,
+                                                    dependencies = listOf(appPreferences.smartDownloadNextEpisode),
                                                     supportedDeviceTypes = listOf(DeviceType.PHONE),
-                                                    backendPreference =
-                                                        appPreferences.smartDownloadStorageLimitGb,
+                                                    backendPreference = appPreferences.smartDownloadStorageLimitGb,
                                                     minValue = 0,
                                                     maxValue = 100,
                                                     step = 5,
@@ -1071,7 +1059,7 @@ class SettingsViewModel @Inject constructor(
                                                     value =
                                                         appPreferences.getValue(
                                                             preference.backendPreference
-                                                        ).toIntOrNull() ?: preference.value,
+                                                        ),
                                                 )
                                             }
                                             is PreferenceStorageInfo -> {
@@ -1128,7 +1116,7 @@ class SettingsViewModel @Inject constructor(
                     is PreferenceStepper ->
                         appPreferences.setValue(
                             action.preference.backendPreference,
-                            action.preference.value.toString(),
+                            action.preference.value,
                         )
                 }
             }

@@ -1,4 +1,4 @@
-package dev.jdtech.jellyfin.presentation.film.components
+package dev.jdtech.jellyfin.presentation.download.components
 
 import android.content.SharedPreferences
 import android.text.format.Formatter
@@ -75,6 +75,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.models.DownloadQualityPreset
 import dev.jdtech.jellyfin.models.DownloadQualityPresets
 import dev.jdtech.jellyfin.models.FindroidItem
@@ -88,7 +89,6 @@ import kotlinx.coroutines.launch
 import org.jellyfin.sdk.model.api.MediaStreamType
 import org.jellyfin.sdk.model.api.VideoRangeType
 import java.util.Locale
-import dev.jdtech.jellyfin.core.R as CoreR
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -142,16 +142,11 @@ fun DownloadPresetBottomSheet(
     val originalVideoStream = remember(source) {
         source?.mediaStreams?.firstOrNull { it.type == MediaStreamType.VIDEO }
     }
-    val originalAudioStream = remember(source, audioStreams) {
-        audioStreams.firstOrNull { it.isDefault == true } ?: audioStreams.firstOrNull()
-    }
 
     val isOriginalSupported = remember(originalVideoStream) {
         DeviceCodecCapabilities.isVideoCodecSupported(originalVideoStream?.codec)
     }
 
-    // Filter presets that are larger than original ONLY when original codec is supported.
-    // If original codec is NOT supported by the device, show all presets so the user can download a playable transcode!
     val filteredPresets = remember(allPresets, effectiveSourceSize, effectiveRuntimeTicks, isOriginalSupported) {
         if (!isOriginalSupported) {
             allPresets
@@ -226,7 +221,6 @@ fun DownloadPresetBottomSheet(
             runtimeTicks = effectiveRuntimeTicks,
             sourceSize = effectiveSourceSize,
             originalVideoStream = originalVideoStream,
-            originalAudioStream = originalAudioStream,
             isOriginalSupported = isOriginalSupported,
             rememberSetting = rememberSetting,
             onRememberSettingChange = { rememberSetting = it },
@@ -286,7 +280,6 @@ fun DownloadPresetBottomSheetLayout(
     runtimeTicks: Long = 0L,
     sourceSize: Long = 0L,
     originalVideoStream: FindroidMediaStream? = null,
-    originalAudioStream: FindroidMediaStream? = null,
     isOriginalSupported: Boolean = true,
     showDetails: Boolean = false,
     onShowDetailsChange: (Boolean) -> Unit = {},
@@ -323,7 +316,6 @@ fun DownloadPresetBottomSheetLayout(
                 )
             }
 
-            // Info button to toggle details in preset cards
             IconButton(
                 onClick = { onShowDetailsChange(!showDetails) },
                 shape = CircleShape,
@@ -342,7 +334,6 @@ fun DownloadPresetBottomSheetLayout(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Presets Cards List with fading edge gradients and isolated nested scroll
         val scrollState = rememberScrollState()
         val stopScrollPropagation = remember {
             object : NestedScrollConnection {
@@ -351,7 +342,6 @@ fun DownloadPresetBottomSheetLayout(
                     available: Offset,
                     source: NestedScrollSource,
                 ): Offset {
-                    // Consume remaining scroll delta so parent bottom sheet doesn't drag on overscroll
                     return available
                 }
             }
@@ -440,7 +430,6 @@ fun DownloadPresetBottomSheetLayout(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Options Card with animated content and inline expandable audio track selector
         Card(
             modifier = Modifier
                 .fillMaxWidth()
@@ -671,7 +660,6 @@ fun DownloadPresetBottomSheetLayout(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        // Confirm Download Button
         Button(
             onClick = onConfirm,
             modifier = Modifier
@@ -700,11 +688,11 @@ private fun DownloadPresetCard(
     showDetails: Boolean,
     runtimeTicks: Long,
     sourceSize: Long,
-    originalVideoStream: FindroidMediaStream?,
-    audioStreams: List<FindroidMediaStream> = emptyList(),
     isOriginalSupported: Boolean,
     onSelect: () -> Unit,
     modifier: Modifier = Modifier,
+    originalVideoStream: FindroidMediaStream?,
+    audioStreams: List<FindroidMediaStream> = emptyList(),
 ) {
     val context = LocalContext.current
     val isOriginalUnsupported = preset.isOriginal && !isOriginalSupported

@@ -33,7 +33,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
@@ -85,7 +84,6 @@ fun AddServerScreen(
 
 @Composable
 private fun AddServerScreenLayout(state: AddServerState, onAction: (AddServerAction) -> Unit) {
-    val context = LocalContext.current
     val focusRequester = remember { FocusRequester() }
     val scrollState = rememberScrollState()
 
@@ -155,8 +153,14 @@ private fun AddServerScreenLayout(state: AddServerState, onAction: (AddServerAct
                 enabled = !state.isLoading,
                 supportingText = state.error?.let { errors ->
                     {
+                        val errorText = buildString {
+                            errors.forEachIndexed { index, uiText ->
+                                if (index > 0) append(", ")
+                                append(uiText.asString())
+                            }
+                        }
                         Text(
-                            text = errors.joinToString { it.asString(context.resources) },
+                            text = errorText,
                             color = MaterialTheme.colorScheme.error,
                         )
                     }

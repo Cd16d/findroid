@@ -11,6 +11,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import okhttp3.Call
 import okhttp3.OkHttpClient
 import timber.log.Timber
 import java.io.File
@@ -117,7 +118,7 @@ class MediaDownloadEngine @Inject constructor(
 ) {
     // Public API types ---------------------------------------------------------
 
-    data class Snapshot(val status: Int, val bytesDownloaded: Long, val totalBytes: Long)
+    data class Snapshot(val status: DownloadStatus, val bytesDownloaded: Long, val totalBytes: Long)
 
     data class Request(
         val id: Long,
@@ -134,7 +135,7 @@ class MediaDownloadEngine @Inject constructor(
 
     /** Per-task mutable state held in the registry. */
     private inner class TaskState(val request: Request) {
-        @Volatile var status: Int = DownloadStatus.PENDING
+        @Volatile var status: DownloadStatus = DownloadStatus.PENDING
         @Volatile var bytesDownloaded: Long = 0L
         @Volatile var totalBytes: Long = request.estimatedTotalBytes
         @Volatile var isUserPaused: Boolean = false
@@ -146,7 +147,7 @@ class MediaDownloadEngine @Inject constructor(
          * loop has no suspension points while reading. Without this a cancelled download
          * keeps writing for up to the read timeout, racing the file delete in deleteItem.
          */
-        @Volatile var call: okhttp3.Call? = null
+        @Volatile var call: Call? = null
     }
 
     private val registry = ConcurrentHashMap<Long, TaskState>()

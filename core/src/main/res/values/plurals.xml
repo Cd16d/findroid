@@ -36,4 +36,12 @@
         <item quantity="one">%1$d paused</item>
         <item quantity="other">%1$d paused</item>
     </plurals>
+    <plurals name="episodes_count">
+        <item quantity="one">%1$d episode</item>
+        <item quantity="other">%1$d episodes</item>
+    </plurals>
+    <plurals name="seasons_count">
+        <item quantity="one">%1$d season</item>
+        <item quantity="other">%1$d seasons</item>
+    </plurals>
 </resources>

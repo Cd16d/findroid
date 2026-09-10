@@ -1,5 +1,8 @@
 package dev.jdtech.jellyfin.presentation.film.components
 
+import dev.jdtech.jellyfin.presentation.download.components.DownloadedBadge
+import dev.jdtech.jellyfin.presentation.download.components.DownloadingBadge
+
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement

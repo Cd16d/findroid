@@ -30,6 +30,7 @@ import dev.jdtech.jellyfin.models.FindroidItem
 import dev.jdtech.jellyfin.models.FindroidMovie
 import dev.jdtech.jellyfin.models.FindroidShow
 import dev.jdtech.jellyfin.models.isDownloaded
+import dev.jdtech.jellyfin.presentation.download.components.DownloadedBadge
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
 import dev.jdtech.jellyfin.utils.getShowDateString
@@ -49,7 +50,9 @@ fun ItemCard(
     Column(modifier = modifier.width(width.dp)) {
         Surface(
             modifier =
-                Modifier.clip(MaterialTheme.shapes.small).clickable(onClick = { onClick(item) }),
+                Modifier
+                    .clip(MaterialTheme.shapes.small)
+                    .clickable(onClick = { onClick(item) }),
             shape = MaterialTheme.shapes.small,
         ) {
             Box {
@@ -59,7 +62,9 @@ fun ItemCard(
                 )
                 Row(
                     modifier =
-                        Modifier.align(Alignment.TopEnd).padding(MaterialTheme.spacings.small),
+                        Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(MaterialTheme.spacings.small),
                     horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacings.small),
                 ) {
                     if (item.isDownloaded()) DownloadedBadge()
@@ -71,7 +76,8 @@ fun ItemCard(
                         item = item,
                         width = width,
                         modifier =
-                            Modifier.align(Alignment.BottomStart)
+                            Modifier
+                                .align(Alignment.BottomStart)
                                 .padding(MaterialTheme.spacings.small),
                     )
                 }

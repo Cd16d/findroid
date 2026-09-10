@@ -3,6 +3,7 @@ package dev.jdtech.jellyfin.utils
 import dev.jdtech.jellyfin.models.FindroidItem
 import dev.jdtech.jellyfin.models.FindroidSource
 import dev.jdtech.jellyfin.models.UiText
+import dev.jdtech.jellyfin.utils.download.DownloadStatus
 import java.util.UUID
 
 interface Downloader {
@@ -24,7 +25,7 @@ interface Downloader {
     suspend fun deleteItem(item: FindroidItem, source: FindroidSource, userId: UUID? = null)
 
     data class Progress(
-        val status: Int,
+        val status: DownloadStatus,
         val progress: Int,
         val bytesDownloaded: Long,
         val totalBytes: Long,
