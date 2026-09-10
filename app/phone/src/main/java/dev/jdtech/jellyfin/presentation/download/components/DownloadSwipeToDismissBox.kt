@@ -50,10 +50,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.core.presentation.theme.DeleteContentWhite
 import dev.jdtech.jellyfin.core.presentation.theme.DeleteRed
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
-import dev.jdtech.jellyfin.core.R as CoreR
 
 @Composable
 fun DownloadSwipeDismissBackground(
@@ -62,37 +62,35 @@ fun DownloadSwipeDismissBackground(
     modifier: Modifier = Modifier,
     shape: Shape = RoundedCornerShape(16.dp),
 ) {
-    val targetScale = remember(isThresholdReached, progress) {
-        if (isThresholdReached) {
-            1.2f
-        } else {
-            (0.75f + (progress / 0.45f) * 0.25f).coerceIn(0.75f, 1.0f)
-        }
-    }
-    val animatedTrashScale by animateFloatAsState(
-        targetValue = targetScale,
-        animationSpec =
+    val targetScale =
+        remember(isThresholdReached, progress) {
             if (isThresholdReached) {
-                spring(
-                    dampingRatio = Spring.DampingRatioHighBouncy,
-                    stiffness = Spring.StiffnessMedium,
-                )
+                1.2f
             } else {
-                spring(
-                    dampingRatio = Spring.DampingRatioNoBouncy,
-                    stiffness = Spring.StiffnessHigh,
-                )
-            },
-        label = "trashScale",
-    )
+                (0.75f + (progress / 0.45f) * 0.25f).coerceIn(0.75f, 1.0f)
+            }
+        }
+    val animatedTrashScale by
+        animateFloatAsState(
+            targetValue = targetScale,
+            animationSpec =
+                if (isThresholdReached) {
+                    spring(
+                        dampingRatio = Spring.DampingRatioHighBouncy,
+                        stiffness = Spring.StiffnessMedium,
+                    )
+                } else {
+                    spring(
+                        dampingRatio = Spring.DampingRatioNoBouncy,
+                        stiffness = Spring.StiffnessHigh,
+                    )
+                },
+            label = "trashScale",
+        )
 
     Box(
         modifier =
-            modifier
-                .fillMaxSize()
-                .clip(shape)
-                .background(DeleteRed)
-                .padding(horizontal = 24.dp),
+            modifier.fillMaxSize().clip(shape).background(DeleteRed).padding(horizontal = 24.dp),
         contentAlignment = Alignment.CenterEnd,
     ) {
         Icon(
@@ -100,12 +98,10 @@ fun DownloadSwipeDismissBackground(
             contentDescription = stringResource(CoreR.string.delete),
             tint = DeleteContentWhite,
             modifier =
-                Modifier
-                    .size(24.dp)
-                    .graphicsLayer {
-                        scaleX = animatedTrashScale
-                        scaleY = animatedTrashScale
-                    },
+                Modifier.size(24.dp).graphicsLayer {
+                    scaleX = animatedTrashScale
+                    scaleY = animatedTrashScale
+                },
         )
     }
 }
@@ -135,20 +131,11 @@ fun DownloadEliminatingCard(
 
     Card(
         shape = cardShape,
-        colors =
-            CardDefaults.cardColors(
-                containerColor = DeleteRed,
-            ),
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .height(cardHeight),
+        colors = CardDefaults.cardColors(containerColor = DeleteRed),
+        modifier = modifier.fillMaxWidth().height(cardHeight),
     ) {
         Row(
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 16.dp),
+            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
@@ -166,13 +153,18 @@ fun DownloadEliminatingCard(
                 Column {
                     Text(
                         text = title,
-                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                        style =
+                            MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                         color = DeleteContentWhite,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
                     Text(
-                        text = stringResource(CoreR.string.deleting_in_seconds, pendingDeletionSeconds),
+                        text =
+                            stringResource(
+                                CoreR.string.deleting_in_seconds,
+                                pendingDeletionSeconds,
+                            ),
                         style = MaterialTheme.typography.bodySmall,
                         color = DeleteContentWhite.copy(alpha = 0.85f),
                     )
@@ -224,9 +216,7 @@ fun DownloadSwipeToDismissBox(
     var hasTriggeredHaptic by remember { mutableStateOf(false) }
 
     val dismissState =
-        rememberSwipeToDismissBoxState(
-            positionalThreshold = { distance -> distance * 0.45f },
-        )
+        rememberSwipeToDismissBoxState(positionalThreshold = { distance -> distance * 0.45f })
 
     LaunchedEffect(dismissState.settledValue) {
         if (dismissState.settledValue == SwipeToDismissBoxValue.EndToStart) {
@@ -238,7 +228,10 @@ fun DownloadSwipeToDismissBox(
     }
 
     LaunchedEffect(pendingDeletionSeconds) {
-        if (pendingDeletionSeconds != null && dismissState.currentValue != SwipeToDismissBoxValue.Settled) {
+        if (
+            pendingDeletionSeconds != null &&
+                dismissState.currentValue != SwipeToDismissBoxValue.Settled
+        ) {
             dismissState.snapTo(SwipeToDismissBoxValue.Settled)
         }
     }
@@ -255,24 +248,28 @@ fun DownloadSwipeToDismissBox(
         enableDismissFromEndToStart = !isSelectionMode && pendingDeletionSeconds == null,
         modifier = modifier.fillMaxWidth(),
         backgroundContent = {
-            if (!isSelectionMode && dismissState.dismissDirection == SwipeToDismissBoxValue.EndToStart) {
+            if (
+                !isSelectionMode &&
+                    dismissState.dismissDirection == SwipeToDismissBoxValue.EndToStart
+            ) {
                 BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
                     val totalWidthPx = constraints.maxWidth.toFloat()
-                    val linearProgress by remember(totalWidthPx) {
-                        derivedStateOf {
-                            val currentOffset =
-                                try {
-                                    dismissState.requireOffset()
-                                } catch (_: Exception) {
+                    val linearProgress by
+                        remember(totalWidthPx) {
+                            derivedStateOf {
+                                val currentOffset =
+                                    try {
+                                        dismissState.requireOffset()
+                                    } catch (_: Exception) {
+                                        0f
+                                    }
+                                if (totalWidthPx > 0f) {
+                                    (-currentOffset / totalWidthPx).coerceIn(0f, 1f)
+                                } else {
                                     0f
                                 }
-                            if (totalWidthPx > 0f) {
-                                (-currentOffset / totalWidthPx).coerceIn(0f, 1f)
-                            } else {
-                                0f
                             }
                         }
-                    }
 
                     if (linearProgress > 0.01f) {
                         val isThresholdReached by remember {
@@ -317,11 +314,7 @@ fun DownloadSwipeToDismissBox(
 @Composable
 private fun DownloadEpisodeTileSwipeDismissBackgroundPreview() {
     FindroidTheme {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(76.dp)
-        ) {
+        Box(modifier = Modifier.fillMaxWidth().height(76.dp)) {
             DownloadSwipeDismissBackground(
                 progress = 1f,
                 isThresholdReached = true,
@@ -335,11 +328,7 @@ private fun DownloadEpisodeTileSwipeDismissBackgroundPreview() {
 @Composable
 private fun DownloadEpisodeTileSwipeDismissBackgroundStartPreview() {
     FindroidTheme {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(76.dp)
-        ) {
+        Box(modifier = Modifier.fillMaxWidth().height(76.dp)) {
             DownloadSwipeDismissBackground(
                 progress = 0f,
                 isThresholdReached = false,

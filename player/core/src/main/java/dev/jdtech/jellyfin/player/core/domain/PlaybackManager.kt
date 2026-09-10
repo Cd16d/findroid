@@ -3,18 +3,20 @@ package dev.jdtech.jellyfin.player.core.domain
 import androidx.media3.common.C
 import dev.jdtech.jellyfin.core.presentation.downloader.DownloadQueue
 import dev.jdtech.jellyfin.repository.JellyfinRepository
-import org.jellyfin.sdk.model.api.PlayMethod
-import timber.log.Timber
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
+import org.jellyfin.sdk.model.api.PlayMethod
+import timber.log.Timber
 
 /**
- * Centralized manager for reporting playback events to the Jellyfin server.
- * Ensures consistent data formatting and error handling across different player implementations.
+ * Centralized manager for reporting playback events to the Jellyfin server. Ensures consistent data
+ * formatting and error handling across different player implementations.
  */
 @Singleton
-class PlaybackManager @Inject constructor(
+class PlaybackManager
+@Inject
+constructor(
     private val repository: JellyfinRepository,
     private val downloadQueue: dagger.Lazy<DownloadQueue>,
 ) {
@@ -32,15 +34,18 @@ class PlaybackManager @Inject constructor(
         positionMs: Long? = null,
         playMethod: PlayMethod = PlayMethod.DIRECT_PLAY,
         mediaSourceId: String? = null,
-        playSessionId: String? = null
+        playSessionId: String? = null,
     ) {
         try {
             repository.postPlaybackStart(
                 itemId = itemId,
-                positionTicks = positionMs?.let { it * 10000 }, // Convert ms to ticks (1 tick = 100 nanoseconds)
+                positionTicks =
+                    positionMs?.let {
+                        it * 10000
+                    }, // Convert ms to ticks (1 tick = 100 nanoseconds)
                 playMethod = playMethod,
                 mediaSourceId = mediaSourceId,
-                playSessionId = playSessionId
+                playSessionId = playSessionId,
             )
         } catch (e: Exception) {
             Timber.e(e, "Failed to report playback start for item: $itemId")
@@ -63,17 +68,18 @@ class PlaybackManager @Inject constructor(
         isPaused: Boolean = false,
         playMethod: PlayMethod = PlayMethod.DIRECT_PLAY,
         mediaSourceId: String? = null,
-        playSessionId: String? = null
+        playSessionId: String? = null,
     ) {
         require(positionMs >= 0) { "positionMs must be non-negative: $positionMs" }
         try {
             repository.postPlaybackProgress(
                 itemId = itemId,
-                positionTicks = positionMs * 10000, // Convert ms to ticks (1 tick = 100 nanoseconds)
+                positionTicks =
+                    positionMs * 10000, // Convert ms to ticks (1 tick = 100 nanoseconds)
                 isPaused = isPaused,
                 playMethod = playMethod,
                 mediaSourceId = mediaSourceId,
-                playSessionId = playSessionId
+                playSessionId = playSessionId,
             )
         } catch (e: Exception) {
             Timber.e(e, "Failed to report playback progress for item: $itemId")
@@ -81,8 +87,8 @@ class PlaybackManager @Inject constructor(
     }
 
     /**
-     * Reports that playback has stopped.
-     * Calculates the played percentage based on current position and total duration.
+     * Reports that playback has stopped. Calculates the played percentage based on current position
+     * and total duration.
      *
      * @param itemId The UUID of the item being played.
      * @param positionMs The final playback position in milliseconds. Must be non-negative.
@@ -95,7 +101,7 @@ class PlaybackManager @Inject constructor(
         positionMs: Long,
         durationMs: Long,
         mediaSourceId: String? = null,
-        playSessionId: String? = null
+        playSessionId: String? = null,
     ) {
         require(positionMs >= 0) { "positionMs must be non-negative: $positionMs" }
         if (durationMs == C.TIME_UNSET || durationMs <= 0L) {
@@ -104,7 +110,8 @@ class PlaybackManager @Inject constructor(
         }
 
         val positionTicks = positionMs * 10000 // Convert ms to ticks (1 tick = 100 nanoseconds)
-        val playedPercentage = (positionMs.toFloat() / durationMs.toFloat() * 100).toInt().coerceIn(0, 100)
+        val playedPercentage =
+            (positionMs.toFloat() / durationMs.toFloat() * 100).toInt().coerceIn(0, 100)
 
         try {
             repository.postPlaybackStop(
@@ -112,7 +119,7 @@ class PlaybackManager @Inject constructor(
                 positionTicks = positionTicks,
                 playedPercentage = playedPercentage,
                 mediaSourceId = mediaSourceId,
-                playSessionId = playSessionId
+                playSessionId = playSessionId,
             )
         } catch (e: Exception) {
             Timber.e(e, "Failed to report playback stop for item: $itemId")

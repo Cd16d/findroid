@@ -7,8 +7,8 @@ import dagger.hilt.components.SingletonComponent
 import dev.jdtech.jellyfin.utils.NetworkConnectivity
 import dev.jdtech.jellyfin.utils.NetworkConnectivityImpl
 import dev.jdtech.jellyfin.utils.NetworkPriorityManager
-import okhttp3.OkHttpClient
 import javax.inject.Singleton
+import okhttp3.OkHttpClient
 
 @Module
 @InstallIn(SingletonComponent::class)

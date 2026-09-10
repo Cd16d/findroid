@@ -30,11 +30,11 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.player.cast.models.CastConnectionState
 import dev.jdtech.jellyfin.player.cast.models.Device
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
-import dev.jdtech.jellyfin.core.R as CoreR
 
 @Composable
 fun CastDeviceItem(
@@ -42,39 +42,41 @@ fun CastDeviceItem(
     connected: Boolean,
     connectionState: CastConnectionState,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
-    val cornerPercent by animateIntAsState(
-        targetValue = if (connected) 50 else 15,
-        animationSpec = spring(
-            dampingRatio = 0.4f,
-            stiffness = Spring.StiffnessMediumLow
-        ),
-        label = "shapeAnimation"
-    )
+    val cornerPercent by
+        animateIntAsState(
+            targetValue = if (connected) 50 else 15,
+            animationSpec =
+                spring(
+                    dampingRatio = 0.4f,
+                    stiffness = Spring.StiffnessMediumLow,
+                ),
+            label = "shapeAnimation",
+        )
 
     Card(
         onClick = onClick,
         modifier = modifier,
         shape = RoundedCornerShape(cornerPercent),
-        colors = CardDefaults.cardColors(
-            containerColor = if (connected) {
-                MaterialTheme.colorScheme.primaryContainer
-            } else {
-                MaterialTheme.colorScheme.surfaceVariant
-            }
-        ),
+        colors =
+            CardDefaults.cardColors(
+                containerColor =
+                    if (connected) {
+                        MaterialTheme.colorScheme.primaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.surfaceVariant
+                    }
+            ),
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(MaterialTheme.spacings.small),
-            verticalAlignment = Alignment.CenterVertically
+            modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacings.small),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             if (!connected) {
                 Box(
                     modifier = Modifier.size(48.dp),
-                    contentAlignment = Alignment.Center
+                    contentAlignment = Alignment.Center,
                 ) {
                     Icon(
                         painter = painterResource(CoreR.drawable.ic_monitor),
@@ -89,21 +91,23 @@ fun CastDeviceItem(
             Text(
                 text = device.name,
                 style = MaterialTheme.typography.titleMedium,
-                color = if (connected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
+                color =
+                    if (connected) MaterialTheme.colorScheme.onPrimaryContainer
+                    else MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
             )
 
             if (connected) {
-                Box (
-                    modifier = Modifier
-                        .size(48.dp)
-                        .background(
-                            color = MaterialTheme.colorScheme.primary,
-                            shape = CircleShape
-                        ),
-                    contentAlignment = Alignment.Center
+                Box(
+                    modifier =
+                        Modifier.size(48.dp)
+                            .background(
+                                color = MaterialTheme.colorScheme.primary,
+                                shape = CircleShape,
+                            ),
+                    contentAlignment = Alignment.Center,
                 ) {
                     if (connectionState == CastConnectionState.CONNECTING) {
                         CircularProgressIndicator(
@@ -132,7 +136,9 @@ private fun CastDeviceItemPreview() {
         CastDeviceItem(
             device = Device("1", "Living Room TV"),
             connected = isConnected,
-            connectionState = if (isConnected) CastConnectionState.CONNECTED else CastConnectionState.DISCONNECTED,
+            connectionState =
+                if (isConnected) CastConnectionState.CONNECTED
+                else CastConnectionState.DISCONNECTED,
             onClick = { isConnected = !isConnected },
         )
     }

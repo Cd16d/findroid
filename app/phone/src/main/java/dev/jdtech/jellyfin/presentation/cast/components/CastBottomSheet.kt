@@ -27,20 +27,20 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.mediarouter.media.MediaRouter
+import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.player.cast.models.CastConnectionState
 import dev.jdtech.jellyfin.player.cast.models.Device
 import dev.jdtech.jellyfin.player.cast.presentation.CastPlayerViewModel
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
 import dev.jdtech.jellyfin.presentation.utils.rememberSafePadding
-import dev.jdtech.jellyfin.core.R as CoreR
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CastBottomSheet(
     onDismissRequest: () -> Unit,
     sheetState: SheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-    viewModel: CastPlayerViewModel = hiltViewModel()
+    viewModel: CastPlayerViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val devices = uiState.availableDevices
@@ -49,27 +49,21 @@ fun CastBottomSheet(
 
     DisposableEffect(viewModel) {
         viewModel.sessionManager.updateDiscovery(MediaRouter.CALLBACK_FLAG_PERFORM_ACTIVE_SCAN)
-        onDispose {
-            viewModel.sessionManager.updateDiscovery()
-        }
+        onDispose { viewModel.sessionManager.updateDiscovery() }
     }
 
     ModalBottomSheet(
         onDismissRequest = onDismissRequest,
         sheetState = sheetState,
         dragHandle = null,
-        contentWindowInsets = { WindowInsets(0, 0, 0, 0) }
+        contentWindowInsets = { WindowInsets(0, 0, 0, 0) },
     ) {
         CastBottomSheetLayout(
             devices = devices,
             connectedDevice = connectedDevice,
             connectionState = connectionState,
-            onDeviceSelected = {
-                viewModel.sessionManager.connect(it)
-            },
-            onDisconnect = {
-                viewModel.sessionManager.disconnect()
-            }
+            onDeviceSelected = { viewModel.sessionManager.connect(it) },
+            onDisconnect = { viewModel.sessionManager.disconnect() },
         )
     }
 }
@@ -86,25 +80,21 @@ fun CastBottomSheetLayout(
 
     val paddingBottom = safePadding.bottom + MaterialTheme.spacings.default
 
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(
-                bottom = paddingBottom
-            ),
-    ) {
+    Column(modifier = Modifier.fillMaxWidth().padding(bottom = paddingBottom)) {
         Text(
-            text = if (devices.isEmpty()) {
-                stringResource(CoreR.string.cast_searching)
-            } else {
-                stringResource(CoreR.string.cast_select_device)
-            },
+            text =
+                if (devices.isEmpty()) {
+                    stringResource(CoreR.string.cast_searching)
+                } else {
+                    stringResource(CoreR.string.cast_select_device)
+                },
             style = MaterialTheme.typography.headlineSmall,
             color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(
-                horizontal = 24.dp,
-                vertical = MaterialTheme.spacings.medium
-            )
+            modifier =
+                Modifier.padding(
+                    horizontal = 24.dp,
+                    vertical = MaterialTheme.spacings.medium,
+                ),
         )
 
         LinearProgressIndicator(
@@ -141,7 +131,7 @@ fun CastBottomSheetLayout(
                             } else {
                                 onDeviceSelected(device)
                             }
-                        }
+                        },
                     )
                 }
             }
@@ -153,7 +143,7 @@ fun CastBottomSheetLayout(
             text = stringResource(CoreR.string.cast_wifi_instruction),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 24.dp)
+            modifier = Modifier.padding(horizontal = 24.dp),
         )
     }
 }
@@ -168,7 +158,7 @@ private fun CastBottomSheetSearchingPreview() {
             connectedDevice = null,
             connectionState = CastConnectionState.DISCONNECTED,
             onDeviceSelected = {},
-            onDisconnect = {}
+            onDisconnect = {},
         )
     }
 }
@@ -177,17 +167,18 @@ private fun CastBottomSheetSearchingPreview() {
 @Preview(showBackground = true)
 @Composable
 private fun CastBottomSheetPreview() {
-    val devices = listOf(
-        Device("1", "Living Room TV"),
-        Device("2", "Bedroom")
-    )
+    val devices =
+        listOf(
+            Device("1", "Living Room TV"),
+            Device("2", "Bedroom"),
+        )
     FindroidTheme {
         CastBottomSheetLayout(
             devices = devices,
             connectedDevice = null,
             connectionState = CastConnectionState.DISCONNECTED,
             onDeviceSelected = {},
-            onDisconnect = {}
+            onDisconnect = {},
         )
     }
 }
@@ -196,17 +187,18 @@ private fun CastBottomSheetPreview() {
 @Preview(showBackground = true)
 @Composable
 private fun CastBottomSheetConnectingPreview() {
-    val devices = listOf(
-        Device("1", "Living Room TV"),
-        Device("2", "Bedroom")
-    )
+    val devices =
+        listOf(
+            Device("1", "Living Room TV"),
+            Device("2", "Bedroom"),
+        )
     FindroidTheme {
         CastBottomSheetLayout(
             devices = devices,
             connectedDevice = devices[0],
             connectionState = CastConnectionState.CONNECTING,
             onDeviceSelected = {},
-            onDisconnect = {}
+            onDisconnect = {},
         )
     }
 }
@@ -215,17 +207,18 @@ private fun CastBottomSheetConnectingPreview() {
 @Preview(showBackground = true)
 @Composable
 private fun CastBottomSheetConnectedPreview() {
-    val devices = listOf(
-        Device("1", "Living Room TV"),
-        Device("2", "Bedroom")
-    )
+    val devices =
+        listOf(
+            Device("1", "Living Room TV"),
+            Device("2", "Bedroom"),
+        )
     FindroidTheme {
         CastBottomSheetLayout(
             devices = devices,
             connectedDevice = devices[0],
             connectionState = CastConnectionState.CONNECTED,
             onDeviceSelected = {},
-            onDisconnect = {}
+            onDisconnect = {},
         )
     }
 }

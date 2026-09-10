@@ -19,12 +19,12 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.player.cast.models.Device
 import dev.jdtech.jellyfin.player.cast.presentation.CastPlayerViewModel
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
 import dev.jdtech.jellyfin.presentation.utils.rememberSafePadding
-import dev.jdtech.jellyfin.core.R as CoreR
 
 @Composable
 fun CastButton(
@@ -32,7 +32,7 @@ fun CastButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     handleBottomInsets: Boolean = true,
-    viewModel: CastPlayerViewModel = hiltViewModel(LocalContext.current as ViewModelStoreOwner)
+    viewModel: CastPlayerViewModel = hiltViewModel(LocalContext.current as ViewModelStoreOwner),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val devices = uiState.availableDevices
@@ -42,7 +42,7 @@ fun CastButton(
         expanded = expanded,
         onClick = onClick,
         modifier = modifier,
-        handleBottomInsets = handleBottomInsets
+        handleBottomInsets = handleBottomInsets,
     )
 }
 
@@ -52,7 +52,7 @@ fun CastButtonContent(
     expanded: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    handleBottomInsets: Boolean = true
+    handleBottomInsets: Boolean = true,
 ) {
     val safePadding = rememberSafePadding(handleBottomInsets = handleBottomInsets)
 
@@ -62,24 +62,29 @@ fun CastButtonContent(
         icon = {
             Icon(
                 painter = painterResource(CoreR.drawable.ic_cast),
-                contentDescription = "Cast"
+                contentDescription = "Cast",
             )
         },
         text = {
             Text(
-                text = if (devices.isEmpty()) {
-                    stringResource(CoreR.string.cast_connect_tv)
-                } else {
-                    pluralStringResource(CoreR.plurals.cast_tvs_nearby, devices.size, devices.size)
-                }
+                text =
+                    if (devices.isEmpty()) {
+                        stringResource(CoreR.string.cast_connect_tv)
+                    } else {
+                        pluralStringResource(
+                            CoreR.plurals.cast_tvs_nearby,
+                            devices.size,
+                            devices.size,
+                        )
+                    }
             )
         },
-        modifier = modifier.padding(
-            bottom = safePadding.bottom + MaterialTheme.spacings.medium,
-            end = safePadding.end + MaterialTheme.spacings.medium
-        )
+        modifier =
+            modifier.padding(
+                bottom = safePadding.bottom + MaterialTheme.spacings.medium,
+                end = safePadding.end + MaterialTheme.spacings.medium,
+            ),
     )
-
 }
 
 @Preview(showBackground = true)
@@ -88,33 +93,33 @@ private fun CastButtonPreview() {
     FindroidTheme {
         Column(
             modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Text("Expanded states")
             // No devices
             CastButtonContent(
                 devices = emptyList(),
                 expanded = true,
-                onClick = {}
+                onClick = {},
             )
             // One device
             CastButtonContent(
                 devices = listOf(Device("1", "Living Room TV")),
                 expanded = true,
-                onClick = {}
+                onClick = {},
             )
             // Multiple devices
             CastButtonContent(
                 devices = listOf(Device("1", "TV 1"), Device("2", "TV 2")),
                 expanded = true,
-                onClick = {}
+                onClick = {},
             )
 
             Text("Collapsed state", modifier = Modifier.padding(top = 16.dp))
             CastButtonContent(
                 devices = listOf(Device("1", "Living Room TV")),
                 expanded = false,
-                onClick = {}
+                onClick = {},
             )
         }
     }

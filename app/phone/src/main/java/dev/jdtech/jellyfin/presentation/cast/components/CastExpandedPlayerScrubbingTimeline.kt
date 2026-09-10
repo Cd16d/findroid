@@ -39,23 +39,17 @@ fun CastScrubbingTimeline(
     chapters: List<PlayerChapter>,
     onScrubStart: (Float) -> Unit,
     onScrubStop: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.padding(horizontal = 24.dp)) {
         if (playerStatus == CastPlaybackStatus.BUFFERING) {
             Box(modifier = Modifier.padding(horizontal = 2.dp, vertical = 16.dp)) {
-                LinearProgressIndicator(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(16.dp)
-                )
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth().height(16.dp))
             }
         } else {
             Slider(
                 value = currentProgress.coerceIn(0f, duration.coerceAtLeast(1f)),
-                onValueChange = {
-                    onScrubStart(it)
-                },
+                onValueChange = { onScrubStart(it) },
                 onValueChangeFinished = onScrubStop,
                 valueRange = 0f..duration.coerceAtLeast(1f),
                 modifier = Modifier.fillMaxWidth(),
@@ -71,30 +65,30 @@ fun CastScrubbingTimeline(
                                     drawCircle(
                                         color = Color.White,
                                         radius = 2.dp.toPx(),
-                                        center = Offset(size.width * fraction, size.height / 2)
+                                        center = Offset(size.width * fraction, size.height / 2),
                                     )
                                 }
                             }
-                        }
+                        },
                     )
-                }
+                },
             )
         }
 
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp)
-                .alpha(if (duration > 0) 1f else 0f),
-            horizontalArrangement = Arrangement.SpaceBetween
+            modifier =
+                Modifier.fillMaxWidth()
+                    .padding(horizontal = 8.dp)
+                    .alpha(if (duration > 0) 1f else 0f),
+            horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Text(
                 TimeUtils.formatTime(currentProgress.toLong()),
-                style = MaterialTheme.typography.bodySmall
+                style = MaterialTheme.typography.bodySmall,
             )
             Text(
                 TimeUtils.formatTime(duration.toLong()),
-                style = MaterialTheme.typography.bodySmall
+                style = MaterialTheme.typography.bodySmall,
             )
         }
     }
@@ -104,7 +98,7 @@ fun CastScrubbingTimeline(
 fun TrickplayThumbnail(
     trickplay: Trickplay,
     scrubPosition: Float,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val index =
         (scrubPosition / trickplay.interval).toInt().coerceIn(0, (trickplay.images.size - 1))
@@ -114,7 +108,7 @@ fun TrickplayThumbnail(
         bitmap = image.asImageBitmap(),
         contentDescription = "Scrub Preview",
         contentScale = ContentScale.Crop,
-        modifier = modifier.fillMaxSize()
+        modifier = modifier.fillMaxSize(),
     )
 }
 
@@ -126,12 +120,13 @@ private fun CastScrubbingTimelinePreview() {
             playerStatus = CastPlaybackStatus.PLAYING,
             currentProgress = 120000f,
             duration = 600000f,
-            chapters = listOf(
-                PlayerChapter(0L, "Chapter 1"),
-                PlayerChapter(300000L, "Chapter 2")
-            ),
+            chapters =
+                listOf(
+                    PlayerChapter(0L, "Chapter 1"),
+                    PlayerChapter(300000L, "Chapter 2"),
+                ),
             onScrubStart = {},
-            onScrubStop = {}
+            onScrubStop = {},
         )
     }
 }

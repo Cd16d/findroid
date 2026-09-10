@@ -3,13 +3,12 @@ package dev.jdtech.jellyfin.settings.presentation.settings
 import android.content.Context
 import android.content.Intent
 import android.os.Build
-import android.os.StatFs
 import android.provider.Settings
-import android.text.format.Formatter
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import dev.jdtech.jellyfin.settings.BuildConfig
 import dev.jdtech.jellyfin.settings.R
 import dev.jdtech.jellyfin.settings.domain.AppPreferences
 import dev.jdtech.jellyfin.settings.presentation.enums.DeviceType
@@ -24,8 +23,8 @@ import dev.jdtech.jellyfin.settings.presentation.models.PreferenceSelect
 import dev.jdtech.jellyfin.settings.presentation.models.PreferenceStepper
 import dev.jdtech.jellyfin.settings.presentation.models.PreferenceStorageInfo
 import dev.jdtech.jellyfin.settings.presentation.models.PreferenceSwitch
+import dev.jdtech.jellyfin.settings.presentation.models.StorageDevice
 import dev.jdtech.jellyfin.settings.utils.StorageUtils
-import java.io.File
 import javax.inject.Inject
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,10 +33,10 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
-import dev.jdtech.jellyfin.settings.presentation.models.StorageDevice
-
 @HiltViewModel
-class SettingsViewModel @Inject constructor(
+class SettingsViewModel
+@Inject
+constructor(
     private val appPreferences: AppPreferences,
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
@@ -142,7 +141,8 @@ class SettingsViewModel @Inject constructor(
                                                         Build.VERSION.SDK_INT >=
                                                             Build.VERSION_CODES.S,
                                                     supportedDeviceTypes = listOf(DeviceType.PHONE),
-                                                    backendPreference = appPreferences.dynamicColors,
+                                                    backendPreference =
+                                                        appPreferences.dynamicColors,
                                                 ),
                                             ),
                                     ),
@@ -262,7 +262,33 @@ class SettingsViewModel @Inject constructor(
                                 }
                             },
                             nestedPreferenceGroups =
-                                listOf(
+                                listOfNotNull(
+                                    if (BuildConfig.FLAVOR == "proprietary")
+                                        PreferenceGroup(
+                                            nameStringResource =
+                                                R.string.settings_category_chromecast,
+                                            preferences =
+                                                listOf(
+                                                    PreferenceSwitch(
+                                                        nameStringResource =
+                                                            R.string.pref_cast_enabled,
+                                                        descriptionStringRes =
+                                                            R.string.pref_cast_enabled_summary,
+                                                        backendPreference =
+                                                            appPreferences.castEnabled,
+                                                    ),
+                                                    PreferenceIntInput(
+                                                        nameStringResource =
+                                                            R.string.pref_cast_max_bitrate,
+                                                        backendPreference =
+                                                            appPreferences.castMaxBitrateKbps,
+                                                        suffixRes = R.string.kbps,
+                                                        dependencies =
+                                                            listOf(appPreferences.castEnabled),
+                                                    ),
+                                                ),
+                                        )
+                                    else null,
                                     PreferenceGroup(
                                         preferences =
                                             listOf(
@@ -290,10 +316,12 @@ class SettingsViewModel @Inject constructor(
                                         preferences =
                                             listOf(
                                                 PreferenceSelect(
-                                                    nameStringResource = R.string.pref_player_backend,
-                                                    backendPreference = appPreferences.playerBackend,
+                                                    nameStringResource =
+                                                        R.string.pref_player_backend,
+                                                    backendPreference =
+                                                        appPreferences.playerBackend,
                                                     options = R.array.player_backends,
-                                                    optionValues = R.array.player_backends
+                                                    optionValues = R.array.player_backends,
                                                 ),
                                                 PreferenceCategory(
                                                     nameStringResource = R.string.mpv_options,
@@ -301,7 +329,11 @@ class SettingsViewModel @Inject constructor(
                                                         viewModelScope.launch {
                                                             eventsChannel.send(
                                                                 SettingsEvent.NavigateToSettings(
-                                                                    intArrayOf(R.string.settings_category_player, it.nameStringResource)
+                                                                    intArrayOf(
+                                                                        R.string
+                                                                            .settings_category_player,
+                                                                        it.nameStringResource,
+                                                                    )
                                                                 )
                                                             )
                                                         }
@@ -313,57 +345,90 @@ class SettingsViewModel @Inject constructor(
                                                                     listOf(
                                                                         PreferenceSelect(
                                                                             nameStringResource =
-                                                                                R.string.pref_player_mpv_hwdec,
+                                                                                R.string
+                                                                                    .pref_player_mpv_hwdec,
                                                                             backendPreference =
-                                                                                appPreferences.playerMpvHwdec,
-                                                                            options = R.array.mpv_hwdec,
-                                                                            optionValues = R.array.mpv_hwdec,
+                                                                                appPreferences
+                                                                                    .playerMpvHwdec,
+                                                                            options =
+                                                                                R.array.mpv_hwdec,
+                                                                            optionValues =
+                                                                                R.array.mpv_hwdec,
                                                                         ),
                                                                         PreferenceSelect(
                                                                             nameStringResource =
-                                                                                R.string.pref_player_mpv_vo,
-                                                                            backendPreference = appPreferences.playerMpvVo,
-                                                                            options = R.array.mpv_vos,
-                                                                            optionValues = R.array.mpv_vos,
+                                                                                R.string
+                                                                                    .pref_player_mpv_vo,
+                                                                            backendPreference =
+                                                                                appPreferences
+                                                                                    .playerMpvVo,
+                                                                            options =
+                                                                                R.array.mpv_vos,
+                                                                            optionValues =
+                                                                                R.array.mpv_vos,
                                                                         ),
                                                                         PreferenceSelect(
                                                                             nameStringResource =
-                                                                                R.string.pref_player_mpv_ao,
-                                                                            backendPreference = appPreferences.playerMpvAo,
-                                                                            options = R.array.mpv_aos,
-                                                                            optionValues = R.array.mpv_aos,
+                                                                                R.string
+                                                                                    .pref_player_mpv_ao,
+                                                                            backendPreference =
+                                                                                appPreferences
+                                                                                    .playerMpvAo,
+                                                                            options =
+                                                                                R.array.mpv_aos,
+                                                                            optionValues =
+                                                                                R.array.mpv_aos,
                                                                         ),
-                                                                    ),
+                                                                    )
                                                             ),
                                                             PreferenceGroup(
-                                                                nameStringResource = R.string.advanced,
+                                                                nameStringResource =
+                                                                    R.string.advanced,
                                                                 preferences =
                                                                     listOf(
                                                                         PreferenceFileEdit(
-                                                                            nameStringResource = R.string.edit_file_title,
-                                                                            filePath = "mpv/mpv.conf",
+                                                                            nameStringResource =
+                                                                                R.string
+                                                                                    .edit_file_title,
+                                                                            filePath =
+                                                                                "mpv/mpv.conf",
                                                                             onClick = {
-                                                                                viewModelScope.launch {
-                                                                                    eventsChannel.send(
-                                                                                        SettingsEvent.NavigateToSettingsFileEdit(it.filePath)
-                                                                                    )
-                                                                                }
-                                                                            }
+                                                                                viewModelScope
+                                                                                    .launch {
+                                                                                        eventsChannel
+                                                                                            .send(
+                                                                                                SettingsEvent
+                                                                                                    .NavigateToSettingsFileEdit(
+                                                                                                        it
+                                                                                                            .filePath
+                                                                                                    )
+                                                                                            )
+                                                                                    }
+                                                                            },
                                                                         ),
                                                                         PreferenceFileEdit(
-                                                                            nameStringResource = R.string.edit_file_title,
-                                                                            filePath = "mpv/input.conf",
+                                                                            nameStringResource =
+                                                                                R.string
+                                                                                    .edit_file_title,
+                                                                            filePath =
+                                                                                "mpv/input.conf",
                                                                             onClick = {
-                                                                                viewModelScope.launch {
-                                                                                    eventsChannel.send(
-                                                                                        SettingsEvent.NavigateToSettingsFileEdit(it.filePath)
-                                                                                    )
-                                                                                }
-                                                                            }
-                                                                        )
-                                                                    )
+                                                                                viewModelScope
+                                                                                    .launch {
+                                                                                        eventsChannel
+                                                                                            .send(
+                                                                                                SettingsEvent
+                                                                                                    .NavigateToSettingsFileEdit(
+                                                                                                        it
+                                                                                                            .filePath
+                                                                                                    )
+                                                                                            )
+                                                                                    }
+                                                                            },
+                                                                        ),
+                                                                    ),
                                                             ),
-                                                        )
+                                                        ),
                                                 ),
                                             )
                                     ),
@@ -489,7 +554,8 @@ class SettingsViewModel @Inject constructor(
                                                         R.string
                                                             .pref_player_media_segments_skip_button_summary,
                                                     backendPreference =
-                                                        appPreferences.playerMediaSegmentsSkipButton,
+                                                        appPreferences
+                                                            .playerMediaSegmentsSkipButton,
                                                 ),
                                                 PreferenceMultiSelect(
                                                     nameStringResource =
@@ -639,131 +705,170 @@ class SettingsViewModel @Inject constructor(
                             },
                             nestedPreferenceGroups =
                                 listOf(
-                                    PreferenceGroup(
-                                        nameStringResource = R.string.downloads_storage_group,
-                                        preferences =
-                                            listOf(
-                                                PreferenceStorageInfo(),
-                                                PreferenceSelect(
-                                                    nameStringResource =
-                                                        R.string.downloads_storage_location,
-                                                    supportedDeviceTypes = listOf(DeviceType.PHONE),
-                                                    backendPreference =
-                                                        appPreferences.defaultDownloadStorageIndex,
-                                                    options = R.array.downloads_storage_locations,
-                                                    optionValues = R.array.downloads_storage_location_values,
-                                                ),
-                                            ),
-                                    ),
-                                    PreferenceGroup(
-                                        nameStringResource = R.string.downloads_network_group,
-                                        preferences =
-                                            listOf(
-                                                PreferenceSwitch(
-                                                    nameStringResource =
-                                                        R.string.download_mobile_data,
-                                                    supportedDeviceTypes = listOf(DeviceType.PHONE),
-                                                    backendPreference =
-                                                        appPreferences.downloadOverMobileData,
-                                                ),
-                                                PreferenceSwitch(
-                                                    nameStringResource = R.string.download_roaming,
-                                                    dependencies =
-                                                        listOf(
-                                                            appPreferences.downloadOverMobileData
-                                                        ),
-                                                    supportedDeviceTypes = listOf(DeviceType.PHONE),
-                                                    backendPreference =
-                                                        appPreferences.downloadWhenRoaming,
-                                                ),
-                                            ),
-                                    ),
-                                    PreferenceGroup(
-                                        nameStringResource = R.string.downloads_smart_group,
-                                        preferences =
-                                            listOf(
-                                                PreferenceSwitch(
-                                                    nameStringResource =
-                                                        R.string.downloads_smart_next_episode,
-                                                    descriptionStringRes =
-                                                        R.string.downloads_smart_next_episode_summary,
-                                                    supportedDeviceTypes = listOf(DeviceType.PHONE),
-                                                    backendPreference =
-                                                        appPreferences.smartDownloadNextEpisode,
-                                                ),
-                                                PreferenceStepper(
-                                                    nameStringResource = R.string.downloads_smart_count,
-                                                    descriptionStringRes = R.string.downloads_smart_count_summary,
-                                                    dependencies = listOf(appPreferences.smartDownloadNextEpisode),
-                                                    supportedDeviceTypes = listOf(DeviceType.PHONE),
-                                                    backendPreference = appPreferences.smartDownloadNextEpisodesCount,
-                                                    minValue = 1,
-                                                    maxValue = 10,
-                                                    step = 1,
-                                                ),
-                                                PreferenceStepper(
-                                                    nameStringResource = R.string.downloads_smart_storage_limit,
-                                                    descriptionStringRes = R.string.downloads_smart_storage_limit_summary,
-                                                    dependencies = listOf(appPreferences.smartDownloadNextEpisode),
-                                                    supportedDeviceTypes = listOf(DeviceType.PHONE),
-                                                    backendPreference = appPreferences.smartDownloadStorageLimitGb,
-                                                    minValue = 0,
-                                                    maxValue = 100,
-                                                    step = 5,
-                                                    zeroLabelRes = R.string.downloads_unlimited,
-                                                    suffix = " GB",
-                                                ),
-                                                PreferenceSwitch(
-                                                    nameStringResource =
-                                                        R.string.downloads_auto_delete_watched,
-                                                    descriptionStringRes =
-                                                        R.string.downloads_auto_delete_watched_summary,
-                                                    supportedDeviceTypes = listOf(DeviceType.PHONE),
-                                                    backendPreference =
-                                                        appPreferences.autoDeleteWatched,
-                                                ),
-                                            ),
-                                    ),
-                                )
-                                .let { groups ->
-                                    if (appPreferences.getValue(appPreferences.userCanTranscode)) {
-                                        groups +
-                                            PreferenceGroup(
-                                                nameStringResource =
-                                                    R.string.downloads_transcoding_group,
-                                                preferences =
-                                                    listOf(
-                                                        PreferenceCategory(
-                                                            nameStringResource =
-                                                                R.string.downloads_quality_presets,
-                                                            descriptionStringRes =
-                                                                R.string.downloads_quality_presets_summary,
-                                                            supportedDeviceTypes =
-                                                                listOf(DeviceType.PHONE),
-                                                            onClick = {
-                                                                viewModelScope.launch {
-                                                                    eventsChannel.send(
-                                                                        SettingsEvent.NavigateToDownloadPresets
-                                                                    )
-                                                                }
-                                                            },
-                                                        ),
-                                                        PreferenceSwitch(
-                                                            nameStringResource =
-                                                                R.string.downloads_ask_preset,
-                                                            descriptionStringRes =
-                                                                R.string.downloads_ask_preset_summary,
-                                                            supportedDeviceTypes =
-                                                                listOf(DeviceType.PHONE),
-                                                            backendPreference =
-                                                                appPreferences.askPresetBeforeDownload,
-                                                        ),
+                                        PreferenceGroup(
+                                            nameStringResource = R.string.downloads_storage_group,
+                                            preferences =
+                                                listOf(
+                                                    PreferenceStorageInfo(),
+                                                    PreferenceSelect(
+                                                        nameStringResource =
+                                                            R.string.downloads_storage_location,
+                                                        supportedDeviceTypes =
+                                                            listOf(DeviceType.PHONE),
+                                                        backendPreference =
+                                                            appPreferences
+                                                                .defaultDownloadStorageIndex,
+                                                        options =
+                                                            R.array.downloads_storage_locations,
+                                                        optionValues =
+                                                            R.array
+                                                                .downloads_storage_location_values,
                                                     ),
-                                            )
-                                    } else {
-                                        groups
-                                    }
-                                },
+                                                ),
+                                        ),
+                                        PreferenceGroup(
+                                            nameStringResource = R.string.downloads_network_group,
+                                            preferences =
+                                                listOf(
+                                                    PreferenceSwitch(
+                                                        nameStringResource =
+                                                            R.string.download_mobile_data,
+                                                        supportedDeviceTypes =
+                                                            listOf(DeviceType.PHONE),
+                                                        backendPreference =
+                                                            appPreferences.downloadOverMobileData,
+                                                    ),
+                                                    PreferenceSwitch(
+                                                        nameStringResource =
+                                                            R.string.download_roaming,
+                                                        dependencies =
+                                                            listOf(
+                                                                appPreferences
+                                                                    .downloadOverMobileData
+                                                            ),
+                                                        supportedDeviceTypes =
+                                                            listOf(DeviceType.PHONE),
+                                                        backendPreference =
+                                                            appPreferences.downloadWhenRoaming,
+                                                    ),
+                                                ),
+                                        ),
+                                        PreferenceGroup(
+                                            nameStringResource = R.string.downloads_smart_group,
+                                            preferences =
+                                                listOf(
+                                                    PreferenceSwitch(
+                                                        nameStringResource =
+                                                            R.string.downloads_smart_next_episode,
+                                                        descriptionStringRes =
+                                                            R.string
+                                                                .downloads_smart_next_episode_summary,
+                                                        supportedDeviceTypes =
+                                                            listOf(DeviceType.PHONE),
+                                                        backendPreference =
+                                                            appPreferences.smartDownloadNextEpisode,
+                                                    ),
+                                                    PreferenceStepper(
+                                                        nameStringResource =
+                                                            R.string.downloads_smart_count,
+                                                        descriptionStringRes =
+                                                            R.string.downloads_smart_count_summary,
+                                                        dependencies =
+                                                            listOf(
+                                                                appPreferences
+                                                                    .smartDownloadNextEpisode
+                                                            ),
+                                                        supportedDeviceTypes =
+                                                            listOf(DeviceType.PHONE),
+                                                        backendPreference =
+                                                            appPreferences
+                                                                .smartDownloadNextEpisodesCount,
+                                                        minValue = 1,
+                                                        maxValue = 10,
+                                                        step = 1,
+                                                    ),
+                                                    PreferenceStepper(
+                                                        nameStringResource =
+                                                            R.string.downloads_smart_storage_limit,
+                                                        descriptionStringRes =
+                                                            R.string
+                                                                .downloads_smart_storage_limit_summary,
+                                                        dependencies =
+                                                            listOf(
+                                                                appPreferences
+                                                                    .smartDownloadNextEpisode
+                                                            ),
+                                                        supportedDeviceTypes =
+                                                            listOf(DeviceType.PHONE),
+                                                        backendPreference =
+                                                            appPreferences
+                                                                .smartDownloadStorageLimitGb,
+                                                        minValue = 0,
+                                                        maxValue = 100,
+                                                        step = 5,
+                                                        zeroLabelRes = R.string.downloads_unlimited,
+                                                        suffix = " GB",
+                                                    ),
+                                                    PreferenceSwitch(
+                                                        nameStringResource =
+                                                            R.string.downloads_auto_delete_watched,
+                                                        descriptionStringRes =
+                                                            R.string
+                                                                .downloads_auto_delete_watched_summary,
+                                                        supportedDeviceTypes =
+                                                            listOf(DeviceType.PHONE),
+                                                        backendPreference =
+                                                            appPreferences.autoDeleteWatched,
+                                                    ),
+                                                ),
+                                        ),
+                                    )
+                                    .let { groups ->
+                                        if (
+                                            appPreferences.getValue(appPreferences.userCanTranscode)
+                                        ) {
+                                            groups +
+                                                PreferenceGroup(
+                                                    nameStringResource =
+                                                        R.string.downloads_transcoding_group,
+                                                    preferences =
+                                                        listOf(
+                                                            PreferenceCategory(
+                                                                nameStringResource =
+                                                                    R.string
+                                                                        .downloads_quality_presets,
+                                                                descriptionStringRes =
+                                                                    R.string
+                                                                        .downloads_quality_presets_summary,
+                                                                supportedDeviceTypes =
+                                                                    listOf(DeviceType.PHONE),
+                                                                onClick = {
+                                                                    viewModelScope.launch {
+                                                                        eventsChannel.send(
+                                                                            SettingsEvent
+                                                                                .NavigateToDownloadPresets
+                                                                        )
+                                                                    }
+                                                                },
+                                                            ),
+                                                            PreferenceSwitch(
+                                                                nameStringResource =
+                                                                    R.string.downloads_ask_preset,
+                                                                descriptionStringRes =
+                                                                    R.string
+                                                                        .downloads_ask_preset_summary,
+                                                                supportedDeviceTypes =
+                                                                    listOf(DeviceType.PHONE),
+                                                                backendPreference =
+                                                                    appPreferences
+                                                                        .askPresetBeforeDownload,
+                                                            ),
+                                                        ),
+                                                )
+                                        } else {
+                                            groups
+                                        }
+                                    },
                         )
                     )
             ),
@@ -916,7 +1021,8 @@ class SettingsViewModel @Inject constructor(
             }
             var storageDevices = emptyList<StorageDevice>()
             val defaultIndex =
-                appPreferences.getValue(appPreferences.defaultDownloadStorageIndex).toIntOrNull() ?: -1
+                appPreferences.getValue(appPreferences.defaultDownloadStorageIndex).toIntOrNull()
+                    ?: -1
 
             if (isDownloadSettings) {
                 try {
@@ -933,12 +1039,12 @@ class SettingsViewModel @Inject constructor(
                         initialStorageDeviceOrder = sorted.map { it.index }
                         storageDevices = sorted
                     } else {
-                        // Subsequent updates on this screen: keep the order stable, only isDefault is updated
-                        storageDevices =
-                            rawDevices.sortedBy { device ->
-                                val pos = order.indexOf(device.index)
-                                if (pos >= 0) pos else Int.MAX_VALUE
-                            }
+                        // Subsequent updates on this screen: keep the order stable, only isDefault
+                        // is updated
+                        storageDevices = rawDevices.sortedBy { device ->
+                            val pos = order.indexOf(device.index)
+                            if (pos >= 0) pos else Int.MAX_VALUE
+                        }
                     }
                 } catch (e: Exception) {
                     Timber.e(e, "Error calculating storage in SettingsViewModel")
@@ -954,9 +1060,10 @@ class SettingsViewModel @Inject constructor(
                                 preferenceGroup.preferences
                                     .filter { it.supportedDeviceTypes.contains(deviceType) }
                                     .filter { preference ->
-                                        if (preference is PreferenceSelect &&
-                                            preference.backendPreference ==
-                                                appPreferences.defaultDownloadStorageIndex
+                                        if (
+                                            preference is PreferenceSelect &&
+                                                preference.backendPreference ==
+                                                    appPreferences.defaultDownloadStorageIndex
                                         ) {
                                             storageDevices.size > 1
                                         } else {
@@ -980,18 +1087,24 @@ class SettingsViewModel @Inject constructor(
                                             }
                                             is PreferenceSelect -> {
                                                 val dynamicOptions =
-                                                    if (preference.backendPreference ==
-                                                        appPreferences.defaultDownloadStorageIndex
+                                                    if (
+                                                        preference.backendPreference ==
+                                                            appPreferences
+                                                                .defaultDownloadStorageIndex
                                                     ) {
                                                         buildList {
                                                             add(
                                                                 "-1" to
                                                                     context.getString(
-                                                                        R.string.downloads_storage_ask_every_time
+                                                                        R.string
+                                                                            .downloads_storage_ask_every_time
                                                                     )
                                                             )
                                                             storageDevices.forEach { device ->
-                                                                add(device.index.toString() to device.name)
+                                                                add(
+                                                                    device.index.toString() to
+                                                                        device.name
+                                                                )
                                                             }
                                                         }
                                                     } else {
@@ -1063,9 +1176,7 @@ class SettingsViewModel @Inject constructor(
                                                 )
                                             }
                                             is PreferenceStorageInfo -> {
-                                                preference.copy(
-                                                    storages = storageDevices,
-                                                )
+                                                preference.copy(storages = storageDevices)
                                             }
                                             else -> preference
                                         }
@@ -1078,7 +1189,8 @@ class SettingsViewModel @Inject constructor(
                 _state.value.copy(
                     preferenceGroups = preferences,
                     isDownloadSettings = isDownloadSettings,
-                    isSmartDownloadsActive = appPreferences.getValue(appPreferences.smartDownloadNextEpisode),
+                    isSmartDownloadsActive =
+                        appPreferences.getValue(appPreferences.smartDownloadNextEpisode),
                 )
             )
         }

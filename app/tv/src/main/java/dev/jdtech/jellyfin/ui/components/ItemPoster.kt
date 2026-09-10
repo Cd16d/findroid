@@ -8,11 +8,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import coil3.compose.AsyncImage
-import dev.jdtech.jellyfin.utils.toBlurHashPainter
-import dev.jdtech.jellyfin.utils.toOptimizedImageUri
 import dev.jdtech.jellyfin.models.FindroidEpisode
 import dev.jdtech.jellyfin.models.FindroidItem
 import dev.jdtech.jellyfin.models.FindroidMovie
+import dev.jdtech.jellyfin.utils.toBlurHashPainter
+import dev.jdtech.jellyfin.utils.toOptimizedImageUri
 
 enum class Direction {
     HORIZONTAL,
@@ -21,21 +21,21 @@ enum class Direction {
 
 @Composable
 fun ItemPoster(item: FindroidItem, direction: Direction, modifier: Modifier = Modifier) {
-    val image = remember(item, direction) {
-        when (direction) {
-            Direction.HORIZONTAL -> (item as? FindroidMovie)?.images?.backdrop
-            Direction.VERTICAL -> (item as? FindroidEpisode)?.images?.showPrimary
-        } ?: item.images.primary
-    }
+    val image =
+        remember(item, direction) {
+            when (direction) {
+                Direction.HORIZONTAL -> (item as? FindroidMovie)?.images?.backdrop
+                Direction.VERTICAL -> (item as? FindroidEpisode)?.images?.showPrimary
+            } ?: item.images.primary
+        }
 
     BoxWithConstraints(
-        modifier = modifier.aspectRatio(if (direction == Direction.HORIZONTAL) 16f / 9f else 2f / 3f)
+        modifier =
+            modifier.aspectRatio(if (direction == Direction.HORIZONTAL) 16f / 9f else 2f / 3f)
     ) {
         val imageUri = image?.uri.toOptimizedImageUri(widthDp = maxWidth, heightDp = maxHeight)
 
-        val blurPlaceholder = remember(image?.blurHash) {
-            image?.blurHash.toBlurHashPainter()
-        }
+        val blurPlaceholder = remember(image?.blurHash) { image?.blurHash.toBlurHashPainter() }
 
         AsyncImage(
             model = imageUri,
@@ -43,7 +43,7 @@ fun ItemPoster(item: FindroidItem, direction: Direction, modifier: Modifier = Mo
             contentScale = ContentScale.Crop,
             placeholder = blurPlaceholder,
             error = blurPlaceholder,
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize(),
         )
     }
 }

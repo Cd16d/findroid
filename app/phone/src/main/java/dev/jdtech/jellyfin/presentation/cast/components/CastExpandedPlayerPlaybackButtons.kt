@@ -30,13 +30,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.models.FindroidSegment
 import dev.jdtech.jellyfin.models.FindroidSegmentType
 import dev.jdtech.jellyfin.player.cast.presentation.CastPlayerViewModel
 import dev.jdtech.jellyfin.player.core.R
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
-import dev.jdtech.jellyfin.core.R as CoreR
-
 
 @Composable
 fun PlaybackButtons(
@@ -46,7 +45,7 @@ fun PlaybackButtons(
     onPause: () -> Unit,
     onSeekBack: () -> Unit,
     onSeekForward: () -> Unit,
-    onSkipSegment: () -> Unit
+    onSkipSegment: () -> Unit,
 ) {
     val playerState = uiState.playerState
     val skippableSegment = uiState.currentSegment != null
@@ -55,9 +54,7 @@ fun PlaybackButtons(
     Row(
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 24.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
     ) {
         val backInteractionSource = remember { MutableInteractionSource() }
         val nextInteractionSource = remember { MutableInteractionSource() }
@@ -67,60 +64,65 @@ fun PlaybackButtons(
         val isBackPressed by backInteractionSource.collectIsPressedAsState()
         val isNextPressed by nextInteractionSource.collectIsPressedAsState()
 
-        val playPauseWeight by animateFloatAsState(
-            targetValue = if (isPlayPausePressed && !skippableSegment) 1.7f
-            else if (isPlayPausePressed && skippableSegment) 0.65f
-            else if (isBackPressed && !skippableSegment) 1.1f
-            else if (isBackPressed && skippableSegment) 0.25f
-            else if (isNextPressed && !skippableSegment) 1.1f
-            else if (isNextPressed && skippableSegment) 0.25f
-            else if (skippableSegment) 0.45f
-            else 1.3f,
-            animationSpec = spring(
-                dampingRatio = 0.6f,
-                stiffness = 500f
-            ),
-            label = "playPauseWeight",
-        )
+        val playPauseWeight by
+            animateFloatAsState(
+                targetValue =
+                    if (isPlayPausePressed && !skippableSegment) 1.7f
+                    else if (isPlayPausePressed && skippableSegment) 0.65f
+                    else if (isBackPressed && !skippableSegment) 1.1f
+                    else if (isBackPressed && skippableSegment) 0.25f
+                    else if (isNextPressed && !skippableSegment) 1.1f
+                    else if (isNextPressed && skippableSegment) 0.25f
+                    else if (skippableSegment) 0.45f else 1.3f,
+                animationSpec =
+                    spring(
+                        dampingRatio = 0.6f,
+                        stiffness = 500f,
+                    ),
+                label = "playPauseWeight",
+            )
 
-        val backButtonWeight by animateFloatAsState(
-            targetValue = if (isBackPressed) 0.65f
-            else if (isPlayPausePressed && !skippableSegment) 0.25f
-            else if (isPlayPausePressed && skippableSegment) 0.35f
-            else 0.45f,
-            animationSpec = spring(
-                dampingRatio = 0.6f,
-                stiffness = 500f
-            ),
-            label = "backButtonWeight",
-        )
+        val backButtonWeight by
+            animateFloatAsState(
+                targetValue =
+                    if (isBackPressed) 0.65f
+                    else if (isPlayPausePressed && !skippableSegment) 0.25f
+                    else if (isPlayPausePressed && skippableSegment) 0.35f else 0.45f,
+                animationSpec =
+                    spring(
+                        dampingRatio = 0.6f,
+                        stiffness = 500f,
+                    ),
+                label = "backButtonWeight",
+            )
 
-        val nextButtonWeight by animateFloatAsState(
-            targetValue = if (isNextPressed && !skippableSegment) 0.65f
-            else if (isNextPressed && skippableSegment) 1.5f
-            else if (isPlayPausePressed && !skippableSegment) 0.25f
-            else if (isPlayPausePressed && skippableSegment) 1.2f
-            else if (skippableSegment) 1.3f
-            else 0.45f,
-            animationSpec = spring(
-                dampingRatio = 0.6f,
-                stiffness = 500f
-            ),
-            label = "nextButtonWeight",
-        )
+        val nextButtonWeight by
+            animateFloatAsState(
+                targetValue =
+                    if (isNextPressed && !skippableSegment) 0.65f
+                    else if (isNextPressed && skippableSegment) 1.5f
+                    else if (isPlayPausePressed && !skippableSegment) 0.25f
+                    else if (isPlayPausePressed && skippableSegment) 1.2f
+                    else if (skippableSegment) 1.3f else 0.45f,
+                animationSpec =
+                    spring(
+                        dampingRatio = 0.6f,
+                        stiffness = 500f,
+                    ),
+                label = "nextButtonWeight",
+            )
 
         FilledIconButton(
             onClick = onSeekBack,
             enabled = uiState.fileLoaded,
             shape = CircleShape,
             interactionSource = backInteractionSource,
-            colors = IconButtonDefaults.filledIconButtonColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-            ),
-            modifier = Modifier
-                .height(68.dp)
-                .weight(backButtonWeight),
+            colors =
+                IconButtonDefaults.filledIconButtonColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                ),
+            modifier = Modifier.height(68.dp).weight(backButtonWeight),
         ) {
             Icon(
                 painter = painterResource(CoreR.drawable.ic_skip_back),
@@ -136,27 +138,37 @@ fun PlaybackButtons(
             enabled = uiState.fileLoaded,
             shape = CircleShape,
             interactionSource = playPauseInteractionSource,
-            colors = IconButtonDefaults.filledIconButtonColors(
-                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-            ),
-            modifier = Modifier
-                .height(68.dp)
-                .weight(playPauseWeight),
+            colors =
+                IconButtonDefaults.filledIconButtonColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                ),
+            modifier = Modifier.height(68.dp).weight(playPauseWeight),
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center,
             ) {
                 Icon(
-                    painter = painterResource(if (isPlaying) CoreR.drawable.ic_pause else CoreR.drawable.ic_play),
-                    contentDescription = stringResource(if (isPlaying) R.string.player_controls_pause else R.string.player_controls_play),
+                    painter =
+                        painterResource(
+                            if (isPlaying) CoreR.drawable.ic_pause else CoreR.drawable.ic_play
+                        ),
+                    contentDescription =
+                        stringResource(
+                            if (isPlaying) R.string.player_controls_pause
+                            else R.string.player_controls_play
+                        ),
                     modifier = Modifier.size(32.dp),
                 )
                 if (!skippableSegment) {
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = stringResource(if (isPlaying) R.string.player_controls_pause else R.string.player_controls_play),
+                        text =
+                            stringResource(
+                                if (isPlaying) R.string.player_controls_pause
+                                else R.string.player_controls_play
+                            ),
                         style = MaterialTheme.typography.titleMedium,
                     )
                 }
@@ -170,21 +182,24 @@ fun PlaybackButtons(
             enabled = uiState.fileLoaded && (skippableSegment || playerState.hasNextItem),
             shape = CircleShape,
             interactionSource = nextInteractionSource,
-            colors = IconButtonDefaults.filledIconButtonColors(
-                containerColor = if (skippableSegment) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceVariant,
-                contentColor = if (skippableSegment) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-            ),
-            modifier = Modifier
-                .height(68.dp)
-                .weight(nextButtonWeight),
+            colors =
+                IconButtonDefaults.filledIconButtonColors(
+                    containerColor =
+                        if (skippableSegment) MaterialTheme.colorScheme.secondaryContainer
+                        else MaterialTheme.colorScheme.surfaceVariant,
+                    contentColor =
+                        if (skippableSegment) MaterialTheme.colorScheme.onSecondaryContainer
+                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                ),
+            modifier = Modifier.height(68.dp).weight(nextButtonWeight),
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = if (skippableSegment) Modifier.padding(horizontal = 16.dp) else Modifier
+                modifier = if (skippableSegment) Modifier.padding(horizontal = 16.dp) else Modifier,
             ) {
                 AnimatedVisibility(
                     visible = skippableSegment,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
                 ) {
                     Text(
                         text = stringResource(skipStringRes),
@@ -233,13 +248,16 @@ fun PlaybackButtonsPreview() {
             Spacer(Modifier.height(16.dp))
 
             PlaybackButtons(
-                uiState = mockUiState().copy(
-                    currentSegment = FindroidSegment(
-                        FindroidSegmentType.INTRO,
-                        0,
-                        1,
-                    ),
-                ),
+                uiState =
+                    mockUiState()
+                        .copy(
+                            currentSegment =
+                                FindroidSegment(
+                                    FindroidSegmentType.INTRO,
+                                    0,
+                                    1,
+                                )
+                        ),
                 isPlaying = true,
                 onPlay = {},
                 onPause = {},
@@ -251,17 +269,21 @@ fun PlaybackButtonsPreview() {
     }
 }
 
-private fun mockUiState() = CastPlayerViewModel.UiState(
-    currentItemTitle = CastPlayerViewModel.CurrentItemTitle(
-        seriesName = "Series Name", episodeInfo = "S01E01", title = "Episode Title"
-    ),
-    currentItemPoster = null,
-    isMovie = false,
-    defaultAspectRatio = 16f / 9f,
-    trickplayAspectRatio = null,
-    currentSegment = null,
-    currentSkipButtonStringRes = R.string.player_controls_skip_intro,
-    currentTrickplay = null,
-    currentChapters = emptyList(),
-    fileLoaded = true
-)
+private fun mockUiState() =
+    CastPlayerViewModel.UiState(
+        currentItemTitle =
+            CastPlayerViewModel.CurrentItemTitle(
+                seriesName = "Series Name",
+                episodeInfo = "S01E01",
+                title = "Episode Title",
+            ),
+        currentItemPoster = null,
+        isMovie = false,
+        defaultAspectRatio = 16f / 9f,
+        trickplayAspectRatio = null,
+        currentSegment = null,
+        currentSkipButtonStringRes = R.string.player_controls_skip_intro,
+        currentTrickplay = null,
+        currentChapters = emptyList(),
+        fileLoaded = true,
+    )

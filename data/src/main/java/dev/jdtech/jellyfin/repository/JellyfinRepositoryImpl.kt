@@ -30,6 +30,8 @@ import dev.jdtech.jellyfin.models.toFindroidSegment
 import dev.jdtech.jellyfin.models.toFindroidShow
 import dev.jdtech.jellyfin.models.toFindroidSource
 import dev.jdtech.jellyfin.settings.domain.AppPreferences
+import java.io.File
+import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
@@ -50,13 +52,11 @@ import org.jellyfin.sdk.model.api.PlaybackStartInfo
 import org.jellyfin.sdk.model.api.PlaybackStopInfo
 import org.jellyfin.sdk.model.api.PublicSystemInfo
 import org.jellyfin.sdk.model.api.RepeatMode
+import org.jellyfin.sdk.model.api.SortOrder as ItemSortOrder
 import org.jellyfin.sdk.model.api.SubtitleDeliveryMethod
 import org.jellyfin.sdk.model.api.SubtitleProfile
 import org.jellyfin.sdk.model.api.UserConfiguration
 import timber.log.Timber
-import java.io.File
-import java.util.UUID
-import org.jellyfin.sdk.model.api.SortOrder as ItemSortOrder
 
 class JellyfinRepositoryImpl(
     private val context: Context,
@@ -67,9 +67,11 @@ class JellyfinRepositoryImpl(
     override suspend fun getAdditionalParts(itemId: UUID): List<FindroidPart> =
         withContext(Dispatchers.IO) {
             try {
-                jellyfinApi.videosApi.getAdditionalPart(itemId, jellyfinApi.userId!!).content.items.mapNotNull {
-                    it.toFindroidPart(this@JellyfinRepositoryImpl, database)
-                }
+                jellyfinApi.videosApi
+                    .getAdditionalPart(itemId, jellyfinApi.userId!!)
+                    .content
+                    .items
+                    .mapNotNull { it.toFindroidPart(this@JellyfinRepositoryImpl, database) }
             } catch (e: Exception) {
                 Timber.e(e)
                 emptyList()
@@ -177,11 +179,19 @@ class JellyfinRepositoryImpl(
         filters: List<ItemFilter>?,
     ): Flow<PagingData<FindroidItem>> {
         return Pager(
-            config = PagingConfig(pageSize = 10, enablePlaceholders = false),
-            pagingSourceFactory = {
-                ItemsPagingSource(this, parentId, includeTypes, recursive, sortBy, sortOrder, filters)
-            },
-        )
+                config = PagingConfig(pageSize = 10, enablePlaceholders = false),
+                pagingSourceFactory = {
+                    ItemsPagingSource(
+                        this,
+                        parentId,
+                        includeTypes,
+                        recursive,
+                        sortBy,
+                        sortOrder,
+                        filters,
+                    )
+                },
+            )
             .flow
     }
 
@@ -232,7 +242,8 @@ class JellyfinRepositoryImpl(
                 .getItems(
                     jellyfinApi.userId!!,
                     searchTerm = query,
-                    includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES, BaseItemKind.EPISODE),
+                    includeItemTypes =
+                        listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES, BaseItemKind.EPISODE),
                     recursive = true,
                 )
                 .content
@@ -359,7 +370,7 @@ class JellyfinRepositoryImpl(
                     )
                     .content
                     .mediaSources
-                    .map { it.toFindroidSource(this@JellyfinRepositoryImpl, itemId, includePath) },
+                    .map { it.toFindroidSource(this@JellyfinRepositoryImpl, itemId, includePath) }
             )
             val currentUserId = jellyfinApi.userId
             if (currentUserId != null && database.isItemDownloadedForUser(currentUserId, itemId)) {
@@ -413,8 +424,7 @@ class JellyfinRepositoryImpl(
                     if (sources != null) {
                         return@withContext File(sources.first(), index.toString()).readBytes()
                     }
-                } catch (_: Exception) {
-                }
+                } catch (_: Exception) {}
 
                 return@withContext jellyfinApi.trickplayApi
                     .getTrickplayTileImage(itemId, width, index)
@@ -455,7 +465,7 @@ class JellyfinRepositoryImpl(
         positionTicks: Long?,
         playMethod: PlayMethod,
         mediaSourceId: String?,
-        playSessionId: String?
+        playSessionId: String?,
     ) {
         Timber.d("Sending start $itemId, position: $positionTicks")
         withContext(Dispatchers.IO) {
@@ -470,7 +480,7 @@ class JellyfinRepositoryImpl(
                     repeatMode = RepeatMode.REPEAT_NONE,
                     playbackOrder = PlaybackOrder.DEFAULT,
                     mediaSourceId = mediaSourceId,
-                    playSessionId = playSessionId
+                    playSessionId = playSessionId,
                 )
             )
         }
@@ -481,7 +491,7 @@ class JellyfinRepositoryImpl(
         positionTicks: Long,
         playedPercentage: Int,
         mediaSourceId: String?,
-        playSessionId: String?
+        playSessionId: String?,
     ) {
         Timber.d("Sending stop $itemId, position: $positionTicks")
         withContext(Dispatchers.IO) {
@@ -508,7 +518,7 @@ class JellyfinRepositoryImpl(
                         positionTicks = positionTicks,
                         failed = false,
                         mediaSourceId = mediaSourceId,
-                        playSessionId = playSessionId
+                        playSessionId = playSessionId,
                     )
                 )
             } catch (_: Exception) {
@@ -523,7 +533,7 @@ class JellyfinRepositoryImpl(
         isPaused: Boolean,
         playMethod: PlayMethod,
         mediaSourceId: String?,
-        playSessionId: String?
+        playSessionId: String?,
     ) {
         Timber.d("Posting progress of $itemId, position: $positionTicks")
         withContext(Dispatchers.IO) {
@@ -540,7 +550,7 @@ class JellyfinRepositoryImpl(
                         playbackOrder = PlaybackOrder.DEFAULT,
                         positionTicks = positionTicks,
                         mediaSourceId = mediaSourceId,
-                        playSessionId = playSessionId
+                        playSessionId = playSessionId,
                     )
                 )
             } catch (_: Exception) {
@@ -616,14 +626,14 @@ class JellyfinRepositoryImpl(
             val userId = jellyfinApi.userId
             if (serverId != null && userId != null) {
                 items.addAll(
-                    database
-                        .getDownloadedMoviesByServerAndUser(serverId, userId)
-                        .map { it.toFindroidMovie(database, userId) }
+                    database.getDownloadedMoviesByServerAndUser(serverId, userId).map {
+                        it.toFindroidMovie(database, userId)
+                    }
                 )
                 items.addAll(
-                    database
-                        .getDownloadedShowsByServerAndUser(serverId, userId)
-                        .map { it.toFindroidShow(database, userId) }
+                    database.getDownloadedShowsByServerAndUser(serverId, userId).map {
+                        it.toFindroidShow(database, userId)
+                    }
                 )
             }
             items
@@ -643,10 +653,11 @@ class JellyfinRepositoryImpl(
                 val userDto = jellyfinApi.userApi.getUserById(userId).content
                 val existingUser = database.getUser(userId) ?: return@withContext null
 
-                val updatedUser = existingUser.copy(
-                    name = userDto.name ?: existingUser.name,
-                    primaryImageTag = userDto.primaryImageTag
-                )
+                val updatedUser =
+                    existingUser.copy(
+                        name = userDto.name ?: existingUser.name,
+                        primaryImageTag = userDto.primaryImageTag,
+                    )
                 database.insertUser(updatedUser)
                 userDto.primaryImageTag
             } catch (e: Exception) {
@@ -672,7 +683,8 @@ class JellyfinRepositoryImpl(
         withContext(Dispatchers.IO) {
             try {
                 val policy = jellyfinApi.userApi.getCurrentUser().content.policy
-                (policy?.enableSyncTranscoding != false) && (policy?.enableVideoPlaybackTranscoding != false)
+                (policy?.enableSyncTranscoding != false) &&
+                    (policy?.enableVideoPlaybackTranscoding != false)
             } catch (e: Exception) {
                 true
             }

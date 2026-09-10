@@ -10,10 +10,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import coil3.compose.AsyncImage
-import dev.jdtech.jellyfin.utils.toBlurHashPainter
-import dev.jdtech.jellyfin.utils.toOptimizedImageUri
 import dev.jdtech.jellyfin.models.FindroidEpisode
 import dev.jdtech.jellyfin.models.FindroidItem
+import dev.jdtech.jellyfin.utils.toBlurHashPainter
+import dev.jdtech.jellyfin.utils.toOptimizedImageUri
 
 enum class Direction {
     HORIZONTAL,
@@ -26,15 +26,16 @@ fun ItemPoster(
     direction: Direction,
     modifier: Modifier = Modifier,
 ) {
-    val image = when (direction) {
-        Direction.HORIZONTAL -> {
-            item.images.backdrop ?: item.images.primary
+    val image =
+        when (direction) {
+            Direction.HORIZONTAL -> {
+                item.images.backdrop ?: item.images.primary
+            }
+            Direction.VERTICAL -> {
+                if (item is FindroidEpisode) item.images.showPrimary ?: item.images.primary
+                else item.images.primary ?: item.images.backdrop
+            }
         }
-        Direction.VERTICAL -> {
-            if (item is FindroidEpisode) item.images.showPrimary ?: item.images.primary
-            else item.images.primary ?: item.images.backdrop
-        }
-    }
 
     BoxWithConstraints(
         modifier =
@@ -44,9 +45,7 @@ fun ItemPoster(
     ) {
         val imageUri = image?.uri.toOptimizedImageUri(widthDp = maxWidth, heightDp = maxHeight)
 
-        val blurPlaceholder = remember(image?.blurHash) {
-            image?.blurHash.toBlurHashPainter()
-        }
+        val blurPlaceholder = remember(image?.blurHash) { image?.blurHash.toBlurHashPainter() }
 
         AsyncImage(
             model = imageUri,

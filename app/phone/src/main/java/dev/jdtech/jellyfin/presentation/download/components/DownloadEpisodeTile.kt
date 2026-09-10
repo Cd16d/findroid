@@ -68,26 +68,33 @@ fun DownloadEpisodeTile(
     actions: DownloadCardActions = DownloadCardActions(),
 ) {
     val context = LocalContext.current
-    val actualSizeBytes = remember(state.sizeBytes, episode) {
-        if (state.sizeBytes > 0L) state.sizeBytes
-        else episode.diskSize().takeIf { it > 0 } ?: (episode.sources.maxOfOrNull { it.size } ?: 0L)
-    }
-    val sizeFormatted = remember(actualSizeBytes, context) {
-        if (actualSizeBytes > 0L) Formatter.formatFileSize(context, actualSizeBytes) else ""
-    }
-    val downloadedSizeFormatted = remember(state.downloadedSizeBytes, context) {
-        if (state.downloadedSizeBytes > 0L) Formatter.formatFileSize(context, state.downloadedSizeBytes) else ""
-    }
-    val speedFormatted = remember(state.downloadSpeedBytesPerSec, context) {
-        if (state.downloadSpeedBytesPerSec > 0L) "${Formatter.formatFileSize(context, state.downloadSpeedBytesPerSec)}/s" else ""
-    }
+    val actualSizeBytes =
+        remember(state.sizeBytes, episode) {
+            if (state.sizeBytes > 0L) state.sizeBytes
+            else
+                episode.diskSize().takeIf { it > 0 }
+                    ?: (episode.sources.maxOfOrNull { it.size } ?: 0L)
+        }
+    val sizeFormatted =
+        remember(actualSizeBytes, context) {
+            if (actualSizeBytes > 0L) Formatter.formatFileSize(context, actualSizeBytes) else ""
+        }
+    val downloadedSizeFormatted =
+        remember(state.downloadedSizeBytes, context) {
+            if (state.downloadedSizeBytes > 0L)
+                Formatter.formatFileSize(context, state.downloadedSizeBytes)
+            else ""
+        }
+    val speedFormatted =
+        remember(state.downloadSpeedBytesPerSec, context) {
+            if (state.downloadSpeedBytesPerSec > 0L)
+                "${Formatter.formatFileSize(context, state.downloadSpeedBytesPerSec)}/s"
+            else ""
+        }
     val durationTicks = if (state.durationTicks > 0L) state.durationTicks else episode.runtimeTicks
-    val durationFormatted = remember(durationTicks) {
-        formatDuration(durationTicks)
-    }
-    val etaFormatted = remember(state.etaSeconds) {
-        state.etaSeconds?.let { formatStableEta(it) } ?: ""
-    }
+    val durationFormatted = remember(durationTicks) { formatDuration(durationTicks) }
+    val etaFormatted =
+        remember(state.etaSeconds) { state.etaSeconds?.let { formatStableEta(it) } ?: "" }
 
     val epNumber = episode.indexNumber
     val titleText = "E$epNumber • ${episode.name.ifEmpty { "Episode $epNumber" }}"
@@ -111,19 +118,19 @@ fun DownloadEpisodeTile(
                 CardDefaults.cardColors(
                     containerColor =
                         if (state.isSelected) MaterialTheme.colorScheme.primaryContainer
-                        else MaterialTheme.colorScheme.surfaceContainer,
+                        else MaterialTheme.colorScheme.surfaceContainer
                 ),
             modifier =
-                Modifier
-                    .fillMaxWidth()
+                Modifier.fillMaxWidth()
                     .height(cardHeight)
                     .clip(cardShape)
                     .then(
-                        if (state.isSelected) Modifier.border(
-                            1.5.dp,
-                            MaterialTheme.colorScheme.primary,
-                            cardShape
-                        )
+                        if (state.isSelected)
+                            Modifier.border(
+                                1.5.dp,
+                                MaterialTheme.colorScheme.primary,
+                                cardShape,
+                            )
                         else Modifier
                     )
                     .combinedClickable(
@@ -132,9 +139,7 @@ fun DownloadEpisodeTile(
                     ),
         ) {
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(10.dp),
+                modifier = Modifier.fillMaxWidth().padding(10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 AnimatedVisibility(visible = state.isSelectionMode) {
@@ -150,10 +155,7 @@ fun DownloadEpisodeTile(
                 // Poster thumbnail (height 56 dp, width adapts to poster aspect ratio 16:9)
                 Box(
                     modifier =
-                        Modifier
-                            .height(56.dp)
-                            .aspectRatio(16f / 9f)
-                            .clip(RoundedCornerShape(10.dp))
+                        Modifier.height(56.dp).aspectRatio(16f / 9f).clip(RoundedCornerShape(10.dp))
                 ) {
                     ItemPoster(
                         item = episode,
@@ -163,18 +165,12 @@ fun DownloadEpisodeTile(
 
                     if (state.status == DownloadStatus.DOWNLOADED) {
                         if (episode.played) {
-                            PlayedBadge(
-                                modifier =
-                                    Modifier
-                                        .align(Alignment.TopEnd)
-                                        .padding(4.dp)
-                            )
+                            PlayedBadge(modifier = Modifier.align(Alignment.TopEnd).padding(4.dp))
                         } else if (state.playbackProgress in 0.02f..0.98f) {
                             LinearProgressIndicator(
                                 progress = { state.playbackProgress },
                                 modifier =
-                                    Modifier
-                                        .align(Alignment.BottomCenter)
+                                    Modifier.align(Alignment.BottomCenter)
                                         .fillMaxWidth()
                                         .height(3.dp),
                                 color = MaterialTheme.colorScheme.primary,
@@ -193,98 +189,102 @@ fun DownloadEpisodeTile(
                 ) {
                     val percentStr = "${(state.downloadProgress * 100).toInt()}%"
                     val percentText =
-                        if (state.isPaused) "$percentStr • ${stringResource(CoreR.string.paused)}" else percentStr
+                        if (state.isPaused) "$percentStr • ${stringResource(CoreR.string.paused)}"
+                        else percentStr
                     val etaText =
                         if (etaFormatted.isNotEmpty() && !state.isPaused) etaFormatted else ""
 
-                    val metaRow = when (state.status) {
-                        DownloadStatus.PENDING -> {
-                            buildString {
-                                append("E$epNumber")
-                                append(" • ")
-                                append(
-                                    if (state.isPaused) stringResource(CoreR.string.paused) else stringResource(
-                                        CoreR.string.pending_in_queue
+                    val metaRow =
+                        when (state.status) {
+                            DownloadStatus.PENDING -> {
+                                buildString {
+                                    append("E$epNumber")
+                                    append(" • ")
+                                    append(
+                                        if (state.isPaused) stringResource(CoreR.string.paused)
+                                        else stringResource(CoreR.string.pending_in_queue)
                                     )
-                                )
-                                if (sizeFormatted.isNotEmpty()) {
-                                    append(" • ")
-                                    append(sizeFormatted)
+                                    if (sizeFormatted.isNotEmpty()) {
+                                        append(" • ")
+                                        append(sizeFormatted)
+                                    }
                                 }
                             }
-                        }
 
-                        DownloadStatus.CONVERTING -> {
-                            buildString {
-                                append("E$epNumber")
-                                append(" • ")
-                                append(
-                                    if (state.isPaused) stringResource(CoreR.string.paused) else stringResource(
-                                        CoreR.string.converting
+                            DownloadStatus.CONVERTING -> {
+                                buildString {
+                                    append("E$epNumber")
+                                    append(" • ")
+                                    append(
+                                        if (state.isPaused) stringResource(CoreR.string.paused)
+                                        else stringResource(CoreR.string.converting)
                                     )
-                                )
-                                if (sizeFormatted.isNotEmpty()) {
+                                    if (sizeFormatted.isNotEmpty()) {
+                                        append(" • ")
+                                        append(sizeFormatted)
+                                    }
+                                }
+                            }
+
+                            DownloadStatus.FAILED -> {
+                                "E$epNumber • ${stringResource(CoreR.string.downloading_error)}"
+                            }
+
+                            DownloadStatus.DOWNLOADED -> {
+                                buildString {
+                                    append("E$epNumber")
+                                    if (durationFormatted.isNotEmpty()) {
+                                        append(" • ")
+                                        append(durationFormatted)
+                                    }
+                                    if (sizeFormatted.isNotEmpty()) {
+                                        append(" • ")
+                                        append(sizeFormatted)
+                                    }
+                                }
+                            }
+
+                            DownloadStatus.DOWNLOADING -> {
+                                buildString {
+                                    append("E$epNumber")
+                                    if (percentText.isNotEmpty()) {
+                                        append(" • ")
+                                        append(percentText)
+                                    }
+                                    if (etaText.isNotEmpty()) {
+                                        append(" • ")
+                                        append(etaText)
+                                    }
+                                }
+                            }
+
+                            DownloadStatus.TRANSFERRING -> {
+                                buildString {
+                                    append("E$epNumber")
+                                    if (percentText.isNotEmpty()) {
+                                        append(" • ")
+                                        append(percentText)
+                                    }
                                     append(" • ")
-                                    append(sizeFormatted)
+                                    append(stringResource(CoreR.string.moving_storage_short))
                                 }
                             }
                         }
 
-                        DownloadStatus.FAILED -> {
-                            "E$epNumber • ${stringResource(CoreR.string.downloading_error)}"
+                    val metaColor =
+                        when (state.status) {
+                            DownloadStatus.PENDING -> MaterialTheme.colorScheme.tertiary
+                            DownloadStatus.CONVERTING -> MaterialTheme.colorScheme.secondary
+                            DownloadStatus.FAILED -> MaterialTheme.colorScheme.error
+                            else -> MaterialTheme.colorScheme.primary
                         }
-
-                        DownloadStatus.DOWNLOADED -> {
-                            buildString {
-                                append("E$epNumber")
-                                if (durationFormatted.isNotEmpty()) {
-                                    append(" • ")
-                                    append(durationFormatted)
-                                }
-                                if (sizeFormatted.isNotEmpty()) {
-                                    append(" • ")
-                                    append(sizeFormatted)
-                                }
-                            }
-                        }
-
-                        DownloadStatus.DOWNLOADING -> {
-                            buildString {
-                                append("E$epNumber")
-                                if (percentText.isNotEmpty()) {
-                                    append(" • ")
-                                    append(percentText)
-                                }
-                                if (etaText.isNotEmpty()) {
-                                    append(" • ")
-                                    append(etaText)
-                                }
-                            }
-                        }
-
-                        DownloadStatus.TRANSFERRING -> {
-                            buildString {
-                                append("E$epNumber")
-                                if (percentText.isNotEmpty()) {
-                                    append(" • ")
-                                    append(percentText)
-                                }
-                                append(" • ")
-                                append(stringResource(CoreR.string.moving_storage_short))
-                            }
-                        }
-                    }
-
-                    val metaColor = when (state.status) {
-                        DownloadStatus.PENDING -> MaterialTheme.colorScheme.tertiary
-                        DownloadStatus.CONVERTING -> MaterialTheme.colorScheme.secondary
-                        DownloadStatus.FAILED -> MaterialTheme.colorScheme.error
-                        else -> MaterialTheme.colorScheme.primary
-                    }
 
                     Text(
                         text = metaRow,
-                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                        style =
+                            MaterialTheme.typography.labelMedium.copy(
+                                fontWeight = FontWeight.SemiBold
+                            ),
                         color = metaColor,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -294,7 +294,10 @@ fun DownloadEpisodeTile(
 
                     Text(
                         text = episode.name.ifEmpty { "Episode $epNumber" },
-                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                        style =
+                            MaterialTheme.typography.bodyMedium.copy(
+                                fontWeight = FontWeight.Medium
+                            ),
                         color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -302,7 +305,9 @@ fun DownloadEpisodeTile(
 
                     val downloadInfo = buildString {
                         val sizePart =
-                            if (downloadedSizeFormatted.isNotEmpty() && sizeFormatted.isNotEmpty()) {
+                            if (
+                                downloadedSizeFormatted.isNotEmpty() && sizeFormatted.isNotEmpty()
+                            ) {
                                 "$downloadedSizeFormatted / $sizeFormatted"
                             } else sizeFormatted.ifEmpty { downloadedSizeFormatted }
 
@@ -310,11 +315,12 @@ fun DownloadEpisodeTile(
                             append(sizePart)
                         }
 
-                        val speedStr = if (state.isPaused) {
-                            stringResource(CoreR.string.paused)
-                        } else {
-                            speedFormatted
-                        }
+                        val speedStr =
+                            if (state.isPaused) {
+                                stringResource(CoreR.string.paused)
+                            } else {
+                                speedFormatted
+                            }
 
                         if (speedStr.isNotEmpty()) {
                             if (isNotEmpty()) append(" • ")
@@ -322,7 +328,11 @@ fun DownloadEpisodeTile(
                         }
                     }
 
-                    if (state.displayExtraInfo && (state.status == DownloadStatus.DOWNLOADING || state.status == DownloadStatus.TRANSFERRING)) {
+                    if (
+                        state.displayExtraInfo &&
+                            (state.status == DownloadStatus.DOWNLOADING ||
+                                state.status == DownloadStatus.TRANSFERRING)
+                    ) {
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = downloadInfo,
@@ -343,11 +353,12 @@ fun DownloadEpisodeTile(
 
                         DownloadStatus.TRANSFERRING -> {
                             val tintColor = MaterialTheme.colorScheme.primary
-                            val animatedProgress by animateFloatAsState(
-                                targetValue = state.downloadProgress,
-                                animationSpec = tween(400, easing = FastOutSlowInEasing),
-                                label = "epTransferProgress",
-                            )
+                            val animatedProgress by
+                                animateFloatAsState(
+                                    targetValue = state.downloadProgress,
+                                    animationSpec = tween(400, easing = FastOutSlowInEasing),
+                                    label = "epTransferProgress",
+                                )
                             Box(
                                 contentAlignment = Alignment.Center,
                                 modifier = Modifier.size(36.dp),
@@ -371,18 +382,23 @@ fun DownloadEpisodeTile(
                         DownloadStatus.DOWNLOADING,
                         DownloadStatus.CONVERTING -> {
                             val tintColor =
-                                if (state.status == DownloadStatus.CONVERTING) MaterialTheme.colorScheme.secondary
+                                if (state.status == DownloadStatus.CONVERTING)
+                                    MaterialTheme.colorScheme.secondary
                                 else MaterialTheme.colorScheme.primary
-                            val animatedDownloadProgress by animateFloatAsState(
-                                targetValue = state.downloadProgress,
-                                animationSpec = tween(400, easing = FastOutSlowInEasing),
-                                label = "epDlProgress",
-                            )
+                            val animatedDownloadProgress by
+                                animateFloatAsState(
+                                    targetValue = state.downloadProgress,
+                                    animationSpec = tween(400, easing = FastOutSlowInEasing),
+                                    label = "epDlProgress",
+                                )
                             Box(
                                 contentAlignment = Alignment.Center,
                                 modifier = Modifier.size(36.dp),
                             ) {
-                                if (state.status == DownloadStatus.CONVERTING && state.downloadProgress <= 0f) {
+                                if (
+                                    state.status == DownloadStatus.CONVERTING &&
+                                        state.downloadProgress <= 0f
+                                ) {
                                     CircularProgressIndicator(
                                         modifier = Modifier.fillMaxSize(),
                                         strokeWidth = 3.dp,
@@ -399,18 +415,24 @@ fun DownloadEpisodeTile(
                                     )
                                 }
                                 IconButton(
-                                    onClick = if (state.isPaused) actions.onResumeDownload else actions.onPauseDownload,
+                                    onClick =
+                                        if (state.isPaused) actions.onResumeDownload
+                                        else actions.onPauseDownload,
                                     modifier = Modifier.fillMaxSize(),
                                 ) {
                                     Icon(
-                                        painter = painterResource(
-                                            if (state.isPaused) CoreR.drawable.ic_play else CoreR.drawable.ic_pause
-                                        ),
-                                        contentDescription = stringResource(
-                                            if (state.isPaused) CoreR.string.resume else CoreR.string.pause
-                                        ),
+                                        painter =
+                                            painterResource(
+                                                if (state.isPaused) CoreR.drawable.ic_play
+                                                else CoreR.drawable.ic_pause
+                                            ),
+                                        contentDescription =
+                                            stringResource(
+                                                if (state.isPaused) CoreR.string.resume
+                                                else CoreR.string.pause
+                                            ),
                                         tint = tintColor,
-                                        modifier = Modifier.size(20.dp)
+                                        modifier = Modifier.size(20.dp),
                                     )
                                 }
                             }
@@ -422,18 +444,24 @@ fun DownloadEpisodeTile(
                                 modifier = Modifier.size(36.dp),
                             ) {
                                 IconButton(
-                                    onClick = if (state.isPaused) actions.onResumeDownload else actions.onPauseDownload,
+                                    onClick =
+                                        if (state.isPaused) actions.onResumeDownload
+                                        else actions.onPauseDownload,
                                     modifier = Modifier.fillMaxSize(),
                                 ) {
                                     Icon(
-                                        painter = painterResource(
-                                            if (state.isPaused) CoreR.drawable.ic_play else CoreR.drawable.ic_hourglass
-                                        ),
-                                        contentDescription = stringResource(
-                                            if (state.isPaused) CoreR.string.resume else CoreR.string.pending_in_queue
-                                        ),
+                                        painter =
+                                            painterResource(
+                                                if (state.isPaused) CoreR.drawable.ic_play
+                                                else CoreR.drawable.ic_hourglass
+                                            ),
+                                        contentDescription =
+                                            stringResource(
+                                                if (state.isPaused) CoreR.string.resume
+                                                else CoreR.string.pending_in_queue
+                                            ),
                                         tint = MaterialTheme.colorScheme.tertiary,
-                                        modifier = Modifier.size(20.dp)
+                                        modifier = Modifier.size(20.dp),
                                     )
                                 }
                             }
@@ -442,10 +470,11 @@ fun DownloadEpisodeTile(
                         DownloadStatus.FAILED -> {
                             IconButton(
                                 onClick = actions.onRetryDownload,
-                                colors = IconButtonDefaults.iconButtonColors(
-                                    containerColor = MaterialTheme.colorScheme.errorContainer,
-                                    contentColor = MaterialTheme.colorScheme.onErrorContainer,
-                                ),
+                                colors =
+                                    IconButtonDefaults.iconButtonColors(
+                                        containerColor = MaterialTheme.colorScheme.errorContainer,
+                                        contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                                    ),
                                 modifier = Modifier.size(36.dp),
                             ) {
                                 Icon(
@@ -468,10 +497,11 @@ private fun DownloadEpisodeTileDownloadedPreview() {
     FindroidTheme {
         DownloadEpisodeTile(
             episode = dummyEpisode,
-            state = DownloadEpisodeTileState(
-                status = DownloadStatus.DOWNLOADED,
-                playbackProgress = 0.3f,
-            ),
+            state =
+                DownloadEpisodeTileState(
+                    status = DownloadStatus.DOWNLOADED,
+                    playbackProgress = 0.3f,
+                ),
         )
     }
 }
@@ -482,10 +512,11 @@ private fun DownloadEpisodeTileDownloadingPreview() {
     FindroidTheme {
         DownloadEpisodeTile(
             episode = dummyEpisode,
-            state = DownloadEpisodeTileState(
-                status = DownloadStatus.DOWNLOADING,
-                downloadProgress = 0.52f,
-            ),
+            state =
+                DownloadEpisodeTileState(
+                    status = DownloadStatus.DOWNLOADING,
+                    downloadProgress = 0.52f,
+                ),
         )
     }
 }
@@ -496,11 +527,12 @@ private fun DownloadEpisodeTileDownloadingExtraInfoPreview() {
     FindroidTheme {
         DownloadEpisodeTile(
             episode = dummyEpisode,
-            state = DownloadEpisodeTileState(
-                status = DownloadStatus.DOWNLOADING,
-                downloadProgress = 0.52f,
-                displayExtraInfo = true,
-            ),
+            state =
+                DownloadEpisodeTileState(
+                    status = DownloadStatus.DOWNLOADING,
+                    downloadProgress = 0.52f,
+                    displayExtraInfo = true,
+                ),
         )
     }
 }
@@ -511,9 +543,7 @@ private fun DownloadEpisodeTilePendingPreview() {
     FindroidTheme {
         DownloadEpisodeTile(
             episode = dummyEpisode,
-            state = DownloadEpisodeTileState(
-                status = DownloadStatus.PENDING,
-            ),
+            state = DownloadEpisodeTileState(status = DownloadStatus.PENDING),
         )
     }
 }
@@ -524,9 +554,7 @@ private fun DownloadEpisodeTileFailedPreview() {
     FindroidTheme {
         DownloadEpisodeTile(
             episode = dummyEpisode,
-            state = DownloadEpisodeTileState(
-                status = DownloadStatus.FAILED,
-            ),
+            state = DownloadEpisodeTileState(status = DownloadStatus.FAILED),
         )
     }
 }
@@ -537,11 +565,12 @@ private fun DownloadEpisodeTileSelectionPreview() {
     FindroidTheme {
         DownloadEpisodeTile(
             episode = dummyEpisode,
-            state = DownloadEpisodeTileState(
-                status = DownloadStatus.DOWNLOADED,
-                downloadProgress = 0.52f,
-                isSelectionMode = true,
-            ),
+            state =
+                DownloadEpisodeTileState(
+                    status = DownloadStatus.DOWNLOADED,
+                    downloadProgress = 0.52f,
+                    isSelectionMode = true,
+                ),
         )
     }
 }
@@ -552,13 +581,14 @@ private fun DownloadEpisodeTileSelectedPreview() {
     FindroidTheme {
         DownloadEpisodeTile(
             episode = dummyEpisode,
-            state = DownloadEpisodeTileState(
-                status = DownloadStatus.DOWNLOADED,
-                downloadProgress = 0.52f,
-                playbackProgress = 0.5f,
-                isSelected = true,
-                isSelectionMode = true,
-            ),
+            state =
+                DownloadEpisodeTileState(
+                    status = DownloadStatus.DOWNLOADED,
+                    downloadProgress = 0.52f,
+                    playbackProgress = 0.5f,
+                    isSelected = true,
+                    isSelectionMode = true,
+                ),
         )
     }
 }
@@ -569,10 +599,11 @@ private fun DownloadEpisodeTileEliminatingPreview() {
     FindroidTheme {
         DownloadEpisodeTile(
             episode = dummyEpisode,
-            state = DownloadEpisodeTileState(
-                status = DownloadStatus.DOWNLOADED,
-                pendingDeletionSeconds = 5,
-            ),
+            state =
+                DownloadEpisodeTileState(
+                    status = DownloadStatus.DOWNLOADED,
+                    pendingDeletionSeconds = 5,
+                ),
         )
     }
 }

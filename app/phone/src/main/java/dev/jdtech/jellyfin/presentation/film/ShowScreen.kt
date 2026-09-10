@@ -42,6 +42,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.jdtech.jellyfin.LocalCastPlayerHeight
 import dev.jdtech.jellyfin.PlayerActivity
+import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.core.presentation.dummy.dummyShow
 import dev.jdtech.jellyfin.film.presentation.show.ShowAction
 import dev.jdtech.jellyfin.film.presentation.show.ShowState
@@ -62,9 +63,8 @@ import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
 import dev.jdtech.jellyfin.presentation.utils.rememberSafePadding
 import dev.jdtech.jellyfin.utils.getShowDateString
-import org.jellyfin.sdk.model.api.BaseItemKind
 import java.util.UUID
-import dev.jdtech.jellyfin.core.R as CoreR
+import org.jellyfin.sdk.model.api.BaseItemKind
 
 @Composable
 fun ShowScreen(
@@ -91,7 +91,11 @@ fun ShowScreen(
             when (action) {
                 is ShowAction.Play -> {
                     if (castConnectionState == CastConnectionState.CONNECTED) {
-                        castSessionViewModel.playItem(showId, BaseItemKind.SERIES.serialName, action.startFromBeginning)
+                        castSessionViewModel.playItem(
+                            showId,
+                            BaseItemKind.SERIES.serialName,
+                            action.startFromBeginning,
+                        )
                     } else {
                         val intent = Intent(context, PlayerActivity::class.java)
                         intent.putExtra("itemId", showId.toString())
@@ -274,7 +278,8 @@ private fun ShowScreenLayout(state: ShowState, onAction: (ShowAction) -> Unit) {
                     }
                     LazyRow(
                         contentPadding = PaddingValues(start = paddingStart, end = paddingEnd),
-                        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacings.default),
+                        horizontalArrangement =
+                            Arrangement.spacedBy(MaterialTheme.spacings.default),
                     ) {
                         items(items = state.seasons, key = { item -> item.id }) { season ->
                             ItemCard(

@@ -70,9 +70,10 @@ fun DownloadItemCard(
     val cardHeight = 124.dp
 
     val title = state.title.ifEmpty { item.name }
-    val sizeFormatted = remember(state.sizeBytes, context) {
-        if (state.sizeBytes > 0L) Formatter.formatFileSize(context, state.sizeBytes) else ""
-    }
+    val sizeFormatted =
+        remember(state.sizeBytes, context) {
+            if (state.sizeBytes > 0L) Formatter.formatFileSize(context, state.sizeBytes) else ""
+        }
 
     DownloadSwipeToDismissBox(
         itemId = item.id.toString(),
@@ -91,15 +92,15 @@ fun DownloadItemCard(
                 CardDefaults.cardColors(
                     containerColor =
                         if (state.isSelected) MaterialTheme.colorScheme.primaryContainer
-                        else MaterialTheme.colorScheme.surfaceContainer,
+                        else MaterialTheme.colorScheme.surfaceContainer
                 ),
             modifier =
-                Modifier
-                    .fillMaxWidth()
+                Modifier.fillMaxWidth()
                     .height(cardHeight)
                     .clip(cardShape)
                     .then(
-                        if (state.isSelected) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, cardShape)
+                        if (state.isSelected)
+                            Modifier.border(2.dp, MaterialTheme.colorScheme.primary, cardShape)
                         else Modifier
                     )
                     .combinedClickable(
@@ -124,9 +125,7 @@ fun DownloadItemCard(
                 // Poster thumbnail
                 Box(
                     modifier =
-                        Modifier
-                            .size(width = 64.dp, height = 96.dp)
-                            .clip(RoundedCornerShape(12.dp))
+                        Modifier.size(width = 64.dp, height = 96.dp).clip(RoundedCornerShape(12.dp))
                 ) {
                     ItemPoster(
                         item = item,
@@ -136,18 +135,12 @@ fun DownloadItemCard(
 
                     if (state.status == DownloadStatus.DOWNLOADED) {
                         if (item.played) {
-                            PlayedBadge(
-                                modifier =
-                                    Modifier
-                                        .align(Alignment.TopEnd)
-                                        .padding(4.dp)
-                            )
+                            PlayedBadge(modifier = Modifier.align(Alignment.TopEnd).padding(4.dp))
                         } else if (state.playbackProgress in 0.02f..0.98f) {
                             LinearProgressIndicator(
                                 progress = { state.playbackProgress },
                                 modifier =
-                                    Modifier
-                                        .align(Alignment.BottomCenter)
+                                    Modifier.align(Alignment.BottomCenter)
                                         .fillMaxWidth()
                                         .height(4.dp),
                                 color = MaterialTheme.colorScheme.primary,
@@ -167,9 +160,7 @@ fun DownloadItemCard(
                     Text(
                         text = title,
                         style =
-                            MaterialTheme.typography.titleMedium.copy(
-                                fontWeight = FontWeight.Bold
-                            ),
+                            MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                         color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -179,10 +170,17 @@ fun DownloadItemCard(
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = state.metadataText,
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                fontWeight = if (state.status == DownloadStatus.PENDING) FontWeight.Medium else FontWeight.Normal
-                            ),
-                            color = if (state.status == DownloadStatus.PENDING) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            style =
+                                MaterialTheme.typography.bodySmall.copy(
+                                    fontWeight =
+                                        if (state.status == DownloadStatus.PENDING)
+                                            FontWeight.Medium
+                                        else FontWeight.Normal
+                                ),
+                            color =
+                                if (state.status == DownloadStatus.PENDING)
+                                    MaterialTheme.colorScheme.tertiary
+                                else MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
@@ -201,7 +199,10 @@ fun DownloadItemCard(
                                 label = {
                                     Text(
                                         text = sizeFormatted,
-                                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
+                                        style =
+                                            MaterialTheme.typography.labelSmall.copy(
+                                                fontWeight = FontWeight.Medium
+                                            ),
                                     )
                                 },
                                 colors =
@@ -222,15 +223,15 @@ fun DownloadItemCard(
                 // Right Action Slot
                 if (!state.isSelectionMode) {
                     when (state.status) {
-                        DownloadStatus.DOWNLOADED -> {
-                        }
+                        DownloadStatus.DOWNLOADED -> {}
                         DownloadStatus.TRANSFERRING -> {
                             val tintColor = MaterialTheme.colorScheme.primary
-                            val animatedDownloadProgress by animateFloatAsState(
-                                targetValue = state.downloadProgress,
-                                animationSpec = tween(400, easing = FastOutSlowInEasing),
-                                label = "itemTransferProgress",
-                            )
+                            val animatedDownloadProgress by
+                                animateFloatAsState(
+                                    targetValue = state.downloadProgress,
+                                    animationSpec = tween(400, easing = FastOutSlowInEasing),
+                                    label = "itemTransferProgress",
+                                )
                             Box(
                                 contentAlignment = Alignment.Center,
                                 modifier = Modifier.size(36.dp),
@@ -253,18 +254,23 @@ fun DownloadItemCard(
                         DownloadStatus.DOWNLOADING,
                         DownloadStatus.CONVERTING -> {
                             val tintColor =
-                                if (state.status == DownloadStatus.CONVERTING) MaterialTheme.colorScheme.secondary
+                                if (state.status == DownloadStatus.CONVERTING)
+                                    MaterialTheme.colorScheme.secondary
                                 else MaterialTheme.colorScheme.primary
-                            val animatedDownloadProgress by animateFloatAsState(
-                                targetValue = state.downloadProgress,
-                                animationSpec = tween(400, easing = FastOutSlowInEasing),
-                                label = "itemDlProgress",
-                            )
+                            val animatedDownloadProgress by
+                                animateFloatAsState(
+                                    targetValue = state.downloadProgress,
+                                    animationSpec = tween(400, easing = FastOutSlowInEasing),
+                                    label = "itemDlProgress",
+                                )
                             Box(
                                 contentAlignment = Alignment.Center,
                                 modifier = Modifier.size(36.dp),
                             ) {
-                                if (state.status == DownloadStatus.CONVERTING && state.downloadProgress <= 0f) {
+                                if (
+                                    state.status == DownloadStatus.CONVERTING &&
+                                        state.downloadProgress <= 0f
+                                ) {
                                     CircularProgressIndicator(
                                         modifier = Modifier.fillMaxSize(),
                                         strokeWidth = 3.dp,
@@ -281,16 +287,22 @@ fun DownloadItemCard(
                                     )
                                 }
                                 IconButton(
-                                    onClick = if (state.isPaused) actions.onResumeDownload else actions.onPauseDownload,
+                                    onClick =
+                                        if (state.isPaused) actions.onResumeDownload
+                                        else actions.onPauseDownload,
                                     modifier = Modifier.fillMaxSize(),
                                 ) {
                                     Icon(
-                                        painter = painterResource(
-                                            if (state.isPaused) CoreR.drawable.ic_play else CoreR.drawable.ic_pause
-                                        ),
-                                        contentDescription = stringResource(
-                                            if (state.isPaused) CoreR.string.resume else CoreR.string.pause
-                                        ),
+                                        painter =
+                                            painterResource(
+                                                if (state.isPaused) CoreR.drawable.ic_play
+                                                else CoreR.drawable.ic_pause
+                                            ),
+                                        contentDescription =
+                                            stringResource(
+                                                if (state.isPaused) CoreR.string.resume
+                                                else CoreR.string.pause
+                                            ),
                                         tint = tintColor,
                                         modifier = Modifier.size(20.dp),
                                     )
@@ -303,16 +315,22 @@ fun DownloadItemCard(
                                 modifier = Modifier.size(36.dp),
                             ) {
                                 IconButton(
-                                    onClick = if (state.isPaused) actions.onResumeDownload else actions.onPauseDownload,
+                                    onClick =
+                                        if (state.isPaused) actions.onResumeDownload
+                                        else actions.onPauseDownload,
                                     modifier = Modifier.fillMaxSize(),
                                 ) {
                                     Icon(
-                                        painter = painterResource(
-                                            if (state.isPaused) CoreR.drawable.ic_play else CoreR.drawable.ic_hourglass,
-                                        ),
-                                        contentDescription = stringResource(
-                                            if (state.isPaused) CoreR.string.resume else CoreR.string.pending_in_queue,
-                                        ),
+                                        painter =
+                                            painterResource(
+                                                if (state.isPaused) CoreR.drawable.ic_play
+                                                else CoreR.drawable.ic_hourglass
+                                            ),
+                                        contentDescription =
+                                            stringResource(
+                                                if (state.isPaused) CoreR.string.resume
+                                                else CoreR.string.pending_in_queue
+                                            ),
                                         tint = MaterialTheme.colorScheme.tertiary,
                                         modifier = Modifier.size(20.dp),
                                     )
@@ -323,9 +341,11 @@ fun DownloadItemCard(
                             Box(
                                 contentAlignment = Alignment.Center,
                                 modifier =
-                                    Modifier
-                                        .size(36.dp)
-                                        .background(MaterialTheme.colorScheme.errorContainer, CircleShape)
+                                    Modifier.size(36.dp)
+                                        .background(
+                                            MaterialTheme.colorScheme.errorContainer,
+                                            CircleShape,
+                                        )
                                         .border(1.dp, MaterialTheme.colorScheme.error, CircleShape),
                             ) {
                                 IconButton(
@@ -354,12 +374,13 @@ private fun DownloadItemCardDownloadedPreview() {
     FindroidTheme {
         DownloadItemCard(
             item = dummyMovie,
-            state = DownloadItemCardState(
-                title = "Inception",
-                metadataText = "2010 • 2h 28m",
-                status = DownloadStatus.DOWNLOADED,
-                playbackProgress = 0.45f,
-            ),
+            state =
+                DownloadItemCardState(
+                    title = "Inception",
+                    metadataText = "2010 • 2h 28m",
+                    status = DownloadStatus.DOWNLOADED,
+                    playbackProgress = 0.45f,
+                ),
         )
     }
 }
@@ -370,12 +391,13 @@ private fun DownloadItemCardDownloadingPreview() {
     FindroidTheme {
         DownloadItemCard(
             item = dummyMovie,
-            state = DownloadItemCardState(
-                title = "Oppenheimer",
-                metadataText = "45% • 3.2 MB/s • 1m 20s",
-                status = DownloadStatus.DOWNLOADING,
-                downloadProgress = 0.45f,
-            ),
+            state =
+                DownloadItemCardState(
+                    title = "Oppenheimer",
+                    metadataText = "45% • 3.2 MB/s • 1m 20s",
+                    status = DownloadStatus.DOWNLOADING,
+                    downloadProgress = 0.45f,
+                ),
         )
     }
 }
@@ -386,11 +408,12 @@ private fun DownloadItemCardPendingPreview() {
     FindroidTheme {
         DownloadItemCard(
             item = dummyMovie,
-            state = DownloadItemCardState(
-                title = "Interstellar",
-                metadataText = "In coda",
-                status = DownloadStatus.PENDING,
-            ),
+            state =
+                DownloadItemCardState(
+                    title = "Interstellar",
+                    metadataText = "In coda",
+                    status = DownloadStatus.PENDING,
+                ),
         )
     }
 }
@@ -401,13 +424,14 @@ private fun DownloadItemCardSelectionPreview() {
     FindroidTheme {
         DownloadItemCard(
             item = dummyMovie,
-            state = DownloadItemCardState(
-                title = "Blade Runner 2049",
-                metadataText = "2017 • 2h 44m",
-                status = DownloadStatus.DOWNLOADED,
-                isSelected = true,
-                isSelectionMode = true,
-            ),
+            state =
+                DownloadItemCardState(
+                    title = "Blade Runner 2049",
+                    metadataText = "2017 • 2h 44m",
+                    status = DownloadStatus.DOWNLOADED,
+                    isSelected = true,
+                    isSelectionMode = true,
+                ),
         )
     }
 }
@@ -418,13 +442,14 @@ private fun DownloadItemCardEliminatingPreview() {
     FindroidTheme {
         DownloadItemCard(
             item = dummyMovie,
-            state = DownloadItemCardState(
-                title = "Inception",
-                metadataText = "2010 • 2h 28m",
-                status = DownloadStatus.DOWNLOADED,
-                playbackProgress = 0.45f,
-                pendingDeletionSeconds = 5,
-            ),
+            state =
+                DownloadItemCardState(
+                    title = "Inception",
+                    metadataText = "2010 • 2h 28m",
+                    status = DownloadStatus.DOWNLOADED,
+                    playbackProgress = 0.45f,
+                    pendingDeletionSeconds = 5,
+                ),
         )
     }
 }
@@ -433,11 +458,7 @@ private fun DownloadItemCardEliminatingPreview() {
 @Composable
 private fun DownloadItemCardSwipeDismissBackgroundPreview() {
     FindroidTheme {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(84.dp)
-        ) {
+        Box(modifier = Modifier.fillMaxWidth().height(84.dp)) {
             DownloadSwipeDismissBackground(
                 progress = 1f,
                 isThresholdReached = true,

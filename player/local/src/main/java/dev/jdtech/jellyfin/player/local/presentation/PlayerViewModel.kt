@@ -19,6 +19,7 @@ import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.jdtech.jellyfin.di.ApplicationScope
 import dev.jdtech.jellyfin.models.FindroidSegment
+import dev.jdtech.jellyfin.player.core.R as CoreR
 import dev.jdtech.jellyfin.player.core.domain.PlaybackManager
 import dev.jdtech.jellyfin.player.core.domain.PlaylistManager
 import dev.jdtech.jellyfin.player.core.domain.models.PlayerChapter
@@ -33,6 +34,9 @@ import dev.jdtech.jellyfin.repository.JellyfinRepository
 import dev.jdtech.jellyfin.settings.domain.AppPreferences
 import dev.jdtech.jellyfin.settings.domain.Constants
 import dev.jdtech.jellyfin.utils.getTranslatablePartName
+import java.util.UUID
+import javax.inject.Inject
+import kotlin.math.ceil
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
@@ -45,10 +49,6 @@ import kotlinx.coroutines.withContext
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.PlayMethod
 import timber.log.Timber
-import java.util.UUID
-import javax.inject.Inject
-import kotlin.math.ceil
-import dev.jdtech.jellyfin.player.core.R as CoreR
 
 @HiltViewModel
 class PlayerViewModel
@@ -60,7 +60,7 @@ constructor(
     private val repository: JellyfinRepository,
     private val appPreferences: AppPreferences,
     private val savedStateHandle: SavedStateHandle,
-    @param:ApplicationScope private val appScope: CoroutineScope
+    @param:ApplicationScope private val appScope: CoroutineScope,
 ) : ViewModel(), Player.Listener {
     val player: Player
 
@@ -141,44 +141,46 @@ constructor(
                 )
         )
 
-
         val playerBackend = appPreferences.getValue(appPreferences.playerBackend)
-        player = when (playerBackend) {
-            "exoplayer" -> {
-                val renderersFactory =
-                    DefaultRenderersFactory(application)
-                        .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON)
-                ExoPlayer.Builder(application, renderersFactory)
-                    .setAudioAttributes(audioAttributes, true)
-                    .setTrackSelector(trackSelector)
-                    .setSeekBackIncrementMs(
-                        appPreferences.getValue(appPreferences.playerSeekBackInc)
-                    )
-                    .setSeekForwardIncrementMs(
-                        appPreferences.getValue(appPreferences.playerSeekForwardInc)
-                    )
-                    .setPauseAtEndOfMediaItems(true)
-                    .build()
-            }
-            "mpv" -> {
-                MPVPlayer.Builder(application)
-                    .setAudioAttributes(audioAttributes, true)
-                    .setTrackSelectionParameters(trackSelector.parameters)
-                    .setSeekBackIncrementMs(
-                        appPreferences.getValue(appPreferences.playerSeekBackInc)
-                    )
-                    .setSeekForwardIncrementMs(
-                        appPreferences.getValue(appPreferences.playerSeekForwardInc)
-                    )
-                    .setPauseAtEndOfMediaItems(true)
-                    .setVideoOutput(appPreferences.getValue(appPreferences.playerMpvVo))
-                    .setAudioOutput(appPreferences.getValue(appPreferences.playerMpvAo))
-                    .setHwDec(appPreferences.getValue(appPreferences.playerMpvHwdec))
-                    .build()
-            }
+        player =
+            when (playerBackend) {
+                "exoplayer" -> {
+                    val renderersFactory =
+                        DefaultRenderersFactory(application)
+                            .setExtensionRendererMode(
+                                DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON
+                            )
+                    ExoPlayer.Builder(application, renderersFactory)
+                        .setAudioAttributes(audioAttributes, true)
+                        .setTrackSelector(trackSelector)
+                        .setSeekBackIncrementMs(
+                            appPreferences.getValue(appPreferences.playerSeekBackInc)
+                        )
+                        .setSeekForwardIncrementMs(
+                            appPreferences.getValue(appPreferences.playerSeekForwardInc)
+                        )
+                        .setPauseAtEndOfMediaItems(true)
+                        .build()
+                }
+                "mpv" -> {
+                    MPVPlayer.Builder(application)
+                        .setAudioAttributes(audioAttributes, true)
+                        .setTrackSelectionParameters(trackSelector.parameters)
+                        .setSeekBackIncrementMs(
+                            appPreferences.getValue(appPreferences.playerSeekBackInc)
+                        )
+                        .setSeekForwardIncrementMs(
+                            appPreferences.getValue(appPreferences.playerSeekForwardInc)
+                        )
+                        .setPauseAtEndOfMediaItems(true)
+                        .setVideoOutput(appPreferences.getValue(appPreferences.playerMpvVo))
+                        .setAudioOutput(appPreferences.getValue(appPreferences.playerMpvAo))
+                        .setHwDec(appPreferences.getValue(appPreferences.playerMpvHwdec))
+                        .build()
+                }
 
-            else -> throw RuntimeException("$playerBackend is not a valid player backend")
-        }
+                else -> throw RuntimeException("$playerBackend is not a valid player backend")
+            }
     }
 
     fun initializePlayer(itemId: UUID, itemKind: String, startFromBeginning: Boolean) {
@@ -231,24 +233,24 @@ constructor(
 
     private fun PlayerItem.toMediaItem(): MediaItem {
         val streamUrl = mediaSourceUri
-        val mediaSubtitles =
-            externalSubtitles.map { externalSubtitle ->
-                MediaItem.SubtitleConfiguration.Builder(externalSubtitle.uri)
-                    .setLabel(
-                        externalSubtitle.title.ifBlank { application.getString(CoreR.string.external) }
-                    )
-                    .setMimeType(externalSubtitle.mimeType)
-                    .setLanguage(externalSubtitle.language)
-                    .build()
-            }
+        val mediaSubtitles = externalSubtitles.map { externalSubtitle ->
+            MediaItem.SubtitleConfiguration.Builder(externalSubtitle.uri)
+                .setLabel(
+                    externalSubtitle.title.ifBlank { application.getString(CoreR.string.external) }
+                )
+                .setMimeType(externalSubtitle.mimeType)
+                .setLanguage(externalSubtitle.language)
+                .build()
+        }
 
         Timber.d("Stream url: $streamUrl")
         val partName = this.partName
-        val title = if (partName != null) {
-            "$name - ${partName.getTranslatablePartName(application)}"
-        } else {
-            name
-        }
+        val title =
+            if (partName != null) {
+                "$name - ${partName.getTranslatablePartName(application)}"
+            } else {
+                name
+            }
 
         val mediaItem =
             MediaItem.Builder()
@@ -270,7 +272,7 @@ constructor(
             playbackManager.reportStop(
                 itemId = UUID.fromString(mediaId),
                 positionMs = position,
-                durationMs = duration
+                durationMs = duration,
             )
         }
 
@@ -291,7 +293,7 @@ constructor(
                 playbackManager.reportProgress(
                     itemId = itemId,
                     positionMs = player.currentPosition,
-                    isPaused = !player.isPlaying
+                    isPaused = !player.isPlaying,
                 )
             }
         }
@@ -307,10 +309,9 @@ constructor(
             val milliSeconds = player.currentPosition
 
             // Get current segment, - 100 milliseconds to avoid showing button after segment ends
-            val currentSegment =
-                currentMediaItemSegments.find { segment ->
-                    milliSeconds in segment.startTicks..<(segment.endTicks - 100L)
-                }
+            val currentSegment = currentMediaItemSegments.find { segment ->
+                milliSeconds in segment.startTicks..<(segment.endTicks - 100L)
+            }
 
             if (currentSegment == null) {
                 // Remove button if not pressed and there is no current segment
@@ -324,10 +325,10 @@ constructor(
 
             if (
                 segmentsAutoSkip &&
-                segmentsAutoSkipTypes.contains(currentSegment.type.toString()) &&
-                (segmentsAutoSkipMode == Constants.PlayerMediaSegmentsAutoSkip.ALWAYS ||
+                    segmentsAutoSkipTypes.contains(currentSegment.type.toString()) &&
+                    (segmentsAutoSkipMode == Constants.PlayerMediaSegmentsAutoSkip.ALWAYS ||
                         (segmentsAutoSkipMode == Constants.PlayerMediaSegmentsAutoSkip.PIP &&
-                                isInPictureInPictureMode))
+                            isInPictureInPictureMode))
             ) {
                 // Auto Skip segment
                 skipSegment(currentSegment)
@@ -336,10 +337,11 @@ constructor(
                 _uiState.update {
                     it.copy(
                         currentSegment = currentSegment,
-                        currentSkipButtonStringRes = getSkipButtonTextStringId(
-                            currentSegment,
-                            shouldSkipToNextEpisode(currentSegment)
-                        ),
+                        currentSkipButtonStringRes =
+                            getSkipButtonTextStringId(
+                                currentSegment,
+                                shouldSkipToNextEpisode(currentSegment),
+                            ),
                     )
                 }
             } else {
@@ -358,11 +360,12 @@ constructor(
                     .let { item ->
                         val itemTitle =
                             if (item.parentIndexNumber != null && item.indexNumber != null) {
-                                val baseStr = if (item.indexNumberEnd == null) {
-                                    "S${item.parentIndexNumber}:E${item.indexNumber}"
-                                } else {
-                                    "S${item.parentIndexNumber}:E${item.indexNumber}-${item.indexNumberEnd}"
-                                }
+                                val baseStr =
+                                    if (item.indexNumberEnd == null) {
+                                        "S${item.parentIndexNumber}:E${item.indexNumber}"
+                                    } else {
+                                        "S${item.parentIndexNumber}:E${item.indexNumber}-${item.indexNumberEnd}"
+                                    }
                                 val partName = item.partName
                                 if (partName != null) {
                                     "$baseStr - ${partName.getTranslatablePartName(application)} - ${item.name}"
@@ -428,8 +431,8 @@ constructor(
         // Report playback stopped for current item and transition to the next one
         if (
             !playWhenReady &&
-            reason == Player.PLAY_WHEN_READY_CHANGE_REASON_END_OF_MEDIA_ITEM &&
-            player.playbackState == ExoPlayer.STATE_READY
+                reason == Player.PLAY_WHEN_READY_CHANGE_REASON_END_OF_MEDIA_ITEM &&
+                player.playbackState == ExoPlayer.STATE_READY
         ) {
             viewModelScope.launch {
                 val mediaId = player.currentMediaItem?.mediaId ?: return@launch
@@ -438,7 +441,7 @@ constructor(
                 playbackManager.reportStop(
                     itemId = UUID.fromString(mediaId),
                     positionMs = position,
-                    durationMs = duration
+                    durationMs = duration,
                 )
                 player.seekToNextMediaItem()
                 player.play()
@@ -513,10 +516,10 @@ constructor(
         withContext(Dispatchers.Default) {
             val maxIndex =
                 ceil(
-                    trickplayInfo.thumbnailCount
-                        .toDouble()
-                        .div(trickplayInfo.tileWidth * trickplayInfo.tileHeight)
-                )
+                        trickplayInfo.thumbnailCount
+                            .toDouble()
+                            .div(trickplayInfo.tileWidth * trickplayInfo.tileHeight)
+                    )
                     .toInt()
             val bitmaps = mutableListOf<Bitmap>()
 
@@ -524,10 +527,10 @@ constructor(
                 repository.getTrickplayData(item.itemId, trickplayInfo.width, i)?.let { byteArray ->
                     val fullBitmap = BitmapFactory.decodeByteArray(byteArray, 0, byteArray.size)
                     for (offsetY in
-                    0..<trickplayInfo.height * trickplayInfo.tileHeight step
+                        0..<trickplayInfo.height * trickplayInfo.tileHeight step
                             trickplayInfo.height) {
                         for (offsetX in
-                        0..<trickplayInfo.width * trickplayInfo.tileWidth step
+                            0..<trickplayInfo.width * trickplayInfo.tileWidth step
                                 trickplayInfo.width) {
                             val bitmap =
                                 Bitmap.createBitmap(
@@ -562,7 +565,8 @@ constructor(
             segment = segment,
             hasNextMediaItem = player.hasNextMediaItem(),
             playerDurationMillis = player.duration,
-            nextEpisodeThreshold = appPreferences.getValue(appPreferences.playerMediaSegmentsNextEpisodeThreshold)
+            nextEpisodeThreshold =
+                appPreferences.getValue(appPreferences.playerMediaSegmentsNextEpisodeThreshold),
         )
     }
 
@@ -603,8 +607,7 @@ constructor(
         return ChapterUtils.getPreviousChapterIndex(getChapters(), player.currentPosition)
     }
 
-    fun isLastChapter(): Boolean =
-        ChapterUtils.isLastChapter(getChapters(), player.currentPosition)
+    fun isLastChapter(): Boolean = ChapterUtils.isLastChapter(getChapters(), player.currentPosition)
 
     /**
      * Seek to chapter
@@ -647,7 +650,7 @@ constructor(
                 viewModelScope.launch {
                     playbackManager.reportStart(
                         itemId = UUID.fromString(mediaId),
-                        playMethod = PlayMethod.DIRECT_PLAY
+                        playMethod = PlayMethod.DIRECT_PLAY,
                     )
                 }
                 hasReportedStart = true

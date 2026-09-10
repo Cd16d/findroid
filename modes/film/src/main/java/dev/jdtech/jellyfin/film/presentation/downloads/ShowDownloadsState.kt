@@ -30,7 +30,8 @@ data class ShowDownloadsState(
     val subtitle: String
         get() {
             val epStr = if (totalEpisodesCount == 1) "1 episode" else "$totalEpisodesCount episodes"
-            return if (totalDiskSizeFormatted.isNotEmpty()) "$epStr • $totalDiskSizeFormatted" else epStr
+            return if (totalDiskSizeFormatted.isNotEmpty()) "$epStr • $totalDiskSizeFormatted"
+            else epStr
         }
 
     val isEmpty: Boolean

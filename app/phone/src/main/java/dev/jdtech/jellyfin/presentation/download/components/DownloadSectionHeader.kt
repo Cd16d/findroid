@@ -24,10 +24,7 @@ fun DownloadSectionHeader(
     modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .padding(horizontal = 4.dp, vertical = 8.dp),
+        modifier = modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -36,8 +33,10 @@ fun DownloadSectionHeader(
             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
             color = MaterialTheme.colorScheme.onSurface,
         )
-        val countText = pluralStringResource(CoreR.plurals.download_items_count, itemCount, itemCount)
-        val infoText = if (totalSizeFormatted.isNotEmpty()) "$countText • $totalSizeFormatted" else countText
+        val countText =
+            pluralStringResource(CoreR.plurals.download_items_count, itemCount, itemCount)
+        val infoText =
+            if (totalSizeFormatted.isNotEmpty()) "$countText • $totalSizeFormatted" else countText
         Text(
             text = infoText,
             style = MaterialTheme.typography.labelMedium,

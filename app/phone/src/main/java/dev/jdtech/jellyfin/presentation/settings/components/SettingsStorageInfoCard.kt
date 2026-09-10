@@ -76,16 +76,13 @@ fun SettingsStorageInfoCard(
                 StorageCardContent(
                     storage = storages[page],
                     showDefaultBadge = true,
-                    modifier =
-                        Modifier.fillMaxWidth().padding(MaterialTheme.spacings.medium),
+                    modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacings.medium),
                 )
             }
 
             // Pager dots indicator
             Row(
-                modifier =
-                    Modifier.fillMaxWidth()
-                        .padding(bottom = MaterialTheme.spacings.small),
+                modifier = Modifier.fillMaxWidth().padding(bottom = MaterialTheme.spacings.small),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -105,7 +102,7 @@ fun SettingsStorageInfoCard(
                                 .background(
                                     if (isSelected) MaterialTheme.colorScheme.primary
                                     else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                                ),
+                                )
                     )
                 }
             }
@@ -170,7 +167,9 @@ private fun StorageCardContent(
                     Text(
                         text = stringResource(SettingsR.string.downloads_storage_default),
                         style =
-                            MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
+                            MaterialTheme.typography.labelSmall.copy(
+                                fontWeight = FontWeight.Medium
+                            ),
                         color = MaterialTheme.colorScheme.onPrimaryContainer,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
                     )
@@ -192,8 +191,7 @@ private fun StorageCardContent(
                         SettingsR.string.downloads_storage_percent_used,
                         storage.usedPercent,
                     ),
-                style =
-                    MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+                style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.onSurface,
             )
             if (storage.totalBytes > 0L) {
@@ -218,7 +216,7 @@ private fun StorageCardContent(
                 Modifier.fillMaxWidth()
                     .height(10.dp)
                     .clip(RoundedCornerShape(5.dp))
-                    .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+                    .background(MaterialTheme.colorScheme.surfaceContainerHighest)
         ) {
             val dlWeight = storage.downloadedFraction
             val otherWeight = storage.otherUsedFraction
@@ -231,7 +229,7 @@ private fun StorageCardContent(
                         modifier =
                             Modifier.fillMaxHeight()
                                 .weight(otherWeight)
-                                .background(MaterialTheme.colorScheme.outlineVariant),
+                                .background(MaterialTheme.colorScheme.outlineVariant)
                     )
                 }
                 if (dlWeight > 0.001f) {
@@ -239,15 +237,13 @@ private fun StorageCardContent(
                         modifier =
                             Modifier.fillMaxHeight()
                                 .weight(dlWeight)
-                                .background(MaterialTheme.colorScheme.primary),
+                                .background(MaterialTheme.colorScheme.primary)
                     )
                 }
                 if (freeWeight > 0.001f) {
                     Box(
                         modifier =
-                            Modifier.fillMaxHeight()
-                                .weight(freeWeight)
-                                .background(EmeraldGreen),
+                            Modifier.fillMaxHeight().weight(freeWeight).background(EmeraldGreen)
                     )
                 }
             }
@@ -292,12 +288,7 @@ private fun StorageLegendItem(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Box(
-            modifier =
-                Modifier.size(10.dp)
-                    .clip(CircleShape)
-                    .background(color),
-        )
+        Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(color))
         Column {
             Text(
                 text = label,

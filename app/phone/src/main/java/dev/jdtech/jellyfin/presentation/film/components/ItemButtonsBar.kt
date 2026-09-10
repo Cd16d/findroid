@@ -1,20 +1,14 @@
 package dev.jdtech.jellyfin.presentation.film.components
 
-import dev.jdtech.jellyfin.presentation.download.components.CancelDownloadDialog
-import dev.jdtech.jellyfin.presentation.download.components.DeleteDownloadDialog
-import dev.jdtech.jellyfin.presentation.download.components.DownloadPresetBottomSheet
-import dev.jdtech.jellyfin.presentation.download.components.DownloaderCard
-import dev.jdtech.jellyfin.presentation.download.components.StorageSelectionDialog
-
 import android.os.Environment
 import android.os.StatFs
-import dev.jdtech.jellyfin.utils.download.DownloadStatus
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
@@ -44,11 +38,15 @@ import dev.jdtech.jellyfin.models.FindroidMovie
 import dev.jdtech.jellyfin.models.FindroidShow
 import dev.jdtech.jellyfin.models.FindroidSources
 import dev.jdtech.jellyfin.models.isDownloaded
+import dev.jdtech.jellyfin.presentation.download.components.CancelDownloadDialog
+import dev.jdtech.jellyfin.presentation.download.components.DeleteDownloadDialog
+import dev.jdtech.jellyfin.presentation.download.components.DownloadPresetBottomSheet
+import dev.jdtech.jellyfin.presentation.download.components.DownloaderCard
+import dev.jdtech.jellyfin.presentation.download.components.StorageSelectionDialog
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
+import dev.jdtech.jellyfin.utils.download.DownloadStatus
 import org.jellyfin.sdk.model.api.MediaStreamType
-
-import androidx.compose.material3.ExperimentalMaterial3Api
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -57,7 +55,13 @@ fun ItemButtonsBar(
     onPlayClick: (startFromBeginning: Boolean) -> Unit,
     onMarkAsPlayedClick: () -> Unit,
     onMarkAsFavoriteClick: () -> Unit,
-    onDownloadClick: (storageIndex: Int, presetId: String?, downloadExternalAudio: Boolean, audioStreamIndex: Int?) -> Unit,
+    onDownloadClick:
+        (
+            storageIndex: Int,
+            presetId: String?,
+            downloadExternalAudio: Boolean,
+            audioStreamIndex: Int?,
+        ) -> Unit,
     onDownloadCancelClick: () -> Unit,
     onDownloadDeleteClick: () -> Unit,
     onTrailerClick: (uri: String) -> Unit,
@@ -105,7 +109,9 @@ fun ItemButtonsBar(
     fun refreshMountedStorage(): List<StorageOption> {
         val dirs = context.getExternalFilesDirs(null)
         val valid = dirs.mapIndexedNotNull { index, dir ->
-            if (dir != null && Environment.getExternalStorageState(dir) == Environment.MEDIA_MOUNTED) {
+            if (
+                dir != null && Environment.getExternalStorageState(dir) == Environment.MEDIA_MOUNTED
+            ) {
                 try {
                     val stat = StatFs(dir.path)
                     val locationStringRes =
@@ -113,7 +119,12 @@ fun ItemButtonsBar(
                         else CoreR.string.internal
                     val locationString = context.applicationContext.getString(locationStringRes)
                     val availableMegaBytes = stat.availableBytes.div(1000000)
-                    val label = context.applicationContext.getString(CoreR.string.storage_name, locationString, availableMegaBytes)
+                    val label =
+                        context.applicationContext.getString(
+                            CoreR.string.storage_name,
+                            locationString,
+                            availableMegaBytes,
+                        )
                     StorageOption(index, label)
                 } catch (_: Exception) {
                     null
@@ -126,11 +137,12 @@ fun ItemButtonsBar(
         return valid
     }
 
-    val hasExternalAudio = remember(item) {
-        (item as? FindroidSources)?.sources?.any { src ->
-            src.mediaStreams.any { it.isExternal && it.type == MediaStreamType.AUDIO }
-        } ?: false
-    }
+    val hasExternalAudio =
+        remember(item) {
+            (item as? FindroidSources)?.sources?.any { src ->
+                src.mediaStreams.any { it.isExternal && it.type == MediaStreamType.AUDIO }
+            } ?: false
+        }
 
     fun startDownloadFlow(storageIndex: Int) {
         selectedStorageIndex = storageIndex
@@ -238,7 +250,9 @@ fun ItemButtonsBar(
                         FilledTonalIconButton(
                             onClick = {
                                 val options = refreshMountedStorage()
-                                val target = options.find { it.originalIndex == defaultStorageIndex }
+                                val target = options.find {
+                                    it.originalIndex == defaultStorageIndex
+                                }
                                 if (defaultStorageIndex >= 0 && target != null) {
                                     startDownloadFlow(target.originalIndex)
                                 } else if (options.size > 1) {
@@ -274,7 +288,8 @@ fun ItemButtonsBar(
                 storageLocations = mountedStorageOptions.map { it.label },
                 onSelect = { displayIndex ->
                     storageSelectionDialogOpen = false
-                    val actualStorageIndex = mountedStorageOptions.getOrNull(displayIndex)?.originalIndex ?: 0
+                    val actualStorageIndex =
+                        mountedStorageOptions.getOrNull(displayIndex)?.originalIndex ?: 0
                     startDownloadFlow(actualStorageIndex)
                 },
                 onDismiss = { storageSelectionDialogOpen = false },
@@ -296,7 +311,12 @@ fun ItemButtonsBar(
                     if (rememberSetting) {
                         onRememberSettings(presetId, downloadExternalAudio)
                     }
-                    onDownloadClick(selectedStorageIndex, presetId, downloadExternalAudio, audioStreamIndex)
+                    onDownloadClick(
+                        selectedStorageIndex,
+                        presetId,
+                        downloadExternalAudio,
+                        audioStreamIndex,
+                    )
                 },
                 onDismiss = { presetDialogOpen = false },
             )
@@ -346,8 +366,7 @@ private fun ItemButtonsBarDownloadingPreview() {
     FindroidTheme {
         ItemButtonsBar(
             item = dummyEpisode,
-            downloaderState =
-                DownloaderState(status = DownloadStatus.RUNNING, progress = 0.3f),
+            downloaderState = DownloaderState(status = DownloadStatus.RUNNING, progress = 0.3f),
             canDownload = true,
             onPlayClick = {},
             onMarkAsPlayedClick = {},

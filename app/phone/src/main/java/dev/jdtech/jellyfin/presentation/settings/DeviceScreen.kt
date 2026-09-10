@@ -82,9 +82,7 @@ fun DeviceScreenContent(
     var editedName by remember(deviceName) { mutableStateOf(deviceName) }
 
     Scaffold(
-        modifier = Modifier
-            .fillMaxSize()
-            .nestedScroll(scrollBehavior.nestedScrollConnection),
+        modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(SettingsR.string.settings_category_device)) },
@@ -108,12 +106,13 @@ fun DeviceScreenContent(
 
         LazyColumn(
             modifier = Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(
-                start = MaterialTheme.spacings.default,
-                end = MaterialTheme.spacings.default,
-                top = innerPadding.calculateTopPadding() + MaterialTheme.spacings.default,
-                bottom = innerPadding.calculateBottomPadding() + MaterialTheme.spacings.default,
-            ),
+            contentPadding =
+                PaddingValues(
+                    start = MaterialTheme.spacings.default,
+                    end = MaterialTheme.spacings.default,
+                    top = innerPadding.calculateTopPadding() + MaterialTheme.spacings.default,
+                    bottom = innerPadding.calculateBottomPadding() + MaterialTheme.spacings.default,
+                ),
             verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacings.medium),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
@@ -122,16 +121,19 @@ fun DeviceScreenContent(
                 Column(modifier = Modifier.widthIn(max = 640.dp)) {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+                        colors =
+                            CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainer
+                            ),
                     ) {
                         Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    editedName = deviceName
-                                    showEditDialog = true
-                                }
-                                .padding(MaterialTheme.spacings.medium),
+                            modifier =
+                                Modifier.fillMaxWidth()
+                                    .clickable {
+                                        editedName = deviceName
+                                        showEditDialog = true
+                                    }
+                                    .padding(MaterialTheme.spacings.medium),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween,
                         ) {
@@ -163,13 +165,16 @@ fun DeviceScreenContent(
                 Column(modifier = Modifier.widthIn(max = 640.dp)) {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+                        colors =
+                            CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainer
+                            ),
                     ) {
                         Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { videoExpanded = !videoExpanded }
-                                .padding(MaterialTheme.spacings.medium),
+                            modifier =
+                                Modifier.fillMaxWidth()
+                                    .clickable { videoExpanded = !videoExpanded }
+                                    .padding(MaterialTheme.spacings.medium),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween,
                         ) {
@@ -180,19 +185,22 @@ fun DeviceScreenContent(
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(
-                                    text = stringResource(
-                                        SettingsR.string.codecs_supported_ratio,
-                                        videoSupportedCount,
-                                        overview.videoCodecs.size,
-                                    ),
+                                    text =
+                                        stringResource(
+                                            SettingsR.string.codecs_supported_ratio,
+                                            videoSupportedCount,
+                                            overview.videoCodecs.size,
+                                        ),
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
                             Icon(
-                                painter = painterResource(
-                                    if (videoExpanded) CoreR.drawable.ic_chevron_up else CoreR.drawable.ic_chevron_down
-                                ),
+                                painter =
+                                    painterResource(
+                                        if (videoExpanded) CoreR.drawable.ic_chevron_up
+                                        else CoreR.drawable.ic_chevron_down
+                                    ),
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(24.dp),
@@ -205,7 +213,9 @@ fun DeviceScreenContent(
                                 overview.videoCodecs.forEachIndexed { index, codec ->
                                     CodecItemRow(codec = codec)
                                     if (index < overview.videoCodecs.lastIndex) {
-                                        HorizontalDivider(color = DividerDefaults.color.copy(alpha = 0.2f))
+                                        HorizontalDivider(
+                                            color = DividerDefaults.color.copy(alpha = 0.2f)
+                                        )
                                     }
                                 }
                             }
@@ -219,13 +229,16 @@ fun DeviceScreenContent(
                 Column(modifier = Modifier.widthIn(max = 640.dp)) {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+                        colors =
+                            CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainer
+                            ),
                     ) {
                         Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { audioExpanded = !audioExpanded }
-                                .padding(MaterialTheme.spacings.medium),
+                            modifier =
+                                Modifier.fillMaxWidth()
+                                    .clickable { audioExpanded = !audioExpanded }
+                                    .padding(MaterialTheme.spacings.medium),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween,
                         ) {
@@ -236,19 +249,22 @@ fun DeviceScreenContent(
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(
-                                    text = stringResource(
-                                        SettingsR.string.codecs_supported_ratio,
-                                        audioSupportedCount,
-                                        overview.audioCodecs.size,
-                                    ),
+                                    text =
+                                        stringResource(
+                                            SettingsR.string.codecs_supported_ratio,
+                                            audioSupportedCount,
+                                            overview.audioCodecs.size,
+                                        ),
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
                             Icon(
-                                painter = painterResource(
-                                    if (audioExpanded) CoreR.drawable.ic_chevron_up else CoreR.drawable.ic_chevron_down
-                                ),
+                                painter =
+                                    painterResource(
+                                        if (audioExpanded) CoreR.drawable.ic_chevron_up
+                                        else CoreR.drawable.ic_chevron_down
+                                    ),
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(24.dp),
@@ -261,7 +277,9 @@ fun DeviceScreenContent(
                                 overview.audioCodecs.forEachIndexed { index, codec ->
                                     CodecItemRow(codec = codec)
                                     if (index < overview.audioCodecs.lastIndex) {
-                                        HorizontalDivider(color = DividerDefaults.color.copy(alpha = 0.2f))
+                                        HorizontalDivider(
+                                            color = DividerDefaults.color.copy(alpha = 0.2f)
+                                        )
                                     }
                                 }
                             }
@@ -311,9 +329,10 @@ private fun CodecItemRow(
     modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = MaterialTheme.spacings.medium, vertical = 12.dp),
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .padding(horizontal = MaterialTheme.spacings.medium, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
@@ -345,7 +364,8 @@ private fun CodecItemRow(
                 )
                 Text(
                     text = stringResource(SettingsR.string.codec_supported),
-                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                    style =
+                        MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
                     color = EmeraldGreen,
                 )
             }
@@ -362,7 +382,8 @@ private fun CodecItemRow(
                 )
                 Text(
                     text = stringResource(SettingsR.string.codec_not_supported),
-                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                    style =
+                        MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
                     color = MaterialTheme.colorScheme.error,
                 )
             }
@@ -376,49 +397,52 @@ private fun DeviceScreenPreview() {
     FindroidTheme {
         DeviceScreenContent(
             deviceName = "Pixel 8 Pro",
-            overview = DeviceCodecsOverview(
-                deviceName = "Pixel 8 Pro",
-                videoCodecs = listOf(
-                    CodecInfo(
-                        id = "h264",
-                        name = "H.264",
-                        mimeTypes = listOf("video/avc"),
-                        isSupported = true,
-                    ),
-                    CodecInfo(
-                        id = "h265",
-                        name = "H.265 / HEVC",
-                        mimeTypes = listOf("video/hevc"),
-                        isSupported = true,
-                    ),
-                    CodecInfo(
-                        id = "av1",
-                        name = "AV1",
-                        mimeTypes = listOf("video/av01"),
-                        isSupported = false,
-                    ),
+            overview =
+                DeviceCodecsOverview(
+                    deviceName = "Pixel 8 Pro",
+                    videoCodecs =
+                        listOf(
+                            CodecInfo(
+                                id = "h264",
+                                name = "H.264",
+                                mimeTypes = listOf("video/avc"),
+                                isSupported = true,
+                            ),
+                            CodecInfo(
+                                id = "h265",
+                                name = "H.265 / HEVC",
+                                mimeTypes = listOf("video/hevc"),
+                                isSupported = true,
+                            ),
+                            CodecInfo(
+                                id = "av1",
+                                name = "AV1",
+                                mimeTypes = listOf("video/av01"),
+                                isSupported = false,
+                            ),
+                        ),
+                    audioCodecs =
+                        listOf(
+                            CodecInfo(
+                                id = "aac",
+                                name = "AAC",
+                                mimeTypes = listOf("audio/mp4a-latm"),
+                                isSupported = true,
+                            ),
+                            CodecInfo(
+                                id = "flac",
+                                name = "FLAC",
+                                mimeTypes = listOf("audio/flac"),
+                                isSupported = true,
+                            ),
+                            CodecInfo(
+                                id = "ac3",
+                                name = "AC-3",
+                                mimeTypes = listOf("audio/ac3"),
+                                isSupported = false,
+                            ),
+                        ),
                 ),
-                audioCodecs = listOf(
-                    CodecInfo(
-                        id = "aac",
-                        name = "AAC",
-                        mimeTypes = listOf("audio/mp4a-latm"),
-                        isSupported = true,
-                    ),
-                    CodecInfo(
-                        id = "flac",
-                        name = "FLAC",
-                        mimeTypes = listOf("audio/flac"),
-                        isSupported = true,
-                    ),
-                    CodecInfo(
-                        id = "ac3",
-                        name = "AC-3",
-                        mimeTypes = listOf("audio/ac3"),
-                        isSupported = false,
-                    ),
-                ),
-            ),
             onUpdateDeviceName = {},
             navigateBack = {},
         )

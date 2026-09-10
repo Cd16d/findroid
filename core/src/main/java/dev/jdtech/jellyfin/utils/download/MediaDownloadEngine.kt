@@ -4,6 +4,12 @@ import android.os.Process
 import dev.jdtech.jellyfin.di.DownloadHttpClient
 import dev.jdtech.jellyfin.utils.NetworkConnectivity
 import dev.jdtech.jellyfin.utils.NetworkPriorityManager
+import java.io.File
+import java.io.IOException
+import java.io.RandomAccessFile
+import java.util.concurrent.ConcurrentHashMap
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -14,19 +20,13 @@ import kotlinx.coroutines.launch
 import okhttp3.Call
 import okhttp3.OkHttpClient
 import timber.log.Timber
-import java.io.File
-import java.io.IOException
-import java.io.RandomAccessFile
-import java.util.concurrent.ConcurrentHashMap
-import javax.inject.Inject
-import javax.inject.Singleton
 
 // Pure helpers (file-top-level so they are unit-testable) ----------------------
 
 /**
- * Decides whether a transfer should be paused given the current network state and the
- * user's metered/roaming allowances. Offline always pauses; metered/roaming pause when
- * the corresponding allowance flag is false.
+ * Decides whether a transfer should be paused given the current network state and the user's
+ * metered/roaming allowances. Offline always pauses; metered/roaming pause when the corresponding
+ * allowance flag is false.
  */
 internal fun shouldPauseTransfer(
     isOnline: Boolean,
@@ -34,12 +34,13 @@ internal fun shouldPauseTransfer(
     isRoaming: Boolean,
     allowMetered: Boolean,
     allowRoaming: Boolean,
-): Boolean = when {
-    !isOnline -> true
-    isMetered && !allowMetered -> true
-    isRoaming && !allowRoaming -> true
-    else -> false
-}
+): Boolean =
+    when {
+        !isOnline -> true
+        isMetered && !allowMetered -> true
+        isRoaming && !allowRoaming -> true
+        else -> false
+    }
 
 /** Plan returned by [resolveResumePlan] describing where to seek and what the total size is. */
 internal data class ResumePlan(
@@ -52,8 +53,8 @@ internal data class ResumePlan(
 /**
  * Maps an HTTP response code to a resume plan.
  *
- * - 206 Partial Content: resume at [existingLength]; total derived from Content-Range header or
- *   as existingLength+contentLength.
+ * - 206 Partial Content: resume at [existingLength]; total derived from Content-Range header or as
+ *   existingLength+contentLength.
  * - 200 OK: server ignored the Range header (e.g. transcode/DV case) - truncate and restart.
  * - 416 Range Not Satisfiable: file is already complete.
  * - Other codes: caller is expected to throw before calling; this is a defensive path.
@@ -63,21 +64,23 @@ internal fun resolveResumePlan(
     existingLength: Long,
     contentLength: Long,
     contentRangeTotal: Long,
-): ResumePlan = when (code) {
-    206 -> {
-        val total = if (contentRangeTotal > 0) {
-            contentRangeTotal
-        } else if (contentLength >= 0) {
-            existingLength + contentLength
-        } else {
-            -1L
+): ResumePlan =
+    when (code) {
+        206 -> {
+            val total =
+                if (contentRangeTotal > 0) {
+                    contentRangeTotal
+                } else if (contentLength >= 0) {
+                    existingLength + contentLength
+                } else {
+                    -1L
+                }
+            ResumePlan(startByte = existingLength, totalBytes = total, complete = false)
         }
-        ResumePlan(startByte = existingLength, totalBytes = total, complete = false)
+        200 -> ResumePlan(startByte = 0L, totalBytes = contentLength, complete = false)
+        416 -> ResumePlan(startByte = existingLength, totalBytes = existingLength, complete = true)
+        else -> ResumePlan(startByte = 0L, totalBytes = contentLength, complete = false)
     }
-    200 -> ResumePlan(startByte = 0L, totalBytes = contentLength, complete = false)
-    416 -> ResumePlan(startByte = existingLength, totalBytes = existingLength, complete = true)
-    else -> ResumePlan(startByte = 0L, totalBytes = contentLength, complete = false)
-}
 
 /**
  * Parses the numeric total from a Content-Range response header.
@@ -103,15 +106,18 @@ private class PausedMidTransfer : Exception()
 // Engine ------------------------------------------------------------------------
 
 /**
- * Singleton OkHttp-backed download engine. Manages a registry of in-flight (and terminal)
- * download tasks keyed by Long id. Each task runs in the engine's own [CoroutineScope].
+ * Singleton OkHttp-backed download engine. Manages a registry of in-flight (and terminal) download
+ * tasks keyed by Long id. Each task runs in the engine's own [CoroutineScope].
  *
  * Thread-safety: the registry is a [ConcurrentHashMap]. Individual task state fields are
+ *
  * @Volatile and written only by the task's own coroutine. Reads from outside are
- * eventually-consistent snapshots, acceptable for progress polling.
+ *   eventually-consistent snapshots, acceptable for progress polling.
  */
 @Singleton
-class MediaDownloadEngine @Inject constructor(
+class MediaDownloadEngine
+@Inject
+constructor(
     @DownloadHttpClient private val client: OkHttpClient,
     private val connectivity: NetworkConnectivity,
     private val priorityManager: NetworkPriorityManager,
@@ -142,10 +148,10 @@ class MediaDownloadEngine @Inject constructor(
         var job: Job? = null
 
         /**
-         * The in-flight OkHttp call. Held so [cancel] can interrupt the blocking
-         * `source.read()` immediately — `job.cancel()` alone cannot, since the transfer
-         * loop has no suspension points while reading. Without this a cancelled download
-         * keeps writing for up to the read timeout, racing the file delete in deleteItem.
+         * The in-flight OkHttp call. Held so [cancel] can interrupt the blocking `source.read()`
+         * immediately — `job.cancel()` alone cannot, since the transfer loop has no suspension
+         * points while reading. Without this a cancelled download keeps writing for up to the read
+         * timeout, racing the file delete in deleteItem.
          */
         @Volatile var call: Call? = null
     }
@@ -157,18 +163,19 @@ class MediaDownloadEngine @Inject constructor(
     /**
      * Start or resume the transfer for [request.id].
      *
-     * Idempotent while the task is ACTIVE (PENDING / RUNNING / PAUSED). If the existing
-     * task is TERMINAL (SUCCESSFUL / FAILED) or absent, (re)starts, picking up from the
-     * partial file on disk.
+     * Idempotent while the task is ACTIVE (PENDING / RUNNING / PAUSED). If the existing task is
+     * TERMINAL (SUCCESSFUL / FAILED) or absent, (re)starts, picking up from the partial file on
+     * disk.
      */
     @Synchronized
     fun start(request: Request) {
         val existing = registry[request.id]
         if (existing != null) {
             val status = existing.status
-            if (status == DownloadStatus.PENDING ||
-                status == DownloadStatus.RUNNING ||
-                status == DownloadStatus.PAUSED
+            if (
+                status == DownloadStatus.PENDING ||
+                    status == DownloadStatus.RUNNING ||
+                    status == DownloadStatus.PAUSED
             ) {
                 // If previously user-paused, unpause
                 if (existing.isUserPaused) {
@@ -183,14 +190,10 @@ class MediaDownloadEngine @Inject constructor(
 
         val state = TaskState(request)
         registry[request.id] = state
-        state.job = scope.launch {
-            runTask(state)
-        }
+        state.job = scope.launch { runTask(state) }
     }
 
-    /**
-     * Explicitly pause the in-flight transfer for [id].
-     */
+    /** Explicitly pause the in-flight transfer for [id]. */
     @Synchronized
     fun pause(id: Long) {
         val state = registry[id] ?: return
@@ -199,29 +202,25 @@ class MediaDownloadEngine @Inject constructor(
         state.call?.cancel()
     }
 
-    /**
-     * Resume a previously user-paused download for [id].
-     */
+    /** Resume a previously user-paused download for [id]. */
     @Synchronized
     fun resume(id: Long) {
         val state = registry[id] ?: return
         state.isUserPaused = false
         state.status = DownloadStatus.PENDING
         if (state.job?.isActive != true) {
-            state.job = scope.launch {
-                runTask(state)
-            }
+            state.job = scope.launch { runTask(state) }
         }
     }
 
     /**
-     * Abort the in-flight transfer for [id] and remove it from the registry.
-     * Does NOT delete the partial file on disk. Safe to call on an unknown or terminal id.
+     * Abort the in-flight transfer for [id] and remove it from the registry. Does NOT delete the
+     * partial file on disk. Safe to call on an unknown or terminal id.
      *
-     * `@Synchronized` (same monitor as [start] and the call-publish block in [httpTransfer])
-     * so a cancel cannot interleave with task construction: it always observes a fully
-     * assigned `job`, and either sees the published `call` (and cancels it) or removes the
-     * task before [httpTransfer] publishes the call (which then bails before `execute()`).
+     * `@Synchronized` (same monitor as [start] and the call-publish block in [httpTransfer]) so a
+     * cancel cannot interleave with task construction: it always observes a fully assigned `job`,
+     * and either sees the published `call` (and cancels it) or removes the task before
+     * [httpTransfer] publishes the call (which then bails before `execute()`).
      */
     @Synchronized
     fun cancel(id: Long) {
@@ -243,18 +242,16 @@ class MediaDownloadEngine @Inject constructor(
 
     /** Returns snapshots for all [ids] that the engine has records for. Missing ids are absent. */
     fun snapshots(ids: List<Long>): Map<Long, Snapshot> {
-        return ids.mapNotNull { id ->
-            snapshot(id)?.let { id to it }
-        }.toMap()
+        return ids.mapNotNull { id -> snapshot(id)?.let { id to it } }.toMap()
     }
 
     /** Returns the ids of all tasks currently in the registry (active and terminal). */
     fun liveTaskIds(): Set<Long> = registry.keys.toSet()
 
     /**
-     * Returns the absolute paths of all destination files for tasks currently in the
-     * registry. Used as a race-guard in orphan sweeps: any path in this set must not
-     * be deleted even if it is not in the DB yet.
+     * Returns the absolute paths of all destination files for tasks currently in the registry. Used
+     * as a race-guard in orphan sweeps: any path in this set must not be deleted even if it is not
+     * in the DB yet.
      */
     fun liveTaskPaths(): Set<String> =
         registry.values.map { it.request.destFile.absolutePath }.toSet()
@@ -303,7 +300,8 @@ class MediaDownloadEngine @Inject constructor(
                 }
                 throw e
             } catch (e: PausedMidTransfer) {
-                // Network became metered/roaming mid-transfer or paused by user; loop back to top to re-evaluate.
+                // Network became metered/roaming mid-transfer or paused by user; loop back to top
+                // to re-evaluate.
                 continue
             } catch (e: IOException) {
                 if (state.isUserPaused) {
@@ -319,7 +317,9 @@ class MediaDownloadEngine @Inject constructor(
                 // network returns, then resume from the partial via Range, instead of dying
                 // and falling to the queue's slow 30s/2m/10m backoff retry.
                 if (pausedForNetwork(req)) {
-                    Timber.i("Download id=${req.id} interrupted by connectivity loss; pausing to resume")
+                    Timber.i(
+                        "Download id=${req.id} interrupted by connectivity loss; pausing to resume"
+                    )
                     continue
                 }
                 // The socket error can race ahead of ConnectivityManager updating its state,
@@ -348,23 +348,24 @@ class MediaDownloadEngine @Inject constructor(
     }
 
     /**
-     * Executes the actual HTTP byte transfer for [state]. Throws [PausedMidTransfer] if the
-     * network becomes restricted mid-stream (caller loops back). Throws [IOException] on HTTP
-     * error or I/O failure. On exception the partial file is left on disk for future resume.
+     * Executes the actual HTTP byte transfer for [state]. Throws [PausedMidTransfer] if the network
+     * becomes restricted mid-stream (caller loops back). Throws [IOException] on HTTP error or I/O
+     * failure. On exception the partial file is left on disk for future resume.
      */
     @Throws(IOException::class, PausedMidTransfer::class)
     private suspend fun httpTransfer(state: TaskState) {
         val req = state.request
         val existingLen = if (req.destFile.exists()) req.destFile.length() else 0L
 
-        val httpRequest = okhttp3.Request.Builder()
-            .url(req.url)
-            .apply {
-                if (existingLen > 0L) {
-                    header("Range", "bytes=$existingLen-")
+        val httpRequest =
+            okhttp3.Request.Builder()
+                .url(req.url)
+                .apply {
+                    if (existingLen > 0L) {
+                        header("Range", "bytes=$existingLen-")
+                    }
                 }
-            }
-            .build()
+                .build()
 
         val call = client.newCall(httpRequest)
         // Publish the call atomically against cancel() (same monitor). If cancel() already
@@ -385,7 +386,9 @@ class MediaDownloadEngine @Inject constructor(
             val contentLength = body.contentLength()
 
             when (code) {
-                200, 206, 416 -> Unit // handled below
+                200,
+                206,
+                416 -> Unit // handled below
                 else -> throw IOException("HTTP $code for download id=${req.id}")
             }
 
@@ -403,9 +406,12 @@ class MediaDownloadEngine @Inject constructor(
                 RandomAccessFile(req.destFile, "rw").use { it.setLength(0L) }
             }
 
-            state.totalBytes = if (plan.totalBytes > 0L) plan.totalBytes else req.estimatedTotalBytes
+            state.totalBytes =
+                if (plan.totalBytes > 0L) plan.totalBytes else req.estimatedTotalBytes
 
-            Timber.i("Starting HTTP transfer for id=${req.id}: startByte=${plan.startByte}, totalBytes=${state.totalBytes}, url=${req.url.take(80)}...")
+            Timber.i(
+                "Starting HTTP transfer for id=${req.id}: startByte=${plan.startByte}, totalBytes=${state.totalBytes}, url=${req.url.take(80)}..."
+            )
 
             val source = body.source()
             val raf = RandomAccessFile(req.destFile, "rw")
@@ -440,7 +446,9 @@ class MediaDownloadEngine @Inject constructor(
                         }
                     }
                 }
-                Timber.i("HTTP transfer finished successfully for id=${req.id}, bytes=${state.bytesDownloaded}")
+                Timber.i(
+                    "HTTP transfer finished successfully for id=${req.id}, bytes=${state.bytesDownloaded}"
+                )
                 // EOF reached -- success; caller sets SUCCESSFUL.
             } finally {
                 raf.close()

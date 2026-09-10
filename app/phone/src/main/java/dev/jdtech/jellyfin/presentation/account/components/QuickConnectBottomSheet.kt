@@ -48,13 +48,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
-import dev.jdtech.jellyfin.core.R as CoreR
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -64,24 +64,24 @@ fun QuickConnectBottomSheet(
     onClearError: () -> Unit = {},
     isLoading: Boolean = false,
     error: String? = null,
-    isSuccess: Boolean = false
+    isSuccess: Boolean = false,
 ) {
     var code by remember { mutableStateOf("") }
 
     ModalBottomSheet(
         onDismissRequest = onDismissRequest,
-        dragHandle = {}
+        dragHandle = {},
     ) {
         QuickConnectCodeInput(
             code = code,
-            onCodeChange = { 
-                code = it 
+            onCodeChange = {
+                code = it
                 onClearError()
             },
             onSubmit = { onSubmit(code) },
             isLoading = isLoading,
             error = error,
-            isSuccess = isSuccess
+            isSuccess = isSuccess,
         )
     }
 }
@@ -94,7 +94,7 @@ fun QuickConnectCodeInput(
     onSubmit: () -> Unit,
     isLoading: Boolean = false,
     error: String? = null,
-    isSuccess: Boolean = false
+    isSuccess: Boolean = false,
 ) {
     val isComplete = code.length == 6
     val isError = error != null
@@ -138,22 +138,20 @@ fun QuickConnectCodeInput(
     }
 
     Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(all = MaterialTheme.spacings.default)
-            .imePadding(),
-        horizontalAlignment = Alignment.CenterHorizontally
+        modifier =
+            modifier.fillMaxWidth().padding(all = MaterialTheme.spacings.default).imePadding(),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
             text = stringResource(CoreR.string.quick_connect),
-            style = MaterialTheme.typography.headlineSmall
+            style = MaterialTheme.typography.headlineSmall,
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = stringResource(CoreR.string.quick_connect_description),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
+            textAlign = TextAlign.Center,
         )
         Spacer(modifier = Modifier.height(24.dp))
 
@@ -164,68 +162,74 @@ fun QuickConnectCodeInput(
                     onCodeChange(newValue)
                 }
             },
-            keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Number,
-                imeAction = ImeAction.Done
-            ),
-            keyboardActions = KeyboardActions(
-                onDone = { onSubmit() }
-            ),
-            modifier = Modifier
-                .focusRequester(focusRequester)
-                .offset { IntOffset(shake.value.roundToInt(), 0) },
+            keyboardOptions =
+                KeyboardOptions(
+                    keyboardType = KeyboardType.Number,
+                    imeAction = ImeAction.Done,
+                ),
+            keyboardActions = KeyboardActions(onDone = { onSubmit() }),
+            modifier =
+                Modifier.focusRequester(focusRequester).offset {
+                    IntOffset(shake.value.roundToInt(), 0)
+                },
             decorationBox = {
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
-                    verticalAlignment = Alignment.CenterVertically
+                    horizontalArrangement =
+                        Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     repeat(6) { index ->
                         val char = code.getOrNull(index)
                         val isFocused = index == code.length
-                        
-                        val targetBackgroundColor = when {
-                            isSuccess -> Color(0xFF4CAF50).copy(alpha = 0.2f)
-                            isError -> MaterialTheme.colorScheme.errorContainer
-                            else -> MaterialTheme.colorScheme.surfaceVariant
-                        }
-                        val backgroundColor by animateColorAsState(targetBackgroundColor, label = "BoxBackground")
-                        
-                        val targetTextColor = when {
-                            isSuccess && char != null -> Color(0xFF4CAF50)
-                            isError && char != null -> MaterialTheme.colorScheme.error
-                            char != null -> MaterialTheme.colorScheme.onSurface
-                            else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
-                        }
+
+                        val targetBackgroundColor =
+                            when {
+                                isSuccess -> Color(0xFF4CAF50).copy(alpha = 0.2f)
+                                isError -> MaterialTheme.colorScheme.errorContainer
+                                else -> MaterialTheme.colorScheme.surfaceVariant
+                            }
+                        val backgroundColor by
+                            animateColorAsState(targetBackgroundColor, label = "BoxBackground")
+
+                        val targetTextColor =
+                            when {
+                                isSuccess && char != null -> Color(0xFF4CAF50)
+                                isError && char != null -> MaterialTheme.colorScheme.error
+                                char != null -> MaterialTheme.colorScheme.onSurface
+                                else ->
+                                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                            }
                         val textColor by animateColorAsState(targetTextColor, label = "BoxText")
 
                         Box(
-                            modifier = Modifier
-                                .size(width = 40.dp, height = 56.dp)
-                                .graphicsLayer {
-                                    translationY = waveOffsets[index].value.dp.toPx()
-                                    scaleX = waveScales[index].value
-                                    scaleY = waveScales[index].value
-                                }
-                                .background(backgroundColor, MaterialTheme.shapes.small)
-                                .border(
-                                    width = 2.dp,
-                                    color = when {
-                                        isFocused -> MaterialTheme.colorScheme.primary
-                                        else -> Color.Transparent
-                                    },
-                                    shape = MaterialTheme.shapes.small
-                                ),
-                            contentAlignment = Alignment.Center
+                            modifier =
+                                Modifier.size(width = 40.dp, height = 56.dp)
+                                    .graphicsLayer {
+                                        translationY = waveOffsets[index].value.dp.toPx()
+                                        scaleX = waveScales[index].value
+                                        scaleY = waveScales[index].value
+                                    }
+                                    .background(backgroundColor, MaterialTheme.shapes.small)
+                                    .border(
+                                        width = 2.dp,
+                                        color =
+                                            when {
+                                                isFocused -> MaterialTheme.colorScheme.primary
+                                                else -> Color.Transparent
+                                            },
+                                        shape = MaterialTheme.shapes.small,
+                                    ),
+                            contentAlignment = Alignment.Center,
                         ) {
                             Text(
                                 text = char?.toString() ?: "-",
                                 style = MaterialTheme.typography.headlineMedium,
-                                color = textColor
+                                color = textColor,
                             )
                         }
                     }
                 }
-            }
+            },
         )
 
         Spacer(modifier = Modifier.height(32.dp))
@@ -234,10 +238,7 @@ fun QuickConnectCodeInput(
             if (isLoading) {
                 CircularProgressIndicator(
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
-                    modifier = Modifier
-                        .size(24.dp)
-                        .align(Alignment.CenterStart)
-                        .offset(x = 16.dp),
+                    modifier = Modifier.size(24.dp).align(Alignment.CenterStart).offset(x = 16.dp),
                 )
             }
             Button(
@@ -247,10 +248,12 @@ fun QuickConnectCodeInput(
                 },
                 enabled = isComplete && !isLoading && !isSuccess,
                 modifier = Modifier.fillMaxWidth(),
-                shape = MaterialTheme.shapes.extraLarge
+                shape = MaterialTheme.shapes.extraLarge,
             ) {
                 Text(
-                    text = if (isSuccess) stringResource(CoreR.string.authenticated) else stringResource(CoreR.string.authenticate)
+                    text =
+                        if (isSuccess) stringResource(CoreR.string.authenticated)
+                        else stringResource(CoreR.string.authenticate)
                 )
             }
         }
@@ -265,7 +268,7 @@ fun QuickConnectBottomSheetPreview() {
             QuickConnectCodeInput(
                 code = "",
                 onCodeChange = {},
-                onSubmit = {}
+                onSubmit = {},
             )
         }
     }
@@ -279,7 +282,7 @@ fun QuickConnectBottomSheetFullPreview() {
             QuickConnectCodeInput(
                 code = "123456",
                 onCodeChange = {},
-                onSubmit = {}
+                onSubmit = {},
             )
         }
     }
@@ -294,7 +297,7 @@ fun QuickConnectBottomSheetLoadingPreview() {
                 code = "123456",
                 onCodeChange = {},
                 onSubmit = {},
-                isLoading = true
+                isLoading = true,
             )
         }
     }
@@ -309,7 +312,7 @@ fun QuickConnectBottomSheetErrorPreview() {
                 code = "123456",
                 onCodeChange = {},
                 onSubmit = {},
-                error = "error"
+                error = "error",
             )
         }
     }
@@ -324,7 +327,7 @@ fun QuickConnectBottomSheetSuccessPreview() {
                 code = "123456",
                 onCodeChange = {},
                 onSubmit = {},
-                isSuccess = true
+                isSuccess = true,
             )
         }
     }

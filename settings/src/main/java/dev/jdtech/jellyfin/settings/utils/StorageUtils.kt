@@ -38,7 +38,8 @@ object StorageUtils {
             if (isPrimary) {
                 try {
                     val storageStatsManager =
-                        context.getSystemService(Context.STORAGE_STATS_SERVICE) as? StorageStatsManager
+                        context.getSystemService(Context.STORAGE_STATS_SERVICE)
+                            as? StorageStatsManager
                     storageStatsManager?.getTotalBytes(StorageManager.UUID_DEFAULT) ?: 0L
                 } catch (_: Exception) {
                     0L
@@ -71,7 +72,9 @@ object StorageUtils {
         val storageManager = context.getSystemService(Context.STORAGE_SERVICE) as? StorageManager
 
         return dirs.mapIndexedNotNull { index, dir ->
-            if (dir != null && Environment.getExternalStorageState(dir) == Environment.MEDIA_MOUNTED) {
+            if (
+                dir != null && Environment.getExternalStorageState(dir) == Environment.MEDIA_MOUNTED
+            ) {
                 val volume =
                     try {
                         storageManager?.getStorageVolume(dir)
@@ -132,7 +135,8 @@ object StorageUtils {
     fun formatDecimalFileSize(bytes: Long): String {
         if (bytes <= 0) return "0 B"
         val units = arrayOf("B", "kB", "MB", "GB", "TB")
-        val digitGroups = (log10(bytes.toDouble()) / log10(1000.0)).toInt().coerceIn(0, units.lastIndex)
+        val digitGroups =
+            (log10(bytes.toDouble()) / log10(1000.0)).toInt().coerceIn(0, units.lastIndex)
         if (digitGroups == 0) return "$bytes B"
         val value = bytes / 1000.0.pow(digitGroups.toDouble())
         return if (value >= 100 || value % 1.0 == 0.0) {

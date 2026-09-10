@@ -11,16 +11,12 @@ android {
 
     defaultConfig {
         minSdk = Versions.MIN_SDK
+        missingDimensionStrategy("variant", "proprietary", "libre")
 
         buildConfigField("int", "VERSION_CODE", Versions.APP_CODE.toString())
         buildConfigField("String", "VERSION_NAME", "\"${Versions.APP_NAME}\"")
 
         consumerProguardFile("proguard-rules.pro")
-
-        ksp {
-            arg("room.schemaLocation", "$projectDir/schemas")
-            arg("room.generateKotlin", "true")
-        }
     }
 
     buildTypes {
@@ -34,6 +30,11 @@ android {
     }
 
     buildFeatures { buildConfig = true }
+}
+
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+    arg("room.generateKotlin", "true")
 }
 
 dependencies {

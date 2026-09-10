@@ -1,8 +1,5 @@
 package dev.jdtech.jellyfin.presentation.film.components
 
-import dev.jdtech.jellyfin.presentation.download.components.DownloadedBadge
-import dev.jdtech.jellyfin.presentation.download.components.DownloadingBadge
-
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -31,6 +28,8 @@ import androidx.compose.ui.unit.dp
 import dev.jdtech.jellyfin.core.presentation.dummy.dummyEpisode
 import dev.jdtech.jellyfin.models.FindroidEpisode
 import dev.jdtech.jellyfin.models.isDownloaded
+import dev.jdtech.jellyfin.presentation.download.components.DownloadedBadge
+import dev.jdtech.jellyfin.presentation.download.components.DownloadingBadge
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
 

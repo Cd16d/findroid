@@ -29,31 +29,30 @@ import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 fun AccountMenuProfileSection(
     userName: String,
     userImageUrl: Any?,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Column(
         modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(contentAlignment = Alignment.BottomEnd) {
             Surface(
                 shape = CircleShape,
                 color = MaterialTheme.colorScheme.surface,
-                modifier = Modifier.size(96.dp)
+                modifier = Modifier.size(96.dp),
             ) {
                 if (userImageUrl == null) {
                     Icon(
                         ImageVector.vectorResource(CoreR.drawable.ic_user),
                         contentDescription = null,
-                        modifier = Modifier
-                            .padding(24.dp),
-                        tint = MaterialTheme.colorScheme.onSurface
+                        modifier = Modifier.padding(24.dp),
+                        tint = MaterialTheme.colorScheme.onSurface,
                     )
                 }
                 AsyncImage(
                     model = userImageUrl,
                     contentDescription = null,
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize(),
                 )
             }
         }
@@ -64,7 +63,7 @@ fun AccountMenuProfileSection(
         Text(
             text = stringResource(CoreR.string.hi_user, userName),
             style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Medium
+            fontWeight = FontWeight.Medium,
         )
     }
 }
@@ -77,7 +76,7 @@ fun AccountMenuProfileSectionPreview() {
             AccountMenuProfileSection(
                 userName = "Joe",
                 userImageUrl = null,
-                modifier = Modifier.padding(16.dp)
+                modifier = Modifier.padding(16.dp),
             )
         }
     }

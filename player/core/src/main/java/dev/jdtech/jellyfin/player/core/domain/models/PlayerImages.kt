@@ -7,15 +7,15 @@ import kotlinx.parcelize.Parcelize
 @Parcelize
 data class PlayerImage(
     val uri: Uri?,
-    val blurHash: String?
+    val blurHash: String?,
 ) : Parcelable
 
 @Parcelize
-data class PlayerImages (
+data class PlayerImages(
     val primary: PlayerImage? = null,
     val backdrop: PlayerImage? = null,
     val logo: PlayerImage? = null,
     val showPrimary: PlayerImage? = null,
     val showBackdrop: PlayerImage? = null,
-    val showLogo: PlayerImage? = null
+    val showLogo: PlayerImage? = null,
 ) : Parcelable

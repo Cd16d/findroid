@@ -19,76 +19,87 @@ data class FindroidImages(
 
 fun BaseItemDto.toFindroidImages(jellyfinRepository: JellyfinRepository): FindroidImages {
     val baseUrl = Uri.parse(jellyfinRepository.getBaseUrl())
-    val primary = imageTags?.get(ImageType.PRIMARY)?.let { tag ->
-        FindroidImage(
-            uri = baseUrl
-                .buildUpon()
-                .appendEncodedPath("items/$id/Images/${ImageType.PRIMARY}")
-                .appendQueryParameter("tag", tag)
-                .build(),
-            blurHash = imageBlurHashes?.get(ImageType.PRIMARY)?.let {
-                it[tag] ?: it.values.firstOrNull()
-            },
-        )
-    }
-    val backdrop = (backdropImageTags?.firstOrNull() ?: imageTags?.get(ImageType.BACKDROP))?.let { tag ->
-        FindroidImage(
-            uri = baseUrl
-                .buildUpon()
-                .appendEncodedPath("items/$id/Images/${ImageType.BACKDROP}/0")
-                .appendQueryParameter("tag", tag)
-                .build(),
-            blurHash = imageBlurHashes?.get(ImageType.BACKDROP)?.let {
-                it[tag] ?: it.values.firstOrNull()
-            },
-        )
-    }
-    val logo = imageTags?.get(ImageType.LOGO)?.let { tag ->
-        FindroidImage(
-            uri = baseUrl
-                .buildUpon()
-                .appendEncodedPath("items/$id/Images/${ImageType.LOGO}")
-                .appendQueryParameter("tag", tag)
-                .build(),
-            blurHash = imageBlurHashes?.get(ImageType.LOGO)?.let {
-                it[tag] ?: it.values.firstOrNull()
-            },
-        )
-    }
+    val primary =
+        imageTags?.get(ImageType.PRIMARY)?.let { tag ->
+            FindroidImage(
+                uri =
+                    baseUrl
+                        .buildUpon()
+                        .appendEncodedPath("items/$id/Images/${ImageType.PRIMARY}")
+                        .appendQueryParameter("tag", tag)
+                        .build(),
+                blurHash =
+                    imageBlurHashes?.get(ImageType.PRIMARY)?.let {
+                        it[tag] ?: it.values.firstOrNull()
+                    },
+            )
+        }
+    val backdrop =
+        (backdropImageTags?.firstOrNull() ?: imageTags?.get(ImageType.BACKDROP))?.let { tag ->
+            FindroidImage(
+                uri =
+                    baseUrl
+                        .buildUpon()
+                        .appendEncodedPath("items/$id/Images/${ImageType.BACKDROP}/0")
+                        .appendQueryParameter("tag", tag)
+                        .build(),
+                blurHash =
+                    imageBlurHashes?.get(ImageType.BACKDROP)?.let {
+                        it[tag] ?: it.values.firstOrNull()
+                    },
+            )
+        }
+    val logo =
+        imageTags?.get(ImageType.LOGO)?.let { tag ->
+            FindroidImage(
+                uri =
+                    baseUrl
+                        .buildUpon()
+                        .appendEncodedPath("items/$id/Images/${ImageType.LOGO}")
+                        .appendQueryParameter("tag", tag)
+                        .build(),
+                blurHash =
+                    imageBlurHashes?.get(ImageType.LOGO)?.let {
+                        it[tag] ?: it.values.firstOrNull()
+                    },
+            )
+        }
     val showPrimary = seriesPrimaryImageTag?.let { tag ->
         FindroidImage(
-            uri = baseUrl
-                .buildUpon()
-                .appendEncodedPath("items/$seriesId/Images/${ImageType.PRIMARY}")
-                .appendQueryParameter("tag", tag)
-                .build(),
-            blurHash = imageBlurHashes?.get(ImageType.PRIMARY)?.let {
-                it[tag] ?: it.values.firstOrNull()
-            },
+            uri =
+                baseUrl
+                    .buildUpon()
+                    .appendEncodedPath("items/$seriesId/Images/${ImageType.PRIMARY}")
+                    .appendQueryParameter("tag", tag)
+                    .build(),
+            blurHash =
+                imageBlurHashes?.get(ImageType.PRIMARY)?.let { it[tag] ?: it.values.firstOrNull() },
         )
     }
     val showBackdrop = seriesPrimaryImageTag?.let { tag ->
         FindroidImage(
-            uri = baseUrl
-                .buildUpon()
-                .appendEncodedPath("items/$seriesId/Images/${ImageType.BACKDROP}/0")
-                .appendQueryParameter("tag", tag)
-                .build(),
-            blurHash = imageBlurHashes?.get(ImageType.BACKDROP)?.let {
-                it[tag] ?: it.values.firstOrNull()
-            },
+            uri =
+                baseUrl
+                    .buildUpon()
+                    .appendEncodedPath("items/$seriesId/Images/${ImageType.BACKDROP}/0")
+                    .appendQueryParameter("tag", tag)
+                    .build(),
+            blurHash =
+                imageBlurHashes?.get(ImageType.BACKDROP)?.let {
+                    it[tag] ?: it.values.firstOrNull()
+                },
         )
     }
     val showLogo = seriesPrimaryImageTag?.let { tag ->
         FindroidImage(
-            uri = baseUrl
-                .buildUpon()
-                .appendEncodedPath("items/$seriesId/Images/${ImageType.LOGO}")
-                .appendQueryParameter("tag", tag)
-                .build(),
-            blurHash = imageBlurHashes?.get(ImageType.LOGO)?.let {
-                it[tag] ?: it.values.firstOrNull()
-            },
+            uri =
+                baseUrl
+                    .buildUpon()
+                    .appendEncodedPath("items/$seriesId/Images/${ImageType.LOGO}")
+                    .appendQueryParameter("tag", tag)
+                    .build(),
+            blurHash =
+                imageBlurHashes?.get(ImageType.LOGO)?.let { it[tag] ?: it.values.firstOrNull() },
         )
     }
 
@@ -104,141 +115,161 @@ fun BaseItemDto.toFindroidImages(jellyfinRepository: JellyfinRepository): Findro
 
 fun FindroidMovieDto.toLocalFindroidImages(itemId: UUID): FindroidImages {
     return FindroidImages(
-        primary = primaryBlurHash?.let {
-            FindroidImage(
-                uri = Uri.Builder().appendEncodedPath("images/$itemId/primary").build(),
-                blurHash = it,
-            )
-        },
-        backdrop = backdropBlurHash?.let {
-            FindroidImage(
-                uri = Uri.Builder().appendEncodedPath("images/$itemId/backdrop").build(),
-                blurHash = it,
-            )
-        },
-        logo = logoBlurHash?.let {
-            FindroidImage(
-                uri = Uri.Builder().appendEncodedPath("images/$itemId/logo").build(),
-                blurHash = it,
-            )
-        },
+        primary =
+            primaryBlurHash?.let {
+                FindroidImage(
+                    uri = Uri.Builder().appendEncodedPath("images/$itemId/primary").build(),
+                    blurHash = it,
+                )
+            },
+        backdrop =
+            backdropBlurHash?.let {
+                FindroidImage(
+                    uri = Uri.Builder().appendEncodedPath("images/$itemId/backdrop").build(),
+                    blurHash = it,
+                )
+            },
+        logo =
+            logoBlurHash?.let {
+                FindroidImage(
+                    uri = Uri.Builder().appendEncodedPath("images/$itemId/logo").build(),
+                    blurHash = it,
+                )
+            },
     )
 }
 
 fun FindroidShowDto.toLocalFindroidImages(itemId: UUID): FindroidImages {
     return FindroidImages(
-        primary = primaryBlurHash?.let {
-            FindroidImage(
-                uri = Uri.Builder().appendEncodedPath("images/$itemId/primary").build(),
-                blurHash = it,
-            )
-        },
-        backdrop = backdropBlurHash?.let {
-            FindroidImage(
-                uri = Uri.Builder().appendEncodedPath("images/$itemId/backdrop").build(),
-                blurHash = it,
-            )
-        },
-        logo = logoBlurHash?.let {
-            FindroidImage(
-                uri = Uri.Builder().appendEncodedPath("images/$itemId/logo").build(),
-                blurHash = it,
-            )
-        },
+        primary =
+            primaryBlurHash?.let {
+                FindroidImage(
+                    uri = Uri.Builder().appendEncodedPath("images/$itemId/primary").build(),
+                    blurHash = it,
+                )
+            },
+        backdrop =
+            backdropBlurHash?.let {
+                FindroidImage(
+                    uri = Uri.Builder().appendEncodedPath("images/$itemId/backdrop").build(),
+                    blurHash = it,
+                )
+            },
+        logo =
+            logoBlurHash?.let {
+                FindroidImage(
+                    uri = Uri.Builder().appendEncodedPath("images/$itemId/logo").build(),
+                    blurHash = it,
+                )
+            },
     )
 }
 
 fun FindroidSeasonDto.toLocalFindroidImages(itemId: UUID): FindroidImages {
     return FindroidImages(
-        primary = primaryBlurHash?.let {
-            FindroidImage(
-                uri = Uri.Builder().appendEncodedPath("images/$itemId/primary").build(),
-                blurHash = it,
-            )
-        },
-        backdrop = backdropBlurHash?.let {
-            FindroidImage(
-                uri = Uri.Builder().appendEncodedPath("images/$itemId/backdrop").build(),
-                blurHash = it,
-            )
-        },
-        logo = logoBlurHash?.let {
-            FindroidImage(
-                uri = Uri.Builder().appendEncodedPath("images/$itemId/logo").build(),
-                blurHash = it,
-            )
-        },
-        showPrimary = showPrimaryBlurHash?.let {
-            FindroidImage(
-                uri = Uri.Builder().appendEncodedPath("images/$seriesId/primary").build(),
-                blurHash = it,
-            )
-        },
-        showBackdrop = showBackdropBlurHash?.let {
-            FindroidImage(
-                uri = Uri.Builder().appendEncodedPath("images/$seriesId/backdrop").build(),
-                blurHash = it,
-            )
-        },
-        showLogo = showLogoBlurHash?.let {
-            FindroidImage(
-                uri = Uri.Builder().appendEncodedPath("images/$seriesId/logo").build(),
-                blurHash = it,
-            )
-        },
+        primary =
+            primaryBlurHash?.let {
+                FindroidImage(
+                    uri = Uri.Builder().appendEncodedPath("images/$itemId/primary").build(),
+                    blurHash = it,
+                )
+            },
+        backdrop =
+            backdropBlurHash?.let {
+                FindroidImage(
+                    uri = Uri.Builder().appendEncodedPath("images/$itemId/backdrop").build(),
+                    blurHash = it,
+                )
+            },
+        logo =
+            logoBlurHash?.let {
+                FindroidImage(
+                    uri = Uri.Builder().appendEncodedPath("images/$itemId/logo").build(),
+                    blurHash = it,
+                )
+            },
+        showPrimary =
+            showPrimaryBlurHash?.let {
+                FindroidImage(
+                    uri = Uri.Builder().appendEncodedPath("images/$seriesId/primary").build(),
+                    blurHash = it,
+                )
+            },
+        showBackdrop =
+            showBackdropBlurHash?.let {
+                FindroidImage(
+                    uri = Uri.Builder().appendEncodedPath("images/$seriesId/backdrop").build(),
+                    blurHash = it,
+                )
+            },
+        showLogo =
+            showLogoBlurHash?.let {
+                FindroidImage(
+                    uri = Uri.Builder().appendEncodedPath("images/$seriesId/logo").build(),
+                    blurHash = it,
+                )
+            },
     )
 }
 
 fun FindroidEpisodeDto.toLocalFindroidImages(itemId: UUID): FindroidImages {
     return FindroidImages(
-        primary = primaryBlurHash?.let {
-            FindroidImage(
-                uri = Uri.Builder().appendEncodedPath("images/$itemId/primary").build(),
-                blurHash = it,
-            )
-        },
-        backdrop = backdropBlurHash?.let {
-            FindroidImage(
-                uri = Uri.Builder().appendEncodedPath("images/$itemId/backdrop").build(),
-                blurHash = it,
-            )
-        },
-        logo = logoBlurHash?.let {
-            FindroidImage(
-                uri = Uri.Builder().appendEncodedPath("images/$itemId/logo").build(),
-                blurHash = it,
-            )
-        },
-        showPrimary = showPrimaryBlurHash?.let {
-            FindroidImage(
-                uri = Uri.Builder().appendEncodedPath("images/$seriesId/primary").build(),
-                blurHash = it,
-            )
-        },
-        showBackdrop = showBackdropBlurHash?.let {
-            FindroidImage(
-                uri = Uri.Builder().appendEncodedPath("images/$seriesId/backdrop").build(),
-                blurHash = it,
-            )
-        },
-        showLogo = showLogoBlurHash?.let {
-            FindroidImage(
-                uri = Uri.Builder().appendEncodedPath("images/$seriesId/logo").build(),
-                blurHash = it,
-            )
-        },
+        primary =
+            primaryBlurHash?.let {
+                FindroidImage(
+                    uri = Uri.Builder().appendEncodedPath("images/$itemId/primary").build(),
+                    blurHash = it,
+                )
+            },
+        backdrop =
+            backdropBlurHash?.let {
+                FindroidImage(
+                    uri = Uri.Builder().appendEncodedPath("images/$itemId/backdrop").build(),
+                    blurHash = it,
+                )
+            },
+        logo =
+            logoBlurHash?.let {
+                FindroidImage(
+                    uri = Uri.Builder().appendEncodedPath("images/$itemId/logo").build(),
+                    blurHash = it,
+                )
+            },
+        showPrimary =
+            showPrimaryBlurHash?.let {
+                FindroidImage(
+                    uri = Uri.Builder().appendEncodedPath("images/$seriesId/primary").build(),
+                    blurHash = it,
+                )
+            },
+        showBackdrop =
+            showBackdropBlurHash?.let {
+                FindroidImage(
+                    uri = Uri.Builder().appendEncodedPath("images/$seriesId/backdrop").build(),
+                    blurHash = it,
+                )
+            },
+        showLogo =
+            showLogoBlurHash?.let {
+                FindroidImage(
+                    uri = Uri.Builder().appendEncodedPath("images/$seriesId/logo").build(),
+                    blurHash = it,
+                )
+            },
     )
 }
 
 fun FindroidPartDto.toLocalFindroidImages(itemId: UUID): FindroidImages {
     return FindroidImages(
-        primary = FindroidImage(
-            uri = Uri.Builder().appendEncodedPath("images/$itemId/primary").build(),
-            blurHash = null
-        ),
-        backdrop = FindroidImage(
-            uri = Uri.Builder().appendEncodedPath("images/$itemId/backdrop").build(),
-            blurHash = null
-        ),
+        primary =
+            FindroidImage(
+                uri = Uri.Builder().appendEncodedPath("images/$itemId/primary").build(),
+                blurHash = null,
+            ),
+        backdrop =
+            FindroidImage(
+                uri = Uri.Builder().appendEncodedPath("images/$itemId/backdrop").build(),
+                blurHash = null,
+            ),
     )
 }

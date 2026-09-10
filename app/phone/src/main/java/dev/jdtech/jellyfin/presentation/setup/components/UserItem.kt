@@ -63,12 +63,12 @@ fun UserItem(
                     painter = painterResource(CoreR.drawable.ic_user),
                     contentDescription = null,
                     modifier = Modifier.align(Alignment.Center).padding(8.dp),
-                    tint = MaterialTheme.colorScheme.onPrimary
+                    tint = MaterialTheme.colorScheme.onPrimary,
                 )
                 AsyncImage(
                     model = imageUrl,
                     contentDescription = null,
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize(),
                 )
             }
         }

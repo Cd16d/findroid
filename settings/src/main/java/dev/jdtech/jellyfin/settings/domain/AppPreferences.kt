@@ -8,11 +8,13 @@ import javax.inject.Inject
 import timber.log.Timber
 
 class AppPreferences @Inject constructor(val sharedPreferences: SharedPreferences) {
-    constructor(context: Context) : this(
+    constructor(
+        context: Context
+    ) : this(
         context.getSharedPreferences(
             context.packageName + "_preferences",
             Context.MODE_PRIVATE,
-        ),
+        )
     )
 
     // Server
@@ -34,6 +36,10 @@ class AppPreferences @Inject constructor(val sharedPreferences: SharedPreference
     // Player
     val playerBackend = Preference("pref_player_backend", "exoplayer")
     val playerBrightness = Preference("pref_player_brightness", -1.0f)
+
+    // Chromecast
+    val castEnabled = Preference("pref_cast_enabled", true)
+    val castMaxBitrateKbps = Preference("pref_cast_max_bitrate_kbps", 120_000)
 
     // Player - mpv
     val playerMpv = Preference("pref_player_mpv", false)
@@ -93,8 +99,10 @@ class AppPreferences @Inject constructor(val sharedPreferences: SharedPreference
     val downloadWhenRoaming = Preference("pref_downloads_roaming", false)
     val defaultDownloadStorageIndex = Preference("pref_downloads_default_storage_index", "0")
     val smartDownloadNextEpisode = Preference("pref_downloads_smart_download_next_episode", true)
-    val smartDownloadNextEpisodesCount = Preference<Int>("pref_downloads_smart_download_next_episodes_count", 3)
-    val smartDownloadStorageLimitGb = Preference<Int>("pref_downloads_smart_download_storage_limit_gb", 20)
+    val smartDownloadNextEpisodesCount =
+        Preference<Int>("pref_downloads_smart_download_next_episodes_count", 3)
+    val smartDownloadStorageLimitGb =
+        Preference<Int>("pref_downloads_smart_download_storage_limit_gb", 20)
     val autoDeleteWatched = Preference("pref_downloads_auto_delete_watched", false)
     val askPresetBeforeDownload = Preference("ask_preset_before_download", true)
     val userCanTranscode = Preference("pref_user_can_transcode", true)

@@ -16,4 +16,3 @@ object Constants {
     // downloads
     const val DOWNLOAD_POLL_INTERVAL_MS = 500L
 }
-

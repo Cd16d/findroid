@@ -33,9 +33,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewScreenSizes
 import androidx.compose.ui.unit.dp
 import androidx.window.core.layout.WindowSizeClass
+import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
-import dev.jdtech.jellyfin.core.R as CoreR
 
 @Composable
 fun PlaceholderScreen(
@@ -73,39 +73,31 @@ fun PlaceholderScreenContent(
 ) {
     val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
     val windowAdaptiveInfo = currentWindowAdaptiveInfo()
-    val isExpanded = windowAdaptiveInfo.windowSizeClass.isWidthAtLeastBreakpoint(
-        WindowSizeClass.WIDTH_DP_EXPANDED_LOWER_BOUND,
-    )
+    val isExpanded =
+        windowAdaptiveInfo.windowSizeClass.isWidthAtLeastBreakpoint(
+            WindowSizeClass.WIDTH_DP_EXPANDED_LOWER_BOUND
+        )
 
-    BoxWithConstraints(
-        modifier = modifier.fillMaxSize(),
-    ) {
+    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val useSideBySide = isLandscape && !isExpanded && maxWidth >= 600.dp && maxHeight >= 320.dp
         val showImage = maxHeight >= 480.dp
 
         if (image != null && useSideBySide) {
             Row(
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .padding(MaterialTheme.spacings.default),
+                modifier = Modifier.fillMaxSize().padding(MaterialTheme.spacings.default),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceEvenly,
             ) {
                 Image(
                     painter = painterResource(image),
                     contentDescription = null,
-                    modifier =
-                        Modifier
-                            .weight(1f)
-                            .fillMaxHeight(),
+                    modifier = Modifier.weight(1f).fillMaxHeight(),
                     contentScale = ContentScale.Fit,
                     alignment = Alignment.Center,
                 )
                 Column(
                     modifier =
-                        Modifier
-                            .weight(1f)
+                        Modifier.weight(1f)
                             .fillMaxHeight()
                             .verticalScroll(rememberScrollState())
                             .padding(horizontal = MaterialTheme.spacings.default),
@@ -123,28 +115,22 @@ fun PlaceholderScreenContent(
                         Spacer(modifier = Modifier.height(MaterialTheme.spacings.medium))
                         Text(
                             text = subtitle,
-                            modifier = Modifier.padding(horizontal = MaterialTheme.spacings.default),
+                            modifier =
+                                Modifier.padding(horizontal = MaterialTheme.spacings.default),
                             style = MaterialTheme.typography.titleMedium,
                             textAlign = TextAlign.Center,
                         )
                     }
                     if (buttonText != null && onButtonClick != null) {
                         Spacer(modifier = Modifier.height(MaterialTheme.spacings.default))
-                        Button(
-                            onClick = onButtonClick,
-                        ) {
-                            Text(
-                                text = buttonText,
-                            )
-                        }
+                        Button(onClick = onButtonClick) { Text(text = buttonText) }
                     }
                 }
             }
         } else if (image != null && showImage) {
             Column(
                 modifier =
-                    Modifier
-                        .fillMaxSize()
+                    Modifier.fillMaxSize()
                         .padding(
                             vertical = MaterialTheme.spacings.extraLarge,
                             horizontal = MaterialTheme.spacings.default,
@@ -172,29 +158,19 @@ fun PlaceholderScreenContent(
                 Image(
                     painter = painterResource(image),
                     contentDescription = null,
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .weight(1f),
+                    modifier = Modifier.fillMaxWidth().weight(1f),
                     contentScale = ContentScale.Fit,
                     alignment = Alignment.Center,
                 )
                 if (buttonText != null && onButtonClick != null) {
                     Spacer(modifier = Modifier.height(MaterialTheme.spacings.large))
-                    Button(
-                        onClick = onButtonClick,
-                    ) {
-                        Text(
-                            text = buttonText,
-                        )
-                    }
+                    Button(onClick = onButtonClick) { Text(text = buttonText) }
                 }
             }
         } else {
             Column(
                 modifier =
-                    Modifier
-                        .fillMaxWidth()
+                    Modifier.fillMaxWidth()
                         .heightIn(min = maxHeight)
                         .verticalScroll(rememberScrollState())
                         .padding(
@@ -222,13 +198,7 @@ fun PlaceholderScreenContent(
                 }
                 if (buttonText != null && onButtonClick != null) {
                     Spacer(modifier = Modifier.height(MaterialTheme.spacings.default))
-                    Button(
-                        onClick = onButtonClick,
-                    ) {
-                        Text(
-                            text = buttonText,
-                        )
-                    }
+                    Button(onClick = onButtonClick) { Text(text = buttonText) }
                 }
             }
         }

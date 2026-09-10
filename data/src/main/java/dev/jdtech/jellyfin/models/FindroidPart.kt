@@ -2,8 +2,8 @@ package dev.jdtech.jellyfin.models
 
 import dev.jdtech.jellyfin.database.ServerDatabaseDao
 import dev.jdtech.jellyfin.repository.JellyfinRepository
-import org.jellyfin.sdk.model.api.BaseItemDto
 import java.util.UUID
+import org.jellyfin.sdk.model.api.BaseItemDto
 
 data class FindroidPart(
     override val id: UUID,
@@ -35,7 +35,12 @@ suspend fun BaseItemDto.toFindroidPart(
     val sources = mutableListOf<FindroidSource>()
     sources.addAll(mediaSources?.map { it.toFindroidSource(jellyfinRepository, id) } ?: emptyList())
     if (database != null) {
-        val currentUserId = try { jellyfinRepository.getUserId() } catch (_: Exception) { null }
+        val currentUserId =
+            try {
+                jellyfinRepository.getUserId()
+            } catch (_: Exception) {
+                null
+            }
         if (currentUserId != null && database.isItemDownloadedForUser(currentUserId, id)) {
             sources.addAll(database.getSources(id).map { it.toFindroidSource(database) })
         }
@@ -50,7 +55,8 @@ suspend fun BaseItemDto.toFindroidPart(
             runtimeTicks = runTimeTicks ?: 0,
             playbackPositionTicks = userData?.playbackPositionTicks ?: 0L,
             images = toFindroidImages(jellyfinRepository),
-            trickplayInfo = trickplay?.mapValues { it.value[it.value.keys.max()]!!.toFindroidTrickplayInfo() },
+            trickplayInfo =
+                trickplay?.mapValues { it.value[it.value.keys.max()]!!.toFindroidTrickplayInfo() },
         )
     } catch (_: NullPointerException) {
         null
@@ -63,7 +69,9 @@ fun FindroidPartDto.toFindroidPart(
 ): FindroidPart {
     val userData = database.getUserDataOrCreateNew(id, userId)
     val isDownloaded = database.isItemDownloadedForUser(userId, id)
-    val sources = if (isDownloaded) database.getSources(id).map { it.toFindroidSource(database) } else emptyList()
+    val sources =
+        if (isDownloaded) database.getSources(id).map { it.toFindroidSource(database) }
+        else emptyList()
     val trickplayInfos = mutableMapOf<String, FindroidTrickplayInfo>()
     for (source in sources) {
         database.getTrickplayInfo(source.id)?.toFindroidTrickplayInfo()?.let {

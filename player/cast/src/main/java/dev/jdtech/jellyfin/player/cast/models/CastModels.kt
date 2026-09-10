@@ -7,7 +7,7 @@ import org.jellyfin.sdk.model.api.PlaybackInfoResponse
 enum class CastConnectionState {
     DISCONNECTED,
     CONNECTING,
-    CONNECTED
+    CONNECTED,
 }
 
 enum class CastPlaybackStatus {
@@ -16,14 +16,14 @@ enum class CastPlaybackStatus {
     PAUSED,
     PLAYING,
     ENDED,
-    ERROR
+    ERROR,
 }
 
 open class Device(
     open val id: String,
     open val name: String,
     open val enabled: Boolean = true,
-    open val supportsH265: Boolean = false
+    open val supportsH265: Boolean = false,
 )
 
 data class CastPlayerState(
@@ -33,12 +33,12 @@ data class CastPlayerState(
     val volume: Float = 1f,
     val isMuted: Boolean = false,
     val hasNextItem: Boolean = false,
-    val hasPreviousItem: Boolean = false
+    val hasPreviousItem: Boolean = false,
 )
 
 data class CastMediaItem(
     val item: PlayerItem,
     val playbackInfo: PlaybackInfoResponse? = null,
     val subtitleTracks: List<Track> = emptyList(),
-    val audioTracks: List<Track> = emptyList()
+    val audioTracks: List<Track> = emptyList(),
 )

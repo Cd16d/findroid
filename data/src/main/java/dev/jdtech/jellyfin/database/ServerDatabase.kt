@@ -11,12 +11,12 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import dev.jdtech.jellyfin.models.FindroidEpisodeDto
 import dev.jdtech.jellyfin.models.FindroidMediaStreamDto
 import dev.jdtech.jellyfin.models.FindroidMovieDto
+import dev.jdtech.jellyfin.models.FindroidPartDto
 import dev.jdtech.jellyfin.models.FindroidSeasonDto
 import dev.jdtech.jellyfin.models.FindroidSegmentDto
 import dev.jdtech.jellyfin.models.FindroidShowDto
 import dev.jdtech.jellyfin.models.FindroidSourceDto
 import dev.jdtech.jellyfin.models.FindroidTrickplayInfoDto
-import dev.jdtech.jellyfin.models.FindroidPartDto
 import dev.jdtech.jellyfin.models.FindroidUserDataDto
 import dev.jdtech.jellyfin.models.Server
 import dev.jdtech.jellyfin.models.ServerAddress
@@ -85,7 +85,8 @@ val MIGRATION_9_10 =
                 JOIN movies m ON s.itemId = m.id
                 JOIN servers srv ON m.serverId = srv.id
                 JOIN users u ON u.id = srv.currentUserId
-                """.trimIndent()
+                """
+                    .trimIndent()
             )
             db.execSQL(
                 """
@@ -95,7 +96,8 @@ val MIGRATION_9_10 =
                 JOIN episodes ep ON s.itemId = ep.id
                 JOIN servers srv ON ep.serverId = srv.id
                 JOIN users u ON u.id = srv.currentUserId
-                """.trimIndent()
+                """
+                    .trimIndent()
             )
             db.execSQL(
                 """
@@ -103,7 +105,8 @@ val MIGRATION_9_10 =
                 SELECT ud.userId, s.itemId, 0
                 FROM sources s
                 JOIN userdata ud ON s.itemId = ud.itemId
-                """.trimIndent()
+                """
+                    .trimIndent()
             )
         }
     }

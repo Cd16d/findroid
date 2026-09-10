@@ -48,14 +48,14 @@ import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.core.presentation.dummy.dummyMovie
 import dev.jdtech.jellyfin.core.presentation.dummy.dummyVideoMetadata
 import dev.jdtech.jellyfin.core.presentation.theme.Yellow
-import dev.jdtech.jellyfin.utils.toBlurHashPainter
-import dev.jdtech.jellyfin.utils.toOptimizedImageUri
 import dev.jdtech.jellyfin.film.presentation.movie.MovieAction
 import dev.jdtech.jellyfin.film.presentation.movie.MovieState
 import dev.jdtech.jellyfin.film.presentation.movie.MovieViewModel
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
 import dev.jdtech.jellyfin.utils.format
+import dev.jdtech.jellyfin.utils.toBlurHashPainter
+import dev.jdtech.jellyfin.utils.toOptimizedImageUri
 import java.util.UUID
 
 @Composable
@@ -98,11 +98,11 @@ private fun MovieScreenLayout(state: MovieState, onAction: (MovieAction) -> Unit
                     }
             ) {
                 val image = movie.images.backdrop
-                val imageUri = image?.uri.toOptimizedImageUri(widthDp = maxWidth, heightDp = maxHeight)
+                val imageUri =
+                    image?.uri.toOptimizedImageUri(widthDp = maxWidth, heightDp = maxHeight)
 
-                val blurPlaceholder = remember(image?.blurHash) {
-                    image?.blurHash.toBlurHashPainter()
-                }
+                val blurPlaceholder =
+                    remember(image?.blurHash) { image?.blurHash.toBlurHashPainter() }
                 AsyncImage(
                     model = imageUri,
                     contentDescription = null,

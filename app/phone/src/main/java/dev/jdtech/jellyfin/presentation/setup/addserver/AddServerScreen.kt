@@ -151,20 +151,21 @@ private fun AddServerScreenLayout(state: AddServerState, onAction: (AddServerAct
                 keyboardActions = KeyboardActions(onGo = { doConnect() }),
                 isError = state.error != null,
                 enabled = !state.isLoading,
-                supportingText = state.error?.let { errors ->
-                    {
-                        val errorText = buildString {
-                            errors.forEachIndexed { index, uiText ->
-                                if (index > 0) append(", ")
-                                append(uiText.asString())
+                supportingText =
+                    state.error?.let { errors ->
+                        {
+                            val errorText = buildString {
+                                errors.forEachIndexed { index, uiText ->
+                                    if (index > 0) append(", ")
+                                    append(uiText.asString())
+                                }
                             }
+                            Text(
+                                text = errorText,
+                                color = MaterialTheme.colorScheme.error,
+                            )
                         }
-                        Text(
-                            text = errorText,
-                            color = MaterialTheme.colorScheme.error,
-                        )
-                    }
-                },
+                    },
                 modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
             )
             Spacer(modifier = Modifier.height(MaterialTheme.spacings.medium))

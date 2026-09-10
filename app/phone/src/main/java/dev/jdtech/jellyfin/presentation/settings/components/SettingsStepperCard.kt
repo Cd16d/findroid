@@ -44,29 +44,31 @@ fun SettingsStepperCard(
         modifier = modifier,
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = MaterialTheme.spacings.medium, vertical = 12.dp),
+            modifier =
+                Modifier.fillMaxWidth()
+                    .padding(horizontal = MaterialTheme.spacings.medium, vertical = 12.dp)
         ) {
             Text(
                 text = stringResource(preference.nameStringResource),
                 style = MaterialTheme.typography.titleMedium,
-                color = if (preference.enabled) {
-                    MaterialTheme.colorScheme.onSurface
-                } else {
-                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                },
+                color =
+                    if (preference.enabled) {
+                        MaterialTheme.colorScheme.onSurface
+                    } else {
+                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                    },
             )
             preference.descriptionStringRes?.let {
                 Spacer(modifier = Modifier.height(MaterialTheme.spacings.extraSmall))
                 Text(
                     text = stringResource(id = it),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = if (preference.enabled) {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
-                    },
+                    color =
+                        if (preference.enabled) {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+                        },
                 )
             }
 
@@ -76,24 +78,27 @@ fun SettingsStepperCard(
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(
-                    space = 16.dp,
-                    alignment = Alignment.CenterHorizontally,
-                ),
+                horizontalArrangement =
+                    Arrangement.spacedBy(
+                        space = 16.dp,
+                        alignment = Alignment.CenterHorizontally,
+                    ),
             ) {
                 // Circular Minus Button
                 FilledTonalIconButton(
                     onClick = {
-                        val newVal = (preference.value - preference.step).coerceAtLeast(preference.minValue)
+                        val newVal =
+                            (preference.value - preference.step).coerceAtLeast(preference.minValue)
                         onUpdate(newVal)
                     },
                     enabled = preference.enabled && preference.value > preference.minValue,
                     shape = CircleShape,
                     modifier = Modifier.size(48.dp),
-                    colors = IconButtonDefaults.filledTonalIconButtonColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                        contentColor = MaterialTheme.colorScheme.onSurface,
-                    ),
+                    colors =
+                        IconButtonDefaults.filledTonalIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                            contentColor = MaterialTheme.colorScheme.onSurface,
+                        ),
                 ) {
                     Icon(
                         painter = painterResource(CoreR.drawable.ic_minus),
@@ -105,28 +110,31 @@ fun SettingsStepperCard(
                 Surface(
                     shape = RoundedCornerShape(8.dp),
                     color = MaterialTheme.colorScheme.surfaceContainerHighest,
-                    modifier = Modifier
-                        .height(36.dp)
-                        .weight(1f),
+                    modifier = Modifier.height(36.dp).weight(1f),
                 ) {
                     Box(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier.padding(horizontal = 12.dp),
                     ) {
                         val zeroLabel = preference.zeroLabelRes
-                        val displayValue = if (preference.value == 0 && zeroLabel != null) {
-                            stringResource(zeroLabel)
-                        } else {
-                            "${preference.value}${preference.suffix}"
-                        }
+                        val displayValue =
+                            if (preference.value == 0 && zeroLabel != null) {
+                                stringResource(zeroLabel)
+                            } else {
+                                "${preference.value}${preference.suffix}"
+                            }
                         Text(
                             text = displayValue,
-                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                            color = if (preference.enabled) {
-                                MaterialTheme.colorScheme.onSurface
-                            } else {
-                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                            },
+                            style =
+                                MaterialTheme.typography.titleSmall.copy(
+                                    fontWeight = FontWeight.Bold
+                                ),
+                            color =
+                                if (preference.enabled) {
+                                    MaterialTheme.colorScheme.onSurface
+                                } else {
+                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                                },
                         )
                     }
                 }
@@ -134,16 +142,18 @@ fun SettingsStepperCard(
                 // Circular Plus Button
                 FilledTonalIconButton(
                     onClick = {
-                        val newVal = (preference.value + preference.step).coerceAtMost(preference.maxValue)
+                        val newVal =
+                            (preference.value + preference.step).coerceAtMost(preference.maxValue)
                         onUpdate(newVal)
                     },
                     enabled = preference.enabled && preference.value < preference.maxValue,
                     shape = CircleShape,
                     modifier = Modifier.size(48.dp),
-                    colors = IconButtonDefaults.filledTonalIconButtonColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                        contentColor = MaterialTheme.colorScheme.onSurface,
-                    ),
+                    colors =
+                        IconButtonDefaults.filledTonalIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                            contentColor = MaterialTheme.colorScheme.onSurface,
+                        ),
                 ) {
                     Icon(
                         painter = painterResource(CoreR.drawable.ic_plus),
@@ -160,15 +170,16 @@ fun SettingsStepperCard(
 private fun SettingsStepperCardPreview() {
     FindroidTheme {
         SettingsStepperCard(
-            preference = PreferenceStepper(
-                nameStringResource = SettingsR.string.downloads_smart_count,
-                descriptionStringRes = SettingsR.string.downloads_smart_count_summary,
-                backendPreference = Preference("preview_int", 3),
-                value = 3,
-                minValue = 1,
-                maxValue = 10,
-                step = 1,
-            ),
+            preference =
+                PreferenceStepper(
+                    nameStringResource = SettingsR.string.downloads_smart_count,
+                    descriptionStringRes = SettingsR.string.downloads_smart_count_summary,
+                    backendPreference = Preference("preview_int", 3),
+                    value = 3,
+                    minValue = 1,
+                    maxValue = 10,
+                    step = 1,
+                ),
             onUpdate = {},
         )
     }
@@ -194,4 +205,3 @@ private fun SettingsStepperCardDisabledPreview() {
         )
     }
 }
-

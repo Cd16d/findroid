@@ -39,11 +39,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
+import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.player.cast.presentation.CastPlayerViewModel
 import dev.jdtech.jellyfin.player.core.domain.models.Track
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
-import dev.jdtech.jellyfin.core.R as CoreR
 
 @Composable
 fun CastTrackVolumeControls(
@@ -51,7 +51,7 @@ fun CastTrackVolumeControls(
     volume: Float,
     onVolumeChange: (Float) -> Unit,
     onClickAudio: () -> Unit,
-    onClickSubtitle: () -> Unit
+    onClickSubtitle: () -> Unit,
 ) {
     val audioInteractionSource = remember { MutableInteractionSource() }
     val subtitlesInteractionSource = remember { MutableInteractionSource() }
@@ -59,23 +59,23 @@ fun CastTrackVolumeControls(
     val isAudioPressed by audioInteractionSource.collectIsPressedAsState()
     val isSubtitlePressed by subtitlesInteractionSource.collectIsPressedAsState()
 
-    val audioButtonCornerShape by animateIntAsState(
-        targetValue = if (isAudioPressed) 50 else 3,
-        animationSpec = tween(durationMillis = 200),
-        label = "audioShapeAnimation"
-    )
+    val audioButtonCornerShape by
+        animateIntAsState(
+            targetValue = if (isAudioPressed) 50 else 3,
+            animationSpec = tween(durationMillis = 200),
+            label = "audioShapeAnimation",
+        )
 
-    val subtitleButtonCornerShape by animateIntAsState(
-        targetValue = if (isSubtitlePressed) 50 else 3,
-        animationSpec = tween(durationMillis = 200),
-        label = "subtitleShapeAnimation"
-    )
+    val subtitleButtonCornerShape by
+        animateIntAsState(
+            targetValue = if (isSubtitlePressed) 50 else 3,
+            animationSpec = tween(durationMillis = 200),
+            label = "subtitleShapeAnimation",
+        )
 
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = MaterialTheme.spacings.large),
-        verticalAlignment = Alignment.CenterVertically
+        modifier = Modifier.fillMaxWidth().padding(horizontal = MaterialTheme.spacings.large),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Row(
             horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -84,12 +84,13 @@ fun CastTrackVolumeControls(
             FilledIconButton(
                 onClick = onClickAudio,
                 enabled = uiState.audioTracks.isNotEmpty(),
-                shape = RoundedCornerShape(
-                    topStart = 50.dp,
-                    bottomStart = 50.dp,
-                    topEnd = audioButtonCornerShape.dp,
-                    bottomEnd = audioButtonCornerShape.dp,
-                ),
+                shape =
+                    RoundedCornerShape(
+                        topStart = 50.dp,
+                        bottomStart = 50.dp,
+                        topEnd = audioButtonCornerShape.dp,
+                        bottomEnd = audioButtonCornerShape.dp,
+                    ),
                 interactionSource = audioInteractionSource,
                 colors =
                     IconButtonDefaults.filledIconButtonColors(
@@ -107,12 +108,13 @@ fun CastTrackVolumeControls(
             FilledIconButton(
                 onClick = onClickSubtitle,
                 enabled = uiState.subtitleTracks.isNotEmpty(),
-                shape = RoundedCornerShape(
-                    topStart = subtitleButtonCornerShape.dp,
-                    bottomStart = subtitleButtonCornerShape.dp,
-                    topEnd = 50.dp,
-                    bottomEnd = 50.dp,
-                ),
+                shape =
+                    RoundedCornerShape(
+                        topStart = subtitleButtonCornerShape.dp,
+                        bottomStart = subtitleButtonCornerShape.dp,
+                        topEnd = 50.dp,
+                        bottomEnd = 50.dp,
+                    ),
                 interactionSource = subtitlesInteractionSource,
                 colors =
                     IconButtonDefaults.filledIconButtonColors(
@@ -134,7 +136,7 @@ fun CastTrackVolumeControls(
         VolumeSlider(
             volume = volume,
             onValueChange = onVolumeChange,
-            modifier = Modifier.weight(1.5f)
+            modifier = Modifier.weight(1.5f),
         )
     }
 }
@@ -155,35 +157,31 @@ private object VolumeSliderDefaults {
 fun VolumeSlider(
     volume: Float,
     onValueChange: (Float) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     var localVolume by remember { mutableFloatStateOf(volume) }
 
-    LaunchedEffect(volume) {
-        localVolume = volume
-    }
+    LaunchedEffect(volume) { localVolume = volume }
 
-    val currentIcon = when {
-        localVolume <= 0f -> painterResource(CoreR.drawable.ic_volume_0)
-        localVolume < 0.33f -> painterResource(CoreR.drawable.ic_volume_33)
-        localVolume < 0.66f -> painterResource(CoreR.drawable.ic_volume_66)
-        else -> painterResource(CoreR.drawable.ic_volume_100)
-    }
+    val currentIcon =
+        when {
+            localVolume <= 0f -> painterResource(CoreR.drawable.ic_volume_0)
+            localVolume < 0.33f -> painterResource(CoreR.drawable.ic_volume_33)
+            localVolume < 0.66f -> painterResource(CoreR.drawable.ic_volume_66)
+            else -> painterResource(CoreR.drawable.ic_volume_100)
+        }
 
-    val colors = SliderDefaults.colors(
-        activeTrackColor = MaterialTheme.colorScheme.primary,
-        inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant,
-        thumbColor = MaterialTheme.colorScheme.primary
-    )
+    val colors =
+        SliderDefaults.colors(
+            activeTrackColor = MaterialTheme.colorScheme.primary,
+            inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant,
+            thumbColor = MaterialTheme.colorScheme.primary,
+        )
 
     Slider(
         value = localVolume,
-        onValueChange = {
-            localVolume = it
-        },
-        onValueChangeFinished = {
-            onValueChange(localVolume)
-        },
+        onValueChange = { localVolume = it },
+        onValueChangeFinished = { onValueChange(localVolume) },
         modifier = modifier,
         valueRange = 0f..1f,
         colors = colors,
@@ -195,9 +193,8 @@ fun VolumeSlider(
 
             SliderDefaults.Track(
                 sliderState = sliderState,
-                modifier = Modifier
-                    .height(VolumeSliderDefaults.TrackHeight)
-                    .drawWithContent {
+                modifier =
+                    Modifier.height(VolumeSliderDefaults.TrackHeight).drawWithContent {
                         drawContent()
                         val yOffset = size.height / 2 - iconSize.toSize().height / 2
                         val fraction = localVolume.coerceIn(0f, 1f)
@@ -215,15 +212,15 @@ fun VolumeSlider(
                             inactiveTrackStart = inactiveTrackStart,
                             inactiveTrackWidth = inactiveTrackWidth,
                             activeIconColor = activeIconColor,
-                            inactiveIconColor = inactiveIconColor
+                            inactiveIconColor = inactiveIconColor,
                         )
                     },
                 colors = colors,
                 enabled = true,
                 thumbTrackGapSize = VolumeSliderDefaults.ThumbTrackGapSize,
-                drawStopIndicator = null
+                drawStopIndicator = null,
             )
-        }
+        },
     )
 }
 
@@ -236,7 +233,7 @@ private fun DrawScope.drawVolumeIcon(
     inactiveTrackStart: Float,
     inactiveTrackWidth: Float,
     activeIconColor: Color,
-    inactiveIconColor: Color
+    inactiveIconColor: Color,
 ) {
     val iconSizePx = iconSize.toSize()
     val iconPaddingPx = iconPadding.toPx()
@@ -244,15 +241,11 @@ private fun DrawScope.drawVolumeIcon(
 
     if (activeTrackWidth >= minSpaceForIcon) {
         translate(iconPaddingPx, yOffset) {
-            with(icon) {
-                draw(iconSizePx, colorFilter = ColorFilter.tint(activeIconColor))
-            }
+            with(icon) { draw(iconSizePx, colorFilter = ColorFilter.tint(activeIconColor)) }
         }
     } else if (inactiveTrackWidth >= minSpaceForIcon) {
         translate(inactiveTrackStart + iconPaddingPx, yOffset) {
-            with(icon) {
-                draw(iconSizePx, colorFilter = ColorFilter.tint(inactiveIconColor))
-            }
+            with(icon) { draw(iconSizePx, colorFilter = ColorFilter.tint(inactiveIconColor)) }
         }
     }
 }
@@ -266,34 +259,48 @@ private fun CastTrackVolumeControlsPreview() {
             volume = 0.5f,
             onVolumeChange = {},
             onClickAudio = {},
-            onClickSubtitle = {}
+            onClickSubtitle = {},
         )
     }
 }
 
-private fun mockUiStateEpisode() = CastPlayerViewModel.UiState(
-    currentItemTitle = CastPlayerViewModel.CurrentItemTitle(
-        seriesName = "Series Name", episodeInfo = "S01E01", title = "Episode Title"
-    ),
-    currentItemPoster = null,
-    isMovie = false,
-    defaultAspectRatio = 16f / 9f,
-    trickplayAspectRatio = null,
-    currentSegment = null,
-    currentSkipButtonStringRes = 0,
-    currentTrickplay = null,
-    currentChapters = emptyList(),
-    fileLoaded = true,
-    audioTracks = listOf(Track(
-        0, "English (AAC)", "eng",
-        codec = "aac",
-        selected = true,
-        supported = true,
-    )),
-    subtitleTracks = listOf(Track(
-        1, "English (SRT)", "eng",
-        codec = "srt",
-        selected = false,
-        supported = true,
-    )),
-)
+private fun mockUiStateEpisode() =
+    CastPlayerViewModel.UiState(
+        currentItemTitle =
+            CastPlayerViewModel.CurrentItemTitle(
+                seriesName = "Series Name",
+                episodeInfo = "S01E01",
+                title = "Episode Title",
+            ),
+        currentItemPoster = null,
+        isMovie = false,
+        defaultAspectRatio = 16f / 9f,
+        trickplayAspectRatio = null,
+        currentSegment = null,
+        currentSkipButtonStringRes = 0,
+        currentTrickplay = null,
+        currentChapters = emptyList(),
+        fileLoaded = true,
+        audioTracks =
+            listOf(
+                Track(
+                    0,
+                    "English (AAC)",
+                    "eng",
+                    codec = "aac",
+                    selected = true,
+                    supported = true,
+                )
+            ),
+        subtitleTracks =
+            listOf(
+                Track(
+                    1,
+                    "English (SRT)",
+                    "eng",
+                    codec = "srt",
+                    selected = false,
+                    supported = true,
+                )
+            ),
+    )

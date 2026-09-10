@@ -22,13 +22,13 @@ import androidx.compose.ui.graphics.painter.ColorPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
-import dev.jdtech.jellyfin.utils.toBlurHashPainter
-import dev.jdtech.jellyfin.utils.toOptimizedImageUri
 import dev.jdtech.jellyfin.models.FindroidEpisode
 import dev.jdtech.jellyfin.models.FindroidItem
 import dev.jdtech.jellyfin.models.FindroidSeason
 import dev.jdtech.jellyfin.presentation.theme.spacings
 import dev.jdtech.jellyfin.presentation.utils.parallaxLayoutModifier
+import dev.jdtech.jellyfin.utils.toBlurHashPainter
+import dev.jdtech.jellyfin.utils.toOptimizedImageUri
 
 @Composable
 fun ItemHeader(
@@ -41,25 +41,25 @@ fun ItemHeader(
         item = item,
         showLogo = showLogo,
         backdropImage = {
-            val image = when (item) {
-                is FindroidEpisode -> item.images.primary
-                else -> item.images.backdrop
-            }
+            val image =
+                when (item) {
+                    is FindroidEpisode -> item.images.primary
+                    else -> item.images.backdrop
+                }
 
-            val backdropUri = image?.uri.toOptimizedImageUri(widthDp = maxWidth, heightDp = maxHeight)
+            val backdropUri =
+                image?.uri.toOptimizedImageUri(widthDp = maxWidth, heightDp = maxHeight)
 
-            val blurPlaceholder = remember(image?.blurHash) {
-                image?.blurHash.toBlurHashPainter()
-            }
+            val blurPlaceholder = remember(image?.blurHash) { image?.blurHash.toBlurHashPainter() }
 
             AsyncImage(
                 model = backdropUri,
                 contentDescription = null,
                 modifier =
-                    Modifier
-                        .fillMaxSize()
+                    Modifier.fillMaxSize()
                         .parallaxLayoutModifier(scrollState = scrollState, rate = 2),
-                placeholder = blurPlaceholder ?: ColorPainter(MaterialTheme.colorScheme.surfaceContainer),
+                placeholder =
+                    blurPlaceholder ?: ColorPainter(MaterialTheme.colorScheme.surfaceContainer),
                 contentScale = ContentScale.Crop,
             )
         },
@@ -78,26 +78,26 @@ fun ItemHeader(
         item = item,
         showLogo = showLogo,
         backdropImage = {
-            val image = when (item) {
-                is FindroidEpisode -> item.images.primary
-                is FindroidSeason -> item.images.showBackdrop
-                else -> item.images.backdrop
-            }
+            val image =
+                when (item) {
+                    is FindroidEpisode -> item.images.primary
+                    is FindroidSeason -> item.images.showBackdrop
+                    else -> item.images.backdrop
+                }
 
-            val backdropUri = image?.uri.toOptimizedImageUri(widthDp = maxWidth, heightDp = maxHeight)
+            val backdropUri =
+                image?.uri.toOptimizedImageUri(widthDp = maxWidth, heightDp = maxHeight)
 
-            val blurPlaceholder = remember(image?.blurHash) {
-                image?.blurHash.toBlurHashPainter()
-            }
+            val blurPlaceholder = remember(image?.blurHash) { image?.blurHash.toBlurHashPainter() }
 
             AsyncImage(
                 model = backdropUri,
                 contentDescription = null,
                 modifier =
-                    Modifier
-                        .fillMaxSize()
+                    Modifier.fillMaxSize()
                         .parallaxLayoutModifier(lazyListState = lazyListState, rate = 2),
-                placeholder = blurPlaceholder ?: ColorPainter(MaterialTheme.colorScheme.surfaceContainer),
+                placeholder =
+                    blurPlaceholder ?: ColorPainter(MaterialTheme.colorScheme.surfaceContainer),
                 contentScale = ContentScale.Crop,
             )
         },
@@ -120,9 +120,7 @@ private fun ItemHeaderBase(
             else -> item.images.logo
         }
 
-    BoxWithConstraints(modifier = Modifier
-        .height(288.dp)
-        .clipToBounds()) {
+    BoxWithConstraints(modifier = Modifier.height(288.dp).clipToBounds()) {
         backdropImage()
         Canvas(modifier = Modifier.fillMaxSize()) {
             drawRect(Color.Black.copy(alpha = 0.1f))
@@ -140,8 +138,7 @@ private fun ItemHeaderBase(
                 model = logo?.uri,
                 contentDescription = null,
                 modifier =
-                    Modifier
-                        .align(Alignment.BottomCenter)
+                    Modifier.align(Alignment.BottomCenter)
                         .padding(MaterialTheme.spacings.default)
                         .height(100.dp)
                         .fillMaxWidth(),

@@ -25,14 +25,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import coil3.compose.AsyncImage
 import dev.jdtech.jellyfin.core.presentation.dummy.dummyMovie
-import dev.jdtech.jellyfin.utils.toBlurHashPainter
-import dev.jdtech.jellyfin.utils.toOptimizedImageUri
 import dev.jdtech.jellyfin.film.presentation.home.HomeAction
 import dev.jdtech.jellyfin.models.FindroidItem
 import dev.jdtech.jellyfin.models.FindroidMovie
 import dev.jdtech.jellyfin.models.FindroidShow
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
+import dev.jdtech.jellyfin.utils.toBlurHashPainter
+import dev.jdtech.jellyfin.utils.toOptimizedImageUri
 
 @Composable
 fun HomeCarouselItem(item: FindroidItem, onAction: (HomeAction) -> Unit) {
@@ -42,12 +42,10 @@ fun HomeCarouselItem(item: FindroidItem, onAction: (HomeAction) -> Unit) {
             0.5f to Color.Black.copy(alpha = 0.5f),
             1f to Color.Black.copy(alpha = 0.6f),
         )
-    
+
     BoxWithConstraints(
-        modifier = Modifier
-            .aspectRatio(16f / 9f)
-            .clip(MaterialTheme.shapes.large)
-            .clickable {
+        modifier =
+            Modifier.aspectRatio(16f / 9f).clip(MaterialTheme.shapes.large).clickable {
                 onAction(HomeAction.OnItemClick(item))
             }
     ) {
@@ -55,15 +53,14 @@ fun HomeCarouselItem(item: FindroidItem, onAction: (HomeAction) -> Unit) {
 
         val imageUri = image?.uri.toOptimizedImageUri(widthDp = maxWidth, heightDp = maxHeight)
 
-        val blurPlaceholder = remember(image?.blurHash) {
-            image?.blurHash.toBlurHashPainter()
-        }
+        val blurPlaceholder = remember(image?.blurHash) { image?.blurHash.toBlurHashPainter() }
 
         AsyncImage(
             model = imageUri,
             contentDescription = null,
             contentScale = ContentScale.Crop,
-            placeholder = blurPlaceholder ?: ColorPainter(MaterialTheme.colorScheme.surfaceContainer),
+            placeholder =
+                blurPlaceholder ?: ColorPainter(MaterialTheme.colorScheme.surfaceContainer),
             modifier = Modifier.fillMaxWidth(),
         )
         Canvas(modifier = Modifier.fillMaxSize()) {
@@ -72,8 +69,7 @@ fun HomeCarouselItem(item: FindroidItem, onAction: (HomeAction) -> Unit) {
         Column(
             verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacings.small),
             modifier =
-                Modifier
-                    .padding(
+                Modifier.padding(
                         horizontal = MaterialTheme.spacings.default,
                         vertical = MaterialTheme.spacings.medium,
                     )

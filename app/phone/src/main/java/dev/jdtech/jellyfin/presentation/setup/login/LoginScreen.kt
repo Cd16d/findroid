@@ -184,14 +184,15 @@ private fun LoginScreenLayout(
                     else PasswordVisualTransformation(),
                 isError = state.error != null,
                 enabled = !state.isLoading,
-                supportingText = state.error?.let { error ->
-                    {
-                        Text(
-                            text = error.asString(),
-                            color = MaterialTheme.colorScheme.error,
-                        )
-                    }
-                },
+                supportingText =
+                    state.error?.let { error ->
+                        {
+                            Text(
+                                text = error.asString(),
+                                color = MaterialTheme.colorScheme.error,
+                            )
+                        }
+                    },
                 modifier = Modifier.fillMaxWidth(),
             )
             Spacer(modifier = Modifier.height(MaterialTheme.spacings.medium))

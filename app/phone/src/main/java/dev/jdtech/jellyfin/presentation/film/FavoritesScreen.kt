@@ -25,6 +25,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewScreenSizes
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.core.presentation.dummy.dummyMovies
 import dev.jdtech.jellyfin.film.presentation.collection.CollectionAction
 import dev.jdtech.jellyfin.film.presentation.collection.CollectionState
@@ -32,10 +33,9 @@ import dev.jdtech.jellyfin.film.presentation.favorites.FavoritesViewModel
 import dev.jdtech.jellyfin.models.CollectionSection
 import dev.jdtech.jellyfin.models.FindroidItem
 import dev.jdtech.jellyfin.models.UiText
-import dev.jdtech.jellyfin.presentation.film.components.PlaceholderScreen
 import dev.jdtech.jellyfin.presentation.film.components.CollectionGrid
+import dev.jdtech.jellyfin.presentation.film.components.PlaceholderScreen
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
-import dev.jdtech.jellyfin.core.R as CoreR
 
 @Composable
 fun FavoritesScreen(
@@ -71,8 +71,7 @@ private fun FavoritesScreenLayout(
 
     Scaffold(
         modifier =
-            Modifier
-                .fillMaxSize()
+            Modifier.fillMaxSize()
                 .recalculateWindowInsets()
                 .nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
@@ -115,10 +114,7 @@ private fun FavoritesScreenLayout(
 private fun FavoritesScreenLayoutEmptyPreview() {
     FindroidTheme {
         FavoritesScreenLayout(
-            state =
-                CollectionState(
-                    sections = emptyList(),
-                ),
+            state = CollectionState(sections = emptyList()),
             onAction = {},
             onExploreLibraryClick = {},
         )
@@ -138,8 +134,8 @@ private fun FavoritesScreenLayoutPreview() {
                                 id = 0,
                                 name = UiText.StringResource(CoreR.string.title_favorite),
                                 items = dummyMovies,
-                            ),
-                        ),
+                            )
+                        )
                 ),
             onAction = {},
             onExploreLibraryClick = {},

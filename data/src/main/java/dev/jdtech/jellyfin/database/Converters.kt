@@ -2,10 +2,10 @@ package dev.jdtech.jellyfin.database
 
 import androidx.room.TypeConverter
 import dev.jdtech.jellyfin.models.FindroidChapter
-import kotlinx.serialization.json.Json
-import org.jellyfin.sdk.model.DateTime
 import java.time.ZoneOffset
 import java.util.UUID
+import kotlinx.serialization.json.Json
+import org.jellyfin.sdk.model.DateTime
 
 class Converters {
     @TypeConverter

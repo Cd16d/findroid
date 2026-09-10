@@ -21,12 +21,12 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.player.cast.models.CastPlayerState
 import dev.jdtech.jellyfin.player.cast.presentation.CastPlayerViewModel
 import dev.jdtech.jellyfin.player.core.domain.models.PlayerImage
 import dev.jdtech.jellyfin.utils.toBlurHashPainter
 import dev.jdtech.jellyfin.utils.toOptimizedImageUri
-import dev.jdtech.jellyfin.core.R as CoreR
 
 @Composable
 fun PlayerTopSection(
@@ -35,7 +35,7 @@ fun PlayerTopSection(
     scrubPosition: Float,
     onClose: () -> Unit,
     onDeviceClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val playerState = uiState.playerState
 
@@ -44,19 +44,17 @@ fun PlayerTopSection(
 
     Column(
         modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         CastExpandedPlayerHeader(
             deviceName = deviceName,
             onClose = onClose,
-            onDeviceClick = onDeviceClick
+            onDeviceClick = onDeviceClick,
         )
 
         Box(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth(),
-            contentAlignment = Alignment.Center
+            modifier = Modifier.weight(1f).fillMaxWidth(),
+            contentAlignment = Alignment.Center,
         ) {
             PlayerImage(
                 uiState = uiState,
@@ -64,7 +62,7 @@ fun PlayerTopSection(
                 scrubPosition = scrubPosition,
                 poster = poster,
                 playbackState = playerState,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxSize(),
             )
         }
     }
@@ -77,7 +75,7 @@ private fun PlayerImage(
     scrubPosition: Float,
     poster: PlayerImage?,
     playbackState: CastPlayerState,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val trickplay = uiState.currentTrickplay
     val aspectRatio =
@@ -88,24 +86,32 @@ private fun PlayerImage(
         }
 
     BoxWithConstraints(
-        modifier = modifier
-            .padding(horizontal = if (uiState.isMovie && (!isScrubbing || trickplay == null)) 88.dp else 24.dp)
-            .aspectRatio(aspectRatio)
-            .clip(RoundedCornerShape(24.dp))
-            .background(Color.DarkGray),
-        contentAlignment = Alignment.Center
+        modifier =
+            modifier
+                .padding(
+                    horizontal =
+                        if (uiState.isMovie && (!isScrubbing || trickplay == null)) 88.dp else 24.dp
+                )
+                .aspectRatio(aspectRatio)
+                .clip(RoundedCornerShape(24.dp))
+                .background(Color.DarkGray),
+        contentAlignment = Alignment.Center,
     ) {
-        if (isScrubbing && trickplay != null && playbackState.duration > 0 && trickplay.images.isNotEmpty()) {
+        if (
+            isScrubbing &&
+                trickplay != null &&
+                playbackState.duration > 0 &&
+                trickplay.images.isNotEmpty()
+        ) {
             TrickplayThumbnail(
                 trickplay = trickplay,
-                scrubPosition = scrubPosition
+                scrubPosition = scrubPosition,
             )
         } else if (poster != null) {
-            val blurPlaceholder = remember(poster.blurHash) {
-                poster.blurHash.toBlurHashPainter()
-            }
+            val blurPlaceholder = remember(poster.blurHash) { poster.blurHash.toBlurHashPainter() }
 
-            val optimizedUri = poster.uri.toOptimizedImageUri(widthDp = maxWidth, heightDp = maxHeight)
+            val optimizedUri =
+                poster.uri.toOptimizedImageUri(widthDp = maxWidth, heightDp = maxHeight)
 
             AsyncImage(
                 model = optimizedUri,
@@ -113,14 +119,14 @@ private fun PlayerImage(
                 contentScale = ContentScale.Crop,
                 placeholder = blurPlaceholder,
                 error = blurPlaceholder,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxSize(),
             )
         } else {
             Icon(
                 painterResource(CoreR.drawable.ic_cast),
                 contentDescription = null,
                 modifier = Modifier.size(64.dp),
-                tint = Color.White
+                tint = Color.White,
             )
         }
     }

@@ -65,8 +65,8 @@ import dev.jdtech.jellyfin.presentation.theme.spacings
 import dev.jdtech.jellyfin.presentation.utils.rememberSafePadding
 import dev.jdtech.jellyfin.utils.ObserveAsEvents
 import dev.jdtech.jellyfin.utils.download.DownloadStatus
-import org.jellyfin.sdk.model.api.BaseItemKind
 import java.util.UUID
+import org.jellyfin.sdk.model.api.BaseItemKind
 
 @Composable
 fun SeasonScreen(
@@ -103,7 +103,11 @@ fun SeasonScreen(
             when (action) {
                 is SeasonAction.Play -> {
                     if (castConnectionState == CastConnectionState.CONNECTED) {
-                        castSessionViewModel.playItem(seasonId, BaseItemKind.SEASON.serialName, action.startFromBeginning)
+                        castSessionViewModel.playItem(
+                            seasonId,
+                            BaseItemKind.SEASON.serialName,
+                            action.startFromBeginning,
+                        )
                     } else {
                         val intent = Intent(context, PlayerActivity::class.java)
                         intent.putExtra("itemId", seasonId.toString())
@@ -162,26 +166,45 @@ private fun SeasonScreenLayout(
     Box(modifier = Modifier.fillMaxSize()) {
         state.season?.let { season ->
             val seasonEpisodeIds = remember(state.episodes) { state.episodes.map { it.id }.toSet() }
-            val seasonQueueEntries = remember(queueEntries, seasonEpisodeIds) {
-                queueEntries.filter { it.id in seasonEpisodeIds }
-            }
+            val seasonQueueEntries =
+                remember(queueEntries, seasonEpisodeIds) {
+                    queueEntries.filter { it.id in seasonEpisodeIds }
+                }
 
-            val convertingEp = seasonQueueEntries.firstOrNull { it.state is DownloadQueue.EntryState.Converting }
-            val downloadingEp = seasonQueueEntries.firstOrNull { it.state is DownloadQueue.EntryState.Downloading }
-            val pendingEps = seasonQueueEntries.filter { it.state is DownloadQueue.EntryState.Pending }
-            val failedEps = seasonQueueEntries.filter { it.state is DownloadQueue.EntryState.Failed }
-            val completedInQueue = seasonQueueEntries.count { it.state is DownloadQueue.EntryState.Completed }
+            val convertingEp = seasonQueueEntries.firstOrNull {
+                it.state is DownloadQueue.EntryState.Converting
+            }
+            val downloadingEp = seasonQueueEntries.firstOrNull {
+                it.state is DownloadQueue.EntryState.Downloading
+            }
+            val pendingEps = seasonQueueEntries.filter {
+                it.state is DownloadQueue.EntryState.Pending
+            }
+            val failedEps = seasonQueueEntries.filter {
+                it.state is DownloadQueue.EntryState.Failed
+            }
+            val completedInQueue = seasonQueueEntries.count {
+                it.state is DownloadQueue.EntryState.Completed
+            }
 
             val effectiveEp = downloadingEp ?: convertingEp
-            val activeProgress = if (effectiveEp != null) (effectiveEp.progress / 100f).coerceIn(0f, 1f) else 0f
-            val totalProgress = if (seasonQueueEntries.isNotEmpty()) {
-                ((completedInQueue.toFloat() + activeProgress) / seasonQueueEntries.size.toFloat()).coerceIn(0f, 1f)
-            } else {
-                activeProgress
-            }
+            val activeProgress =
+                if (effectiveEp != null) (effectiveEp.progress / 100f).coerceIn(0f, 1f) else 0f
+            val totalProgress =
+                if (seasonQueueEntries.isNotEmpty()) {
+                    ((completedInQueue.toFloat() + activeProgress) /
+                            seasonQueueEntries.size.toFloat())
+                        .coerceIn(0f, 1f)
+                } else {
+                    activeProgress
+                }
 
-            val isAllPaused = seasonQueueEntries.isNotEmpty() && seasonQueueEntries.all { it.state is DownloadQueue.EntryState.Paused }
-            val allCompleted = seasonQueueEntries.isNotEmpty() && seasonQueueEntries.all { it.state is DownloadQueue.EntryState.Completed }
+            val isAllPaused =
+                seasonQueueEntries.isNotEmpty() &&
+                    seasonQueueEntries.all { it.state is DownloadQueue.EntryState.Paused }
+            val allCompleted =
+                seasonQueueEntries.isNotEmpty() &&
+                    seasonQueueEntries.all { it.state is DownloadQueue.EntryState.Completed }
 
             val isSeasonDownloading = seasonQueueEntries.any {
                 it.state is DownloadQueue.EntryState.Downloading ||
@@ -189,43 +212,61 @@ private fun SeasonScreenLayout(
                     it.state is DownloadQueue.EntryState.Pending ||
                     it.state is DownloadQueue.EntryState.Paused
             }
-            val isSeasonFullyDownloaded = state.episodes.isNotEmpty() && state.episodes.all { it.isDownloaded() }
-            val seasonDownloadProgress = if (isSeasonDownloading && seasonQueueEntries.isNotEmpty()) totalProgress else null
+            val isSeasonFullyDownloaded =
+                state.episodes.isNotEmpty() && state.episodes.all { it.isDownloaded() }
+            val seasonDownloadProgress =
+                if (isSeasonDownloading && seasonQueueEntries.isNotEmpty()) totalProgress else null
 
-            val seasonStatus = when {
-                allCompleted -> DownloadStatus.SUCCESSFUL
-                downloadingEp != null || convertingEp != null -> DownloadStatus.RUNNING
-                isAllPaused -> DownloadStatus.PAUSED
-                pendingEps.isNotEmpty() -> DownloadStatus.PENDING
-                failedEps.isNotEmpty() -> DownloadStatus.FAILED
-                else -> DownloadStatus.SUCCESSFUL
-            }
+            val seasonStatus =
+                when {
+                    allCompleted -> DownloadStatus.SUCCESSFUL
+                    downloadingEp != null || convertingEp != null -> DownloadStatus.RUNNING
+                    isAllPaused -> DownloadStatus.PAUSED
+                    pendingEps.isNotEmpty() -> DownloadStatus.PENDING
+                    failedEps.isNotEmpty() -> DownloadStatus.FAILED
+                    else -> DownloadStatus.SUCCESSFUL
+                }
 
-            val downloadedPart = when {
-                completedInQueue > 0 -> pluralStringResource(CoreR.plurals.episodes_downloaded, completedInQueue, completedInQueue)
-                isAllPaused -> stringResource(CoreR.string.paused)
-                downloadingEp != null || convertingEp != null -> pluralStringResource(CoreR.plurals.episodes_downloading, 1, 1)
-                else -> ""
-            }
-            val queuePart = if (pendingEps.isNotEmpty()) {
-                pluralStringResource(CoreR.plurals.episodes_in_queue, pendingEps.size, pendingEps.size)
-            } else ""
-            val extraInfo = when {
-                downloadedPart.isNotEmpty() && queuePart.isNotEmpty() -> "$downloadedPart • $queuePart"
-                downloadedPart.isNotEmpty() -> downloadedPart
-                queuePart.isNotEmpty() -> queuePart
-                else -> null
-            }
+            val downloadedPart =
+                when {
+                    completedInQueue > 0 ->
+                        pluralStringResource(
+                            CoreR.plurals.episodes_downloaded,
+                            completedInQueue,
+                            completedInQueue,
+                        )
+                    isAllPaused -> stringResource(CoreR.string.paused)
+                    downloadingEp != null || convertingEp != null ->
+                        pluralStringResource(CoreR.plurals.episodes_downloading, 1, 1)
+                    else -> ""
+                }
+            val queuePart =
+                if (pendingEps.isNotEmpty()) {
+                    pluralStringResource(
+                        CoreR.plurals.episodes_in_queue,
+                        pendingEps.size,
+                        pendingEps.size,
+                    )
+                } else ""
+            val extraInfo =
+                when {
+                    downloadedPart.isNotEmpty() && queuePart.isNotEmpty() ->
+                        "$downloadedPart • $queuePart"
+                    downloadedPart.isNotEmpty() -> downloadedPart
+                    queuePart.isNotEmpty() -> queuePart
+                    else -> null
+                }
 
-            val effectiveDownloaderState = if (seasonQueueEntries.isNotEmpty()) {
-                DownloaderState(
-                    status = seasonStatus,
-                    progress = totalProgress,
-                    extraInfo = if (seasonQueueEntries.size > 1) extraInfo else null,
-                )
-            } else {
-                downloaderState
-            }
+            val effectiveDownloaderState =
+                if (seasonQueueEntries.isNotEmpty()) {
+                    DownloaderState(
+                        status = seasonStatus,
+                        progress = totalProgress,
+                        extraInfo = if (seasonQueueEntries.size > 1) extraInfo else null,
+                    )
+                } else {
+                    downloaderState
+                }
 
             LazyColumn(
                 modifier = Modifier.fillMaxWidth(),
@@ -253,16 +294,22 @@ private fun SeasonScreenLayout(
                                     )
                                     if (isSeasonFullyDownloaded) {
                                         DownloadedBadge(
-                                            modifier = Modifier.align(Alignment.TopEnd).padding(MaterialTheme.spacings.small)
+                                            modifier =
+                                                Modifier.align(Alignment.TopEnd)
+                                                    .padding(MaterialTheme.spacings.small)
                                         )
                                     } else if (isSeasonDownloading) {
                                         DownloadingBadge(
                                             progress = seasonDownloadProgress,
-                                            modifier = Modifier.align(Alignment.TopEnd).padding(MaterialTheme.spacings.small)
+                                            modifier =
+                                                Modifier.align(Alignment.TopEnd)
+                                                    .padding(MaterialTheme.spacings.small),
                                         )
                                     } else if (state.episodes.any { it.isDownloaded() }) {
                                         DownloadedBadge(
-                                            modifier = Modifier.align(Alignment.TopEnd).padding(MaterialTheme.spacings.small)
+                                            modifier =
+                                                Modifier.align(Alignment.TopEnd)
+                                                    .padding(MaterialTheme.spacings.small)
                                         )
                                     }
                                 }
@@ -290,7 +337,9 @@ private fun SeasonScreenLayout(
                     val isSeasonDownloaded = state.episodes.any { it.isDownloaded() }
                     // Only want to show the download button if any episodes still haven't
                     // been downloaded
-                    val canSeasonBeDownloaded = state.episodes.any { it.canDownload } && !state.episodes.all { it.isDownloaded() }
+                    val canSeasonBeDownloaded =
+                        state.episodes.any { it.canDownload } &&
+                            !state.episodes.all { it.isDownloaded() }
                     ItemButtonsBar(
                         item = season,
                         downloaderState = effectiveDownloaderState,
@@ -313,7 +362,11 @@ private fun SeasonScreenLayout(
                             }
                         },
                         onTrailerClick = {},
-                        onDownloadClick = { storageIndex, presetId, downloadExternalAudio, audioStreamIndex ->
+                        onDownloadClick = {
+                            storageIndex,
+                            presetId,
+                            downloadExternalAudio,
+                            audioStreamIndex ->
                             onDownloaderAction(
                                 DownloaderAction.DownloadMany(
                                     items = state.episodes,
@@ -325,14 +378,10 @@ private fun SeasonScreenLayout(
                             )
                         },
                         onDownloadCancelClick = {
-                            onDownloaderAction(
-                                DownloaderAction.CancelDownloadMany(state.episodes)
-                            )
+                            onDownloaderAction(DownloaderAction.CancelDownloadMany(state.episodes))
                         },
                         onDownloadDeleteClick = {
-                            onDownloaderAction(
-                                DownloaderAction.DeleteDownloadMany(state.episodes)
-                            )
+                            onDownloaderAction(DownloaderAction.DeleteDownloadMany(state.episodes))
                         },
                         askPresetBeforeDownload = askPresetBeforeDownload,
                         userCanTranscode = userCanTranscode,
@@ -348,8 +397,9 @@ private fun SeasonScreenLayout(
                 }
                 items(items = state.episodes, key = { episode -> episode.id }) { episode ->
                     val queueEntry = queueEntries.firstOrNull { it.id == episode.id }
-                    val isDownloading = queueEntry?.state is DownloadQueue.EntryState.Downloading ||
-                        queueEntry?.state is DownloadQueue.EntryState.Converting
+                    val isDownloading =
+                        queueEntry?.state is DownloadQueue.EntryState.Downloading ||
+                            queueEntry?.state is DownloadQueue.EntryState.Converting
                     val isPending = queueEntry?.state is DownloadQueue.EntryState.Pending
                     val downloadProgress = if (isDownloading) queueEntry.progress / 100f else null
                     EpisodeCard(

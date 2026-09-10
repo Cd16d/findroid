@@ -43,13 +43,16 @@ constructor(
             val baseUrl = repository.getBaseUrl()
             if (baseUrl.isBlank()) return@withContext
 
-            val imageUrl = "$baseUrl/Users/$userId/Images/Primary" + (if (imageTag != null) "?tag=$imageTag" else "")
+            val imageUrl =
+                "$baseUrl/Users/$userId/Images/Primary" +
+                    (if (imageTag != null) "?tag=$imageTag" else "")
             val basePath = "images/users/$userId"
             val fileName = if (imageTag != null) "primary_$imageTag" else "primary"
 
             if (imageTag != null) {
                 val baseDir = File(appContext.filesDir, basePath)
-                baseDir.listFiles { _, name -> name.startsWith("primary_") && name != fileName }
+                baseDir
+                    .listFiles { _, name -> name.startsWith("primary_") && name != fileName }
                     ?.forEach { it.delete() }
             }
 
@@ -75,9 +78,7 @@ constructor(
                 }
 
                 response.body.byteStream().use { input ->
-                    file.outputStream().use { output ->
-                        input.copyTo(output)
-                    }
+                    file.outputStream().use { output -> input.copyTo(output) }
                 }
             }
         } catch (e: IOException) {

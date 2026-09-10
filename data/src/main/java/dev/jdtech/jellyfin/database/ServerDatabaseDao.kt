@@ -285,8 +285,7 @@ interface ServerDatabaseDao {
     @Query("SELECT * FROM parts WHERE id IN (:ids)")
     fun getParts(ids: List<UUID>): List<dev.jdtech.jellyfin.models.FindroidPartDto>
 
-    @Query("DELETE FROM parts WHERE id = :id")
-    fun deletePart(id: UUID)
+    @Query("DELETE FROM parts WHERE id = :id") fun deletePart(id: UUID)
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     fun insertUserDownload(userDownload: UserDownloadDto)
@@ -300,7 +299,9 @@ interface ServerDatabaseDao {
     @Query("SELECT COUNT(*) FROM user_downloads WHERE itemId = :itemId")
     fun countUserDownloads(itemId: UUID): Int
 
-    @Query("SELECT EXISTS(SELECT 1 FROM user_downloads WHERE userId = :userId AND itemId = :itemId)")
+    @Query(
+        "SELECT EXISTS(SELECT 1 FROM user_downloads WHERE userId = :userId AND itemId = :itemId)"
+    )
     fun isItemDownloadedForUser(userId: UUID, itemId: UUID): Boolean
 
     @Query(
@@ -336,7 +337,10 @@ interface ServerDatabaseDao {
     @Query(
         "SELECT episodes.* FROM episodes INNER JOIN user_downloads ON episodes.id = user_downloads.itemId WHERE episodes.serverId = :serverId AND user_downloads.userId = :userId ORDER BY episodes.seriesName ASC, episodes.parentIndexNumber ASC, episodes.indexNumber ASC"
     )
-    fun getDownloadedEpisodesByServerAndUser(serverId: String, userId: UUID): List<FindroidEpisodeDto>
+    fun getDownloadedEpisodesByServerAndUser(
+        serverId: String,
+        userId: UUID,
+    ): List<FindroidEpisodeDto>
 
     @Query(
         "SELECT movies.* FROM movies INNER JOIN user_downloads ON movies.id = user_downloads.itemId WHERE movies.serverId = :serverId AND user_downloads.userId = :userId AND movies.name LIKE '%' || :name || '%' ORDER BY movies.name ASC"
@@ -351,18 +355,26 @@ interface ServerDatabaseDao {
     @Query(
         "SELECT episodes.* FROM episodes INNER JOIN user_downloads ON episodes.id = user_downloads.itemId WHERE episodes.serverId = :serverId AND user_downloads.userId = :userId AND episodes.name LIKE '%' || :name || '%' ORDER BY episodes.seriesName ASC, episodes.parentIndexNumber ASC, episodes.indexNumber ASC"
     )
-    fun searchDownloadedEpisodes(serverId: String, userId: UUID, name: String): List<FindroidEpisodeDto>
+    fun searchDownloadedEpisodes(
+        serverId: String,
+        userId: UUID,
+        name: String,
+    ): List<FindroidEpisodeDto>
 
     @Transaction
     fun linkServerDownloadsToUser(serverId: String, userId: UUID) {
         val movies = getMoviesByServerId(serverId)
         val now = System.currentTimeMillis()
         for (movie in movies) {
-            insertUserDownload(UserDownloadDto(userId = userId, itemId = movie.id, downloadedAt = now))
+            insertUserDownload(
+                UserDownloadDto(userId = userId, itemId = movie.id, downloadedAt = now)
+            )
         }
         val episodes = getEpisodesByServerId(serverId)
         for (episode in episodes) {
-            insertUserDownload(UserDownloadDto(userId = userId, itemId = episode.id, downloadedAt = now))
+            insertUserDownload(
+                UserDownloadDto(userId = userId, itemId = episode.id, downloadedAt = now)
+            )
         }
     }
 }

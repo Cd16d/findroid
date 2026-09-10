@@ -31,25 +31,27 @@ fun AccountMenuItemsList(
     onNavigateToAbout: () -> Unit,
     onNavigateToGithub: () -> Unit,
     onNavigateToKofi: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
-    val topShape = RoundedCornerShape(
-        topStart = 24.dp,
-        topEnd = 24.dp,
-        bottomStart = 4.dp,
-        bottomEnd = 4.dp
-    )
-    val bottomShape = RoundedCornerShape(
-        topStart = 4.dp,
-        topEnd = 4.dp,
-        bottomStart = 24.dp,
-        bottomEnd = 24.dp
-    )
+    val topShape =
+        RoundedCornerShape(
+            topStart = 24.dp,
+            topEnd = 24.dp,
+            bottomStart = 4.dp,
+            bottomEnd = 4.dp,
+        )
+    val bottomShape =
+        RoundedCornerShape(
+            topStart = 4.dp,
+            topEnd = 4.dp,
+            bottomStart = 24.dp,
+            bottomEnd = 24.dp,
+        )
     val middleShape = RoundedCornerShape(4.dp)
     val singleShape = RoundedCornerShape(24.dp)
 
     val isOffline = LocalOfflineMode.current
-    
+
     Column(modifier = modifier) {
         // Block 1
         Surface(
@@ -57,25 +59,27 @@ fun AccountMenuItemsList(
             enabled = !isOffline,
             shape = singleShape,
             color = MaterialTheme.colorScheme.surface,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
         ) {
             ListItem(
                 headlineContent = {
                     Text(
                         text = stringResource(CoreR.string.quick_connect),
-                        color = if (isOffline) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f) else Color.Unspecified
+                        color =
+                            if (isOffline) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                            else Color.Unspecified,
                     )
                 },
                 leadingContent = {
                     Icon(
                         ImageVector.vectorResource(CoreR.drawable.ic_quick_connect_code),
                         contentDescription = null,
-                        tint = if (isOffline) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f) else MaterialTheme.colorScheme.onSurfaceVariant
+                        tint =
+                            if (isOffline) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                            else MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 },
-                colors = ListItemDefaults.colors(
-                    containerColor = Color.Transparent
-                )
+                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
             )
         }
 
@@ -86,19 +90,17 @@ fun AccountMenuItemsList(
             onClick = onNavigateToSettings,
             shape = singleShape,
             color = MaterialTheme.colorScheme.surface,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
         ) {
             ListItem(
                 headlineContent = { Text(stringResource(CoreR.string.title_settings)) },
                 leadingContent = {
                     Icon(
                         ImageVector.vectorResource(CoreR.drawable.ic_settings),
-                        contentDescription = null
+                        contentDescription = null,
                     )
                 },
-                colors = ListItemDefaults.colors(
-                    containerColor = Color.Transparent
-                )
+                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
             )
         }
 
@@ -110,19 +112,17 @@ fun AccountMenuItemsList(
                 onClick = onNavigateToAbout,
                 shape = topShape,
                 color = MaterialTheme.colorScheme.surface,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
             ) {
                 ListItem(
                     headlineContent = { Text(stringResource(CoreR.string.about)) },
                     leadingContent = {
                         Icon(
                             ImageVector.vectorResource(CoreR.drawable.ic_info),
-                            contentDescription = null
+                            contentDescription = null,
                         )
                     },
-                    colors = ListItemDefaults.colors(
-                        containerColor = Color.Transparent
-                    )
+                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                 )
             }
             Spacer(Modifier.height(2.dp))
@@ -130,7 +130,7 @@ fun AccountMenuItemsList(
                 onClick = onNavigateToGithub,
                 shape = middleShape,
                 color = MaterialTheme.colorScheme.surface,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
             ) {
                 ListItem(
                     headlineContent = { Text(stringResource(CoreR.string.github)) },
@@ -138,19 +138,18 @@ fun AccountMenuItemsList(
                     leadingContent = {
                         Icon(
                             ImageVector.vectorResource(CoreR.drawable.ic_github),
-                            contentDescription = null
+                            contentDescription = null,
                         )
                     },
                     trailingContent = {
                         Icon(
-                            imageVector = ImageVector.vectorResource(CoreR.drawable.ic_external_link),
+                            imageVector =
+                                ImageVector.vectorResource(CoreR.drawable.ic_external_link),
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
                         )
                     },
-                    colors = ListItemDefaults.colors(
-                        containerColor = Color.Transparent
-                    )
+                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                 )
             }
             Spacer(Modifier.height(2.dp))
@@ -158,7 +157,7 @@ fun AccountMenuItemsList(
                 onClick = onNavigateToKofi,
                 shape = bottomShape,
                 color = MaterialTheme.colorScheme.surface,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
             ) {
                 ListItem(
                     headlineContent = { Text(stringResource(CoreR.string.kofi)) },
@@ -166,19 +165,18 @@ fun AccountMenuItemsList(
                     leadingContent = {
                         Icon(
                             ImageVector.vectorResource(CoreR.drawable.ic_coffee),
-                            contentDescription = null
+                            contentDescription = null,
                         )
                     },
                     trailingContent = {
                         Icon(
-                            imageVector = ImageVector.vectorResource(CoreR.drawable.ic_external_link),
+                            imageVector =
+                                ImageVector.vectorResource(CoreR.drawable.ic_external_link),
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
                         )
                     },
-                    colors = ListItemDefaults.colors(
-                        containerColor = Color.Transparent
-                    )
+                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                 )
             }
         }
@@ -196,7 +194,7 @@ fun AccountMenuItemsListPreview() {
                 onNavigateToAbout = {},
                 onNavigateToGithub = {},
                 onNavigateToKofi = {},
-                modifier = Modifier.padding(16.dp)
+                modifier = Modifier.padding(16.dp),
             )
         }
     }

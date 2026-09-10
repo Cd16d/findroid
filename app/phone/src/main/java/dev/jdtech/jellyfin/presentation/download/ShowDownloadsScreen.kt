@@ -64,6 +64,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.jdtech.jellyfin.LocalCastPlayerHeight
+import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.core.presentation.downloader.DownloadQueue
 import dev.jdtech.jellyfin.core.presentation.dummy.dummyEpisode
 import dev.jdtech.jellyfin.film.presentation.downloads.SeasonEpisodeGroup
@@ -83,9 +84,7 @@ import dev.jdtech.jellyfin.presentation.download.models.DownloadStatus
 import dev.jdtech.jellyfin.presentation.film.components.PlaceholderScreen
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.utils.rememberSafePadding
-import dev.jdtech.jellyfin.utils.ObserveAsEvents
 import java.util.UUID
-import dev.jdtech.jellyfin.core.R as CoreR
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -98,9 +97,7 @@ fun ShowDownloadsScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
-    LaunchedEffect(showId) {
-        viewModel.loadShow(showId)
-    }
+    LaunchedEffect(showId) { viewModel.loadShow(showId) }
 
     ShowDownloadsScreenLayout(
         showId = showId,
@@ -128,11 +125,12 @@ private fun ShowDownloadsScreenLayout(
     val castPadding = LocalCastPlayerHeight.current
     val paddingStart = safePadding.start + 16.dp
     val paddingEnd = safePadding.end + 16.dp
-    val toolbarPadding by animateDpAsState(
-        targetValue = if (state.isSelectionMode) 88.dp else 16.dp,
-        animationSpec = tween(300),
-        label = "toolbarBottomPadding",
-    )
+    val toolbarPadding by
+        animateDpAsState(
+            targetValue = if (state.isSelectionMode) 88.dp else 16.dp,
+            animationSpec = tween(300),
+            label = "toolbarBottomPadding",
+        )
     val bottomPadding = safePadding.bottom + castPadding + toolbarPadding
 
     val listState = rememberLazyListState()
@@ -163,7 +161,8 @@ private fun ShowDownloadsScreenLayout(
         val count = state.selectedEpisodeIds.size
         val allEpisodes = state.seasonGroups.flatMap { it.episodes }
         val selectedEpisodes = allEpisodes.filter { state.selectedEpisodeIds.contains(it.id) }
-        val sizeFormatted = Formatter.formatFileSize(context, selectedEpisodes.sumOf { it.diskSize() })
+        val sizeFormatted =
+            Formatter.formatFileSize(context, selectedEpisodes.sumOf { it.diskSize() })
         ConfirmDeleteDialog(
             title = stringResource(CoreR.string.delete_download),
             message = stringResource(CoreR.string.delete_items_confirm, count, sizeFormatted),
@@ -219,31 +218,36 @@ private fun ShowDownloadsScreenLayout(
         )
     }
 
-    val allSeasonGroups = remember(state.seasonGroups, state.activeDownloads) {
-        val existingEpisodeIds = state.seasonGroups.flatMap { it.episodes }.map { it.id }.toSet()
-        val queuedEpisodes = state.activeDownloads
-            .map { it.item }
-            .filterIsInstance<FindroidEpisode>()
-            .filter { it.seriesId == showId && it.id !in existingEpisodeIds }
+    val allSeasonGroups =
+        remember(state.seasonGroups, state.activeDownloads) {
+            val existingEpisodeIds =
+                state.seasonGroups.flatMap { it.episodes }.map { it.id }.toSet()
+            val queuedEpisodes =
+                state.activeDownloads
+                    .map { it.item }
+                    .filterIsInstance<FindroidEpisode>()
+                    .filter { it.seriesId == showId && it.id !in existingEpisodeIds }
 
-        if (queuedEpisodes.isEmpty()) {
-            state.seasonGroups
-        } else {
-            val allEpisodes = state.seasonGroups.flatMap { it.episodes } + queuedEpisodes
-            allEpisodes.groupBy { it.parentIndexNumber }
-                .map { (seasonNum, eps) ->
-                    val epCount = eps.size
-                    val epStr = if (epCount == 1) "1 episode" else "$epCount episodes"
-                    val header = if (seasonNum > 0) "Season $seasonNum • $epStr" else "Speciali • $epStr"
-                    SeasonEpisodeGroup(
-                        seasonNumber = seasonNum,
-                        headerTitle = header,
-                        episodes = eps.sortedBy { it.indexNumber },
-                    )
-                }
-                .sortedBy { it.seasonNumber }
+            if (queuedEpisodes.isEmpty()) {
+                state.seasonGroups
+            } else {
+                val allEpisodes = state.seasonGroups.flatMap { it.episodes } + queuedEpisodes
+                allEpisodes
+                    .groupBy { it.parentIndexNumber }
+                    .map { (seasonNum, eps) ->
+                        val epCount = eps.size
+                        val epStr = if (epCount == 1) "1 episode" else "$epCount episodes"
+                        val header =
+                            if (seasonNum > 0) "Season $seasonNum • $epStr" else "Speciali • $epStr"
+                        SeasonEpisodeGroup(
+                            seasonNumber = seasonNum,
+                            headerTitle = header,
+                            episodes = eps.sortedBy { it.indexNumber },
+                        )
+                    }
+                    .sortedBy { it.seasonNumber }
+            }
         }
-    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize().recalculateWindowInsets(),
@@ -253,26 +257,43 @@ private fun ShowDownloadsScreenLayout(
                 title = {
                     if (state.isSelectionMode) {
                         Text(
-                            text = stringResource(CoreR.string.selected_count, state.selectedEpisodeIds.size),
+                            text =
+                                stringResource(
+                                    CoreR.string.selected_count,
+                                    state.selectedEpisodeIds.size,
+                                ),
                             style = MaterialTheme.typography.titleMedium,
                         )
                     } else {
                         Column {
                             Text(
                                 text = showTitle,
-                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                style =
+                                    MaterialTheme.typography.titleMedium.copy(
+                                        fontWeight = FontWeight.Bold
+                                    ),
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
                             val totalCount = allSeasonGroups.sumOf { it.episodes.size }
                             if (totalCount > 0) {
-                                val epStr = if (totalCount == 1) "1 episode" else "$totalCount episodes"
-                                val totalBytes = allSeasonGroups.flatMap { it.episodes }.sumOf { ep ->
-                                    val disk = ep.diskSize()
-                                    if (disk > 0) disk else (ep.sources.maxOfOrNull { it.size } ?: 0L)
-                                }
-                                val totalSizeStr = if (totalBytes > 0) Formatter.formatFileSize(context, totalBytes) else ""
-                                val subtitleText = if (totalSizeStr.isNotEmpty()) "$epStr • $totalSizeStr" else epStr
+                                val epStr =
+                                    if (totalCount == 1) "1 episode" else "$totalCount episodes"
+                                val totalBytes =
+                                    allSeasonGroups
+                                        .flatMap { it.episodes }
+                                        .sumOf { ep ->
+                                            val disk = ep.diskSize()
+                                            if (disk > 0) disk
+                                            else (ep.sources.maxOfOrNull { it.size } ?: 0L)
+                                        }
+                                val totalSizeStr =
+                                    if (totalBytes > 0)
+                                        Formatter.formatFileSize(context, totalBytes)
+                                    else ""
+                                val subtitleText =
+                                    if (totalSizeStr.isNotEmpty()) "$epStr • $totalSizeStr"
+                                    else epStr
                                 Text(
                                     text = subtitleText,
                                     style = MaterialTheme.typography.bodySmall,
@@ -305,12 +326,20 @@ private fun ShowDownloadsScreenLayout(
                 actions = {
                     if (state.isSelectionMode) {
                         val allEps = allSeasonGroups.flatMap { it.episodes }
-                        val isAllSelected = allEps.isNotEmpty() && allEps.all { state.selectedEpisodeIds.contains(it.id) }
+                        val isAllSelected =
+                            allEps.isNotEmpty() &&
+                                allEps.all { state.selectedEpisodeIds.contains(it.id) }
                         TextButton(
                             onClick = { onAction(ShowDownloadsAction.SelectAll) },
                             modifier = Modifier.padding(end = 8.dp),
                         ) {
-                            Text(text = stringResource(if (isAllSelected) CoreR.string.deselect_all else CoreR.string.select_all))
+                            Text(
+                                text =
+                                    stringResource(
+                                        if (isAllSelected) CoreR.string.deselect_all
+                                        else CoreR.string.select_all
+                                    )
+                            )
                         }
                     } else if (allSeasonGroups.any { it.episodes.isNotEmpty() }) {
                         FilledTonalButton(
@@ -321,7 +350,10 @@ private fun ShowDownloadsScreenLayout(
                         ) {
                             Text(
                                 text = stringResource(CoreR.string.select),
-                                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                                style =
+                                    MaterialTheme.typography.labelMedium.copy(
+                                        fontWeight = FontWeight.SemiBold
+                                    ),
                             )
                         }
                     }
@@ -329,11 +361,7 @@ private fun ShowDownloadsScreenLayout(
             )
         },
     ) { innerPadding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(top = innerPadding.calculateTopPadding()),
-        ) {
+        Box(modifier = Modifier.fillMaxSize().padding(top = innerPadding.calculateTopPadding())) {
             if (state.isLoading) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
@@ -349,41 +377,50 @@ private fun ShowDownloadsScreenLayout(
                     onButtonClick = navigateBack,
                     image = CoreR.drawable.download_page_placeholder,
                     isEmpty = true,
-                    modifier = Modifier.fillMaxSize().padding(start = paddingStart, end = paddingEnd),
+                    modifier =
+                        Modifier.fillMaxSize().padding(start = paddingStart, end = paddingEnd),
                 ) {}
             } else {
                 LazyColumn(
                     state = listState,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .widthIn(max = 640.dp)
-                        .align(Alignment.TopCenter),
+                    modifier =
+                        Modifier.fillMaxSize().widthIn(max = 640.dp).align(Alignment.TopCenter),
                     contentPadding = PaddingValues(bottom = bottomPadding),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     for (seasonGroup in allSeasonGroups) {
                         val seasonEpIds = seasonGroup.episodes.map { it.id }.toSet()
-                        val isSeasonSelected = seasonEpIds.isNotEmpty() && seasonEpIds.all { state.selectedEpisodeIds.contains(it) }
+                        val isSeasonSelected =
+                            seasonEpIds.isNotEmpty() &&
+                                seasonEpIds.all { state.selectedEpisodeIds.contains(it) }
 
                         stickyHeader(key = "season_${seasonGroup.seasonNumber}") {
-                            val isSeasonOverlapping by remember(seasonGroup.seasonNumber, seasonEpIds, listState) {
-                                derivedStateOf {
-                                    val visibleItems = listState.layoutInfo.visibleItemsInfo
-                                    val headerItem =
-                                        visibleItems.firstOrNull { it.key == "season_${seasonGroup.seasonNumber}" }
-                                            ?: return@derivedStateOf false
-                                    val headerBottom = headerItem.offset + headerItem.size
-                                    visibleItems.any { item ->
-                                        item.key in seasonEpIds &&
-                                            item.offset < headerBottom &&
-                                            (item.offset + item.size) > headerItem.offset
+                            val isSeasonOverlapping by
+                                remember(seasonGroup.seasonNumber, seasonEpIds, listState) {
+                                    derivedStateOf {
+                                        val visibleItems = listState.layoutInfo.visibleItemsInfo
+                                        val headerItem =
+                                            visibleItems.firstOrNull {
+                                                it.key == "season_${seasonGroup.seasonNumber}"
+                                            } ?: return@derivedStateOf false
+                                        val headerBottom = headerItem.offset + headerItem.size
+                                        visibleItems.any { item ->
+                                            item.key in seasonEpIds &&
+                                                item.offset < headerBottom &&
+                                                (item.offset + item.size) > headerItem.offset
+                                        }
                                     }
                                 }
-                            }
 
                             StickySeasonHeader(
                                 title = seasonGroup.headerTitle,
-                                contentPadding = PaddingValues(start = paddingStart, end = paddingEnd, top = 6.dp, bottom = 6.dp),
+                                contentPadding =
+                                    PaddingValues(
+                                        start = paddingStart,
+                                        end = paddingEnd,
+                                        top = 6.dp,
+                                        bottom = 6.dp,
+                                    ),
                                 isSelectionMode = state.isSelectionMode,
                                 isSelected = isSeasonSelected,
                                 isOverlapping = isSeasonOverlapping,
@@ -401,93 +438,121 @@ private fun ShowDownloadsScreenLayout(
                             items = seasonGroup.episodes,
                             key = { it.id },
                         ) { episode ->
-                            val queueEntry = state.activeDownloads.firstOrNull { it.id == episode.id }
+                            val queueEntry =
+                                state.activeDownloads.firstOrNull { it.id == episode.id }
                             val isMoviePaused = queueEntry?.state is DownloadQueue.EntryState.Paused
-                            val isDownloading = queueEntry?.state is DownloadQueue.EntryState.Downloading ||
-                                (isMoviePaused && (queueEntry.bytesDownloaded > 0 || queueEntry.downloadId != null))
-                            val isPending = queueEntry?.state is DownloadQueue.EntryState.Pending ||
-                                (isMoviePaused && queueEntry.bytesDownloaded <= 0 && queueEntry.downloadId == null)
+                            val isDownloading =
+                                queueEntry?.state is DownloadQueue.EntryState.Downloading ||
+                                    (isMoviePaused &&
+                                        (queueEntry.bytesDownloaded > 0 ||
+                                            queueEntry.downloadId != null))
+                            val isPending =
+                                queueEntry?.state is DownloadQueue.EntryState.Pending ||
+                                    (isMoviePaused &&
+                                        queueEntry.bytesDownloaded <= 0 &&
+                                        queueEntry.downloadId == null)
                             val isFailed = queueEntry?.state is DownloadQueue.EntryState.Failed
-                            val isConverting = queueEntry?.state is DownloadQueue.EntryState.Converting
+                            val isConverting =
+                                queueEntry?.state is DownloadQueue.EntryState.Converting
                             val transfer = state.activeTransfers[episode.id]
                             val isTransferring = transfer != null
 
-                            val status = when {
-                                isTransferring -> DownloadStatus.TRANSFERRING
-                                isConverting -> DownloadStatus.CONVERTING
-                                isDownloading -> DownloadStatus.DOWNLOADING
-                                isPending -> DownloadStatus.PENDING
-                                isFailed -> DownloadStatus.FAILED
-                                episode.isDownloading() -> DownloadStatus.DOWNLOADING
-                                else -> DownloadStatus.DOWNLOADED
-                            }
+                            val status =
+                                when {
+                                    isTransferring -> DownloadStatus.TRANSFERRING
+                                    isConverting -> DownloadStatus.CONVERTING
+                                    isDownloading -> DownloadStatus.DOWNLOADING
+                                    isPending -> DownloadStatus.PENDING
+                                    isFailed -> DownloadStatus.FAILED
+                                    episode.isDownloading() -> DownloadStatus.DOWNLOADING
+                                    else -> DownloadStatus.DOWNLOADED
+                                }
 
-                            val downloadProgress = when {
-                                transfer != null -> transfer.progress
-                                queueEntry != null -> (queueEntry.progress / 100f).coerceIn(0f, 1f)
-                                else -> 0f
-                            }
+                            val downloadProgress =
+                                when {
+                                    transfer != null -> transfer.progress
+                                    queueEntry != null ->
+                                        (queueEntry.progress / 100f).coerceIn(0f, 1f)
+                                    else -> 0f
+                                }
 
-                            val downloadedSizeBytes = when {
-                                transfer != null -> transfer.bytesTransferred
-                                queueEntry != null && queueEntry.bytesDownloaded > 0 -> queueEntry.bytesDownloaded
-                                else -> 0L
-                            }
-                            val sizeBytes = when {
-                                transfer != null -> transfer.totalBytes
-                                queueEntry?.totalBytes != null && queueEntry.totalBytes > 0 -> queueEntry.totalBytes
-                                else -> 0L
-                            }
+                            val downloadedSizeBytes =
+                                when {
+                                    transfer != null -> transfer.bytesTransferred
+                                    queueEntry != null && queueEntry.bytesDownloaded > 0 ->
+                                        queueEntry.bytesDownloaded
+                                    else -> 0L
+                                }
+                            val sizeBytes =
+                                when {
+                                    transfer != null -> transfer.totalBytes
+                                    queueEntry?.totalBytes != null && queueEntry.totalBytes > 0 ->
+                                        queueEntry.totalBytes
+                                    else -> 0L
+                                }
 
-                            val playbackProgress = if (status == DownloadStatus.DOWNLOADED && episode.runtimeTicks > 0) {
-                                (episode.playbackPositionTicks.toFloat() / episode.runtimeTicks).coerceIn(0f, 1f)
-                            } else 0f
+                            val playbackProgress =
+                                if (
+                                    status == DownloadStatus.DOWNLOADED && episode.runtimeTicks > 0
+                                ) {
+                                    (episode.playbackPositionTicks.toFloat() / episode.runtimeTicks)
+                                        .coerceIn(0f, 1f)
+                                } else 0f
 
                             DownloadEpisodeTile(
                                 episode = episode,
-                                state = DownloadEpisodeTileState(
-                                    status = status,
-                                    downloadProgress = downloadProgress,
-                                    playbackProgress = playbackProgress,
-                                    isSelected = state.selectedEpisodeIds.contains(episode.id),
-                                    isSelectionMode = state.isSelectionMode,
-                                    sizeBytes = sizeBytes,
-                                    durationTicks = episode.runtimeTicks,
-                                    downloadSpeedBytesPerSec = queueEntry?.bytesPerSecond ?: 0L,
-                                    etaSeconds = queueEntry?.etaSeconds,
-                                    downloadedSizeBytes = downloadedSizeBytes,
-                                    isPaused = isMoviePaused,
-                                    pendingDeletionSeconds = state.pendingDeletionIds[episode.id],
-                                    displayExtraInfo = state.displayExtraInfo,
-                                ),
-                                actions = DownloadCardActions(
-                                    onClick = {
-                                        if (state.isSelectionMode) {
-                                            onAction(ShowDownloadsAction.ToggleSelection(episode.id))
-                                        } else if (status == DownloadStatus.DOWNLOADED) {
-                                            onEpisodeClick(episode)
-                                        }
-                                    },
-                                    onLongClick = {
-                                        onAction(ShowDownloadsAction.EnterSelectionMode)
-                                        onAction(ShowDownloadsAction.ToggleSelection(episode.id))
-                                    },
-                                    onSwipeDelete = {
-                                        onAction(ShowDownloadsAction.StageDeleteEpisode(episode))
-                                    },
-                                    onPauseDownload = {
-                                        onAction(ShowDownloadsAction.PauseDownload(episode.id))
-                                    },
-                                    onResumeDownload = {
-                                        onAction(ShowDownloadsAction.ResumeDownload(episode.id))
-                                    },
-                                    onRetryDownload = {
-                                        onAction(ShowDownloadsAction.ResumeDownload(episode.id))
-                                    },
-                                    onUndoDelete = {
-                                        onAction(ShowDownloadsAction.UndoDelete(episode.id))
-                                    },
-                                ),
+                                state =
+                                    DownloadEpisodeTileState(
+                                        status = status,
+                                        downloadProgress = downloadProgress,
+                                        playbackProgress = playbackProgress,
+                                        isSelected = state.selectedEpisodeIds.contains(episode.id),
+                                        isSelectionMode = state.isSelectionMode,
+                                        sizeBytes = sizeBytes,
+                                        durationTicks = episode.runtimeTicks,
+                                        downloadSpeedBytesPerSec = queueEntry?.bytesPerSecond ?: 0L,
+                                        etaSeconds = queueEntry?.etaSeconds,
+                                        downloadedSizeBytes = downloadedSizeBytes,
+                                        isPaused = isMoviePaused,
+                                        pendingDeletionSeconds =
+                                            state.pendingDeletionIds[episode.id],
+                                        displayExtraInfo = state.displayExtraInfo,
+                                    ),
+                                actions =
+                                    DownloadCardActions(
+                                        onClick = {
+                                            if (state.isSelectionMode) {
+                                                onAction(
+                                                    ShowDownloadsAction.ToggleSelection(episode.id)
+                                                )
+                                            } else if (status == DownloadStatus.DOWNLOADED) {
+                                                onEpisodeClick(episode)
+                                            }
+                                        },
+                                        onLongClick = {
+                                            onAction(ShowDownloadsAction.EnterSelectionMode)
+                                            onAction(
+                                                ShowDownloadsAction.ToggleSelection(episode.id)
+                                            )
+                                        },
+                                        onSwipeDelete = {
+                                            onAction(
+                                                ShowDownloadsAction.StageDeleteEpisode(episode)
+                                            )
+                                        },
+                                        onPauseDownload = {
+                                            onAction(ShowDownloadsAction.PauseDownload(episode.id))
+                                        },
+                                        onResumeDownload = {
+                                            onAction(ShowDownloadsAction.ResumeDownload(episode.id))
+                                        },
+                                        onRetryDownload = {
+                                            onAction(ShowDownloadsAction.ResumeDownload(episode.id))
+                                        },
+                                        onUndoDelete = {
+                                            onAction(ShowDownloadsAction.UndoDelete(episode.id))
+                                        },
+                                    ),
                                 modifier = Modifier.padding(start = paddingStart, end = paddingEnd),
                             )
                         }
@@ -503,17 +568,18 @@ private fun ShowDownloadsScreenLayout(
                 modifier = Modifier.align(Alignment.BottomCenter),
             ) {
                 Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(80.dp)
-                        .background(
-                            Brush.verticalGradient(
-                                colors = listOf(
-                                    Color.Transparent,
-                                    MaterialTheme.colorScheme.surface,
+                    modifier =
+                        Modifier.fillMaxWidth()
+                            .height(80.dp)
+                            .background(
+                                Brush.verticalGradient(
+                                    colors =
+                                        listOf(
+                                            Color.Transparent,
+                                            MaterialTheme.colorScheme.surface,
+                                        )
                                 )
                             )
-                        ),
                 )
             }
 
@@ -522,19 +588,25 @@ private fun ShowDownloadsScreenLayout(
                 visible = state.isSelectionMode,
                 enter = fadeIn() + slideInVertically { it },
                 exit = fadeOut() + slideOutVertically { it },
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
-                    .padding(bottom = 8.dp),
+                modifier =
+                    Modifier.align(Alignment.BottomCenter)
+                        .windowInsetsPadding(
+                            WindowInsets.safeDrawing.only(
+                                WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom
+                            )
+                        )
+                        .padding(bottom = 8.dp),
             ) {
-                val selectedActive = state.activeDownloads.filter { state.selectedEpisodeIds.contains(it.id) }
-                val anyDownloadingOrPending = if (selectedActive.isNotEmpty()) {
-                    selectedActive.any {
-                        it.state is DownloadQueue.EntryState.Downloading ||
-                            it.state is DownloadQueue.EntryState.Converting ||
-                            it.state is DownloadQueue.EntryState.Pending
-                    }
-                } else null
+                val selectedActive =
+                    state.activeDownloads.filter { state.selectedEpisodeIds.contains(it.id) }
+                val anyDownloadingOrPending =
+                    if (selectedActive.isNotEmpty()) {
+                        selectedActive.any {
+                            it.state is DownloadQueue.EntryState.Downloading ||
+                                it.state is DownloadQueue.EntryState.Converting ||
+                                it.state is DownloadQueue.EntryState.Pending
+                        }
+                    } else null
 
                 FloatingSelectionToolbar(
                     selectedCount = state.selectedEpisodeIds.size,
@@ -561,17 +633,19 @@ private fun ShowDownloadsScreenLayoutPreview() {
         ShowDownloadsScreenLayout(
             showId = UUID.randomUUID(),
             showTitle = "Oshi no Ko",
-            state = ShowDownloadsState(
-                seasonGroups = listOf(
-                    SeasonEpisodeGroup(
-                        seasonNumber = 1,
-                        headerTitle = "Season 1 • 1 episode",
-                        episodes = listOf(dummyEpisode),
-                    )
+            state =
+                ShowDownloadsState(
+                    seasonGroups =
+                        listOf(
+                            SeasonEpisodeGroup(
+                                seasonNumber = 1,
+                                headerTitle = "Season 1 • 1 episode",
+                                episodes = listOf(dummyEpisode),
+                            )
+                        ),
+                    totalEpisodesCount = 1,
+                    totalDiskSizeFormatted = "1.2 GB",
                 ),
-                totalEpisodesCount = 1,
-                totalDiskSizeFormatted = "1.2 GB",
-            ),
             onAction = {},
             onEpisodeClick = {},
             navigateBack = {},

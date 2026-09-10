@@ -22,41 +22,48 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.core.R as CoreR
+import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 
 @Composable
 fun CastExpandedPlayerHeader(
     deviceName: String?,
     onClose: () -> Unit,
-    onDeviceClick: () -> Unit
+    onDeviceClick: () -> Unit,
 ) {
-    Box(
-        modifier = Modifier.fillMaxWidth().padding(16.dp)
-    ) {
+    Box(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
         IconButton(
             onClick = onClose,
-            modifier = Modifier
-                .align(Alignment.CenterStart)
-                .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
+            modifier =
+                Modifier.align(Alignment.CenterStart)
+                    .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape),
         ) {
             Icon(painterResource(CoreR.drawable.ic_x), contentDescription = "Close")
         }
-        
+
         // Device Pill
         Surface(
             modifier = Modifier.align(Alignment.Center),
             shape = RoundedCornerShape(24.dp),
             color = Color(0xFF81C784),
-            onClick = onDeviceClick
+            onClick = onDeviceClick,
         ) {
             Row(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(painterResource(CoreR.drawable.ic_cast), contentDescription = null, modifier = Modifier.size(20.dp), tint = Color.Black)
+                Icon(
+                    painterResource(CoreR.drawable.ic_cast),
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                    tint = Color.Black,
+                )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(deviceName ?: "No Device", style = MaterialTheme.typography.labelLarge, color = Color.Black)
+                Text(
+                    deviceName ?: "No Device",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = Color.Black,
+                )
             }
         }
     }
@@ -69,7 +76,7 @@ private fun CastExpandedPlayerHeaderPreview() {
         CastExpandedPlayerHeader(
             deviceName = "Test Device",
             onClose = {},
-            onDeviceClick = {}
+            onDeviceClick = {},
         )
     }
 }

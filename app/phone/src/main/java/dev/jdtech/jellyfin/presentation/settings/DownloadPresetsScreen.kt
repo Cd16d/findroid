@@ -72,6 +72,7 @@ import androidx.compose.ui.tooling.preview.PreviewScreenSizes
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.models.DownloadQualityPreset
 import dev.jdtech.jellyfin.models.DownloadQualityPresets
 import dev.jdtech.jellyfin.models.UiText
@@ -79,10 +80,9 @@ import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
 import dev.jdtech.jellyfin.presentation.utils.rememberSafePadding
 import dev.jdtech.jellyfin.utils.DeviceCodecCapabilities
-import kotlinx.coroutines.launch
 import java.util.Locale
 import java.util.UUID
-import dev.jdtech.jellyfin.core.R as CoreR
+import kotlinx.coroutines.launch
 
 @Composable
 fun DownloadPresetsScreen(
@@ -127,20 +127,18 @@ private fun DownloadPresetsScreenContent(
         val clip = ClipData.newPlainText(title, text)
         clipboard?.setPrimaryClip(clip)
 
-        scope.launch {
-            snackbarHostState.showSnackbar(copiedMessage)
-        }
+        scope.launch { snackbarHostState.showSnackbar(copiedMessage) }
 
         try {
-            val sendIntent = Intent().apply {
-                action = Intent.ACTION_SEND
-                putExtra(Intent.EXTRA_TEXT, text)
-                putExtra(Intent.EXTRA_TITLE, title)
-                type = "text/plain"
-            }
+            val sendIntent =
+                Intent().apply {
+                    action = Intent.ACTION_SEND
+                    putExtra(Intent.EXTRA_TEXT, text)
+                    putExtra(Intent.EXTRA_TITLE, title)
+                    type = "text/plain"
+                }
             context.startActivity(Intent.createChooser(sendIntent, exportChooserTitle))
-        } catch (_: Exception) {
-        }
+        } catch (_: Exception) {}
     }
 
     if (presetToEdit != null) {
@@ -151,12 +149,13 @@ private fun DownloadPresetsScreenContent(
                 onAction(DownloadPresetsAction.SavePreset(updated))
                 presetToEdit = null
             },
-            onDelete = if (!isNewPreset && !presetToEdit!!.isOriginal) {
-                {
-                    onAction(DownloadPresetsAction.DeletePreset(presetToEdit!!.id))
-                    presetToEdit = null
-                }
-            } else null,
+            onDelete =
+                if (!isNewPreset && !presetToEdit!!.isOriginal) {
+                    {
+                        onAction(DownloadPresetsAction.DeletePreset(presetToEdit!!.id))
+                        presetToEdit = null
+                    }
+                } else null,
             onDismiss = { presetToEdit = null },
         )
     }
@@ -165,9 +164,7 @@ private fun DownloadPresetsScreenContent(
         ImportPresetsDialog(
             onImport = { json -> onAction(DownloadPresetsAction.ImportPresets(json)) },
             onDismiss = { showImportDialog = false },
-            onSuccess = {
-                scope.launch { snackbarHostState.showSnackbar(importSuccessMessage) }
-            },
+            onSuccess = { scope.launch { snackbarHostState.showSnackbar(importSuccessMessage) } },
         )
     }
 
@@ -179,7 +176,8 @@ private fun DownloadPresetsScreenContent(
                 title = {
                     Text(
                         text = stringResource(CoreR.string.download_preset_profiles_title),
-                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                        style =
+                            MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                     )
                 },
                 navigationIcon = {
@@ -194,21 +192,28 @@ private fun DownloadPresetsScreenContent(
                     IconButton(
                         onClick = { showExtraInfo = !showExtraInfo },
                         shape = CircleShape,
-                        colors = IconButtonDefaults.iconButtonColors(
-                            containerColor = if (showExtraInfo) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer,
-                            contentColor = if (showExtraInfo) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                        ),
+                        colors =
+                            IconButtonDefaults.iconButtonColors(
+                                containerColor =
+                                    if (showExtraInfo) MaterialTheme.colorScheme.primaryContainer
+                                    else MaterialTheme.colorScheme.surfaceContainer,
+                                contentColor =
+                                    if (showExtraInfo) MaterialTheme.colorScheme.primary
+                                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                            ),
                     ) {
                         Icon(
                             painter = painterResource(CoreR.drawable.ic_info),
-                            contentDescription = stringResource(CoreR.string.download_preset_show_details),
+                            contentDescription =
+                                stringResource(CoreR.string.download_preset_show_details),
                             modifier = Modifier.size(20.dp),
                         )
                     }
                     IconButton(onClick = { onAction(DownloadPresetsAction.ResetToDefaults) }) {
                         Icon(
                             painter = painterResource(CoreR.drawable.ic_rotate_ccw),
-                            contentDescription = stringResource(CoreR.string.download_preset_reset_defaults),
+                            contentDescription =
+                                stringResource(CoreR.string.download_preset_reset_defaults),
                         )
                     }
                 },
@@ -216,10 +221,9 @@ private fun DownloadPresetsScreenContent(
         },
     ) { innerPadding ->
         LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(top = innerPadding.calculateTopPadding()),
-            contentPadding = PaddingValues(start = paddingStart, end = paddingEnd, bottom = paddingBottom),
+            modifier = Modifier.fillMaxSize().padding(top = innerPadding.calculateTopPadding()),
+            contentPadding =
+                PaddingValues(start = paddingStart, end = paddingEnd, bottom = paddingBottom),
             verticalArrangement = Arrangement.spacedBy(12.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
@@ -228,10 +232,8 @@ private fun DownloadPresetsScreenContent(
                     text = stringResource(CoreR.string.download_preset_profiles_desc),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier
-                        .widthIn(max = 640.dp)
-                        .fillMaxWidth()
-                        .padding(vertical = 6.dp),
+                    modifier =
+                        Modifier.widthIn(max = 640.dp).fillMaxWidth().padding(vertical = 6.dp),
                 )
             }
 
@@ -253,23 +255,22 @@ private fun DownloadPresetsScreenContent(
                 FilledTonalButton(
                     onClick = {
                         isNewPreset = true
-                        presetToEdit = DownloadQualityPreset(
-                            id = UUID.randomUUID().toString(),
-                            name = UiText.DynamicString(""),
-                            maxBitrateBps = 4_500_000L,
-                            maxWidth = 1920,
-                            maxHeight = 1080,
-                            audioBitrateBps = 192_000L,
-                            audioChannels = 2,
-                            audioCodec = "aac",
-                            videoCodec = "h264",
-                            isOriginal = false,
-                            customName = "",
-                        )
+                        presetToEdit =
+                            DownloadQualityPreset(
+                                id = UUID.randomUUID().toString(),
+                                name = UiText.DynamicString(""),
+                                maxBitrateBps = 4_500_000L,
+                                maxWidth = 1920,
+                                maxHeight = 1080,
+                                audioBitrateBps = 192_000L,
+                                audioChannels = 2,
+                                audioCodec = "aac",
+                                videoCodec = "h264",
+                                isOriginal = false,
+                                customName = "",
+                            )
                     },
-                    modifier = Modifier
-                        .widthIn(max = 640.dp)
-                        .fillMaxWidth(),
+                    modifier = Modifier.widthIn(max = 640.dp).fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                 ) {
                     Icon(
@@ -284,11 +285,7 @@ private fun DownloadPresetsScreenContent(
 
             // Export / Import Buttons at Bottom
             item(key = "export_section") {
-                Column(
-                    modifier = Modifier
-                        .widthIn(max = 640.dp)
-                        .fillMaxWidth(),
-                ) {
+                Column(modifier = Modifier.widthIn(max = 640.dp).fillMaxWidth()) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -342,16 +339,11 @@ private fun PresetDetailCard(
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer,
-        ),
+        colors =
+            CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-        ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -361,7 +353,10 @@ private fun PresetDetailCard(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             text = preset.displayName.asString(),
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            style =
+                                MaterialTheme.typography.titleMedium.copy(
+                                    fontWeight = FontWeight.Bold
+                                ),
                             color = MaterialTheme.colorScheme.onSurface,
                         )
                         if (preset.isOriginal) {
@@ -372,7 +367,10 @@ private fun PresetDetailCard(
                             ) {
                                 Text(
                                     text = stringResource(CoreR.string.download_preset_max_quality),
-                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                    style =
+                                        MaterialTheme.typography.labelSmall.copy(
+                                            fontWeight = FontWeight.Bold
+                                        ),
                                     color = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                                 )
@@ -411,19 +409,31 @@ private fun PresetDetailCard(
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
                         Text(
-                            text = stringResource(CoreR.string.download_preset_resolution, preset.resolutionText.asString()),
+                            text =
+                                stringResource(
+                                    CoreR.string.download_preset_resolution,
+                                    preset.resolutionText.asString(),
+                                ),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         Text(
-                            text = stringResource(CoreR.string.download_preset_bitrate, preset.bitrateText.asString()),
+                            text =
+                                stringResource(
+                                    CoreR.string.download_preset_bitrate,
+                                    preset.bitrateText.asString(),
+                                ),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = stringResource(CoreR.string.download_preset_audio, preset.audioText.asString()),
+                        text =
+                            stringResource(
+                                CoreR.string.download_preset_audio,
+                                preset.audioText.asString(),
+                            ),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -442,8 +452,8 @@ private fun EditPresetDialog(
     onDelete: (() -> Unit)?,
     onDismiss: () -> Unit,
 ) {
-    val initialName = preset.customName?.takeIf { it.isNotBlank() }
-        ?: if (isNew) "" else preset.name.asString()
+    val initialName =
+        preset.customName?.takeIf { it.isNotBlank() } ?: if (isNew) "" else preset.name.asString()
     var name by remember { mutableStateOf(initialName) }
 
     val resolutionOptions = remember {
@@ -457,7 +467,9 @@ private fun EditPresetDialog(
     }
 
     var selectedResolutionOption by remember {
-        val match = resolutionOptions.firstOrNull { it.second.first == preset.maxWidth && it.second.second == preset.maxHeight }
+        val match = resolutionOptions.firstOrNull {
+            it.second.first == preset.maxWidth && it.second.second == preset.maxHeight
+        }
         mutableStateOf(match?.first ?: "Custom")
     }
     var customWidth by remember { mutableStateOf(preset.maxWidth.toString()) }
@@ -465,18 +477,22 @@ private fun EditPresetDialog(
 
     val initialBitrateMbps = remember {
         val mbps = preset.maxBitrateBps / 1_000_000.0
-        if (mbps == mbps.toLong().toDouble()) mbps.toLong().toString() else String.format(Locale.US, "%.1f", mbps)
+        if (mbps == mbps.toLong().toDouble()) mbps.toLong().toString()
+        else String.format(Locale.US, "%.1f", mbps)
     }
     var bitrateMbpsText by remember { mutableStateOf(initialBitrateMbps) }
 
     val supportedAudioCodecs = remember {
-        val list = listOf("aac", "mp3", "opus", "ac3", "eac3", "flac")
-            .filter { DeviceCodecCapabilities.isAudioCodecSupported(it) }
+        val list =
+            listOf("aac", "mp3", "opus", "ac3", "eac3", "flac").filter {
+                DeviceCodecCapabilities.isAudioCodecSupported(it)
+            }
         list.ifEmpty { listOf("aac") }
     }
     var selectedAudioCodec by remember {
         mutableStateOf(
-            if (supportedAudioCodecs.contains(preset.audioCodec.lowercase())) preset.audioCodec.lowercase()
+            if (supportedAudioCodecs.contains(preset.audioCodec.lowercase()))
+                preset.audioCodec.lowercase()
             else supportedAudioCodecs.first()
         )
     }
@@ -489,9 +505,7 @@ private fun EditPresetDialog(
             "Mono (1.0)" to 1,
         )
     }
-    var selectedChannels by remember {
-        mutableIntStateOf(preset.audioChannels)
-    }
+    var selectedChannels by remember { mutableIntStateOf(preset.audioChannels) }
 
     val audioBitrateOptions = remember {
         listOf(
@@ -503,9 +517,7 @@ private fun EditPresetDialog(
             "64 kbps" to 64_000L,
         )
     }
-    var selectedAudioBitrate by remember {
-        mutableLongStateOf(preset.audioBitrateBps)
-    }
+    var selectedAudioBitrate by remember { mutableLongStateOf(preset.audioBitrateBps) }
 
     var showDeleteConfirm by remember { mutableStateOf(false) }
 
@@ -520,7 +532,10 @@ private fun EditPresetDialog(
                         showDeleteConfirm = false
                         onDelete?.invoke()
                     },
-                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                    colors =
+                        ButtonDefaults.textButtonColors(
+                            contentColor = MaterialTheme.colorScheme.error
+                        ),
                 ) {
                     Text(stringResource(CoreR.string.download_preset_delete))
                 }
@@ -543,9 +558,7 @@ private fun EditPresetDialog(
         },
         text = {
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState()),
+                modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
                 // Name
@@ -614,7 +627,12 @@ private fun EditPresetDialog(
                 OutlinedTextField(
                     value = bitrateMbpsText,
                     onValueChange = { bitrateMbpsText = it },
-                    label = { Text(stringResource(CoreR.string.download_preset_video_bitrate_label) + " (Mbps)") },
+                    label = {
+                        Text(
+                            stringResource(CoreR.string.download_preset_video_bitrate_label) +
+                                " (Mbps)"
+                        )
+                    },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
@@ -683,21 +701,23 @@ private fun EditPresetDialog(
                 onClick = {
                     val w = customWidth.toIntOrNull() ?: preset.maxWidth
                     val h = customHeight.toIntOrNull() ?: preset.maxHeight
-                    val mbps = bitrateMbpsText.toDoubleOrNull() ?: (preset.maxBitrateBps / 1_000_000.0)
+                    val mbps =
+                        bitrateMbpsText.toDoubleOrNull() ?: (preset.maxBitrateBps / 1_000_000.0)
                     val bps = (mbps * 1_000_000.0).toLong().coerceAtLeast(100_000L)
                     val finalName = name.ifBlank { "${h}p Custom" }
 
-                    val updated = preset.copy(
-                        customName = finalName,
-                        name = UiText.DynamicString(finalName),
-                        maxWidth = w,
-                        maxHeight = h,
-                        maxBitrateBps = bps,
-                        audioCodec = selectedAudioCodec,
-                        audioChannels = selectedChannels,
-                        audioBitrateBps = selectedAudioBitrate,
-                        approxGbPerHour = UiText.DynamicString(""),
-                    )
+                    val updated =
+                        preset.copy(
+                            customName = finalName,
+                            name = UiText.DynamicString(finalName),
+                            maxWidth = w,
+                            maxHeight = h,
+                            maxBitrateBps = bps,
+                            audioCodec = selectedAudioCodec,
+                            audioChannels = selectedChannels,
+                            audioBitrateBps = selectedAudioBitrate,
+                            approxGbPerHour = UiText.DynamicString(""),
+                        )
                     onSave(updated)
                 }
             ) {
@@ -709,14 +729,15 @@ private fun EditPresetDialog(
                 if (onDelete != null && !preset.isOriginal) {
                     TextButton(
                         onClick = { showDeleteConfirm = true },
-                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                        colors =
+                            ButtonDefaults.textButtonColors(
+                                contentColor = MaterialTheme.colorScheme.error
+                            ),
                     ) {
                         Text(stringResource(CoreR.string.download_preset_delete))
                     }
                 }
-                TextButton(onClick = onDismiss) {
-                    Text(stringResource(android.R.string.cancel))
-                }
+                TextButton(onClick = onDismiss) { Text(stringResource(android.R.string.cancel)) }
             }
         },
     )
@@ -757,13 +778,17 @@ private fun ImportPresetsDialog(
                         jsonText = it
                         isError = false
                     },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(160.dp),
+                    modifier = Modifier.fillMaxWidth().height(160.dp),
                     isError = isError,
-                    supportingText = if (isError) {
-                        { Text(stringResource(CoreR.string.download_preset_import_error), color = MaterialTheme.colorScheme.error) }
-                    } else null,
+                    supportingText =
+                        if (isError) {
+                            {
+                                Text(
+                                    stringResource(CoreR.string.download_preset_import_error),
+                                    color = MaterialTheme.colorScheme.error,
+                                )
+                            }
+                        } else null,
                 )
                 OutlinedButton(
                     onClick = { pasteFromClipboard() },
@@ -795,9 +820,7 @@ private fun ImportPresetsDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(android.R.string.cancel))
-            }
+            TextButton(onClick = onDismiss) { Text(stringResource(android.R.string.cancel)) }
         },
     )
 }
@@ -813,4 +836,3 @@ private fun DownloadPresetsScreenPreview() {
         )
     }
 }
-

@@ -4,12 +4,10 @@ import dev.jdtech.jellyfin.models.FindroidSegment
 import dev.jdtech.jellyfin.models.FindroidSegmentType
 import dev.jdtech.jellyfin.player.core.R
 import dev.jdtech.jellyfin.repository.JellyfinRepository
-import timber.log.Timber
 import java.util.UUID
+import timber.log.Timber
 
-/**
- * Utility functions for handling media segments like intros and outros.
- */
+/** Utility functions for handling media segments like intros and outros. */
 object SegmentUtils {
 
     /**
@@ -29,28 +27,30 @@ object SegmentUtils {
     }
 
     /**
-     * Determines if the player should skip directly to the next episode instead of just skipping the segment.
-     * This applies to outro segments that end near the end of the media duration.
+     * Determines if the player should skip directly to the next episode instead of just skipping
+     * the segment. This applies to outro segments that end near the end of the media duration.
      *
      * @param segment The current active segment.
      * @param hasNextMediaItem Whether there is another media item following the current one.
      * @param playerDurationMillis The total duration of the current media in milliseconds.
-     * @param nextEpisodeThreshold The threshold in milliseconds from the end of the media to trigger a next episode skip.
+     * @param nextEpisodeThreshold The threshold in milliseconds from the end of the media to
+     *   trigger a next episode skip.
      * @return True if skipping should transition to the next episode, false otherwise.
      */
     fun shouldSkipToNextEpisode(
         segment: FindroidSegment,
         hasNextMediaItem: Boolean,
         playerDurationMillis: Long,
-        nextEpisodeThreshold: Long
+        nextEpisodeThreshold: Long,
     ): Boolean {
         return segment.type == FindroidSegmentType.OUTRO &&
-                hasNextMediaItem &&
-                segment.endTicks > (playerDurationMillis - nextEpisodeThreshold)
+            hasNextMediaItem &&
+            segment.endTicks > (playerDurationMillis - nextEpisodeThreshold)
     }
 
     /**
-     * Returns the string resource ID for the skip button text based on the segment type and skip behavior.
+     * Returns the string resource ID for the skip button text based on the segment type and skip
+     * behavior.
      *
      * @param segment The segment to be skipped.
      * @param shouldSkipToNextEpisode Whether the skip action will transition to the next episode.

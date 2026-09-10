@@ -21,14 +21,10 @@ fun ConfirmDeleteDialog(
         title = { Text(text = title) },
         text = { Text(text = message) },
         confirmButton = {
-            TextButton(onClick = onConfirm) {
-                Text(text = stringResource(CoreR.string.delete))
-            }
+            TextButton(onClick = onConfirm) { Text(text = stringResource(CoreR.string.delete)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(text = stringResource(CoreR.string.cancel))
-            }
+            TextButton(onClick = onDismiss) { Text(text = stringResource(CoreR.string.cancel)) }
         },
     )
 }

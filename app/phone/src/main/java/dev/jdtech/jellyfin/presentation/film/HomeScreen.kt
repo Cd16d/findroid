@@ -73,7 +73,7 @@ fun HomeScreen(
                 else -> Unit
             }
             viewModel.onAction(action)
-        }
+        },
     )
 }
 
@@ -81,7 +81,7 @@ fun HomeScreen(
 @Composable
 private fun HomeScreenLayout(
     state: HomeState,
-    onAction: (HomeAction) -> Unit
+    onAction: (HomeAction) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
     val safePadding = rememberSafePadding(handleStartInsets = false, handleBottomInsets = false)
@@ -100,14 +100,10 @@ private fun HomeScreenLayout(
     val showServerSelectionSheetState = rememberModalBottomSheetState()
     var showServerSelectionBottomSheet by remember { mutableStateOf(false) }
 
-    Box(modifier = Modifier
-        .fillMaxSize()
-        .semantics { isTraversalGroup = true }) {
+    Box(modifier = Modifier.fillMaxSize().semantics { isTraversalGroup = true }) {
         PullToRefreshBox(isRefreshing = false, onRefresh = { onAction(HomeAction.OnRetryClick) }) {
             LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .semantics { traversalIndex = 1f },
+                modifier = Modifier.fillMaxSize().semantics { traversalIndex = 1f },
                 contentPadding = PaddingValues(top = contentPaddingTop, bottom = paddingBottom),
                 verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacings.medium),
             ) {
@@ -198,13 +194,13 @@ private fun HomeScreenLayoutPreview() {
     FindroidTheme {
         HomeScreenLayout(
             state =
-            HomeState(
-                server = dummyServer,
-                suggestionsSection = dummyHomeSuggestions,
-                resumeSection = dummyHomeSection,
-                views = listOf(dummyHomeView),
-                error = Exception("Failed to load data"),
-            ),
+                HomeState(
+                    server = dummyServer,
+                    suggestionsSection = dummyHomeSuggestions,
+                    resumeSection = dummyHomeSection,
+                    views = listOf(dummyHomeView),
+                    error = Exception("Failed to load data"),
+                ),
             onAction = {},
         )
     }

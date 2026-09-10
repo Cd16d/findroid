@@ -43,19 +43,19 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
+import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
+import dev.jdtech.jellyfin.setup.R as SetupR
 import dev.jdtech.jellyfin.setup.presentation.login.LoginAction
 import dev.jdtech.jellyfin.setup.presentation.login.LoginEvent
 import dev.jdtech.jellyfin.setup.presentation.login.LoginState
 import dev.jdtech.jellyfin.setup.presentation.login.LoginViewModel
 import dev.jdtech.jellyfin.utils.ObserveAsEvents
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.milliseconds
-import dev.jdtech.jellyfin.core.R as CoreR
-import dev.jdtech.jellyfin.setup.R as SetupR
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 
 @Composable
 fun QuickConnectScreen(
@@ -90,7 +90,7 @@ fun QuickConnectScreen(
 
     QuickConnectScreenLayout(
         state = state,
-        onManualLoginClick = onManualLoginClick
+        onManualLoginClick = onManualLoginClick,
     )
 }
 
@@ -104,44 +104,44 @@ private fun QuickConnectScreenLayout(
             model = state.splashscreenUrl,
             contentDescription = null,
             contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize(),
         )
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .drawBehind {
+            modifier =
+                Modifier.fillMaxSize().drawBehind {
                     val side1 = size.width
                     val side2 = size.height
                     drawRect(
-                        brush = Brush.radialGradient(
-                            colors = listOf(
-                                Color.Black.copy(alpha = 0.9f),
-                                Color.Black.copy(alpha = 0.6f),
-                                Color.Transparent
-                            ),
-                            center = Offset(side1, side2),
-                            radius = if (side1 < side2) side1 else side2
-                        )
+                        brush =
+                            Brush.radialGradient(
+                                colors =
+                                    listOf(
+                                        Color.Black.copy(alpha = 0.9f),
+                                        Color.Black.copy(alpha = 0.6f),
+                                        Color.Transparent,
+                                    ),
+                                center = Offset(side1, side2),
+                                radius = if (side1 < side2) side1 else side2,
+                            )
                     )
                 }
         )
 
         Surface(
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(MaterialTheme.spacings.large)
-                .width(450.dp),
+            modifier =
+                Modifier.align(Alignment.BottomStart)
+                    .padding(MaterialTheme.spacings.large)
+                    .width(450.dp),
             tonalElevation = 5.dp,
-            shape = MaterialTheme.shapes.extraLarge
+            shape = MaterialTheme.shapes.extraLarge,
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier
-                    .padding(MaterialTheme.spacings.default)
+                modifier = Modifier.padding(MaterialTheme.spacings.default),
             ) {
                 Text(
                     text = stringResource(SetupR.string.login_btn_quick_connect),
-                    style = MaterialTheme.typography.headlineMedium
+                    style = MaterialTheme.typography.headlineMedium,
                 )
                 Spacer(modifier = Modifier.height(MaterialTheme.spacings.medium))
                 QuickConnectCodeDisplay(code = state.quickConnectCode)
@@ -156,7 +156,8 @@ private fun QuickConnectScreenLayout(
                         style = MaterialTheme.typography.bodySmall,
                     )
                     HorizontalDivider(
-                        modifier = Modifier.weight(1f).padding(start = MaterialTheme.spacings.medium)
+                        modifier =
+                            Modifier.weight(1f).padding(start = MaterialTheme.spacings.medium)
                     )
                 }
                 Spacer(modifier = Modifier.height(MaterialTheme.spacings.default))
@@ -167,10 +168,7 @@ private fun QuickConnectScreenLayout(
                     ) {
                         Box(modifier = Modifier.fillMaxWidth()) {
                             Text(
-                                text =
-                                    stringResource(
-                                        id = SetupR.string.login_btn_login
-                                    ),
+                                text = stringResource(id = SetupR.string.login_btn_login),
                                 modifier = Modifier.align(Alignment.Center),
                             )
                         }
@@ -181,37 +179,33 @@ private fun QuickConnectScreenLayout(
 
         Box(
             contentAlignment = Alignment.BottomEnd,
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize(),
         ) {
             Image(
                 painterResource(CoreR.drawable.ic_logo),
                 contentDescription = null,
                 alignment = Alignment.BottomEnd,
-                modifier = Modifier
-                    .padding(MaterialTheme.spacings.large)
-                    .size(64.dp)
+                modifier = Modifier.padding(MaterialTheme.spacings.large).size(64.dp),
             )
         }
     }
 }
 
 @Composable
-private fun QuickConnectCodeDisplay(
-    code: String?
-) {
+private fun QuickConnectCodeDisplay(code: String?) {
     Row(
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacings.small),
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         for (i in 0 until 6) {
             val char = code?.getOrNull(i) ?: '0'
             Box(
                 modifier = Modifier.width(48.dp),
-                contentAlignment = Alignment.Center
+                contentAlignment = Alignment.Center,
             ) {
                 QuickConnectChar(
                     char = char,
-                    isLoading = code == null
+                    isLoading = code == null,
                 )
             }
         }
@@ -235,20 +229,22 @@ private fun QuickConnectChar(
                 displayChar = ('0'..'9').random()
                 rotation.animateTo(
                     targetValue = rotation.value + 360f,
-                    animationSpec = tween(
-                        durationMillis = Random.nextInt(600, 1000),
-                        easing = LinearEasing
-                    )
+                    animationSpec =
+                        tween(
+                            durationMillis = Random.nextInt(600, 1000),
+                            easing = LinearEasing,
+                        ),
                 )
             }
         } else {
             displayChar = char
             rotation.animateTo(
                 targetValue = 0f,
-                animationSpec = tween(
-                    durationMillis = Random.nextInt(600, 1000),
-                    easing = FastOutSlowInEasing
-                )
+                animationSpec =
+                    tween(
+                        durationMillis = Random.nextInt(600, 1000),
+                        easing = FastOutSlowInEasing,
+                    ),
             )
         }
     }
@@ -257,9 +253,7 @@ private fun QuickConnectChar(
         text = displayChar.toString(),
         style = MaterialTheme.typography.displayLarge,
         color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.graphicsLayer {
-            rotationX = rotation.value
-        }
+        modifier = Modifier.graphicsLayer { rotationX = rotation.value },
     )
 }
 
@@ -268,11 +262,12 @@ private fun QuickConnectChar(
 private fun QuickConnectScreenPreview() {
     FindroidTheme {
         QuickConnectScreenLayout(
-            state = LoginState(
-                quickConnectCode = "123456",
-                quickConnectEnabled = true
-            ),
-            onManualLoginClick = {}
+            state =
+                LoginState(
+                    quickConnectCode = "123456",
+                    quickConnectEnabled = true,
+                ),
+            onManualLoginClick = {},
         )
     }
 }
@@ -282,11 +277,12 @@ private fun QuickConnectScreenPreview() {
 private fun QuickConnectScreenLoadingPreview() {
     FindroidTheme {
         QuickConnectScreenLayout(
-            state = LoginState(
-                quickConnectCode = null,
-                quickConnectEnabled = true
-            ),
-            onManualLoginClick = {}
+            state =
+                LoginState(
+                    quickConnectCode = null,
+                    quickConnectEnabled = true,
+                ),
+            onManualLoginClick = {},
         )
     }
 }

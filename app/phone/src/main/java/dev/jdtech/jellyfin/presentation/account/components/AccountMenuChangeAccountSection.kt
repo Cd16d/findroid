@@ -52,7 +52,7 @@ fun AccountMenuChangeAccountSection(
     onAddUserClick: () -> Unit,
     onManageAccountsClick: () -> Unit,
     baseUrl: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val singleShape = RoundedCornerShape(24.dp)
     val topShape =
@@ -66,7 +66,7 @@ fun AccountMenuChangeAccountSection(
             onClick = onToggleExpand,
             shape = if (isExpanded) topShape else singleShape,
             color = MaterialTheme.colorScheme.surface,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
         ) {
             ListItem(
                 headlineContent = { Text(stringResource(CoreR.string.change_user)) },
@@ -80,19 +80,19 @@ fun AccountMenuChangeAccountSection(
                                 Surface(
                                     shape = CircleShape,
                                     color = MaterialTheme.colorScheme.surfaceVariant,
-                                    modifier = Modifier.size(24.dp)
+                                    modifier = Modifier.size(24.dp),
                                 ) {
                                     if (userImageUrl != null) {
                                         AsyncImage(
                                             model = userImageUrl,
                                             contentDescription = null,
-                                            modifier = Modifier.fillMaxSize()
+                                            modifier = Modifier.fillMaxSize(),
                                         )
                                     } else {
                                         Box(contentAlignment = Alignment.Center) {
                                             Text(
                                                 text = user.name.take(1).uppercase(),
-                                                style = MaterialTheme.typography.labelSmall
+                                                style = MaterialTheme.typography.labelSmall,
                                             )
                                         }
                                     }
@@ -107,20 +107,20 @@ fun AccountMenuChangeAccountSection(
                                 Surface(
                                     shape = CircleShape,
                                     color = MaterialTheme.colorScheme.primaryContainer,
-                                    modifier = Modifier
-                                        .height(24.dp)
-                                        .wrapContentWidth()
+                                    modifier = Modifier.height(24.dp).wrapContentWidth(),
                                 ) {
                                     Box(
                                         contentAlignment = Alignment.Center,
-                                        modifier = Modifier
-                                            .widthIn(min = 24.dp)
-                                            .padding(horizontal = MaterialTheme.spacings.extraSmall)
+                                        modifier =
+                                            Modifier.widthIn(min = 24.dp)
+                                                .padding(
+                                                    horizontal = MaterialTheme.spacings.extraSmall
+                                                ),
                                     ) {
                                         Text(
                                             text = "+${otherUsers.size - 2}",
                                             style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                                            color = MaterialTheme.colorScheme.onPrimaryContainer,
                                         )
                                     }
                                 }
@@ -131,25 +131,27 @@ fun AccountMenuChangeAccountSection(
                         Surface(
                             shape = CircleShape,
                             modifier = Modifier.size(24.dp),
-                            color = MaterialTheme.colorScheme.secondaryContainer
+                            color = MaterialTheme.colorScheme.secondaryContainer,
                         ) {
                             Icon(
-                                imageVector = ImageVector.vectorResource(
-                                    if (isExpanded) CoreR.drawable.ic_chevron_up else CoreR.drawable.ic_chevron_down
-                                ),
-                                contentDescription = null
+                                imageVector =
+                                    ImageVector.vectorResource(
+                                        if (isExpanded) CoreR.drawable.ic_chevron_up
+                                        else CoreR.drawable.ic_chevron_down
+                                    ),
+                                contentDescription = null,
                             )
                         }
                     }
                 },
-                colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
             )
         }
 
         AnimatedVisibility(
             visible = isExpanded,
             enter = expandVertically() + fadeIn(),
-            exit = shrinkVertically() + fadeOut()
+            exit = shrinkVertically() + fadeOut(),
         ) {
             Column {
                 otherUsers.forEach { user ->
@@ -158,7 +160,7 @@ fun AccountMenuChangeAccountSection(
                         onClick = { onUserClick(user) },
                         shape = middleShape,
                         color = MaterialTheme.colorScheme.surface,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
                     ) {
                         ListItem(
                             headlineContent = { Text(user.name) },
@@ -166,7 +168,7 @@ fun AccountMenuChangeAccountSection(
                                 Surface(
                                     shape = CircleShape,
                                     modifier = Modifier.size(32.dp),
-                                    color = MaterialTheme.colorScheme.surfaceVariant
+                                    color = MaterialTheme.colorScheme.surfaceVariant,
                                 ) {
                                     val userImageUrl =
                                         user.getProfileImageModel(LocalContext.current, baseUrl)
@@ -174,18 +176,19 @@ fun AccountMenuChangeAccountSection(
                                         AsyncImage(
                                             model = userImageUrl,
                                             contentDescription = null,
-                                            modifier = Modifier.fillMaxSize()
+                                            modifier = Modifier.fillMaxSize(),
                                         )
                                     } else {
                                         Icon(
-                                            imageVector = ImageVector.vectorResource(CoreR.drawable.ic_user),
+                                            imageVector =
+                                                ImageVector.vectorResource(CoreR.drawable.ic_user),
                                             contentDescription = null,
-                                            modifier = Modifier.padding(4.dp)
+                                            modifier = Modifier.padding(4.dp),
                                         )
                                     }
                                 }
                             },
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                         )
                     }
                 }
@@ -196,7 +199,7 @@ fun AccountMenuChangeAccountSection(
                     onClick = onAddUserClick,
                     shape = middleShape,
                     color = MaterialTheme.colorScheme.surface,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
                     ListItem(
                         headlineContent = { Text(stringResource(CoreR.string.add_user)) },
@@ -204,15 +207,16 @@ fun AccountMenuChangeAccountSection(
                             Surface(
                                 shape = CircleShape,
                                 modifier = Modifier.size(24.dp),
-                                color = MaterialTheme.colorScheme.secondaryContainer
+                                color = MaterialTheme.colorScheme.secondaryContainer,
                             ) {
                                 Icon(
-                                    imageVector = ImageVector.vectorResource(CoreR.drawable.ic_plus),
-                                    contentDescription = null
+                                    imageVector =
+                                        ImageVector.vectorResource(CoreR.drawable.ic_plus),
+                                    contentDescription = null,
                                 )
                             }
                         },
-                        colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                     )
                 }
 
@@ -222,17 +226,18 @@ fun AccountMenuChangeAccountSection(
                     onClick = onManageAccountsClick,
                     shape = bottomShape,
                     color = MaterialTheme.colorScheme.surface,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
                     ListItem(
                         headlineContent = { Text(stringResource(CoreR.string.manage_accounts)) },
                         leadingContent = {
                             Icon(
-                                imageVector = ImageVector.vectorResource(CoreR.drawable.ic_user_settings),
-                                contentDescription = null
+                                imageVector =
+                                    ImageVector.vectorResource(CoreR.drawable.ic_user_settings),
+                                contentDescription = null,
                             )
                         },
-                        colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                     )
                 }
             }
@@ -246,17 +251,18 @@ fun AccountMenuChangeAccountSectionPreview() {
     FindroidTheme {
         Surface {
             AccountMenuChangeAccountSection(
-                otherUsers = listOf(
-                    User(UUID.randomUUID(), "Jane", "server1"),
-                    User(UUID.randomUUID(), "Bob", "server1")
-                ),
+                otherUsers =
+                    listOf(
+                        User(UUID.randomUUID(), "Jane", "server1"),
+                        User(UUID.randomUUID(), "Bob", "server1"),
+                    ),
                 isExpanded = true,
                 onToggleExpand = {},
                 onUserClick = {},
                 onAddUserClick = {},
                 onManageAccountsClick = {},
                 baseUrl = "",
-                modifier = Modifier.padding(16.dp)
+                modifier = Modifier.padding(16.dp),
             )
         }
     }

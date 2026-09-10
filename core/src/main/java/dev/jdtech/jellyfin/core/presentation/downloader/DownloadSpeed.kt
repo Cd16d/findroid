@@ -1,7 +1,8 @@
 package dev.jdtech.jellyfin.core.presentation.downloader
 
 /**
- * Computes a smoothed download speed using a multi-second sliding window and exponential moving average.
+ * Computes a smoothed download speed using a multi-second sliding window and exponential moving
+ * average.
  *
  * Keeps the transfer rate and ETA stable over network jitter and bursty I/O.
  */
@@ -10,6 +11,7 @@ class DownloadSpeedTracker(
     private val emaAlpha: Double = 0.15,
 ) {
     private data class Sample(val bytes: Long, val timeMs: Long)
+
     private val samples = ArrayDeque<Sample>()
     private var smoothedSpeed: Long = 0L
     private var smoothedEtaSeconds: Long = -1L
@@ -40,11 +42,12 @@ class DownloadSpeedTracker(
 
         if (elapsedMs > 0 && deltaBytes >= 0) {
             val windowSpeed = (deltaBytes * 1000L / elapsedMs)
-            smoothedSpeed = if (smoothedSpeed <= 0L) {
-                windowSpeed
-            } else {
-                (smoothedSpeed * (1.0 - emaAlpha) + windowSpeed * emaAlpha).toLong()
-            }
+            smoothedSpeed =
+                if (smoothedSpeed <= 0L) {
+                    windowSpeed
+                } else {
+                    (smoothedSpeed * (1.0 - emaAlpha) + windowSpeed * emaAlpha).toLong()
+                }
         }
 
         return smoothedSpeed.coerceAtLeast(0L)
@@ -56,11 +59,12 @@ class DownloadSpeedTracker(
             return -1L
         }
         val instantEta = remainingBytes / smoothedSpeed
-        smoothedEtaSeconds = if (smoothedEtaSeconds <= 0L) {
-            instantEta
-        } else {
-            (smoothedEtaSeconds * 0.82 + instantEta * 0.18).toLong()
-        }
+        smoothedEtaSeconds =
+            if (smoothedEtaSeconds <= 0L) {
+                instantEta
+            } else {
+                (smoothedEtaSeconds * 0.82 + instantEta * 0.18).toLong()
+            }
         return smoothedEtaSeconds
     }
 
@@ -72,7 +76,8 @@ class DownloadSpeedTracker(
 }
 
 /**
- * Formats ETA seconds into a stable, clean user-facing string (e.g. "< 1 min", "3 min", "1 h 10 min").
+ * Formats ETA seconds into a stable, clean user-facing string (e.g. "< 1 min", "3 min", "1 h 10
+ * min").
  */
 fun formatStableEta(etaSeconds: Long): String {
     if (etaSeconds <= 0L) return ""

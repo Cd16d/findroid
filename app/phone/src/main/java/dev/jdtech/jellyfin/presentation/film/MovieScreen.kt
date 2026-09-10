@@ -36,6 +36,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.jdtech.jellyfin.LocalCastPlayerHeight
 import dev.jdtech.jellyfin.PlayerActivity
+import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.core.presentation.downloader.DownloaderAction
 import dev.jdtech.jellyfin.core.presentation.downloader.DownloaderEvent
 import dev.jdtech.jellyfin.core.presentation.downloader.DownloaderState
@@ -60,9 +61,8 @@ import dev.jdtech.jellyfin.presentation.theme.spacings
 import dev.jdtech.jellyfin.presentation.utils.LocalOfflineMode
 import dev.jdtech.jellyfin.presentation.utils.rememberSafePadding
 import dev.jdtech.jellyfin.utils.ObserveAsEvents
-import org.jellyfin.sdk.model.api.BaseItemKind
 import java.util.UUID
-import dev.jdtech.jellyfin.core.R as CoreR
+import org.jellyfin.sdk.model.api.BaseItemKind
 
 @Composable
 fun MovieScreen(
@@ -110,7 +110,11 @@ fun MovieScreen(
             when (action) {
                 is MovieAction.Play -> {
                     if (castConnectionState == CastConnectionState.CONNECTED) {
-                        castSessionViewModel.playItem(movieId, BaseItemKind.MOVIE.serialName, action.startFromBeginning)
+                        castSessionViewModel.playItem(
+                            movieId,
+                            BaseItemKind.MOVIE.serialName,
+                            action.startFromBeginning,
+                        )
                     } else {
                         val intent = Intent(context, PlayerActivity::class.java)
                         intent.putExtra("itemId", movieId.toString())
@@ -266,7 +270,11 @@ private fun MovieScreenLayout(
                             }
                         },
                         onTrailerClick = { uri -> onAction(MovieAction.PlayTrailer(uri)) },
-                        onDownloadClick = { storageIndex, presetId, downloadExternalAudio, audioStreamIndex ->
+                        onDownloadClick = {
+                            storageIndex,
+                            presetId,
+                            downloadExternalAudio,
+                            audioStreamIndex ->
                             onDownloaderAction(
                                 DownloaderAction.Download(
                                     item = movie,
@@ -296,7 +304,7 @@ private fun MovieScreenLayout(
                     if (state.displayExtraInfo && state.videoMetadata != null) {
                         ExtraInfoCard(
                             videoMetadata = state.videoMetadata!!,
-                            additionalParts = movie.additionalParts
+                            additionalParts = movie.additionalParts,
                         )
                         Spacer(Modifier.height(MaterialTheme.spacings.medium))
                     }

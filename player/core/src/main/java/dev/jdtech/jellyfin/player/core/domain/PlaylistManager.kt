@@ -241,31 +241,33 @@ class PlaylistManager @Inject internal constructor(private val repository: Jelly
 
         val partName = if (mediaSource.name.isPartName()) mediaSource.name else null
 
-        val episodeInfo = when (this) {
-            is FindroidPart -> {
-                EpisodeInfo(parentIndexNumber, indexNumber, indexNumberEnd, null)
-            }
+        val episodeInfo =
+            when (this) {
+                is FindroidPart -> {
+                    EpisodeInfo(parentIndexNumber, indexNumber, indexNumberEnd, null)
+                }
 
-            is FindroidEpisode -> {
-                EpisodeInfo(parentIndexNumber, indexNumber, indexNumberEnd, seriesName)
-            }
+                is FindroidEpisode -> {
+                    EpisodeInfo(parentIndexNumber, indexNumber, indexNumberEnd, seriesName)
+                }
 
-            else -> {
-                EpisodeInfo(null, null, null, null)
-            }
-        }
-
-        val mediaType = when (this) {
-            is FindroidPart -> {
-                if (parentIndexNumber == null) {
-                    PlayerMediaType.MOVIE
-                } else {
-                    PlayerMediaType.EPISODE
+                else -> {
+                    EpisodeInfo(null, null, null, null)
                 }
             }
-            is FindroidEpisode -> PlayerMediaType.EPISODE
-            else -> PlayerMediaType.MOVIE
-        }
+
+        val mediaType =
+            when (this) {
+                is FindroidPart -> {
+                    if (parentIndexNumber == null) {
+                        PlayerMediaType.MOVIE
+                    } else {
+                        PlayerMediaType.EPISODE
+                    }
+                }
+                is FindroidEpisode -> PlayerMediaType.EPISODE
+                else -> PlayerMediaType.MOVIE
+            }
 
         return PlayerItem(
             name = mainName,
@@ -295,30 +297,33 @@ class PlaylistManager @Inject internal constructor(private val repository: Jelly
     private fun FindroidItem.toPlaylist(): List<FindroidItem> {
         val items = mutableListOf<FindroidItem>()
         items.add(this)
-        val parts = when (this) {
-            is FindroidMovie -> this.additionalParts
-            is FindroidEpisode -> this.additionalParts
-            else -> emptyList()
-        }
+        val parts =
+            when (this) {
+                is FindroidMovie -> this.additionalParts
+                is FindroidEpisode -> this.additionalParts
+                else -> emptyList()
+            }
         for (part in parts) {
             items.add(part)
         }
         return items
     }
 
-    private fun FindroidImage.toPlayerImage() = PlayerImage(
-        uri = uri,
-        blurHash = blurHash
-    )
+    private fun FindroidImage.toPlayerImage() =
+        PlayerImage(
+            uri = uri,
+            blurHash = blurHash,
+        )
 
-    private fun FindroidImages.toPlayerImages() = PlayerImages(
-        primary = primary?.toPlayerImage(),
-        backdrop = backdrop?.toPlayerImage(),
-        logo = logo?.toPlayerImage(),
-        showPrimary = showPrimary?.toPlayerImage(),
-        showBackdrop = showBackdrop?.toPlayerImage(),
-        showLogo = showLogo?.toPlayerImage()
-    )
+    private fun FindroidImages.toPlayerImages() =
+        PlayerImages(
+            primary = primary?.toPlayerImage(),
+            backdrop = backdrop?.toPlayerImage(),
+            logo = logo?.toPlayerImage(),
+            showPrimary = showPrimary?.toPlayerImage(),
+            showBackdrop = showBackdrop?.toPlayerImage(),
+            showLogo = showLogo?.toPlayerImage(),
+        )
 
     private data class EpisodeInfo(
         val parentIndexNumber: Int?,

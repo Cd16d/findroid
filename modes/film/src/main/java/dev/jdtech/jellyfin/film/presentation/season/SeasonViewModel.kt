@@ -29,7 +29,12 @@ class SeasonViewModel @Inject constructor(private val repository: JellyfinReposi
                         seriesId = season.seriesId,
                         seasonId = seasonId,
                         // MediaSources and CanDownload are necessary for season download logic
-                        fields = listOf(ItemFields.OVERVIEW, ItemFields.CAN_DOWNLOAD, ItemFields.MEDIA_SOURCES),
+                        fields =
+                            listOf(
+                                ItemFields.OVERVIEW,
+                                ItemFields.CAN_DOWNLOAD,
+                                ItemFields.MEDIA_SOURCES,
+                            ),
                     )
                 _state.emit(_state.value.copy(season = season, episodes = episodes))
             } catch (e: Exception) {

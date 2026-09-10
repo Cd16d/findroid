@@ -8,14 +8,14 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.jdtech.jellyfin.settings.domain.AppPreferences
 import dev.jdtech.jellyfin.settings.utils.StorageUtils
+import java.io.File
+import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.File
-import javax.inject.Inject
 
 data class SmartDownloadsState(
     val smartDownloadNextEpisode: Boolean = true,
@@ -32,7 +32,9 @@ data class SmartDownloadsState(
 )
 
 @HiltViewModel
-class SmartDownloadsViewModel @Inject constructor(
+class SmartDownloadsViewModel
+@Inject
+constructor(
     private val appPreferences: AppPreferences,
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
@@ -65,29 +67,45 @@ class SmartDownloadsViewModel @Inject constructor(
             withContext(Dispatchers.IO) {
                 try {
                     val dirs = context.getExternalFilesDirs(null)
-                    val defaultIndex = appPreferences.getValue(appPreferences.defaultDownloadStorageIndex).toIntOrNull() ?: 0
-                    val storageLocation = dirs.getOrNull(defaultIndex) ?: dirs.firstOrNull() ?: context.filesDir
+                    val defaultIndex =
+                        appPreferences
+                            .getValue(appPreferences.defaultDownloadStorageIndex)
+                            .toIntOrNull() ?: 0
+                    val storageLocation =
+                        dirs.getOrNull(defaultIndex) ?: dirs.firstOrNull() ?: context.filesDir
                     val downloadsDir = File(storageLocation, "downloads")
-                    val downloadedBytes = if (downloadsDir.exists()) {
-                        downloadsDir.walkTopDown().filter { it.isFile }.sumOf { it.length() }
-                    } else {
-                        0L
-                    }
+                    val downloadedBytes =
+                        if (downloadsDir.exists()) {
+                            downloadsDir.walkTopDown().filter { it.isFile }.sumOf { it.length() }
+                        } else {
+                            0L
+                        }
                     val statFs = StatFs(storageLocation.path)
                     val availableBytes = statFs.availableBlocksLong * statFs.blockSizeLong
-                    val totalDeviceBytes = StorageUtils.getTotalStorageBytes(context, storageLocation.path)
+                    val totalDeviceBytes =
+                        StorageUtils.getTotalStorageBytes(context, storageLocation.path)
                     val deviceUsedBytes = (totalDeviceBytes - availableBytes).coerceAtLeast(0L)
 
-                    val downloadedFrac = if (totalDeviceBytes > 0) (downloadedBytes.toFloat() / totalDeviceBytes).coerceIn(0f, 1f) else 0f
-                    val freeFrac = if (totalDeviceBytes > 0) (availableBytes.toFloat() / totalDeviceBytes).coerceIn(0f, 1f) else 0f
+                    val downloadedFrac =
+                        if (totalDeviceBytes > 0)
+                            (downloadedBytes.toFloat() / totalDeviceBytes).coerceIn(0f, 1f)
+                        else 0f
+                    val freeFrac =
+                        if (totalDeviceBytes > 0)
+                            (availableBytes.toFloat() / totalDeviceBytes).coerceIn(0f, 1f)
+                        else 0f
                     val otherFrac = (1f - downloadedFrac - freeFrac).coerceAtLeast(0f)
 
                     _state.update {
                         it.copy(
-                            usedStorageFormatted = StorageUtils.formatDecimalFileSize(downloadedBytes),
-                            freeStorageFormatted = StorageUtils.formatDecimalFileSize(availableBytes),
-                            deviceUsedFormatted = StorageUtils.formatDecimalFileSize(deviceUsedBytes),
-                            deviceTotalFormatted = StorageUtils.formatDecimalFileSize(totalDeviceBytes),
+                            usedStorageFormatted =
+                                StorageUtils.formatDecimalFileSize(downloadedBytes),
+                            freeStorageFormatted =
+                                StorageUtils.formatDecimalFileSize(availableBytes),
+                            deviceUsedFormatted =
+                                StorageUtils.formatDecimalFileSize(deviceUsedBytes),
+                            deviceTotalFormatted =
+                                StorageUtils.formatDecimalFileSize(totalDeviceBytes),
                             downloadedFraction = downloadedFrac,
                             otherUsedFraction = otherFrac,
                             freeFraction = freeFrac,

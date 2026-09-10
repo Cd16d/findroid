@@ -10,5 +10,8 @@ data class DownloaderState(
     val extraInfo: String? = null,
 ) {
     val isDownloading: Boolean
-        get() = status == DownloadStatus.PENDING || status == DownloadStatus.RUNNING || status == DownloadStatus.PAUSED
+        get() =
+            status == DownloadStatus.PENDING ||
+                status == DownloadStatus.RUNNING ||
+                status == DownloadStatus.PAUSED
 }

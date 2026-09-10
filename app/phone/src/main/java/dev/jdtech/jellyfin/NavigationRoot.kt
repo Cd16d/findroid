@@ -2,9 +2,16 @@ package dev.jdtech.jellyfin
 
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -53,6 +60,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.toRoute
 import androidx.window.core.layout.WindowSizeClass
+import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.models.CollectionType
 import dev.jdtech.jellyfin.models.FindroidBoxSet
 import dev.jdtech.jellyfin.models.FindroidCollection
@@ -96,40 +104,28 @@ import dev.jdtech.jellyfin.presentation.setup.welcome.WelcomeScreen
 import dev.jdtech.jellyfin.presentation.theme.spacings
 import dev.jdtech.jellyfin.presentation.utils.LocalOfflineMode
 import dev.jdtech.jellyfin.presentation.utils.rememberSafePadding
-import kotlinx.serialization.Serializable
 import java.util.UUID
-import dev.jdtech.jellyfin.core.R as CoreR
-import dev.jdtech.jellyfin.settings.R as SettingsR
+import kotlinx.serialization.Serializable
 
-@Serializable
-data object WelcomeRoute
+@Serializable data object WelcomeRoute
 
-@Serializable
-data object ServersRoute
+@Serializable data object ServersRoute
 
-@Serializable
-data object AddServerRoute
+@Serializable data object AddServerRoute
 
-@Serializable
-data class ServerAddressesRoute(val serverId: String)
+@Serializable data class ServerAddressesRoute(val serverId: String)
 
-@Serializable
-data object UsersRoute
+@Serializable data object UsersRoute
 
-@Serializable
-data class LoginRoute(val username: String? = null)
+@Serializable data class LoginRoute(val username: String? = null)
 
-@Serializable
-data object HomeRoute
+@Serializable data object HomeRoute
 
-@Serializable
-data object MediaRoute
+@Serializable data object MediaRoute
 
-@Serializable
-data object DownloadsRoute
+@Serializable data object DownloadsRoute
 
-@Serializable
-data class ShowDownloadsRoute(val showId: String, val showTitle: String)
+@Serializable data class ShowDownloadsRoute(val showId: String, val showTitle: String)
 
 @Serializable
 data class LibraryRoute(
@@ -138,46 +134,31 @@ data class LibraryRoute(
     val libraryType: CollectionType,
 )
 
-@Serializable
-data class CollectionRoute(val collectionId: String, val collectionName: String)
+@Serializable data class CollectionRoute(val collectionId: String, val collectionName: String)
 
-@Serializable
-data object FavoritesRoute
+@Serializable data object FavoritesRoute
 
-@Serializable
-data class MovieRoute(val movieId: String)
+@Serializable data class MovieRoute(val movieId: String)
 
-@Serializable
-data class ShowRoute(val showId: String)
+@Serializable data class ShowRoute(val showId: String)
 
-@Serializable
-data class EpisodeRoute(val episodeId: String)
+@Serializable data class EpisodeRoute(val episodeId: String)
 
-@Serializable
-data class SeasonRoute(val seasonId: String)
+@Serializable data class SeasonRoute(val seasonId: String)
 
-@Serializable
-data class PersonRoute(val personId: String)
+@Serializable data class PersonRoute(val personId: String)
 
-@Serializable
-data class SettingsRoute(val indexes: IntArray)
+@Serializable data class SettingsRoute(val indexes: IntArray)
 
-@Serializable
-data class SettingsFileEditRoute(
-    val filePath: String,
-)
+@Serializable data class SettingsFileEditRoute(val filePath: String)
 
-@Serializable
-data object AboutRoute
+@Serializable data object AboutRoute
 
-@Serializable
-data object DeviceRoute
+@Serializable data object DeviceRoute
 
-@Serializable
-data object SmartDownloadsRoute
+@Serializable data object SmartDownloadsRoute
 
-@Serializable
-data object DownloadPresetsRoute
+@Serializable data object DownloadPresetsRoute
 
 data class TabBarItem(
     @param:StringRes val title: Int,
@@ -234,14 +215,15 @@ fun NavigationRoot(
     var searchExpanded by remember { mutableStateOf(false) }
 
     val currentDestination = navBackStackEntry?.destination
-    val showBottomBar = navigationItems.any {
-        currentDestination?.hasRoute(it.route::class) == true
-    } && !searchExpanded
+    val showBottomBar =
+        navigationItems.any { currentDestination?.hasRoute(it.route::class) == true } &&
+            !searchExpanded
 
-    val safePadding = rememberSafePadding(
-        handleStartInsets = false,
-        handleBottomInsets = !showBottomBar
-    )
+    val safePadding =
+        rememberSafePadding(
+            handleStartInsets = false,
+            handleBottomInsets = !showBottomBar,
+        )
 
     var castExpanded by remember { mutableStateOf(true) }
 
@@ -250,7 +232,7 @@ fun NavigationRoot(
             override fun onPostScroll(
                 consumed: Offset,
                 available: Offset,
-                source: NestedScrollSource
+                source: NestedScrollSource,
             ): Offset {
                 if (consumed.y < -1f) {
                     castExpanded = false // Scrolling down -> Collapse
@@ -262,27 +244,33 @@ fun NavigationRoot(
         }
     }
 
-    val castRoutes = listOf(
-        HomeRoute::class,
-        ShowRoute::class,
-        MovieRoute::class,
-        MediaRoute::class,
-        LibraryRoute::class,
-        EpisodeRoute::class,
-        SeasonRoute::class,
-        FavoritesRoute::class,
-        CollectionRoute::class,
-    )
+    val castRoutes =
+        listOf(
+            HomeRoute::class,
+            ShowRoute::class,
+            MovieRoute::class,
+            MediaRoute::class,
+            LibraryRoute::class,
+            EpisodeRoute::class,
+            SeasonRoute::class,
+            FavoritesRoute::class,
+            CollectionRoute::class,
+        )
 
     val connectionState by castSessionViewModel.connectionState.collectAsStateWithLifecycle()
     val showCastButton =
-        castRoutes.any { currentDestination?.hasRoute(it) == true } && !searchExpanded && !isOfflineMode && castSessionViewModel.sessionManager.isSupported
+        castRoutes.any { currentDestination?.hasRoute(it) == true } &&
+            !searchExpanded &&
+            !isOfflineMode &&
+            castSessionViewModel.sessionManager.isSupported
     var showCastSheet by remember { mutableStateOf(false) }
     var showCastExpandedPlayer by remember { mutableStateOf(false) }
+    var isDismissingCastExpandedPlayer by remember { mutableStateOf(false) }
 
     LaunchedEffect(connectionState) {
         if (connectionState != CastConnectionState.CONNECTED) {
             showCastExpandedPlayer = false
+            isDismissingCastExpandedPlayer = false
         }
     }
 
@@ -298,12 +286,14 @@ fun NavigationRoot(
     }
 
     val windowAdaptiveInfo = currentWindowAdaptiveInfo()
-    val isExpandedScreen = windowAdaptiveInfo.windowSizeClass.isWidthAtLeastBreakpoint(
-        WindowSizeClass.WIDTH_DP_EXPANDED_LOWER_BOUND
-    )
-    val isMediumScreen = windowAdaptiveInfo.windowSizeClass.isWidthAtLeastBreakpoint(
-        WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND
-    )
+    val isExpandedScreen =
+        windowAdaptiveInfo.windowSizeClass.isWidthAtLeastBreakpoint(
+            WindowSizeClass.WIDTH_DP_EXPANDED_LOWER_BOUND
+        )
+    val isMediumScreen =
+        windowAdaptiveInfo.windowSizeClass.isWidthAtLeastBreakpoint(
+            WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND
+        )
     val customNavSuiteType =
         with(windowAdaptiveInfo.windowSizeClass) {
             when {
@@ -314,7 +304,7 @@ fun NavigationRoot(
 
                 // Expanded Width (Tablet Landscape/PC) OR Compact Height (Phone Landscape) -> Rail
                 isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_EXPANDED_LOWER_BOUND) ||
-                        !isHeightAtLeastBreakpoint(WindowSizeClass.HEIGHT_DP_MEDIUM_LOWER_BOUND) -> {
+                    !isHeightAtLeastBreakpoint(WindowSizeClass.HEIGHT_DP_MEDIUM_LOWER_BOUND) -> {
                     NavigationSuiteType.WideNavigationRailCollapsed
                 }
 
@@ -328,21 +318,18 @@ fun NavigationRoot(
     val density = LocalDensity.current
     var castPlayerHeight by remember { mutableStateOf(MaterialTheme.spacings.default) }
 
-    val showCastMiniPlayer by remember(
-        showCastButton,
-        connectionState,
-        showCastExpandedPlayer,
-        isExpandedScreen
-    ) {
-        derivedStateOf {
-            val connected = showCastButton && connectionState == CastConnectionState.CONNECTED
-            if (isExpandedScreen) {
-                connected && !showCastExpandedPlayer
-            } else {
-                connected
+    val showCastMiniPlayer by
+        remember(
+            showCastButton,
+            connectionState,
+            showCastExpandedPlayer,
+            isDismissingCastExpandedPlayer,
+        ) {
+            derivedStateOf {
+                val connected = showCastButton && connectionState == CastConnectionState.CONNECTED
+                connected && (!showCastExpandedPlayer || isDismissingCastExpandedPlayer)
             }
         }
-    }
 
     LaunchedEffect(showCastMiniPlayer) {
         if (!showCastMiniPlayer) castPlayerHeight = MaterialTheme.spacings.default
@@ -376,7 +363,7 @@ fun NavigationRoot(
                     launchSingleTop = true
                 }
                 isAccountMenuOpen = false
-            }
+            },
         ) {
             NavigationSuiteScaffold(
                 navigationItems = {
@@ -386,7 +373,7 @@ fun NavigationRoot(
                             onClick = {
                                 if (
                                     item.route is MediaRoute &&
-                                    currentDestination?.hasRoute<MediaRoute>() == true
+                                        currentDestination?.hasRoute<MediaRoute>() == true
                                 ) {
                                     searchExpanded = true
                                 }
@@ -416,11 +403,7 @@ fun NavigationRoot(
                 state = navigationSuiteScaffoldState,
             ) {
                 Row(modifier = Modifier.fillMaxSize()) {
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .nestedScroll(nestedScrollConnection)
-                    ) {
+                    Box(modifier = Modifier.weight(1f).nestedScroll(nestedScrollConnection)) {
                         NavHost(
                             navController = navController,
                             startDestination = startDestination,
@@ -428,11 +411,9 @@ fun NavigationRoot(
                             exitTransition = { fadeOut(tween(300)) },
                         ) {
                             composable<WelcomeRoute> {
-                                WelcomeScreen(onContinueClick = {
-                                    navController.safeNavigate(
-                                        ServersRoute
-                                    )
-                                })
+                                WelcomeScreen(
+                                    onContinueClick = { navController.safeNavigate(ServersRoute) }
+                                )
                             }
                             composable<ServersRoute> {
                                 ServersScreen(
@@ -527,7 +508,9 @@ fun NavigationRoot(
                                     onItemClick = { item ->
                                         navigateToItem(navController = navController, item = item)
                                     },
-                                    onFavoritesClick = { navController.safeNavigate(FavoritesRoute) },
+                                    onFavoritesClick = {
+                                        navController.safeNavigate(FavoritesRoute)
+                                    },
                                     searchExpanded = searchExpanded,
                                     onSearchExpand = { searchExpanded = it },
                                 )
@@ -535,15 +518,22 @@ fun NavigationRoot(
                             composable<DownloadsRoute> {
                                 DownloadsScreen(
                                     onMovieClick = { movie ->
-                                        navController.safeNavigate(MovieRoute(movieId = movie.id.toString()))
+                                        navController.safeNavigate(
+                                            MovieRoute(movieId = movie.id.toString())
+                                        )
                                     },
                                     onShowClick = { show ->
                                         navController.safeNavigate(
-                                            ShowDownloadsRoute(showId = show.id.toString(), showTitle = show.name)
+                                            ShowDownloadsRoute(
+                                                showId = show.id.toString(),
+                                                showTitle = show.name,
+                                            )
                                         )
                                     },
                                     onStorageClick = {
-                                        navController.safeNavigate(SettingsRoute(intArrayOf(CoreR.string.title_download)))
+                                        navController.safeNavigate(
+                                            SettingsRoute(intArrayOf(CoreR.string.title_download))
+                                        )
                                     },
                                     onExploreLibraryClick = {
                                         navController.safeNavigate(MediaRoute) {
@@ -562,7 +552,9 @@ fun NavigationRoot(
                                     showId = UUID.fromString(route.showId),
                                     showTitle = route.showTitle,
                                     onEpisodeClick = { episode ->
-                                        navController.safeNavigate(EpisodeRoute(episodeId = episode.id.toString()))
+                                        navController.safeNavigate(
+                                            EpisodeRoute(episodeId = episode.id.toString())
+                                        )
                                     },
                                     navigateBack = { navController.safePopBackStack() },
                                 )
@@ -597,7 +589,11 @@ fun NavigationRoot(
                                     },
                                     navigateBack = { navController.safePopBackStack() },
                                     onExploreLibraryClick = {
-                                        val popped = navController.popBackStack(MediaRoute, inclusive = false)
+                                        val popped =
+                                            navController.popBackStack(
+                                                MediaRoute,
+                                                inclusive = false,
+                                            )
                                         if (!popped) {
                                             navController.safeNavigate(MediaRoute) {
                                                 popUpTo(navController.graph.startDestinationId) {
@@ -648,7 +644,9 @@ fun NavigationRoot(
                                         navigateToItem(navController = navController, item = item)
                                     },
                                     navigateToSeries = { seriesId ->
-                                        navController.safeNavigate(ShowRoute(showId = seriesId.toString())) {
+                                        navController.safeNavigate(
+                                            ShowRoute(showId = seriesId.toString())
+                                        ) {
                                             popUpTo(ShowRoute(showId = seriesId.toString()))
                                             launchSingleTop = true
                                         }
@@ -668,7 +666,9 @@ fun NavigationRoot(
                                         navController.safeNavigate(PersonRoute(personId.toString()))
                                     },
                                     navigateToSeason = { seasonId ->
-                                        navController.safeNavigate(SeasonRoute(seasonId = seasonId.toString())) {
+                                        navController.safeNavigate(
+                                            SeasonRoute(seasonId = seasonId.toString())
+                                        ) {
                                             popUpTo(SeasonRoute(seasonId = seasonId.toString()))
                                             launchSingleTop = true
                                         }
@@ -697,13 +697,19 @@ fun NavigationRoot(
                                         navController.safeNavigate(SettingsRoute(indexes = indexes))
                                     },
                                     navigateToSettingsFileEdit = { filePath ->
-                                        navController.safeNavigate(SettingsFileEditRoute(filePath = filePath))
+                                        navController.safeNavigate(
+                                            SettingsFileEditRoute(filePath = filePath)
+                                        )
                                     },
-                                    navigateToServers = { navController.safeNavigate(ServersRoute) },
+                                    navigateToServers = {
+                                        navController.safeNavigate(ServersRoute)
+                                    },
                                     navigateToUsers = { navController.safeNavigate(UsersRoute) },
                                     navigateToAbout = { navController.safeNavigate(AboutRoute) },
                                     navigateToDevice = { navController.safeNavigate(DeviceRoute) },
-                                    navigateToDownloadPresets = { navController.safeNavigate(DownloadPresetsRoute) },
+                                    navigateToDownloadPresets = {
+                                        navController.safeNavigate(DownloadPresetsRoute)
+                                    },
                                     navigateBack = { navController.safePopBackStack() },
                                 )
                             }
@@ -711,7 +717,8 @@ fun NavigationRoot(
                                 val route: SettingsFileEditRoute = backStackEntry.toRoute()
                                 SettingsFileEditScreen(
                                     filePath = route.filePath,
-                                    navigateBack = { navController.safePopBackStack() })
+                                    navigateBack = { navController.safePopBackStack() },
+                                )
                             }
                             composable<AboutRoute> {
                                 AboutScreen(navigateBack = { navController.safePopBackStack() })
@@ -722,11 +729,15 @@ fun NavigationRoot(
                             composable<SmartDownloadsRoute> {
                                 SmartDownloadsScreen(
                                     navigateBack = { navController.safePopBackStack() },
-                                    onNavigateToPresets = { navController.safeNavigate(DownloadPresetsRoute) },
+                                    onNavigateToPresets = {
+                                        navController.safeNavigate(DownloadPresetsRoute)
+                                    },
                                 )
                             }
                             composable<DownloadPresetsRoute> {
-                                DownloadPresetsScreen(navigateBack = { navController.safePopBackStack() })
+                                DownloadPresetsScreen(
+                                    navigateBack = { navController.safePopBackStack() }
+                                )
                             }
                         }
 
@@ -735,34 +746,69 @@ fun NavigationRoot(
                                 expanded = castExpanded,
                                 onClick = { showCastSheet = true },
                                 modifier = Modifier.align(Alignment.BottomEnd),
-                                handleBottomInsets = !showBottomBar
+                                handleBottomInsets = !showBottomBar,
                             )
                         }
+                    }
 
-                        // Cast Mini Player
-                        if (showCastMiniPlayer) {
-                            CastMiniPlayer(
-                                onClick = { showCastExpandedPlayer = true },
-                                modifier = Modifier
-                                    .align(if (isMediumScreen) Alignment.BottomEnd else Alignment.BottomCenter)
-                                    .onSizeChanged { size ->
-                                        val measuredHeight = with(density) { size.height.toDp() }
-                                        castPlayerHeight = if (!isMediumScreen) {
+                    AnimatedVisibility(
+                        visible = showCastExpandedPlayer && isExpandedScreen,
+                        enter =
+                            slideInHorizontally(initialOffsetX = { it }) +
+                                expandHorizontally(expandFrom = Alignment.End) +
+                                fadeIn(),
+                        exit =
+                            slideOutHorizontally(targetOffsetX = { it }) +
+                                shrinkHorizontally(shrinkTowards = Alignment.End) +
+                                fadeOut(),
+                    ) {
+                        CastExpandedPlayer(
+                            onDeviceClick = { showCastSheet = true },
+                            onClose = {
+                                showCastExpandedPlayer = false
+                                isDismissingCastExpandedPlayer = false
+                            },
+                        )
+                    }
+                }
+
+                // Cast Mini Player
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment =
+                        if (isMediumScreen) Alignment.BottomEnd else Alignment.BottomCenter,
+                ) {
+                    AnimatedVisibility(
+                        visible = showCastMiniPlayer,
+                        enter =
+                            (if (isExpandedScreen) {
+                                slideInHorizontally(initialOffsetX = { it })
+                            } else {
+                                slideInVertically(initialOffsetY = { it })
+                            }) + fadeIn(),
+                        exit =
+                            (if (isExpandedScreen) {
+                                slideOutHorizontally(targetOffsetX = { it })
+                            } else {
+                                slideOutVertically(targetOffsetY = { it })
+                            }) + fadeOut(),
+                    ) {
+                        CastMiniPlayer(
+                            onClick = {
+                                isDismissingCastExpandedPlayer = false
+                                showCastExpandedPlayer = true
+                            },
+                            modifier =
+                                Modifier.onSizeChanged { size ->
+                                    val measuredHeight = with(density) { size.height.toDp() }
+                                    castPlayerHeight =
+                                        if (!isMediumScreen) {
                                             measuredHeight - safePadding.bottom
                                         } else {
                                             MaterialTheme.spacings.default
                                         }
-                                    },
-                                handleBottomInsets = !showBottomBar
-                            )
-                        }
-
-                    }
-
-                    if (showCastExpandedPlayer && isExpandedScreen) {
-                        CastExpandedPlayer(
-                            onDeviceClick = { showCastSheet = true },
-                            onClose = { showCastExpandedPlayer = false }
+                                },
+                            handleBottomInsets = !showBottomBar,
                         )
                     }
                 }
@@ -770,16 +816,19 @@ fun NavigationRoot(
         }
 
         if (showCastSheet) {
-            CastBottomSheet(
-                onDismissRequest = { showCastSheet = false }
-            )
+            CastBottomSheet(onDismissRequest = { showCastSheet = false })
         }
 
         // Cast Expanded Player
         if (showCastExpandedPlayer && !isExpandedScreen) {
             CastExpandedPlayer(
                 onDeviceClick = { showCastSheet = true },
-                onClose = { showCastExpandedPlayer = false }
+                onClose = {
+                    showCastExpandedPlayer = false
+                    isDismissingCastExpandedPlayer = false
+                },
+                onDismissStarted = { isDismissingCastExpandedPlayer = true },
+                onDismissCanceled = { isDismissingCastExpandedPlayer = false },
             )
         }
     }

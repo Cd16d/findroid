@@ -1,6 +1,10 @@
 package dev.jdtech.jellyfin.presentation.cast
 
 import android.content.res.Configuration
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,10 +19,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Surface
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -26,6 +32,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.RectangleShape
@@ -38,77 +45,114 @@ import androidx.media3.common.C
 import androidx.window.core.layout.WindowSizeClass
 import dev.jdtech.jellyfin.models.FindroidSegment
 import dev.jdtech.jellyfin.player.cast.presentation.CastPlayerViewModel
+import dev.jdtech.jellyfin.player.core.R as PlayerCoreR
 import dev.jdtech.jellyfin.player.core.domain.models.Track
 import dev.jdtech.jellyfin.presentation.cast.components.CastTrackSelectionDialog
 import dev.jdtech.jellyfin.presentation.cast.components.PlayerBottomSection
 import dev.jdtech.jellyfin.presentation.cast.components.PlayerTopSection
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.utils.rememberSafePadding
-import dev.jdtech.jellyfin.player.core.R as PlayerCoreR
+import kotlinx.coroutines.flow.distinctUntilChanged
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CastExpandedPlayer(
     onDeviceClick: () -> Unit,
     onClose: () -> Unit,
-    viewModel: CastPlayerViewModel = hiltViewModel()
+    onDismissStarted: () -> Unit = {},
+    onDismissCanceled: () -> Unit = {},
+    viewModel: CastPlayerViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val windowAdaptiveInfo = currentWindowAdaptiveInfo()
-    val isExpandedScreen = windowAdaptiveInfo.windowSizeClass.isWidthAtLeastBreakpoint(
-        WindowSizeClass.WIDTH_DP_EXPANDED_LOWER_BOUND
-    )
-
-    val actions = remember(viewModel, uiState.playerState.currentPosition) {
-        CastPlayerActions(
-            onPlay = { viewModel.playerController.play() },
-            onPause = { viewModel.playerController.pause() },
-            onSeek = { viewModel.playerController.seekTo(it) },
-            onPlayPreviousItem = {
-                if (!uiState.playerState.hasPreviousItem || uiState.playerState.currentPosition > 5000) {
-                    viewModel.playerController.seekTo(0)
-                } else {
-                    viewModel.playPreviousItem()
-                }
-            },
-            onPlayNextItem = { viewModel.playNextItem() },
-            onSkipSegment = { viewModel.skipSegment(it) },
-            onVolumeChange = { viewModel.playerController.setVolume(it) },
-            onAudioTrackSelected = { viewModel.onAudioTrackSelected(it) },
-            onSubtitleTrackSelected = { viewModel.onSubtitleTrackSelected(it) },
-            onDeviceClick = onDeviceClick,
-            onClose = onClose
+    val isExpandedScreen =
+        windowAdaptiveInfo.windowSizeClass.isWidthAtLeastBreakpoint(
+            WindowSizeClass.WIDTH_DP_EXPANDED_LOWER_BOUND
         )
-    }
+
+    val actions =
+        remember(viewModel, uiState.playerState.currentPosition) {
+            CastPlayerActions(
+                onPlay = { viewModel.playerController.play() },
+                onPause = { viewModel.playerController.pause() },
+                onSeek = { viewModel.playerController.seekTo(it) },
+                onPlayPreviousItem = {
+                    if (
+                        !uiState.playerState.hasPreviousItem ||
+                            uiState.playerState.currentPosition > 5000
+                    ) {
+                        viewModel.playerController.seekTo(0)
+                    } else {
+                        viewModel.playPreviousItem()
+                    }
+                },
+                onPlayNextItem = { viewModel.playNextItem() },
+                onSkipSegment = { viewModel.skipSegment(it) },
+                onVolumeChange = { viewModel.playerController.setVolume(it) },
+                onAudioTrackSelected = { viewModel.onAudioTrackSelected(it) },
+                onSubtitleTrackSelected = { viewModel.onSubtitleTrackSelected(it) },
+                onDeviceClick = onDeviceClick,
+                onClose = onClose,
+            )
+        }
 
     if (!isExpandedScreen) {
+        val sheetState =
+            rememberModalBottomSheetState(
+                skipPartiallyExpanded = true,
+                confirmValueChange = { targetValue ->
+                    if (targetValue == SheetValue.Hidden) {
+                        onDismissStarted()
+                    } else if (targetValue == SheetValue.Expanded) {
+                        onDismissCanceled()
+                    }
+                    true
+                },
+            )
+
+        LaunchedEffect(sheetState) {
+            snapshotFlow { sheetState.targetValue }
+                .distinctUntilChanged()
+                .collect { targetValue ->
+                    if (targetValue == SheetValue.Hidden) {
+                        onDismissStarted()
+                    } else if (targetValue == SheetValue.Expanded) {
+                        onDismissCanceled()
+                    }
+                }
+        }
+
         ModalBottomSheet(
             onDismissRequest = onClose,
-            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            sheetState = sheetState,
             dragHandle = null,
             containerColor = MaterialTheme.colorScheme.background,
             contentWindowInsets = { WindowInsets(0, 0, 0, 0) },
             shape = RectangleShape,
-            sheetMaxWidth = Dp.Unspecified
+            sheetMaxWidth = Dp.Unspecified,
         ) {
-            CastExpandedPlayerLayout(
-                isExpandedScreen = false,
-                uiState = uiState,
-                actions = actions
-            )
+            AnimatedVisibility(
+                visible = true,
+                enter = fadeIn(tween(300)),
+                exit = fadeOut(tween(300)),
+            ) {
+                CastExpandedPlayerLayout(
+                    isExpandedScreen = false,
+                    uiState = uiState,
+                    actions = actions,
+                )
+            }
         }
     } else {
         Surface(
-            modifier = Modifier
-                .fillMaxHeight()
-                .width(400.dp),
+            modifier = Modifier.fillMaxHeight().width(400.dp),
             shadowElevation = 8.dp,
-            color = MaterialTheme.colorScheme.background
+            color = MaterialTheme.colorScheme.background,
         ) {
             CastExpandedPlayerLayout(
                 isExpandedScreen = true,
                 uiState = uiState,
-                actions = actions
+                actions = actions,
             )
         }
     }
@@ -145,23 +189,21 @@ private fun CastExpandedPlayerLayout(
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(
-                    top = safePadding.top,
-                    bottom = safePadding.bottom,
-                    start = safePadding.start,
-                    end = safePadding.end
-                ),
-            horizontalAlignment = Alignment.CenterHorizontally
+            modifier =
+                Modifier.fillMaxSize()
+                    .padding(
+                        top = safePadding.top,
+                        bottom = safePadding.bottom,
+                        start = safePadding.start,
+                        end = safePadding.end,
+                    ),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             if (isLandscape && !isExpandedScreen) {
                 Row(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 24.dp),
+                    modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
                     horizontalArrangement = Arrangement.spacedBy(24.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     PlayerTopSection(
                         uiState = uiState,
@@ -169,9 +211,7 @@ private fun CastExpandedPlayerLayout(
                         scrubPosition = scrubPosition,
                         onClose = actions.onClose,
                         onDeviceClick = actions.onDeviceClick,
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
+                        modifier = Modifier.weight(1f).fillMaxHeight(),
                     )
 
                     PlayerBottomSection(
@@ -200,7 +240,7 @@ private fun CastExpandedPlayerLayout(
                             showTrackSelection = true
                             trackType = C.TRACK_TYPE_TEXT
                         },
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
                     )
                 }
             } else {
@@ -210,7 +250,7 @@ private fun CastExpandedPlayerLayout(
                     scrubPosition = scrubPosition,
                     onClose = actions.onClose,
                     onDeviceClick = actions.onDeviceClick,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -240,7 +280,8 @@ private fun CastExpandedPlayerLayout(
                     onClickSubtitle = {
                         showTrackSelection = true
                         trackType = C.TRACK_TYPE_TEXT
-                    })
+                    },
+                )
                 Spacer(modifier = Modifier.height(48.dp))
             }
         }
@@ -248,7 +289,9 @@ private fun CastExpandedPlayerLayout(
         CastTrackSelectionDialog(
             visible = showTrackSelection,
             type = trackType,
-            tracks = if (trackType == C.TRACK_TYPE_AUDIO) uiState.audioTracks else uiState.subtitleTracks,
+            tracks =
+                if (trackType == C.TRACK_TYPE_AUDIO) uiState.audioTracks
+                else uiState.subtitleTracks,
             onSetTrack = {
                 if (trackType == C.TRACK_TYPE_AUDIO) {
                     it?.let { actions.onAudioTrackSelected(it) }
@@ -258,7 +301,7 @@ private fun CastExpandedPlayerLayout(
             },
             onDismiss = { showTrackSelection = false },
             displayExtraInfo = uiState.displayExtraInfo,
-            modifier = Modifier.padding(bottom = safePadding.bottom)
+            modifier = Modifier.padding(bottom = safePadding.bottom),
         )
     }
 }
@@ -270,7 +313,7 @@ private fun CastExpandedPlayerPhoneVerticalPreview() {
         CastExpandedPlayerLayout(
             isExpandedScreen = false,
             uiState = mockUiStateEpisode(),
-            actions = mockActions()
+            actions = mockActions(),
         )
     }
 }
@@ -282,7 +325,7 @@ private fun CastExpandedPlayerPhoneHorizontalPreview() {
         CastExpandedPlayerLayout(
             isExpandedScreen = false,
             uiState = mockUiStateEpisode(),
-            actions = mockActions()
+            actions = mockActions(),
         )
     }
 }
@@ -294,7 +337,7 @@ private fun CastExpandedPlayerMoviePhoneVerticalPreview() {
         CastExpandedPlayerLayout(
             isExpandedScreen = false,
             uiState = mockUiStateMovie(),
-            actions = mockActions()
+            actions = mockActions(),
         )
     }
 }
@@ -306,51 +349,55 @@ private fun CastExpandedPlayerMoviePhoneHorizontalPreview() {
         CastExpandedPlayerLayout(
             isExpandedScreen = false,
             uiState = mockUiStateMovie(),
-            actions = mockActions()
+            actions = mockActions(),
         )
     }
 }
 
-private fun mockActions() = CastPlayerActions(
-    onPlay = {},
-    onPause = {},
-    onSeek = {},
-    onPlayPreviousItem = {},
-    onPlayNextItem = {},
-    onSkipSegment = {},
-    onVolumeChange = {},
-    onAudioTrackSelected = {},
-    onSubtitleTrackSelected = {},
-    onDeviceClick = {},
-    onClose = {}
-)
+private fun mockActions() =
+    CastPlayerActions(
+        onPlay = {},
+        onPause = {},
+        onSeek = {},
+        onPlayPreviousItem = {},
+        onPlayNextItem = {},
+        onSkipSegment = {},
+        onVolumeChange = {},
+        onAudioTrackSelected = {},
+        onSubtitleTrackSelected = {},
+        onDeviceClick = {},
+        onClose = {},
+    )
 
-private fun mockUiStateEpisode() = CastPlayerViewModel.UiState(
-    currentItemTitle = CastPlayerViewModel.CurrentItemTitle(
-        seriesName = "Series Name", episodeInfo = "S01E01", title = "Episode Title"
-    ),
-    currentItemPoster = null,
-    isMovie = false,
-    defaultAspectRatio = 16f / 9f,
-    trickplayAspectRatio = null,
-    currentSegment = null,
-    currentSkipButtonStringRes = PlayerCoreR.string.player_controls_skip_intro,
-    currentTrickplay = null,
-    currentChapters = emptyList(),
-    fileLoaded = true
-)
+private fun mockUiStateEpisode() =
+    CastPlayerViewModel.UiState(
+        currentItemTitle =
+            CastPlayerViewModel.CurrentItemTitle(
+                seriesName = "Series Name",
+                episodeInfo = "S01E01",
+                title = "Episode Title",
+            ),
+        currentItemPoster = null,
+        isMovie = false,
+        defaultAspectRatio = 16f / 9f,
+        trickplayAspectRatio = null,
+        currentSegment = null,
+        currentSkipButtonStringRes = PlayerCoreR.string.player_controls_skip_intro,
+        currentTrickplay = null,
+        currentChapters = emptyList(),
+        fileLoaded = true,
+    )
 
-private fun mockUiStateMovie() = CastPlayerViewModel.UiState(
-    currentItemTitle = CastPlayerViewModel.CurrentItemTitle(
-        title = "Title"
-    ),
-    currentItemPoster = null,
-    isMovie = true,
-    defaultAspectRatio = 2f / 3f,
-    trickplayAspectRatio = null,
-    currentSegment = null,
-    currentSkipButtonStringRes = PlayerCoreR.string.player_controls_skip_intro,
-    currentTrickplay = null,
-    currentChapters = emptyList(),
-    fileLoaded = true
-)
+private fun mockUiStateMovie() =
+    CastPlayerViewModel.UiState(
+        currentItemTitle = CastPlayerViewModel.CurrentItemTitle(title = "Title"),
+        currentItemPoster = null,
+        isMovie = true,
+        defaultAspectRatio = 2f / 3f,
+        trickplayAspectRatio = null,
+        currentSegment = null,
+        currentSkipButtonStringRes = PlayerCoreR.string.player_controls_skip_intro,
+        currentTrickplay = null,
+        currentChapters = emptyList(),
+        fileLoaded = true,
+    )

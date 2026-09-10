@@ -15,22 +15,20 @@ import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 
 @Composable
-fun AccountMenuFooter(
-    modifier: Modifier = Modifier
-) {
+fun AccountMenuFooter(modifier: Modifier = Modifier) {
     Row(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             stringResource(CoreR.string.app_description),
-            style = MaterialTheme.typography.labelSmall
+            style = MaterialTheme.typography.labelSmall,
         )
         Text("•", style = MaterialTheme.typography.labelSmall)
         Text(
             "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
-            style = MaterialTheme.typography.labelSmall
+            style = MaterialTheme.typography.labelSmall,
         )
     }
 }
@@ -38,7 +36,5 @@ fun AccountMenuFooter(
 @Preview
 @Composable
 fun AccountMenuFooterPreview() {
-    FindroidTheme {
-        AccountMenuFooter()
-    }
+    FindroidTheme { AccountMenuFooter() }
 }

@@ -13,16 +13,16 @@ import dev.jdtech.jellyfin.models.FindroidSources
 import dev.jdtech.jellyfin.models.toFindroidMediaStreamDto
 import dev.jdtech.jellyfin.models.toFindroidTrickplayInfoDto
 import dev.jdtech.jellyfin.repository.JellyfinRepository
+import java.io.File
+import java.io.IOException
+import java.util.UUID
+import kotlin.math.ceil
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.jellyfin.sdk.model.api.MediaStreamType
 import timber.log.Timber
-import java.io.File
-import java.io.IOException
-import java.util.UUID
-import kotlin.math.ceil
 
 /**
  * Worker dedicated to downloading ancillary media assets in the background:
@@ -51,66 +51,82 @@ constructor(
         const val KEY_DOWNLOAD_EXTERNAL_AUDIO = "download_external_audio"
     }
 
-    override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
-        val itemIdStr = params.inputData.getString(KEY_ITEM_ID) ?: return@withContext Result.failure()
-        val itemId = try {
-            UUID.fromString(itemIdStr)
-        } catch (e: Exception) {
-            return@withContext Result.failure()
-        }
-        val sourceId = params.inputData.getString(KEY_SOURCE_ID) ?: ""
-        val storageIndex = params.inputData.getInt(KEY_STORAGE_INDEX, 0)
-        val downloadExternalAudio = params.inputData.getBoolean(KEY_DOWNLOAD_EXTERNAL_AUDIO, false)
+    override suspend fun doWork(): Result =
+        withContext(Dispatchers.IO) {
+            val itemIdStr =
+                params.inputData.getString(KEY_ITEM_ID) ?: return@withContext Result.failure()
+            val itemId =
+                try {
+                    UUID.fromString(itemIdStr)
+                } catch (e: Exception) {
+                    return@withContext Result.failure()
+                }
+            val sourceId = params.inputData.getString(KEY_SOURCE_ID) ?: ""
+            val storageIndex = params.inputData.getInt(KEY_STORAGE_INDEX, 0)
+            val downloadExternalAudio =
+                params.inputData.getBoolean(KEY_DOWNLOAD_EXTERNAL_AUDIO, false)
 
-        try {
-            val item = repository.getItem(itemId) ?: return@withContext Result.retry()
+            try {
+                val item = repository.getItem(itemId) ?: return@withContext Result.retry()
 
-            // 1. Download Images (Item + Parent Season & Show if episode)
-            downloadItemImages(item)
+                // 1. Download Images (Item + Parent Season & Show if episode)
+                downloadItemImages(item)
 
-            // 2. Download External Subtitles and optionally External Audio
-            if (sourceId.isNotEmpty()) {
-                downloadExternalStreams(item, sourceId, storageIndex, downloadExternalAudio)
+                // 2. Download External Subtitles and optionally External Audio
+                if (sourceId.isNotEmpty()) {
+                    downloadExternalStreams(item, sourceId, storageIndex, downloadExternalAudio)
+                }
+
+                // 3. Download Trickplay Data asynchronously in worker
+                if (sourceId.isNotEmpty()) {
+                    downloadTrickplay(item, sourceId)
+                }
+
+                Result.success()
+            } catch (e: IOException) {
+                Timber.w(
+                    e,
+                    "MediaAttachmentsWorker encountered I/O error for item $itemId, retrying",
+                )
+                Result.retry()
+            } catch (e: Exception) {
+                Timber.e(e, "MediaAttachmentsWorker failed for item $itemId")
+                Result.retry()
             }
-
-            // 3. Download Trickplay Data asynchronously in worker
-            if (sourceId.isNotEmpty()) {
-                downloadTrickplay(item, sourceId)
-            }
-
-            Result.success()
-        } catch (e: IOException) {
-            Timber.w(e, "MediaAttachmentsWorker encountered I/O error for item $itemId, retrying")
-            Result.retry()
-        } catch (e: Exception) {
-            Timber.e(e, "MediaAttachmentsWorker failed for item $itemId")
-            Result.retry()
         }
-    }
 
     private suspend fun downloadItemImages(item: FindroidItem) {
         // Current item images
-        saveItemImages(item.id, mapOf(
-            "primary" to item.images.primary?.uri?.toString(),
-            "backdrop" to item.images.backdrop?.uri?.toString(),
-            "logo" to item.images.logo?.uri?.toString(),
-        ))
+        saveItemImages(
+            item.id,
+            mapOf(
+                "primary" to item.images.primary?.uri?.toString(),
+                "backdrop" to item.images.backdrop?.uri?.toString(),
+                "logo" to item.images.logo?.uri?.toString(),
+            ),
+        )
 
         // For episodes, also ensure parent show and season images are downloaded
         if (item is FindroidEpisode) {
             try {
                 val season = repository.getSeason(item.seasonId)
-                saveItemImages(season.id, mapOf(
-                    "primary" to season.images.primary?.uri?.toString(),
-                    "backdrop" to season.images.backdrop?.uri?.toString(),
-                ))
+                saveItemImages(
+                    season.id,
+                    mapOf(
+                        "primary" to season.images.primary?.uri?.toString(),
+                        "backdrop" to season.images.backdrop?.uri?.toString(),
+                    ),
+                )
 
                 val show = repository.getShow(item.seriesId)
-                saveItemImages(show.id, mapOf(
-                    "primary" to show.images.primary?.uri?.toString(),
-                    "backdrop" to show.images.backdrop?.uri?.toString(),
-                    "logo" to show.images.logo?.uri?.toString(),
-                ))
+                saveItemImages(
+                    show.id,
+                    mapOf(
+                        "primary" to show.images.primary?.uri?.toString(),
+                        "backdrop" to show.images.backdrop?.uri?.toString(),
+                        "logo" to show.images.logo?.uri?.toString(),
+                    ),
+                )
             } catch (e: Exception) {
                 Timber.w(e, "Failed to download parent show/season images for episode ${item.name}")
             }
@@ -131,9 +147,7 @@ constructor(
                 client.newCall(request).execute().use { response ->
                     if (response.isSuccessful) {
                         response.body.byteStream().use { input ->
-                            file.outputStream().use { output ->
-                                input.copyTo(output)
-                            }
+                            file.outputStream().use { output -> input.copyTo(output) }
                         }
                     }
                 }
@@ -165,8 +179,10 @@ constructor(
 
             val streamUrl = stream.path ?: continue
             val streamId = UUID.randomUUID()
-            val extension = if (isSubtitle) stream.codec.ifEmpty { "srt" } else stream.codec.ifEmpty { "m4a" }
-            val streamFile = File(storageLocation, "downloads/${item.id}.${source.id}.${streamId}.$extension")
+            val extension =
+                if (isSubtitle) stream.codec.ifEmpty { "srt" } else stream.codec.ifEmpty { "m4a" }
+            val streamFile =
+                File(storageLocation, "downloads/${item.id}.${source.id}.${streamId}.$extension")
 
             if (streamFile.exists() && streamFile.length() > 0) continue
 
@@ -175,13 +191,15 @@ constructor(
                 client.newCall(request).execute().use { response ->
                     if (response.isSuccessful) {
                         response.body.byteStream().use { input ->
-                            streamFile.outputStream().use { output ->
-                                input.copyTo(output)
-                            }
+                            streamFile.outputStream().use { output -> input.copyTo(output) }
                         }
                         if (streamFile.exists() && streamFile.length() > 0) {
                             database.insertMediaStream(
-                                stream.toFindroidMediaStreamDto(streamId, source.id, streamFile.absolutePath)
+                                stream.toFindroidMediaStreamDto(
+                                    streamId,
+                                    source.id,
+                                    streamFile.absolutePath,
+                                )
                             )
                         }
                     }
@@ -196,9 +214,13 @@ constructor(
         if (item !is FindroidSources) return
         val trickplayInfo = item.trickplayInfo?.get(sourceId) ?: return
         try {
-            val maxIndex = ceil(
-                trickplayInfo.thumbnailCount.toDouble().div(trickplayInfo.tileWidth * trickplayInfo.tileHeight)
-            ).toInt()
+            val maxIndex =
+                ceil(
+                        trickplayInfo.thumbnailCount
+                            .toDouble()
+                            .div(trickplayInfo.tileWidth * trickplayInfo.tileHeight)
+                    )
+                    .toInt()
             val byteArrays = mutableListOf<ByteArray>()
             for (i in 0..maxIndex) {
                 repository.getTrickplayData(item.id, trickplayInfo.width, i)?.let { byteArray ->
@@ -211,7 +233,9 @@ constructor(
             for ((i, byteArray) in byteArrays.withIndex()) {
                 File(appContext.filesDir, "$basePath/$i").writeBytes(byteArray)
             }
-            Timber.i("Trickplay data downloaded successfully for item ${item.id} (${byteArrays.size} tiles)")
+            Timber.i(
+                "Trickplay data downloaded successfully for item ${item.id} (${byteArrays.size} tiles)"
+            )
         } catch (e: Exception) {
             Timber.w(e, "Failed to download trickplay data for item ${item.id}")
         }

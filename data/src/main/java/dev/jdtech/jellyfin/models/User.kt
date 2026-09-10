@@ -1,10 +1,10 @@
 package dev.jdtech.jellyfin.models
 
+import android.content.Context
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.PrimaryKey
-import android.content.Context
 import java.io.File
 import java.util.UUID
 
@@ -34,6 +34,7 @@ fun User.getProfileImageModel(context: Context, baseUrl: String): Any? {
     return if (localFile.exists()) {
         localFile
     } else if (baseUrl.isNotEmpty()) {
-        "$baseUrl/Users/$id/Images/Primary" + (if (primaryImageTag != null) "?tag=$primaryImageTag" else "")
+        "$baseUrl/Users/$id/Images/Primary" +
+            (if (primaryImageTag != null) "?tag=$primaryImageTag" else "")
     } else null
 }

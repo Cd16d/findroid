@@ -8,16 +8,11 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import dev.jdtech.jellyfin.api.JellyfinApi
 import dev.jdtech.jellyfin.database.ServerDatabaseDao
-import dev.jdtech.jellyfin.models.FindroidItem
-import dev.jdtech.jellyfin.models.User
-import dev.jdtech.jellyfin.models.toFindroidEpisode
-import dev.jdtech.jellyfin.models.toFindroidMovie
 import dev.jdtech.jellyfin.settings.domain.AppPreferences
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import org.jellyfin.sdk.model.api.UpdateUserItemDataDto
-
 import timber.log.Timber
 
 @HiltWorker
@@ -73,14 +68,19 @@ constructor(
 
                             database.setUserDataToBeSynced(user.id, userData.itemId, false)
 
-                            // If this item was deleted and only kept to sync progress, clean up its userdata now
-                            if (database.getSources(userData.itemId).isEmpty() &&
-                                database.countUserDataToBeSynced(userData.itemId) == 0
+                            // If this item was deleted and only kept to sync progress, clean up its
+                            // userdata now
+                            if (
+                                database.getSources(userData.itemId).isEmpty() &&
+                                    database.countUserDataToBeSynced(userData.itemId) == 0
                             ) {
                                 database.deleteUserData(userData.itemId)
                             }
                         } catch (e: Exception) {
-                            Timber.e(e, "SyncWorker: failed to sync user data for item ${userData.itemId}")
+                            Timber.e(
+                                e,
+                                "SyncWorker: failed to sync user data for item ${userData.itemId}",
+                            )
                         }
                     }
                 }

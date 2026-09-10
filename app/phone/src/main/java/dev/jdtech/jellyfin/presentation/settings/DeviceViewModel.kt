@@ -7,23 +7,28 @@ import dev.jdtech.jellyfin.repository.JellyfinRepository
 import dev.jdtech.jellyfin.settings.domain.AppPreferences
 import dev.jdtech.jellyfin.utils.DeviceCodecCapabilities
 import dev.jdtech.jellyfin.utils.DeviceCodecsOverview
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import timber.log.Timber
-import javax.inject.Inject
 
 @HiltViewModel
-class DeviceViewModel @Inject constructor(
+class DeviceViewModel
+@Inject
+constructor(
     private val appPreferences: AppPreferences,
     private val repository: JellyfinRepository,
 ) : ViewModel() {
 
     val codecsOverview: DeviceCodecsOverview = DeviceCodecCapabilities.getDeviceCodecs()
 
-    private val _deviceName = MutableStateFlow(
-        appPreferences.getValue(appPreferences.customDeviceName).ifBlank { codecsOverview.deviceName }
-    )
+    private val _deviceName =
+        MutableStateFlow(
+            appPreferences.getValue(appPreferences.customDeviceName).ifBlank {
+                codecsOverview.deviceName
+            }
+        )
     val deviceName = _deviceName.asStateFlow()
 
     fun updateDeviceName(newName: String) {

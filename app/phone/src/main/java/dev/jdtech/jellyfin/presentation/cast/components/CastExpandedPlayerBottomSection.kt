@@ -33,7 +33,7 @@ fun PlayerBottomSection(
     onVolumeChange: (Float) -> Unit,
     onClickAudio: () -> Unit,
     onClickSubtitle: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val playerState = uiState.playerState
     val segment = uiState.currentSegment
@@ -46,7 +46,7 @@ fun PlayerBottomSection(
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.Center,
     ) {
         CastPlayerTitles(uiState = uiState)
 
@@ -58,12 +58,13 @@ fun PlayerBottomSection(
             duration = duration,
             chapters = chapters,
             onScrubStart = onScrubStart,
-            onScrubStop = onScrubStop
+            onScrubStop = onScrubStop,
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        val isPlaying = remember(playerState.status) { playerState.status == CastPlaybackStatus.PLAYING }
+        val isPlaying =
+            remember(playerState.status) { playerState.status == CastPlaybackStatus.PLAYING }
         PlaybackButtons(
             uiState = uiState,
             isPlaying = isPlaying,
@@ -81,7 +82,7 @@ fun PlayerBottomSection(
             volume = volume,
             onVolumeChange = onVolumeChange,
             onClickAudio = onClickAudio,
-            onClickSubtitle = onClickSubtitle
+            onClickSubtitle = onClickSubtitle,
         )
     }
 }
@@ -97,26 +98,26 @@ private fun CastPlayerTitles(uiState: CastPlayerViewModel.UiState) {
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                overflow = TextOverflow.Ellipsis,
             )
             Text(
                 text = titleInfo.episodeInfo ?: "",
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.secondary,
-                fontWeight = FontWeight.Medium
+                fontWeight = FontWeight.Medium,
             )
             Text(
                 text = titleInfo.title,
                 style = MaterialTheme.typography.bodyLarge,
                 textAlign = TextAlign.Center,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         } else {
             Text(
                 text = titleInfo.title,
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center
+                textAlign = TextAlign.Center,
             )
         }
     }

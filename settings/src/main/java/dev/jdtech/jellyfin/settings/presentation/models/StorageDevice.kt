@@ -19,10 +19,13 @@ data class StorageDevice(
         get() = (usedBytes - downloadedBytes).coerceAtLeast(0L)
 
     val usedPercent: Int
-        get() = if (totalBytes > 0) ((usedBytes.toDouble() / totalBytes) * 100).toInt().coerceIn(0, 100) else 0
+        get() =
+            if (totalBytes > 0) ((usedBytes.toDouble() / totalBytes) * 100).toInt().coerceIn(0, 100)
+            else 0
 
     val downloadedFraction: Float
-        get() = if (totalBytes > 0) (downloadedBytes.toFloat() / totalBytes).coerceIn(0f, 1f) else 0f
+        get() =
+            if (totalBytes > 0) (downloadedBytes.toFloat() / totalBytes).coerceIn(0f, 1f) else 0f
 
     val otherUsedFraction: Float
         get() = if (totalBytes > 0) (otherUsedBytes.toFloat() / totalBytes).coerceIn(0f, 1f) else 0f

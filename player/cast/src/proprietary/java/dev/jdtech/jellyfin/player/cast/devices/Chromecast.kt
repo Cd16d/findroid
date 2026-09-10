@@ -30,9 +30,7 @@ object Chromecast {
         codecProfile {
             type = CodecType.AUDIO
             codec = "aac,mp3,flac,opus,vorbis,ac3,eac3"
-            conditions {
-                lowerThanOrEquals(ProfileConditionValue.AUDIO_CHANNELS, 6)
-            }
+            conditions { lowerThanOrEquals(ProfileConditionValue.AUDIO_CHANNELS, 6) }
         }
 
         directPlayProfile {

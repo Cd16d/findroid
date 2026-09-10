@@ -46,33 +46,34 @@ fun DownloadPresetDialog(
     var selectedPreset by remember { mutableStateOf(initialPresetId) }
     var downloadExternalAudio by remember { mutableStateOf(false) }
 
-    val presets = listOf(
-        PresetOption(
-            id = "1080p_balanced",
-            title = "1080p Balanced",
-            details = stringResource(CoreR.string.downloads_preset_balanced),
-        ),
-        PresetOption(
-            id = "1080p_high",
-            title = "1080p High Quality",
-            details = stringResource(CoreR.string.downloads_preset_high),
-        ),
-        PresetOption(
-            id = "720p_mobile",
-            title = "720p Mobile Saver",
-            details = stringResource(CoreR.string.downloads_preset_mobile),
-        ),
-        PresetOption(
-            id = "480p_data_saver",
-            title = "480p Data Saver",
-            details = stringResource(CoreR.string.downloads_preset_data_saver),
-        ),
-        PresetOption(
-            id = "direct",
-            title = "Direct Stream",
-            details = stringResource(CoreR.string.downloads_preset_direct),
-        ),
-    )
+    val presets =
+        listOf(
+            PresetOption(
+                id = "1080p_balanced",
+                title = "1080p Balanced",
+                details = stringResource(CoreR.string.downloads_preset_balanced),
+            ),
+            PresetOption(
+                id = "1080p_high",
+                title = "1080p High Quality",
+                details = stringResource(CoreR.string.downloads_preset_high),
+            ),
+            PresetOption(
+                id = "720p_mobile",
+                title = "720p Mobile Saver",
+                details = stringResource(CoreR.string.downloads_preset_mobile),
+            ),
+            PresetOption(
+                id = "480p_data_saver",
+                title = "480p Data Saver",
+                details = stringResource(CoreR.string.downloads_preset_data_saver),
+            ),
+            PresetOption(
+                id = "direct",
+                title = "Direct Stream",
+                details = stringResource(CoreR.string.downloads_preset_direct),
+            ),
+        )
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -84,17 +85,15 @@ fun DownloadPresetDialog(
         },
         text = {
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .selectableGroup(),
+                modifier = Modifier.fillMaxWidth().selectableGroup(),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 presets.forEach { preset ->
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { selectedPreset = preset.id }
-                            .padding(vertical = 4.dp),
+                        modifier =
+                            Modifier.fillMaxWidth()
+                                .clickable { selectedPreset = preset.id }
+                                .padding(vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         RadioButton(
@@ -104,7 +103,10 @@ fun DownloadPresetDialog(
                         Column(modifier = Modifier.padding(start = 8.dp)) {
                             Text(
                                 text = preset.title,
-                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                                style =
+                                    MaterialTheme.typography.bodyMedium.copy(
+                                        fontWeight = FontWeight.SemiBold
+                                    ),
                                 color = MaterialTheme.colorScheme.onSurface,
                             )
                             Text(
@@ -121,10 +123,10 @@ fun DownloadPresetDialog(
                     HorizontalDivider()
                     Spacer(modifier = Modifier.height(8.dp))
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { downloadExternalAudio = !downloadExternalAudio }
-                            .padding(vertical = 4.dp),
+                        modifier =
+                            Modifier.fillMaxWidth()
+                                .clickable { downloadExternalAudio = !downloadExternalAudio }
+                                .padding(vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Checkbox(
@@ -142,18 +144,12 @@ fun DownloadPresetDialog(
             }
         },
         confirmButton = {
-            TextButton(
-                onClick = {
-                    onConfirm(selectedPreset, downloadExternalAudio)
-                }
-            ) {
+            TextButton(onClick = { onConfirm(selectedPreset, downloadExternalAudio) }) {
                 Text(text = stringResource(CoreR.string.download_button_description))
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(text = stringResource(CoreR.string.cancel))
-            }
+            TextButton(onClick = onDismiss) { Text(text = stringResource(CoreR.string.cancel)) }
         },
     )
 }

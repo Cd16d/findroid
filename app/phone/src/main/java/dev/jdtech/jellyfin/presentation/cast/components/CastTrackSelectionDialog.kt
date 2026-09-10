@@ -88,7 +88,7 @@ fun CastTrackSelectionDialog(
     onSetTrack: (Track?) -> Unit,
     onDismiss: () -> Unit,
     displayExtraInfo: Boolean,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     var offsetY by remember { mutableFloatStateOf(0f) }
     val animatedOffset by animateFloatAsState(targetValue = offsetY, label = "offset")
@@ -142,25 +142,20 @@ fun CastTrackSelectionDialog(
     AnimatedVisibility(
         visible = visible,
         enter = fadeIn(),
-        exit = fadeOut()
+        exit = fadeOut(),
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.4f)),
-        )
+        Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.4f)))
     }
 
     AnimatedVisibility(
         visible = visible,
         enter = slideInVertically(initialOffsetY = { it }),
         exit = slideOutVertically(targetOffsetY = { it }),
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier.fillMaxSize(),
     ) {
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .pointerInput(Unit) {
+            modifier =
+                Modifier.fillMaxSize().pointerInput(Unit) {
                     awaitEachGesture {
                         awaitFirstDown(requireUnconsumed = true)
                         var isDragging = false
@@ -183,10 +178,14 @@ fun CastTrackSelectionDialog(
                             val deltaY = change.position.y - change.previousPosition.y
                             val deltaX = change.position.x - change.previousPosition.x
                             dragY += deltaY
-                            if (!isDragging && (abs(dragY) > viewConfiguration.touchSlop || abs(deltaX) > viewConfiguration.touchSlop)) {
+                            if (
+                                !isDragging &&
+                                    (abs(dragY) > viewConfiguration.touchSlop ||
+                                        abs(deltaX) > viewConfiguration.touchSlop)
+                            ) {
                                 isDragging = true
                             }
-                            
+
                             if (isDragging) {
                                 offsetY = dragY.coerceAtLeast(0f)
                             }
@@ -194,7 +193,7 @@ fun CastTrackSelectionDialog(
                         }
                     }
                 },
-            contentAlignment = Alignment.BottomCenter
+            contentAlignment = Alignment.BottomCenter,
         ) {
             val configuration = LocalConfiguration.current
             val density = LocalDensity.current
@@ -202,78 +201,82 @@ fun CastTrackSelectionDialog(
             val containerHeightDp = with(density) { windowInfo.containerSize.height.toDp() }
 
             val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
-            val screenMaxHeight = if (isLandscape) {
-                containerHeightDp
-            } else {
-                containerHeightDp * 0.6f
-            }
+            val screenMaxHeight =
+                if (isLandscape) {
+                    containerHeightDp
+                } else {
+                    containerHeightDp * 0.6f
+                }
 
             Surface(
-                modifier = modifier
-                    .padding(MaterialTheme.spacings.small)
-                    .widthIn(max = 500.dp)
-                    .then(
-                        if (isLandscape) Modifier.fillMaxHeight()
-                        else Modifier.heightIn(max = screenMaxHeight)
-                    )
-                    .fillMaxWidth()
-                    .statusBarsPadding()
-                    .offset { IntOffset(0, animatedOffset.roundToInt()) }
-                    .pointerInput(Unit) {
-                        awaitEachGesture {
-                            awaitFirstDown(requireUnconsumed = false)
-                            while (true) {
-                                val event = awaitPointerEvent()
-                                val change = event.changes.firstOrNull() ?: break
-                                
-                                if (change.changedToUp()) {
-                                    if (offsetY > 150f) {
-                                        onDismiss()
-                                    }
-                                    offsetY = 0f
-                                    break
-                                }
+                modifier =
+                    modifier
+                        .padding(MaterialTheme.spacings.small)
+                        .widthIn(max = 500.dp)
+                        .then(
+                            if (isLandscape) Modifier.fillMaxHeight()
+                            else Modifier.heightIn(max = screenMaxHeight)
+                        )
+                        .fillMaxWidth()
+                        .statusBarsPadding()
+                        .offset { IntOffset(0, animatedOffset.roundToInt()) }
+                        .pointerInput(Unit) {
+                            awaitEachGesture {
+                                awaitFirstDown(requireUnconsumed = false)
+                                while (true) {
+                                    val event = awaitPointerEvent()
+                                    val change = event.changes.firstOrNull() ?: break
 
-                                // Only handle if not already consumed by children (like the list)
-                                if (!change.isConsumed) {
-                                    val deltaY = change.position.y - change.previousPosition.y
-                                    val deltaX = change.position.x - change.previousPosition.x
-                                    
-                                    if (abs(deltaY) > 0) {
-                                        offsetY = (offsetY + deltaY).coerceAtLeast(0f)
-                                        change.consume()
-                                    } else if (abs(deltaX) > 0) {
-                                        // Other swipes (horizontal): consume and do nothing
-                                        change.consume()
+                                    if (change.changedToUp()) {
+                                        if (offsetY > 150f) {
+                                            onDismiss()
+                                        }
+                                        offsetY = 0f
+                                        break
+                                    }
+
+                                    // Only handle if not already consumed by children (like the
+                                    // list)
+                                    if (!change.isConsumed) {
+                                        val deltaY = change.position.y - change.previousPosition.y
+                                        val deltaX = change.position.x - change.previousPosition.x
+
+                                        if (abs(deltaY) > 0) {
+                                            offsetY = (offsetY + deltaY).coerceAtLeast(0f)
+                                            change.consume()
+                                        } else if (abs(deltaX) > 0) {
+                                            // Other swipes (horizontal): consume and do nothing
+                                            change.consume()
+                                        }
                                     }
                                 }
                             }
                         }
-                    }
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = {} // Catch clicks to prevent closing when interacting with menu
-                    ),
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = {}, // Catch clicks to prevent closing when interacting with
+                            // menu
+                        ),
                 color = MaterialTheme.colorScheme.surfaceContainerLowest,
                 shape = MaterialTheme.shapes.large,
-                tonalElevation = 8.dp
+                tonalElevation = 8.dp,
             ) {
                 Column(
-                    modifier = Modifier
-                        .nestedScroll(nestedScrollConnection)
-                        .padding(MaterialTheme.spacings.medium)
-                        .then(if (isLandscape) Modifier.fillMaxHeight() else Modifier)
+                    modifier =
+                        Modifier.nestedScroll(nestedScrollConnection)
+                            .padding(MaterialTheme.spacings.medium)
+                            .then(if (isLandscape) Modifier.fillMaxHeight() else Modifier)
                 ) {
                     Box(
-                        modifier = Modifier
-                            .align(Alignment.CenterHorizontally)
-                            .width(32.dp)
-                            .height(4.dp)
-                            .background(
-                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                                CircleShape
-                            )
+                        modifier =
+                            Modifier.align(Alignment.CenterHorizontally)
+                                .width(32.dp)
+                                .height(4.dp)
+                                .background(
+                                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                                    CircleShape,
+                                )
                     )
 
                     Spacer(modifier = Modifier.height(MaterialTheme.spacings.small))
@@ -281,95 +284,124 @@ fun CastTrackSelectionDialog(
                     Text(
                         text = stringResource(titleResource),
                         style = MaterialTheme.typography.headlineSmall,
-                        modifier = Modifier.padding(8.dp)
+                        modifier = Modifier.padding(8.dp),
                     )
 
-                    Box(
-                        modifier = Modifier.weight(1f, fill = false)
-                    ) {
-                        val scrollbarColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                    Box(modifier = Modifier.weight(1f, fill = false)) {
+                        val scrollbarColor =
+                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
                         LazyColumn(
                             state = listState,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
-                                .drawWithContent {
-                                    drawContent()
-                                    val edgeHeight = 16.dp.toPx()
+                            modifier =
+                                Modifier.fillMaxWidth()
+                                    .graphicsLayer(
+                                        compositingStrategy = CompositingStrategy.Offscreen
+                                    )
+                                    .drawWithContent {
+                                        drawContent()
+                                        val edgeHeight = 16.dp.toPx()
 
-                                    if (listState.canScrollBackward) {
-                                        drawRect(
-                                            brush = Brush.verticalGradient(
-                                                colors = listOf(Color.Transparent, Color.Black),
-                                                startY = 0f,
-                                                endY = edgeHeight
-                                            ),
-                                            blendMode = BlendMode.DstIn
-                                        )
-                                    }
+                                        if (listState.canScrollBackward) {
+                                            drawRect(
+                                                brush =
+                                                    Brush.verticalGradient(
+                                                        colors =
+                                                            listOf(Color.Transparent, Color.Black),
+                                                        startY = 0f,
+                                                        endY = edgeHeight,
+                                                    ),
+                                                blendMode = BlendMode.DstIn,
+                                            )
+                                        }
 
-                                    if (listState.canScrollForward) {
-                                        drawRect(
-                                            brush = Brush.verticalGradient(
-                                                colors = listOf(Color.Black, Color.Transparent),
-                                                startY = size.height - edgeHeight,
-                                                endY = size.height
-                                            ),
-                                            blendMode = BlendMode.DstIn
-                                        )
-                                    }
+                                        if (listState.canScrollForward) {
+                                            drawRect(
+                                                brush =
+                                                    Brush.verticalGradient(
+                                                        colors =
+                                                            listOf(Color.Black, Color.Transparent),
+                                                        startY = size.height - edgeHeight,
+                                                        endY = size.height,
+                                                    ),
+                                                blendMode = BlendMode.DstIn,
+                                            )
+                                        }
 
-                                    // Scrollbar drawing
-                                    val layoutInfo = listState.layoutInfo
-                                    val visibleItems = layoutInfo.visibleItemsInfo
-                                    if (visibleItems.isNotEmpty() && layoutInfo.totalItemsCount > visibleItems.size) {
-                                        val totalItems = layoutInfo.totalItemsCount
-                                        val viewportHeight = layoutInfo.viewportEndOffset - layoutInfo.viewportStartOffset
-                                        
-                                        if (viewportHeight > 0) {
-                                            // Use average item size for a much more stable thumb height
-                                            val avgItemSize = visibleItems.map { it.size }.average().toFloat()
-                                            val estimatedTotalHeight = avgItemSize * totalItems
-                                            
-                                            val thumbHeight = (viewportHeight.toFloat() / estimatedTotalHeight * viewportHeight)
-                                                .coerceIn(32.dp.toPx(), viewportHeight.toFloat())
-                                            
-                                            // Calculate exact scroll offset in pixels
-                                            val firstItem = visibleItems.first()
-                                            val scrollOffset = firstItem.index * avgItemSize - firstItem.offset
-                                            val maxScrollOffset = estimatedTotalHeight - viewportHeight
-                                            
-                                            if (maxScrollOffset > 0) {
-                                                val thumbOffset = (scrollOffset / maxScrollOffset) * (viewportHeight - thumbHeight)
+                                        // Scrollbar drawing
+                                        val layoutInfo = listState.layoutInfo
+                                        val visibleItems = layoutInfo.visibleItemsInfo
+                                        if (
+                                            visibleItems.isNotEmpty() &&
+                                                layoutInfo.totalItemsCount > visibleItems.size
+                                        ) {
+                                            val totalItems = layoutInfo.totalItemsCount
+                                            val viewportHeight =
+                                                layoutInfo.viewportEndOffset -
+                                                    layoutInfo.viewportStartOffset
 
-                                                drawRoundRect(
-                                                    color = scrollbarColor,
-                                                    topLeft = Offset(size.width - 4.dp.toPx(), thumbOffset.coerceIn(0f, viewportHeight - thumbHeight)),
-                                                    size = Size(3.dp.toPx(), thumbHeight),
-                                                    cornerRadius = CornerRadius(2.dp.toPx())
-                                                )
+                                            if (viewportHeight > 0) {
+                                                // Use average item size for a much more stable
+                                                // thumb height
+                                                val avgItemSize =
+                                                    visibleItems.map { it.size }.average().toFloat()
+                                                val estimatedTotalHeight = avgItemSize * totalItems
+
+                                                val thumbHeight =
+                                                    (viewportHeight.toFloat() /
+                                                            estimatedTotalHeight * viewportHeight)
+                                                        .coerceIn(
+                                                            32.dp.toPx(),
+                                                            viewportHeight.toFloat(),
+                                                        )
+
+                                                // Calculate exact scroll offset in pixels
+                                                val firstItem = visibleItems.first()
+                                                val scrollOffset =
+                                                    firstItem.index * avgItemSize - firstItem.offset
+                                                val maxScrollOffset =
+                                                    estimatedTotalHeight - viewportHeight
+
+                                                if (maxScrollOffset > 0) {
+                                                    val thumbOffset =
+                                                        (scrollOffset / maxScrollOffset) *
+                                                            (viewportHeight - thumbHeight)
+
+                                                    drawRoundRect(
+                                                        color = scrollbarColor,
+                                                        topLeft =
+                                                            Offset(
+                                                                size.width - 4.dp.toPx(),
+                                                                thumbOffset.coerceIn(
+                                                                    0f,
+                                                                    viewportHeight - thumbHeight,
+                                                                ),
+                                                            ),
+                                                        size = Size(3.dp.toPx(), thumbHeight),
+                                                        cornerRadius = CornerRadius(2.dp.toPx()),
+                                                    )
+                                                }
                                             }
                                         }
-                                    }
-                                }
+                                    },
                         ) {
                             if (type == C.TRACK_TYPE_TEXT) {
                                 item {
                                     Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .clickable(onClick = { onSetTrack(null) })
-                                            .padding(vertical = 4.dp)
-                                            .padding(start = 8.dp, end = 16.dp),
-                                        verticalAlignment = Alignment.CenterVertically
+                                        modifier =
+                                            Modifier.fillMaxWidth()
+                                                .clickable(onClick = { onSetTrack(null) })
+                                                .padding(vertical = 4.dp)
+                                                .padding(start = 8.dp, end = 16.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
                                     ) {
                                         RadioButton(
                                             selected = tracks.none { it.selected },
-                                            onClick = { onSetTrack(null) })
+                                            onClick = { onSetTrack(null) },
+                                        )
                                         Spacer(modifier = Modifier.width(8.dp))
                                         Text(
                                             text = stringResource(R.string.none),
-                                            style = MaterialTheme.typography.bodyMedium
+                                            style = MaterialTheme.typography.bodyMedium,
                                         )
                                     }
                                 }
@@ -393,32 +425,35 @@ fun CastTrackSelectionDialog(
 private fun TrackRow(
     track: Track,
     displayExtraInfo: Boolean,
-    onClick: (Track) -> Unit
+    onClick: (Track) -> Unit,
 ) {
     val configuration = LocalConfiguration.current
     val currentLocale = configuration.locales[0]
 
     val trackIndexName = stringResource(R.string.track_index, track.id)
 
-    val displayName = remember(track, currentLocale) {
-        val locale = track.language?.takeIf { it.isNotBlank() && it != "und" }?.let { lang ->
-            Locale.forLanguageTag(lang.replace("_", "-"))
-        }
+    val displayName =
+        remember(track, currentLocale) {
+            val locale =
+                track.language
+                    ?.takeIf { it.isNotBlank() && it != "und" }
+                    ?.let { lang -> Locale.forLanguageTag(lang.replace("_", "-")) }
 
-        val localizedLanguage = locale?.getDisplayLanguage(currentLocale)?.replaceFirstChar {
-            if (it.isLowerCase()) it.titlecase(currentLocale) else it.toString()
-        }
+            val localizedLanguage =
+                locale?.getDisplayLanguage(currentLocale)?.replaceFirstChar {
+                    if (it.isLowerCase()) it.titlecase(currentLocale) else it.toString()
+                }
 
-        localizedLanguage ?: track.label ?: trackIndexName
-    }
+            localizedLanguage ?: track.label ?: trackIndexName
+        }
 
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = { onClick(track) })
-            .padding(vertical = 4.dp)
-            .padding(start = 8.dp, end = 16.dp),
-        verticalAlignment = Alignment.CenterVertically
+        modifier =
+            Modifier.fillMaxWidth()
+                .clickable(onClick = { onClick(track) })
+                .padding(vertical = 4.dp)
+                .padding(start = 8.dp, end = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         RadioButton(selected = track.selected, onClick = { onClick(track) })
 
@@ -427,45 +462,47 @@ private fun TrackRow(
         Text(
             text = displayName,
             style = MaterialTheme.typography.bodyMedium,
-            maxLines = 1
+            maxLines = 1,
         )
 
         Spacer(modifier = Modifier.width(16.dp))
 
         val scrollState = rememberScrollState()
         Row(
-            modifier = Modifier
-                .weight(1f)
-                .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
-                .drawWithContent {
-                    drawContent()
-                    val edgeWidth = 16.dp.toPx()
+            modifier =
+                Modifier.weight(1f)
+                    .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
+                    .drawWithContent {
+                        drawContent()
+                        val edgeWidth = 16.dp.toPx()
 
-                    if (scrollState.value > 0) {
-                        drawRect(
-                            brush = Brush.horizontalGradient(
-                                colors = listOf(Color.Transparent, Color.Black),
-                                startX = 0f,
-                                endX = edgeWidth
-                            ),
-                            blendMode = BlendMode.DstIn
-                        )
-                    }
+                        if (scrollState.value > 0) {
+                            drawRect(
+                                brush =
+                                    Brush.horizontalGradient(
+                                        colors = listOf(Color.Transparent, Color.Black),
+                                        startX = 0f,
+                                        endX = edgeWidth,
+                                    ),
+                                blendMode = BlendMode.DstIn,
+                            )
+                        }
 
-                    if (scrollState.value < scrollState.maxValue) {
-                        drawRect(
-                            brush = Brush.horizontalGradient(
-                                colors = listOf(Color.Black, Color.Transparent),
-                                startX = size.width - edgeWidth,
-                                endX = size.width
-                            ),
-                            blendMode = BlendMode.DstIn
-                        )
+                        if (scrollState.value < scrollState.maxValue) {
+                            drawRect(
+                                brush =
+                                    Brush.horizontalGradient(
+                                        colors = listOf(Color.Black, Color.Transparent),
+                                        startX = size.width - edgeWidth,
+                                        endX = size.width,
+                                    ),
+                                blendMode = BlendMode.DstIn,
+                            )
+                        }
                     }
-                }
-                .horizontalScroll(scrollState),
+                    .horizontalScroll(scrollState),
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacings.small),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             if (track.isForced == true) {
                 TrackMetadataBarItem(stringResource(R.string.forced))
@@ -477,9 +514,7 @@ private fun TrackRow(
                 if (track.isExternal == true) {
                     TrackMetadataBarItem(stringResource(R.string.external))
                 }
-                track.codec?.takeIf { it.isNotBlank() }?.let {
-                    TrackMetadataBarItem(it)
-                }
+                track.codec?.takeIf { it.isNotBlank() }?.let { TrackMetadataBarItem(it) }
             }
         }
     }
@@ -489,8 +524,7 @@ private fun TrackRow(
 fun TrackMetadataBarItem(trackSpec: String, @DrawableRes icon: Int? = null) {
     Row(
         modifier =
-            Modifier
-                .clip(MaterialTheme.shapes.small)
+            Modifier.clip(MaterialTheme.shapes.small)
                 .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                 .padding(
                     horizontal = MaterialTheme.spacings.small,
@@ -513,13 +547,14 @@ private fun CastTrackSelectionDialogPreview() {
         CastTrackSelectionDialog(
             visible = true,
             type = C.TRACK_TYPE_AUDIO,
-            tracks = listOf(
-                Track(3, "English", "eng", "aac", selected = false, supported = true),
-                Track(4, "Spanish", "spa", "aac", selected = true, supported = true)
-            ),
+            tracks =
+                listOf(
+                    Track(3, "English", "eng", "aac", selected = false, supported = true),
+                    Track(4, "Spanish", "spa", "aac", selected = true, supported = true),
+                ),
             onSetTrack = {},
             onDismiss = {},
-            displayExtraInfo = false
+            displayExtraInfo = false,
         )
     }
 }
@@ -531,40 +566,41 @@ private fun CastTrackSubsSelectionSheetPreview() {
         CastTrackSelectionDialog(
             visible = true,
             type = C.TRACK_TYPE_TEXT,
-            tracks = listOf(
-                Track(
-                    3,
-                    "English",
-                    "eng",
-                    "subrip",
-                    selected = false,
-                    supported = true,
-                    isForced = true
+            tracks =
+                listOf(
+                    Track(
+                        3,
+                        "English",
+                        "eng",
+                        "subrip",
+                        selected = false,
+                        supported = true,
+                        isForced = true,
+                    ),
+                    Track(
+                        4,
+                        "Spanish",
+                        "spa",
+                        "webvvt",
+                        selected = true,
+                        supported = true,
+                        isHearingImpaired = true,
+                        isExternal = true,
+                    ),
+                    Track(
+                        5,
+                        null,
+                        null,
+                        "webvvt",
+                        selected = false,
+                        supported = true,
+                        isHearingImpaired = false,
+                        isExternal = false,
+                    ),
                 ),
-                Track(
-                    4,
-                    "Spanish",
-                    "spa",
-                    "webvvt",
-                    selected = true,
-                    supported = true,
-                    isHearingImpaired = true,
-                    isExternal = true
-                ),
-                Track(
-                    5,
-                    null,
-                    null,
-                    "webvvt",
-                    selected = false,
-                    supported = true,
-                    isHearingImpaired = false,
-                    isExternal = false
-                )
-            ),
             onSetTrack = {},
             onDismiss = {},
-            displayExtraInfo = true
+            displayExtraInfo = true,
         )
     }
 }

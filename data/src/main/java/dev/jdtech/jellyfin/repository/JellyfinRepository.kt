@@ -5,6 +5,7 @@ import dev.jdtech.jellyfin.models.FindroidCollection
 import dev.jdtech.jellyfin.models.FindroidEpisode
 import dev.jdtech.jellyfin.models.FindroidItem
 import dev.jdtech.jellyfin.models.FindroidMovie
+import dev.jdtech.jellyfin.models.FindroidPart
 import dev.jdtech.jellyfin.models.FindroidPerson
 import dev.jdtech.jellyfin.models.FindroidSeason
 import dev.jdtech.jellyfin.models.FindroidSegment
@@ -13,7 +14,6 @@ import dev.jdtech.jellyfin.models.FindroidSource
 import dev.jdtech.jellyfin.models.Server
 import dev.jdtech.jellyfin.models.SortBy
 import dev.jdtech.jellyfin.models.SortOrder
-import dev.jdtech.jellyfin.models.User
 import java.util.UUID
 import kotlinx.coroutines.flow.Flow
 import org.jellyfin.sdk.model.api.BaseItemDto
@@ -23,8 +23,6 @@ import org.jellyfin.sdk.model.api.ItemFilter
 import org.jellyfin.sdk.model.api.PlayMethod
 import org.jellyfin.sdk.model.api.PublicSystemInfo
 import org.jellyfin.sdk.model.api.UserConfiguration
-
-import dev.jdtech.jellyfin.models.FindroidPart
 
 interface JellyfinRepository {
     suspend fun getAdditionalParts(itemId: UUID): List<FindroidPart>
@@ -113,7 +111,7 @@ interface JellyfinRepository {
         positionTicks: Long? = null,
         playMethod: PlayMethod = PlayMethod.DIRECT_PLAY,
         mediaSourceId: String? = null,
-        playSessionId: String? = null
+        playSessionId: String? = null,
     )
 
     suspend fun postPlaybackStop(
@@ -121,15 +119,16 @@ interface JellyfinRepository {
         positionTicks: Long,
         playedPercentage: Int,
         mediaSourceId: String? = null,
-        playSessionId: String? = null
+        playSessionId: String? = null,
     )
+
     suspend fun postPlaybackProgress(
         itemId: UUID,
         positionTicks: Long,
         isPaused: Boolean,
         playMethod: PlayMethod = PlayMethod.DIRECT_PLAY,
         mediaSourceId: String? = null,
-        playSessionId: String? = null
+        playSessionId: String? = null,
     )
 
     suspend fun markAsFavorite(itemId: UUID)

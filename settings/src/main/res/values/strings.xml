@@ -169,4 +169,9 @@
     <string name="downloads_storage_default">Default</string>
     <string name="downloads_storage_ask_every_time">Ask every time</string>
     <string name="codecs_supported_ratio">%1$d/%2$d supported</string>
+    <string name="kbps">kbps</string>
+    <string name="settings_category_chromecast">Chromecast</string>
+    <string name="pref_cast_enabled">Enable Chromecast</string>
+    <string name="pref_cast_enabled_summary">Enable Google Cast device discovery and casting</string>
+    <string name="pref_cast_max_bitrate">Max bitrate</string>
 </resources>

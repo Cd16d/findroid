@@ -15,10 +15,22 @@ android {
         register("beta") { initWith(getByName("release")) }
     }
 
+    flavorDimensions += "variant"
+    productFlavors {
+        register("libre") { dimension = "variant" }
+        register("proprietary") {
+            dimension = "variant"
+            isDefault = true
+            matchingFallbacks += listOf("libre")
+        }
+    }
+
     compileOptions {
         sourceCompatibility = Versions.JAVA
         targetCompatibility = Versions.JAVA
     }
+
+    buildFeatures { buildConfig = true }
 }
 
 dependencies {

@@ -25,15 +25,14 @@ import javax.inject.Inject
 class MainActivity : AppCompatActivity() {
     private val viewModel: MainViewModel by viewModels()
 
-    @Inject
-    lateinit var castSessionManager: CastSessionManager
+    @Inject lateinit var castSessionManager: CastSessionManager
 
     private val requestNotificationPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { _ -> }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
+
         castSessionManager.init()
 
         enableEdgeToEdge()
@@ -46,9 +45,7 @@ class MainActivity : AppCompatActivity() {
             FindroidTheme(dynamicColor = state.isDynamicColors) {
                 val navController = rememberNavController()
                 if (!state.isLoading) {
-                    CompositionLocalProvider(
-                        LocalOfflineMode provides state.isOfflineMode,
-                    ) {
+                    CompositionLocalProvider(LocalOfflineMode provides state.isOfflineMode) {
                         NavigationRoot(
                             navController = navController,
                             hasServers = state.hasServers,
@@ -63,7 +60,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun requestNotificationPermissionIfNeeded() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(
+            if (
+                ContextCompat.checkSelfPermission(
                     this,
                     Manifest.permission.POST_NOTIFICATIONS,
                 ) != PackageManager.PERMISSION_GRANTED

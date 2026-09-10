@@ -103,12 +103,13 @@ private fun LibraryScreenLayout(
     onAction: (LibraryAction) -> Unit,
 ) {
     val castPadding = LocalCastPlayerHeight.current
-    val contentPadding = PaddingValues(
-        start = MaterialTheme.spacings.default,
-        top = MaterialTheme.spacings.default,
-        end = MaterialTheme.spacings.default,
-        bottom = castPadding
-    )
+    val contentPadding =
+        PaddingValues(
+            start = MaterialTheme.spacings.default,
+            top = MaterialTheme.spacings.default,
+            end = MaterialTheme.spacings.default,
+            bottom = castPadding,
+        )
 
     val items = state.items.collectAsLazyPagingItems()
 
@@ -133,9 +134,17 @@ private fun LibraryScreenLayout(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { onAction(LibraryAction.ToggleWatchedFilter(!state.filterWatched)) }) {
+                    IconButton(
+                        onClick = {
+                            onAction(LibraryAction.ToggleWatchedFilter(!state.filterWatched))
+                        }
+                    ) {
                         Icon(
-                            painter = painterResource(if (state.filterWatched) CoreR.drawable.ic_eye_off else CoreR.drawable.ic_eye),
+                            painter =
+                                painterResource(
+                                    if (state.filterWatched) CoreR.drawable.ic_eye_off
+                                    else CoreR.drawable.ic_eye
+                                ),
                             contentDescription = null,
                         )
                     }

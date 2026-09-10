@@ -21,16 +21,14 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
 /**
- * Foreground service that keeps the app process alive while the DownloadQueue has
- * work to do. The OkHttp download engine runs in-process, so closing the app would
- * stall any active or pending transfers until the user reopens the app. This service
- * keeps the process alive while work remains.
+ * Foreground service that keeps the app process alive while the DownloadQueue has work to do. The
+ * OkHttp download engine runs in-process, so closing the app would stall any active or pending
+ * transfers until the user reopens the app. This service keeps the process alive while work
+ * remains.
  */
 @AndroidEntryPoint
 class DownloadPumpService : Service() {
@@ -53,8 +51,9 @@ class DownloadPumpService : Service() {
         when (intent?.action) {
             ACTION_PAUSE_ALL -> {
                 downloadQueue.entries.value.forEach { entry ->
-                    if (entry.state is DownloadQueue.EntryState.Downloading ||
-                        entry.state is DownloadQueue.EntryState.Pending
+                    if (
+                        entry.state is DownloadQueue.EntryState.Downloading ||
+                            entry.state is DownloadQueue.EntryState.Pending
                     ) {
                         downloadQueue.pause(entry.id)
                     }
@@ -68,11 +67,12 @@ class DownloadPumpService : Service() {
                 }
             }
         }
-        val active = downloadQueue.entries.value.filter {
-            it.state is DownloadQueue.EntryState.Downloading ||
-                it.state is DownloadQueue.EntryState.Pending ||
-                it.state is DownloadQueue.EntryState.Paused
-        }
+        val active =
+            downloadQueue.entries.value.filter {
+                it.state is DownloadQueue.EntryState.Downloading ||
+                    it.state is DownloadQueue.EntryState.Pending ||
+                    it.state is DownloadQueue.EntryState.Paused
+            }
         if (active.isNotEmpty()) {
             updateNotification(active)
         }
@@ -81,23 +81,21 @@ class DownloadPumpService : Service() {
 
     private fun observeQueue() {
         observeJob?.cancel()
-        observeJob =
-            scope.launch {
-                downloadQueue.entries
-                    .collect { entries ->
-                        val active = entries.filter {
-                            it.state is DownloadQueue.EntryState.Downloading ||
-                                it.state is DownloadQueue.EntryState.Pending ||
-                                it.state is DownloadQueue.EntryState.Paused
-                        }
-                        if (active.isEmpty()) {
-                            stopForegroundCompat()
-                            stopSelf()
-                        } else {
-                            updateNotification(active)
-                        }
-                    }
+        observeJob = scope.launch {
+            downloadQueue.entries.collect { entries ->
+                val active = entries.filter {
+                    it.state is DownloadQueue.EntryState.Downloading ||
+                        it.state is DownloadQueue.EntryState.Pending ||
+                        it.state is DownloadQueue.EntryState.Paused
+                }
+                if (active.isEmpty()) {
+                    stopForegroundCompat()
+                    stopSelf()
+                } else {
+                    updateNotification(active)
+                }
             }
+        }
     }
 
     private fun startForegroundWithActive(entries: List<DownloadQueue.Entry>) {
@@ -124,9 +122,10 @@ class DownloadPumpService : Service() {
     }
 
     private fun buildNotification(active: List<DownloadQueue.Entry>): android.app.Notification {
-        val launchIntent = packageManager.getLaunchIntentForPackage(packageName)?.apply {
-            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
-        }
+        val launchIntent =
+            packageManager.getLaunchIntentForPackage(packageName)?.apply {
+                flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
         val pendingIntent = launchIntent?.let {
             PendingIntent.getActivity(
                 this,
@@ -136,66 +135,82 @@ class DownloadPumpService : Service() {
             )
         }
 
-        val downloading = active.firstOrNull { it.state is DownloadQueue.EntryState.Downloading }
-            ?: active.firstOrNull()
+        val downloading =
+            active.firstOrNull { it.state is DownloadQueue.EntryState.Downloading }
+                ?: active.firstOrNull()
 
-        val compactTitle = downloading?.item?.name?.ifEmpty { getString(CoreR.string.title_download) }
-            ?: if (active.isNotEmpty()) active.first().item.name else getString(CoreR.string.title_download)
+        val compactTitle =
+            downloading?.item?.name?.ifEmpty { getString(CoreR.string.title_download) }
+                ?: if (active.isNotEmpty()) active.first().item.name
+                else getString(CoreR.string.title_download)
 
-        val fullTitle = if (downloading != null) {
-            val item = downloading.item
-            val baseName = if (item is FindroidEpisode) {
-                val epNum = if (item.indexNumber > 0) "E${item.indexNumber} " else ""
-                "${item.seriesName} - $epNum${item.name}"
+        val fullTitle =
+            if (downloading != null) {
+                val item = downloading.item
+                val baseName =
+                    if (item is FindroidEpisode) {
+                        val epNum = if (item.indexNumber > 0) "E${item.indexNumber} " else ""
+                        "${item.seriesName} - $epNum${item.name}"
+                    } else {
+                        item.name
+                    }
+                if (active.size > 1) {
+                    "$baseName (+${active.size - 1} queued)"
+                } else {
+                    baseName
+                }
             } else {
-                item.name
+                resources.getQuantityString(
+                    CoreR.plurals.downloads_in_progress_title,
+                    active.size.coerceAtLeast(1),
+                    active.size.coerceAtLeast(1),
+                )
             }
-            if (active.size > 1) {
-                "$baseName (+${active.size - 1} queued)"
-            } else {
-                baseName
-            }
-        } else {
-            resources.getQuantityString(
-                CoreR.plurals.downloads_in_progress_title,
-                active.size.coerceAtLeast(1),
-                active.size.coerceAtLeast(1),
-            )
-        }
 
         val progress = downloading?.progress ?: 0
-        val speedStr = if (downloading != null && downloading.bytesPerSecond > 0) {
-            Formatter.formatFileSize(this, downloading.bytesPerSecond) + "/s"
-        } else ""
+        val speedStr =
+            if (downloading != null && downloading.bytesPerSecond > 0) {
+                Formatter.formatFileSize(this, downloading.bytesPerSecond) + "/s"
+            } else ""
 
-        val etaStr = if (downloading != null && downloading.bytesPerSecond > 0 && downloading.totalBytes > downloading.bytesDownloaded) {
-            val remainingSec = (downloading.totalBytes - downloading.bytesDownloaded) / downloading.bytesPerSecond
-            val formattedTime = formatStableEta(remainingSec)
-            if (formattedTime.isNotEmpty()) getString(CoreR.string.notification_download_remaining, formattedTime) else ""
-        } else ""
+        val etaStr =
+            if (
+                downloading != null &&
+                    downloading.bytesPerSecond > 0 &&
+                    downloading.totalBytes > downloading.bytesDownloaded
+            ) {
+                val remainingSec =
+                    (downloading.totalBytes - downloading.bytesDownloaded) /
+                        downloading.bytesPerSecond
+                val formattedTime = formatStableEta(remainingSec)
+                if (formattedTime.isNotEmpty())
+                    getString(CoreR.string.notification_download_remaining, formattedTime)
+                else ""
+            } else ""
 
-        val compactContentText = when {
-            downloading?.state is DownloadQueue.EntryState.Downloading && speedStr.isNotEmpty() ->
-                "$progress% • $speedStr"
-            downloading?.state is DownloadQueue.EntryState.Downloading ->
-                "$progress%"
-            downloading?.state is DownloadQueue.EntryState.Pending ->
-                getString(CoreR.string.pending_in_queue)
-            downloading?.state is DownloadQueue.EntryState.Paused ->
-                getString(CoreR.string.download_paused)
-            else -> ""
-        }
+        val compactContentText =
+            when {
+                downloading?.state is DownloadQueue.EntryState.Downloading &&
+                    speedStr.isNotEmpty() -> "$progress% • $speedStr"
+                downloading?.state is DownloadQueue.EntryState.Downloading -> "$progress%"
+                downloading?.state is DownloadQueue.EntryState.Pending ->
+                    getString(CoreR.string.pending_in_queue)
+                downloading?.state is DownloadQueue.EntryState.Paused ->
+                    getString(CoreR.string.download_paused)
+                else -> ""
+            }
 
-        val builder = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(CoreR.drawable.ic_download)
-            .setContentTitle(compactTitle)
-            .setContentText(compactContentText)
-            .setSubText(etaStr.ifEmpty { null })
-            .setContentIntent(pendingIntent)
-            .setOngoing(true)
-            .setOnlyAlertOnce(true)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
-            .setCategory(NotificationCompat.CATEGORY_PROGRESS)
+        val builder =
+            NotificationCompat.Builder(this, CHANNEL_ID)
+                .setSmallIcon(CoreR.drawable.ic_download)
+                .setContentTitle(compactTitle)
+                .setContentText(compactContentText)
+                .setSubText(etaStr.ifEmpty { null })
+                .setContentIntent(pendingIntent)
+                .setOngoing(true)
+                .setOnlyAlertOnce(true)
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setCategory(NotificationCompat.CATEGORY_PROGRESS)
 
         if (downloading?.state is DownloadQueue.EntryState.Downloading) {
             builder.setProgress(100, progress, false)
@@ -204,12 +219,14 @@ class DownloadPumpService : Service() {
         }
 
         // Multi-line expanded view following Android notification guidelines
-        val downloadedFormatted = if (downloading != null && downloading.bytesDownloaded > 0) {
-            Formatter.formatFileSize(this, downloading.bytesDownloaded)
-        } else "0 B"
-        val totalFormatted = if (downloading != null && downloading.totalBytes > 0) {
-            Formatter.formatFileSize(this, downloading.totalBytes)
-        } else ""
+        val downloadedFormatted =
+            if (downloading != null && downloading.bytesDownloaded > 0) {
+                Formatter.formatFileSize(this, downloading.bytesDownloaded)
+            } else "0 B"
+        val totalFormatted =
+            if (downloading != null && downloading.totalBytes > 0) {
+                Formatter.formatFileSize(this, downloading.totalBytes)
+            } else ""
 
         val bigTextBuilder = StringBuilder()
         if (downloading != null && downloading.state is DownloadQueue.EntryState.Downloading) {
@@ -217,62 +234,90 @@ class DownloadPumpService : Service() {
             if (speedStr.isNotEmpty()) bigTextBuilder.append(" • $speedStr")
             if (etaStr.isNotEmpty()) bigTextBuilder.append(" • $etaStr")
             if (totalFormatted.isNotEmpty()) {
-                bigTextBuilder.append(getString(CoreR.string.notification_download_progress_size, downloadedFormatted, totalFormatted))
+                bigTextBuilder.append(
+                    getString(
+                        CoreR.string.notification_download_progress_size,
+                        downloadedFormatted,
+                        totalFormatted,
+                    )
+                )
             }
         } else if (downloading != null && downloading.state is DownloadQueue.EntryState.Pending) {
             bigTextBuilder.append(getString(CoreR.string.pending_in_queue))
             if (totalFormatted.isNotEmpty()) {
-                bigTextBuilder.append(getString(CoreR.string.notification_download_size, totalFormatted))
+                bigTextBuilder.append(
+                    getString(CoreR.string.notification_download_size, totalFormatted)
+                )
             }
         }
 
         val queuedItems = active.filter { it.id != downloading?.id }
         if (queuedItems.isNotEmpty()) {
-            bigTextBuilder.append(getString(CoreR.string.notification_download_in_queue, queuedItems.size))
+            bigTextBuilder.append(
+                getString(CoreR.string.notification_download_in_queue, queuedItems.size)
+            )
             queuedItems.take(4).forEach { queued ->
-                val epTitle = if (queued.item is FindroidEpisode) {
-                    val epNum = if (queued.item.indexNumber > 0) "E${queued.item.indexNumber} " else ""
-                    "${queued.item.seriesName} - $epNum${queued.item.name}"
-                } else {
-                    queued.item.name
-                }
+                val epTitle =
+                    if (queued.item is FindroidEpisode) {
+                        val epNum =
+                            if (queued.item.indexNumber > 0) "E${queued.item.indexNumber} " else ""
+                        "${queued.item.seriesName} - $epNum${queued.item.name}"
+                    } else {
+                        queued.item.name
+                    }
                 bigTextBuilder.append("\n• $epTitle")
             }
             if (queuedItems.size > 4) {
-                bigTextBuilder.append(getString(CoreR.string.notification_download_more_items, queuedItems.size - 4))
+                bigTextBuilder.append(
+                    getString(CoreR.string.notification_download_more_items, queuedItems.size - 4)
+                )
             }
         }
 
-        val bigTextStyle = NotificationCompat.BigTextStyle()
-            .setBigContentTitle(fullTitle)
-            .setSummaryText(if (active.size > 1) resources.getQuantityString(CoreR.plurals.downloads_count, active.size, active.size) else null)
-            .bigText(bigTextBuilder.toString())
+        val bigTextStyle =
+            NotificationCompat.BigTextStyle()
+                .setBigContentTitle(fullTitle)
+                .setSummaryText(
+                    if (active.size > 1)
+                        resources.getQuantityString(
+                            CoreR.plurals.downloads_count,
+                            active.size,
+                            active.size,
+                        )
+                    else null
+                )
+                .bigText(bigTextBuilder.toString())
 
         builder.setStyle(bigTextStyle)
 
         // Notification Action: Pause / Resume
         val hasDownloadingOrPending = active.any {
-            it.state is DownloadQueue.EntryState.Downloading || it.state is DownloadQueue.EntryState.Pending
+            it.state is DownloadQueue.EntryState.Downloading ||
+                it.state is DownloadQueue.EntryState.Pending
         }
-        val actionIntent = Intent(this, DownloadPumpService::class.java).apply {
-            action = if (hasDownloadingOrPending) ACTION_PAUSE_ALL else ACTION_RESUME_ALL
-        }
-        val actionPendingIntent = PendingIntent.getService(
-            this,
-            1,
-            actionIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-        )
-        val actionTitle = if (hasDownloadingOrPending) {
-            getString(CoreR.string.pause)
-        } else {
-            getString(CoreR.string.resume)
-        }
-        val actionIcon = if (hasDownloadingOrPending) {
-            CoreR.drawable.ic_pause
-        } else {
-            CoreR.drawable.ic_play
-        }
+        val actionIntent =
+            Intent(this, DownloadPumpService::class.java).apply {
+                action = if (hasDownloadingOrPending) ACTION_PAUSE_ALL else ACTION_RESUME_ALL
+            }
+        val actionPendingIntent =
+            PendingIntent.getService(
+                this,
+                1,
+                actionIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            )
+        val actionTitle =
+            if (hasDownloadingOrPending) {
+                getString(CoreR.string.pause)
+            } else {
+                getString(CoreR.string.resume)
+            }
+        val actionIcon =
+            if (hasDownloadingOrPending) {
+                CoreR.drawable.ic_pause
+            } else {
+                CoreR.drawable.ic_play
+            }
         builder.addAction(actionIcon, actionTitle, actionPendingIntent)
 
         return builder.build()

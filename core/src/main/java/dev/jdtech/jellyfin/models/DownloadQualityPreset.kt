@@ -22,116 +22,135 @@ data class DownloadQualityPreset(
     val isOriginal: Boolean = false,
     val customName: String? = null,
 ) {
-    val totalBitrateBps: Long get() = maxBitrateBps + audioBitrateBps
-    val expectedGbPerHour: Double get() = (totalBitrateBps * 3600.0) / (8.0 * 1_000_000_000.0)
+    val totalBitrateBps: Long
+        get() = maxBitrateBps + audioBitrateBps
+
+    val expectedGbPerHour: Double
+        get() = (totalBitrateBps * 3600.0) / (8.0 * 1_000_000_000.0)
+
     fun formattedGbPerHour(): String = String.format(Locale.US, "~%.1f GB/h", expectedGbPerHour)
 
     val displayName: UiText
         get() = if (!customName.isNullOrBlank()) UiText.DynamicString(customName) else name
 
     val displayApproxSize: UiText
-        get() = if (isOriginal) {
-            UiText.StringResource(CoreR.string.download_preset_source_size)
-        } else {
-            val s = (approxGbPerHour as? UiText.DynamicString)?.value
-            if (!s.isNullOrBlank()) approxGbPerHour else UiText.DynamicString(formattedGbPerHour())
-        }
+        get() =
+            if (isOriginal) {
+                UiText.StringResource(CoreR.string.download_preset_source_size)
+            } else {
+                val s = (approxGbPerHour as? UiText.DynamicString)?.value
+                if (!s.isNullOrBlank()) approxGbPerHour
+                else UiText.DynamicString(formattedGbPerHour())
+            }
 
     val resolutionText: UiText
-        get() = if (isOriginal) {
-            UiText.StringResource(CoreR.string.download_preset_original)
-        } else {
-            UiText.DynamicString("${maxHeight}p")
-        }
+        get() =
+            if (isOriginal) {
+                UiText.StringResource(CoreR.string.download_preset_original)
+            } else {
+                UiText.DynamicString("${maxHeight}p")
+            }
 
     val bitrateText: UiText
-        get() = if (isOriginal) {
-            UiText.StringResource(CoreR.string.download_preset_source_bitrate)
-        } else {
-            val mbps = maxBitrateBps / 1_000_000.0
-            val formatted = if (mbps == mbps.toLong().toDouble()) "${mbps.toLong()} Mbps" else "%.1f Mbps".format(Locale.US, mbps)
-            UiText.DynamicString(formatted)
-        }
+        get() =
+            if (isOriginal) {
+                UiText.StringResource(CoreR.string.download_preset_source_bitrate)
+            } else {
+                val mbps = maxBitrateBps / 1_000_000.0
+                val formatted =
+                    if (mbps == mbps.toLong().toDouble()) "${mbps.toLong()} Mbps"
+                    else "%.1f Mbps".format(Locale.US, mbps)
+                UiText.DynamicString(formatted)
+            }
 
     val audioText: UiText
-        get() = if (isOriginal) {
-            UiText.StringResource(CoreR.string.download_preset_original_audio)
-        } else {
-            val channelsLabel = when (audioChannels) {
-                1 -> "Mono"
-                2 -> "Stereo"
-                6 -> "5.1 Surround"
-                8 -> "7.1 Surround"
-                else -> "$audioChannels ch"
+        get() =
+            if (isOriginal) {
+                UiText.StringResource(CoreR.string.download_preset_original_audio)
+            } else {
+                val channelsLabel =
+                    when (audioChannels) {
+                        1 -> "Mono"
+                        2 -> "Stereo"
+                        6 -> "5.1 Surround"
+                        8 -> "7.1 Surround"
+                        else -> "$audioChannels ch"
+                    }
+                UiText.DynamicString("${audioBitrateBps / 1000} kbps • $channelsLabel")
             }
-            UiText.DynamicString("${audioBitrateBps / 1000} kbps • $channelsLabel")
-        }
 }
 
 object DownloadQualityPresets {
-    val ORIGINAL = DownloadQualityPreset(
-        id = "original",
-        name = UiText.StringResource(CoreR.string.download_preset_original),
-        approxGbPerHour = UiText.StringResource(CoreR.string.download_preset_source_size),
-        maxBitrateBps = 0L,
-        maxWidth = 0,
-        maxHeight = 0,
-        isOriginal = true,
-    )
+    val ORIGINAL =
+        DownloadQualityPreset(
+            id = "original",
+            name = UiText.StringResource(CoreR.string.download_preset_original),
+            approxGbPerHour = UiText.StringResource(CoreR.string.download_preset_source_size),
+            maxBitrateBps = 0L,
+            maxWidth = 0,
+            maxHeight = 0,
+            isOriginal = true,
+        )
 
-    val HIGH = DownloadQualityPreset(
-        id = "1080p_high",
-        name = UiText.StringResource(CoreR.string.download_preset_1080p_high),
-        approxGbPerHour = UiText.DynamicString("~3.7 GB/h"),
-        maxBitrateBps = 8_000_000L,
-        maxWidth = 1920,
-        maxHeight = 1080,
-        audioBitrateBps = 320_000L,
-        audioChannels = 2,
-    )
+    val HIGH =
+        DownloadQualityPreset(
+            id = "1080p_high",
+            name = UiText.StringResource(CoreR.string.download_preset_1080p_high),
+            approxGbPerHour = UiText.DynamicString("~3.7 GB/h"),
+            maxBitrateBps = 8_000_000L,
+            maxWidth = 1920,
+            maxHeight = 1080,
+            audioBitrateBps = 320_000L,
+            audioChannels = 2,
+        )
 
-    val BALANCED = DownloadQualityPreset(
-        id = "1080p_balanced",
-        name = UiText.StringResource(CoreR.string.download_preset_1080p_balanced),
-        approxGbPerHour = UiText.DynamicString("~2.1 GB/h"),
-        maxBitrateBps = 4_500_000L,
-        maxWidth = 1920,
-        maxHeight = 1080,
-        audioBitrateBps = 256_000L,
-        audioChannels = 2,
-    )
+    val BALANCED =
+        DownloadQualityPreset(
+            id = "1080p_balanced",
+            name = UiText.StringResource(CoreR.string.download_preset_1080p_balanced),
+            approxGbPerHour = UiText.DynamicString("~2.1 GB/h"),
+            maxBitrateBps = 4_500_000L,
+            maxWidth = 1920,
+            maxHeight = 1080,
+            audioBitrateBps = 256_000L,
+            audioChannels = 2,
+        )
 
-    val MOBILE = DownloadQualityPreset(
-        id = "720p_mobile",
-        name = UiText.StringResource(CoreR.string.download_preset_720p_mobile),
-        approxGbPerHour = UiText.DynamicString("~1.2 GB/h"),
-        maxBitrateBps = 2_500_000L,
-        maxWidth = 1280,
-        maxHeight = 720,
-        audioBitrateBps = 160_000L,
-        audioChannels = 2,
-    )
+    val MOBILE =
+        DownloadQualityPreset(
+            id = "720p_mobile",
+            name = UiText.StringResource(CoreR.string.download_preset_720p_mobile),
+            approxGbPerHour = UiText.DynamicString("~1.2 GB/h"),
+            maxBitrateBps = 2_500_000L,
+            maxWidth = 1280,
+            maxHeight = 720,
+            audioBitrateBps = 160_000L,
+            audioChannels = 2,
+        )
 
-    val DATA_SAVER = DownloadQualityPreset(
-        id = "480p_data_saver",
-        name = UiText.StringResource(CoreR.string.download_preset_480p_data_saver),
-        approxGbPerHour = UiText.DynamicString("~0.6 GB/h"),
-        maxBitrateBps = 1_200_000L,
-        maxWidth = 854,
-        maxHeight = 480,
-        audioBitrateBps = 128_000L,
-        audioChannels = 2,
-    )
+    val DATA_SAVER =
+        DownloadQualityPreset(
+            id = "480p_data_saver",
+            name = UiText.StringResource(CoreR.string.download_preset_480p_data_saver),
+            approxGbPerHour = UiText.DynamicString("~0.6 GB/h"),
+            maxBitrateBps = 1_200_000L,
+            maxWidth = 854,
+            maxHeight = 480,
+            audioBitrateBps = 128_000L,
+            audioChannels = 2,
+        )
 
-    val defaultPresets: List<DownloadQualityPreset> = listOf(
-        ORIGINAL,
-        HIGH,
-        BALANCED,
-        MOBILE,
-        DATA_SAVER,
-    )
+    val defaultPresets: List<DownloadQualityPreset> =
+        listOf(
+            ORIGINAL,
+            HIGH,
+            BALANCED,
+            MOBILE,
+            DATA_SAVER,
+        )
 
-    val all: List<DownloadQualityPreset> get() = defaultPresets
+    val all: List<DownloadQualityPreset>
+        get() = defaultPresets
 
     fun loadPresets(appPreferences: AppPreferences): List<DownloadQualityPreset> {
         val json = appPreferences.getValue(appPreferences.customTranscodePresetsJson)
@@ -156,7 +175,8 @@ object DownloadQualityPresets {
 
     fun getById(id: String, appPreferences: AppPreferences? = null): DownloadQualityPreset {
         val list = if (appPreferences != null) loadPresets(appPreferences) else all
-        return list.firstOrNull { it.id == id || (id == "direct" && it.id == "original") } ?: BALANCED
+        return list.firstOrNull { it.id == id || (id == "direct" && it.id == "original") }
+            ?: BALANCED
     }
 
     fun isTranscodingPreset(id: String?, appPreferences: AppPreferences? = null): Boolean {
@@ -206,15 +226,20 @@ object DownloadQualityPresets {
                 val videoCodec = obj.optString("videoCodec", "h264")
                 val audioSampleRate = obj.optInt("audioSampleRate", 48000)
 
-                val name = when {
-                    isOriginal -> UiText.StringResource(CoreR.string.download_preset_original)
-                    customName != null -> UiText.DynamicString(customName)
-                    id == "1080p_high" -> UiText.StringResource(CoreR.string.download_preset_1080p_high)
-                    id == "1080p_balanced" -> UiText.StringResource(CoreR.string.download_preset_1080p_balanced)
-                    id == "720p_mobile" -> UiText.StringResource(CoreR.string.download_preset_720p_mobile)
-                    id == "480p_data_saver" -> UiText.StringResource(CoreR.string.download_preset_480p_data_saver)
-                    else -> UiText.DynamicString("${maxHeight}p Preset")
-                }
+                val name =
+                    when {
+                        isOriginal -> UiText.StringResource(CoreR.string.download_preset_original)
+                        customName != null -> UiText.DynamicString(customName)
+                        id == "1080p_high" ->
+                            UiText.StringResource(CoreR.string.download_preset_1080p_high)
+                        id == "1080p_balanced" ->
+                            UiText.StringResource(CoreR.string.download_preset_1080p_balanced)
+                        id == "720p_mobile" ->
+                            UiText.StringResource(CoreR.string.download_preset_720p_mobile)
+                        id == "480p_data_saver" ->
+                            UiText.StringResource(CoreR.string.download_preset_480p_data_saver)
+                        else -> UiText.DynamicString("${maxHeight}p Preset")
+                    }
 
                 list.add(
                     DownloadQualityPreset(
@@ -240,4 +265,3 @@ object DownloadQualityPresets {
         }
     }
 }
-

@@ -32,7 +32,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @HiltViewModel
-class ShowDownloadsViewModel @Inject constructor(
+class ShowDownloadsViewModel
+@Inject
+constructor(
     private val repository: JellyfinRepository,
     private val database: ServerDatabaseDao,
     private val downloader: Downloader,
@@ -52,7 +54,9 @@ class ShowDownloadsViewModel @Inject constructor(
             downloadQueue.entries.collect { entries ->
                 _state.update { it.copy(activeDownloads = entries) }
                 val currentId = currentSeriesId
-                val completedCount = entries.count { it.state is DownloadQueue.EntryState.Completed }
+                val completedCount = entries.count {
+                    it.state is DownloadQueue.EntryState.Completed
+                }
                 if (lastCompletedCount == -1) {
                     lastCompletedCount = completedCount
                 } else if (currentId != null && completedCount > lastCompletedCount) {
@@ -74,9 +78,11 @@ class ShowDownloadsViewModel @Inject constructor(
             is ShowDownloadsAction.ClearSelection -> clearSelection()
             is ShowDownloadsAction.DeleteSelected -> deleteSelected()
             is ShowDownloadsAction.PauseOrResumeSelected -> pauseOrResumeSelected(action.pause)
-            is ShowDownloadsAction.EnterSelectionMode -> _state.update { it.copy(isSelectionMode = true) }
+            is ShowDownloadsAction.EnterSelectionMode ->
+                _state.update { it.copy(isSelectionMode = true) }
             is ShowDownloadsAction.ExitSelectionMode -> clearSelection()
-            is ShowDownloadsAction.MoveEpisodeStorage -> moveEpisodeStorage(action.episode, action.targetStorageIndex)
+            is ShowDownloadsAction.MoveEpisodeStorage ->
+                moveEpisodeStorage(action.episode, action.targetStorageIndex)
             is ShowDownloadsAction.MoveSelected -> moveSelected(action.targetStorageIndex)
             is ShowDownloadsAction.CancelDownload -> downloadQueue.cancel(action.id)
             is ShowDownloadsAction.PauseDownload -> downloadQueue.pause(action.id)
@@ -94,69 +100,90 @@ class ShowDownloadsViewModel @Inject constructor(
                 val currentUserId = repository.getUserId()
                 withContext(Dispatchers.IO) {
                     val dirs = context.getExternalFilesDirs(null)
-                    val hasSdCard = dirs.size > 1 && dirs[1] != null && android.os.Environment.getExternalStorageState(dirs[1]) == android.os.Environment.MEDIA_MOUNTED
-                    val showDto = try {
-                        database.getShow(seriesId)
-                    } catch (_: Exception) {
-                        null
-                    }
-                    val show = showDto?.toFindroidShow(database, currentUserId)
-                        ?: run {
-                            val queueEp = downloadQueue.entries.value
-                                .map { it.item }
-                                .filterIsInstance<FindroidEpisode>()
-                                .firstOrNull { it.seriesId == seriesId }
-                            if (queueEp != null) {
-                                FindroidShow(
-                                    id = seriesId,
-                                    name = queueEp.seriesName,
-                                    originalTitle = null,
-                                    overview = "",
-                                    sources = emptyList(),
-                                    seasons = emptyList(),
-                                    played = false,
-                                    favorite = false,
-                                    canPlay = true,
-                                    canDownload = true,
-                                    unplayedItemCount = null,
-                                    genres = emptyList(),
-                                    people = emptyList(),
-                                    runtimeTicks = 0L,
-                                    communityRating = null,
-                                    officialRating = null,
-                                    status = "",
-                                    productionYear = null,
-                                    endDate = null,
-                                    trailer = null,
-                                    images = queueEp.images,
-                                )
-                            } else null
+                    val hasSdCard =
+                        dirs.size > 1 &&
+                            dirs[1] != null &&
+                            android.os.Environment.getExternalStorageState(dirs[1]) ==
+                                android.os.Environment.MEDIA_MOUNTED
+                    val showDto =
+                        try {
+                            database.getShow(seriesId)
+                        } catch (_: Exception) {
+                            null
                         }
+                    val show =
+                        showDto?.toFindroidShow(database, currentUserId)
+                            ?: run {
+                                val queueEp =
+                                    downloadQueue.entries.value
+                                        .map { it.item }
+                                        .filterIsInstance<FindroidEpisode>()
+                                        .firstOrNull { it.seriesId == seriesId }
+                                if (queueEp != null) {
+                                    FindroidShow(
+                                        id = seriesId,
+                                        name = queueEp.seriesName,
+                                        originalTitle = null,
+                                        overview = "",
+                                        sources = emptyList(),
+                                        seasons = emptyList(),
+                                        played = false,
+                                        favorite = false,
+                                        canPlay = true,
+                                        canDownload = true,
+                                        unplayedItemCount = null,
+                                        genres = emptyList(),
+                                        people = emptyList(),
+                                        runtimeTicks = 0L,
+                                        communityRating = null,
+                                        officialRating = null,
+                                        status = "",
+                                        productionYear = null,
+                                        endDate = null,
+                                        trailer = null,
+                                        images = queueEp.images,
+                                    )
+                                } else null
+                            }
 
-                    val episodes = try {
-                        database.getDownloadedEpisodesByShowAndUser(seriesId, currentUserId)
-                            .map { it.toFindroidEpisode(database, currentUserId) }
-                    } catch (_: Exception) {
-                        emptyList()
-                    }
+                    val episodes =
+                        try {
+                            database
+                                .getDownloadedEpisodesByShowAndUser(seriesId, currentUserId)
+                                .map { it.toFindroidEpisode(database, currentUserId) }
+                        } catch (_: Exception) {
+                            emptyList()
+                        }
 
                     val totalBytes = episodes.sumOf { it.diskSize() }
                     val totalSizeFormatted = Formatter.formatFileSize(context, totalBytes)
 
-                    val groupedBySeason = episodes
-                        .groupBy { it.parentIndexNumber }
-                        .toSortedMap()
-                        .map { (seasonNum, seasonEps) ->
-                            val epCount = seasonEps.size
-                            val epStr = context.resources.getQuantityString(CoreR.plurals.episodes_count, epCount, epCount)
-                            val seasonTitle = if (seasonNum > 0) context.getString(CoreR.string.season_range_single, seasonNum) else context.getString(CoreR.string.specials)
-                            val headerTitle = "$seasonTitle • $epStr"
-                            SeasonEpisodeGroup(
-                                seasonNumber = seasonNum,
-                                headerTitle = headerTitle,
-                                episodes = seasonEps,
-                            )
-                        }
+                    val groupedBySeason =
+                        episodes
+                            .groupBy { it.parentIndexNumber }
+                            .toSortedMap()
+                            .map { (seasonNum, seasonEps) ->
+                                val epCount = seasonEps.size
+                                val epStr =
+                                    context.resources.getQuantityString(
+                                        CoreR.plurals.episodes_count,
+                                        epCount,
+                                        epCount,
+                                    )
+                                val seasonTitle =
+                                    if (seasonNum > 0)
+                                        context.getString(
+                                            CoreR.string.season_range_single,
+                                            seasonNum,
+                                        )
+                                    else context.getString(CoreR.string.specials)
+                                val headerTitle = "$seasonTitle • $epStr"
+                                SeasonEpisodeGroup(
+                                    seasonNumber = seasonNum,
+                                    headerTitle = headerTitle,
+                                    episodes = seasonEps,
+                                )
+                            }
 
                     _state.update {
                         it.copy(
@@ -166,7 +193,8 @@ class ShowDownloadsViewModel @Inject constructor(
                             totalEpisodesCount = episodes.size,
                             totalDiskSizeFormatted = totalSizeFormatted,
                             hasSdCard = hasSdCard,
-                            displayExtraInfo = appPreferences.getValue(appPreferences.displayExtraInfo),
+                            displayExtraInfo =
+                                appPreferences.getValue(appPreferences.displayExtraInfo),
                             error = null,
                         )
                     }
@@ -180,8 +208,10 @@ class ShowDownloadsViewModel @Inject constructor(
     private val deletionJobs = mutableMapOf<UUID, Job>()
 
     private suspend fun deleteMediaItem(episode: FindroidEpisode, currentUserId: UUID) {
-        val source = episode.sources.firstOrNull { it.type == FindroidSourceType.LOCAL }
-            ?: episode.sources.firstOrNull() ?: return
+        val source =
+            episode.sources.firstOrNull { it.type == FindroidSourceType.LOCAL }
+                ?: episode.sources.firstOrNull()
+                ?: return
         downloader.deleteItem(episode, source, currentUserId)
     }
 
@@ -205,14 +235,10 @@ class ShowDownloadsViewModel @Inject constructor(
         val job = viewModelScope.launch {
             for (sec in 4 downTo 1) {
                 delay(1000L.milliseconds)
-                _state.update {
-                    it.copy(pendingDeletionIds = it.pendingDeletionIds + (id to sec))
-                }
+                _state.update { it.copy(pendingDeletionIds = it.pendingDeletionIds + (id to sec)) }
             }
             delay(1000L.milliseconds)
-            _state.update {
-                it.copy(pendingDeletionIds = it.pendingDeletionIds - id)
-            }
+            _state.update { it.copy(pendingDeletionIds = it.pendingDeletionIds - id) }
             deletionJobs.remove(id)
             withContext(Dispatchers.IO) {
                 downloadQueue.cancel(episode.id)
@@ -261,11 +287,12 @@ class ShowDownloadsViewModel @Inject constructor(
 
     private fun selectAll() {
         val currentSeries = currentSeriesId
-        val queuedIds = _state.value.activeDownloads
-            .map { it.item }
-            .filterIsInstance<FindroidEpisode>()
-            .filter { currentSeries == null || it.seriesId == currentSeries }
-            .map { it.id }
+        val queuedIds =
+            _state.value.activeDownloads
+                .map { it.item }
+                .filterIsInstance<FindroidEpisode>()
+                .filter { currentSeries == null || it.seriesId == currentSeries }
+                .map { it.id }
         val dbIds = _state.value.seasonGroups.flatMap { it.episodes }.map { it.id }
         val allIds = (dbIds + queuedIds).toSet()
 
@@ -306,7 +333,10 @@ class ShowDownloadsViewModel @Inject constructor(
                 downloadQueue.cancel(id)
             }
             val currentUserId = repository.getUserId()
-            for (episode in _state.value.seasonGroups.flatMap { it.episodes }.filter { selected.contains(it.id) }) {
+            for (episode in
+                _state.value.seasonGroups
+                    .flatMap { it.episodes }
+                    .filter { selected.contains(it.id) }) {
                 deleteMediaItem(episode, currentUserId)
             }
             clearSelection()
@@ -319,17 +349,26 @@ class ShowDownloadsViewModel @Inject constructor(
         episode: FindroidEpisode,
         targetStorageIndex: Int,
     ) {
-        _state.update { it.copy(activeTransfers = it.activeTransfers + (id to StorageTransferProgress(itemId = id))) }
+        _state.update {
+            it.copy(
+                activeTransfers = it.activeTransfers + (id to StorageTransferProgress(itemId = id))
+            )
+        }
         downloader.moveItemStorage(episode, targetStorageIndex) { bytesTransferred, totalBytes ->
-            val progress = if (totalBytes > 0L) (bytesTransferred.toFloat() / totalBytes).coerceIn(0f, 1f) else 0f
+            val progress =
+                if (totalBytes > 0L) (bytesTransferred.toFloat() / totalBytes).coerceIn(0f, 1f)
+                else 0f
             _state.update {
                 it.copy(
-                    activeTransfers = it.activeTransfers + (id to StorageTransferProgress(
-                        itemId = id,
-                        bytesTransferred = bytesTransferred,
-                        totalBytes = totalBytes,
-                        progress = progress,
-                    ))
+                    activeTransfers =
+                        it.activeTransfers +
+                            (id to
+                                StorageTransferProgress(
+                                    itemId = id,
+                                    bytesTransferred = bytesTransferred,
+                                    totalBytes = totalBytes,
+                                    progress = progress,
+                                ))
                 )
             }
         }

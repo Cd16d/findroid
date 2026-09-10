@@ -2,11 +2,11 @@ package dev.jdtech.jellyfin.player.cast
 
 import dev.jdtech.jellyfin.player.cast.models.CastConnectionState
 import dev.jdtech.jellyfin.player.cast.models.Device
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import javax.inject.Inject
-import javax.inject.Singleton
 
 @Singleton
 class CastSessionManagerImpl @Inject constructor() : CastSessionManager {
@@ -22,8 +22,12 @@ class CastSessionManagerImpl @Inject constructor() : CastSessionManager {
     override val connectedDevice: StateFlow<Device?> = _connectedDevice.asStateFlow()
 
     override fun init() {}
+
     override fun updateDiscovery(flags: Int) {}
+
     override fun connect(device: Device) {}
+
     override fun disconnect() {}
+
     override fun release() {}
 }

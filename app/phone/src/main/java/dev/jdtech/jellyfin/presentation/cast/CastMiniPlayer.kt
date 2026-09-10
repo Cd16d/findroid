@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.window.core.layout.WindowSizeClass
 import coil3.compose.AsyncImage
+import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.player.cast.models.CastPlaybackStatus
 import dev.jdtech.jellyfin.player.cast.models.CastPlayerState
 import dev.jdtech.jellyfin.player.cast.models.Device
@@ -48,14 +49,13 @@ import dev.jdtech.jellyfin.presentation.theme.spacings
 import dev.jdtech.jellyfin.presentation.utils.rememberSafePadding
 import dev.jdtech.jellyfin.utils.toBlurHashPainter
 import dev.jdtech.jellyfin.utils.toOptimizedImageUri
-import dev.jdtech.jellyfin.core.R as CoreR
 
 @Composable
 fun CastMiniPlayer(
     onClick: () -> Unit,
     modifier: Modifier,
     viewModel: CastPlayerViewModel = hiltViewModel(),
-    handleBottomInsets: Boolean = true
+    handleBottomInsets: Boolean = true,
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val connectedDevice = uiState.connectedDevice
@@ -68,11 +68,12 @@ fun CastMiniPlayer(
             uiState = uiState,
             playbackState = playbackState,
             onTogglePlayback = {
-                if (isPlaying) viewModel.playerController.pause() else viewModel.playerController.play()
+                if (isPlaying) viewModel.playerController.pause()
+                else viewModel.playerController.play()
             },
             onClick = onClick,
             handleBottomInsets = handleBottomInsets,
-            modifier = modifier
+            modifier = modifier,
         )
     }
 }
@@ -85,12 +86,13 @@ fun CastMiniPlayerLayout(
     onTogglePlayback: () -> Unit,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    handleBottomInsets: Boolean = true
+    handleBottomInsets: Boolean = true,
 ) {
     val windowAdaptiveInfo = currentWindowAdaptiveInfo()
-    val isMediumScreen = windowAdaptiveInfo.windowSizeClass.isWidthAtLeastBreakpoint(
-        WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND
-    )
+    val isMediumScreen =
+        windowAdaptiveInfo.windowSizeClass.isWidthAtLeastBreakpoint(
+            WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND
+        )
 
     val safePadding = rememberSafePadding(handleBottomInsets = handleBottomInsets)
 
@@ -101,45 +103,44 @@ fun CastMiniPlayerLayout(
     Card(
         onClick = onClick,
         shape = MaterialTheme.shapes.large,
-        modifier = modifier
-            .padding(
-                top = MaterialTheme.spacings.medium,
-                start = paddingStart,
-                end = paddingEnd,
-                bottom = paddingBottom,
-            )
-            .then(
-                if (isMediumScreen) {
-                    Modifier
-                        .widthIn(max = 1000.dp)
-                        .fillMaxWidth(0.5f)
-                } else {
-                    Modifier.fillMaxWidth()
-                }
-            ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+        modifier =
+            modifier
+                .padding(
+                    top = MaterialTheme.spacings.medium,
+                    start = paddingStart,
+                    end = paddingEnd,
+                    bottom = paddingBottom,
+                )
+                .then(
+                    if (isMediumScreen) {
+                        Modifier.widthIn(max = 1000.dp).fillMaxWidth(0.5f)
+                    } else {
+                        Modifier.fillMaxWidth()
+                    }
+                ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
     ) {
         Box {
             Row(
-                modifier = Modifier
-                    .padding(MaterialTheme.spacings.small)
-                    .fillMaxWidth(),
+                modifier = Modifier.padding(MaterialTheme.spacings.small).fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacings.medium)
+                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacings.medium),
             ) {
                 if (uiState.fileLoaded) {
                     val poster = uiState.currentItemPoster
-                    val blurPlaceholder = remember(poster?.blurHash) {
-                        poster?.blurHash.toBlurHashPainter()
-                    }
+                    val blurPlaceholder =
+                        remember(poster?.blurHash) { poster?.blurHash.toBlurHashPainter() }
 
                     BoxWithConstraints(
-                        modifier = Modifier
-                            .height(if (isMediumScreen) 80.dp else 64.dp)
-                            .aspectRatio(uiState.defaultAspectRatio)
-                            .clip(MaterialTheme.shapes.medium)
+                        modifier =
+                            Modifier.height(if (isMediumScreen) 80.dp else 64.dp)
+                                .aspectRatio(uiState.defaultAspectRatio)
+                                .clip(MaterialTheme.shapes.medium)
                     ) {
-                        val imageUri = poster?.uri.toOptimizedImageUri(widthDp = maxWidth, heightDp = maxHeight)
+                        val imageUri =
+                            poster
+                                ?.uri
+                                .toOptimizedImageUri(widthDp = maxWidth, heightDp = maxHeight)
 
                         AsyncImage(
                             model = imageUri,
@@ -151,9 +152,7 @@ fun CastMiniPlayerLayout(
                         )
                     }
 
-                    Column(
-                        modifier = Modifier.weight(1f),
-                    ) {
+                    Column(modifier = Modifier.weight(1f)) {
                         val titleInfo = uiState.currentItemTitle
                         if (titleInfo.seriesName != null) {
                             // Episode layout
@@ -161,13 +160,13 @@ fun CastMiniPlayerLayout(
                                 text = titleInfo.seriesName!!,
                                 style = MaterialTheme.typography.titleMedium,
                                 maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
+                                overflow = TextOverflow.Ellipsis,
                             )
                             Text(
                                 text = titleInfo.episodeInfo + " - " + titleInfo.title,
                                 style = MaterialTheme.typography.bodyMedium,
                                 maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
+                                overflow = TextOverflow.Ellipsis,
                             )
                         } else {
                             // Film layout
@@ -175,7 +174,7 @@ fun CastMiniPlayerLayout(
                                 text = titleInfo.title,
                                 style = MaterialTheme.typography.titleMedium,
                                 maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
+                                overflow = TextOverflow.Ellipsis,
                             )
                         }
                         Spacer(modifier = Modifier.height(4.dp))
@@ -184,85 +183,79 @@ fun CastMiniPlayerLayout(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                            overflow = TextOverflow.Ellipsis,
                         )
                     }
 
                     val isPlaying = playbackState.status == CastPlaybackStatus.PLAYING
                     Box(
                         modifier = Modifier.size(64.dp),
-                        contentAlignment = Alignment.Center
+                        contentAlignment = Alignment.Center,
                     ) {
                         IconButton(
                             onClick = onTogglePlayback,
-                            colors = IconButtonDefaults.iconButtonColors(
-                                containerColor = MaterialTheme.colorScheme.primary,
-                                contentColor = MaterialTheme.colorScheme.onPrimary
-                            ),
+                            colors =
+                                IconButtonDefaults.iconButtonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary,
+                                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                                ),
                             shape = MaterialTheme.shapes.medium,
                             modifier = Modifier.size(48.dp),
                         ) {
                             Icon(
-                                painter = if (isPlaying) painterResource(CoreR.drawable.ic_pause) else painterResource(
-                                    CoreR.drawable.ic_play
-                                ),
-                                contentDescription = if (isPlaying) "Pause" else "Play"
+                                painter =
+                                    if (isPlaying) painterResource(CoreR.drawable.ic_pause)
+                                    else painterResource(CoreR.drawable.ic_play),
+                                contentDescription = if (isPlaying) "Pause" else "Play",
                             )
                         }
                     }
                 } else {
                     Column(
-                        modifier = Modifier
-                            .weight(1f)
-                            .padding(start = MaterialTheme.spacings.small)
+                        modifier = Modifier.weight(1f).padding(start = MaterialTheme.spacings.small)
                     ) {
                         Text(
                             text = connectedDevice.name,
                             style = MaterialTheme.typography.titleMedium,
                             maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                            overflow = TextOverflow.Ellipsis,
                         )
                         Text(
                             text = "Connected",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
 
                     Box(
                         modifier = Modifier.size(48.dp),
-                        contentAlignment = Alignment.Center
+                        contentAlignment = Alignment.Center,
                     ) {
                         Icon(
                             painter = painterResource(CoreR.drawable.ic_cast),
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary
+                            tint = MaterialTheme.colorScheme.primary,
                         )
                     }
                 }
             }
 
-                if (playbackState.status == CastPlaybackStatus.BUFFERING) {
-                    LinearProgressIndicator(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .align(Alignment.BottomCenter),
-                        strokeCap = StrokeCap.Butt
-                    )
-                } else if (uiState.fileLoaded) {
-                    LinearProgressIndicator(
-                        progress = {
-                            if (playbackState.duration > 0) {
-                                playbackState.currentPosition.toFloat() / playbackState.duration
-                            } else 0f
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .align(Alignment.BottomCenter),
-                        strokeCap = StrokeCap.Butt
-                    )
-                }
-
+            if (playbackState.status == CastPlaybackStatus.BUFFERING) {
+                LinearProgressIndicator(
+                    modifier = Modifier.fillMaxWidth().align(Alignment.BottomCenter),
+                    strokeCap = StrokeCap.Butt,
+                )
+            } else if (uiState.fileLoaded) {
+                LinearProgressIndicator(
+                    progress = {
+                        if (playbackState.duration > 0) {
+                            playbackState.currentPosition.toFloat() / playbackState.duration
+                        } else 0f
+                    },
+                    modifier = Modifier.fillMaxWidth().align(Alignment.BottomCenter),
+                    strokeCap = StrokeCap.Butt,
+                )
+            }
         }
     }
 }
@@ -276,7 +269,7 @@ private fun CastMiniPlayerPhonePreview() {
             uiState = previewUiState(poster = null),
             playbackState = CastPlayerState(),
             onTogglePlayback = {},
-            onClick = {}
+            onClick = {},
         )
     }
 }
@@ -287,19 +280,21 @@ private fun CastMiniPlayerPlayingPhonePreview() {
     FindroidTheme {
         CastMiniPlayerLayout(
             connectedDevice = Device("1", "Living Room TV"),
-            uiState = previewUiState(
-                title = "Title",
-                isMovie = true,
-                aspectRatio = 2f / 3f,
-                fileLoaded = true,
-            ),
-            playbackState = CastPlayerState(
-                status = CastPlaybackStatus.PLAYING,
-                currentPosition = 5000L,
-                duration = 10000L
-            ),
+            uiState =
+                previewUiState(
+                    title = "Title",
+                    isMovie = true,
+                    aspectRatio = 2f / 3f,
+                    fileLoaded = true,
+                ),
+            playbackState =
+                CastPlayerState(
+                    status = CastPlaybackStatus.PLAYING,
+                    currentPosition = 5000L,
+                    duration = 10000L,
+                ),
             onTogglePlayback = {},
-            onClick = {}
+            onClick = {},
         )
     }
 }
@@ -310,21 +305,23 @@ private fun CastMiniPlayerPlayingEpisodePhonePreview() {
     FindroidTheme {
         CastMiniPlayerLayout(
             connectedDevice = Device("1", "Living Room TV"),
-            uiState = previewUiState(
-                title = "Title",
-                seriesName = "Series Name",
-                episodeInfo = "S01:E01",
-                isMovie = false,
-                aspectRatio = 16f / 9f,
-                fileLoaded = true,
-            ),
-            playbackState = CastPlayerState(
-                status = CastPlaybackStatus.PLAYING,
-                currentPosition = 2500L,
-                duration = 10000L
-            ),
+            uiState =
+                previewUiState(
+                    title = "Title",
+                    seriesName = "Series Name",
+                    episodeInfo = "S01:E01",
+                    isMovie = false,
+                    aspectRatio = 16f / 9f,
+                    fileLoaded = true,
+                ),
+            playbackState =
+                CastPlayerState(
+                    status = CastPlaybackStatus.PLAYING,
+                    currentPosition = 2500L,
+                    duration = 10000L,
+                ),
             onTogglePlayback = {},
-            onClick = {}
+            onClick = {},
         )
     }
 }
@@ -335,19 +332,21 @@ private fun CastMiniPlayerTabletPreview() {
     FindroidTheme {
         CastMiniPlayerLayout(
             connectedDevice = Device("1", "Living Room TV"),
-            uiState = previewUiState(
-                title = "Title",
-                isMovie = true,
-                aspectRatio = 2f / 3f,
-                fileLoaded = true,
-            ),
-            playbackState = CastPlayerState(
-                status = CastPlaybackStatus.PAUSED,
-                currentPosition = 3000L,
-                duration = 10000L
-            ),
+            uiState =
+                previewUiState(
+                    title = "Title",
+                    isMovie = true,
+                    aspectRatio = 2f / 3f,
+                    fileLoaded = true,
+                ),
+            playbackState =
+                CastPlayerState(
+                    status = CastPlaybackStatus.PAUSED,
+                    currentPosition = 3000L,
+                    duration = 10000L,
+                ),
             onTogglePlayback = {},
-            onClick = {}
+            onClick = {},
         )
     }
 }
@@ -358,21 +357,23 @@ private fun CastMiniPlayerEpisodeTabletPreview() {
     FindroidTheme {
         CastMiniPlayerLayout(
             connectedDevice = Device("1", "Living Room TV"),
-            uiState = previewUiState(
-                title = "Title",
-                seriesName = "Series Name",
-                episodeInfo = "S01:E01",
-                isMovie = false,
-                aspectRatio = 16f / 9f,
-                fileLoaded = true,
-            ),
-            playbackState = CastPlayerState(
-                status = CastPlaybackStatus.PAUSED,
-                currentPosition = 5000L,
-                duration = 10000L
-            ),
+            uiState =
+                previewUiState(
+                    title = "Title",
+                    seriesName = "Series Name",
+                    episodeInfo = "S01:E01",
+                    isMovie = false,
+                    aspectRatio = 16f / 9f,
+                    fileLoaded = true,
+                ),
+            playbackState =
+                CastPlayerState(
+                    status = CastPlaybackStatus.PAUSED,
+                    currentPosition = 5000L,
+                    duration = 10000L,
+                ),
             onTogglePlayback = {},
-            onClick = {}
+            onClick = {},
         )
     }
 }
@@ -384,20 +385,22 @@ private fun previewUiState(
     poster: PlayerImage? = null,
     isMovie: Boolean = true,
     aspectRatio: Float = 16f / 9f,
-    fileLoaded: Boolean = false
-) = CastPlayerViewModel.UiState(
-    currentItemTitle = CastPlayerViewModel.CurrentItemTitle(
-        seriesName = seriesName,
-        episodeInfo = episodeInfo,
-        title = title
-    ),
-    currentItemPoster = poster,
-    isMovie = isMovie,
-    defaultAspectRatio = aspectRatio,
-    trickplayAspectRatio = null,
-    currentSegment = null,
-    currentSkipButtonStringRes = 0,
-    currentTrickplay = null,
-    currentChapters = emptyList(),
-    fileLoaded = fileLoaded
-)
+    fileLoaded: Boolean = false,
+) =
+    CastPlayerViewModel.UiState(
+        currentItemTitle =
+            CastPlayerViewModel.CurrentItemTitle(
+                seriesName = seriesName,
+                episodeInfo = episodeInfo,
+                title = title,
+            ),
+        currentItemPoster = poster,
+        isMovie = isMovie,
+        defaultAspectRatio = aspectRatio,
+        trickplayAspectRatio = null,
+        currentSegment = null,
+        currentSkipButtonStringRes = 0,
+        currentTrickplay = null,
+        currentChapters = emptyList(),
+        fileLoaded = fileLoaded,
+    )

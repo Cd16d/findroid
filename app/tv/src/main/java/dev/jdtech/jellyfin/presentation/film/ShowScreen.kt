@@ -61,8 +61,6 @@ import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.core.presentation.dummy.dummyEpisode
 import dev.jdtech.jellyfin.core.presentation.dummy.dummyShow
 import dev.jdtech.jellyfin.core.presentation.theme.Yellow
-import dev.jdtech.jellyfin.utils.toBlurHashPainter
-import dev.jdtech.jellyfin.utils.toOptimizedImageUri
 import dev.jdtech.jellyfin.film.presentation.show.ShowAction
 import dev.jdtech.jellyfin.film.presentation.show.ShowState
 import dev.jdtech.jellyfin.film.presentation.show.ShowViewModel
@@ -72,6 +70,8 @@ import dev.jdtech.jellyfin.presentation.theme.spacings
 import dev.jdtech.jellyfin.ui.components.Direction
 import dev.jdtech.jellyfin.ui.components.ItemCard
 import dev.jdtech.jellyfin.utils.getShowDateString
+import dev.jdtech.jellyfin.utils.toBlurHashPainter
+import dev.jdtech.jellyfin.utils.toOptimizedImageUri
 import java.util.UUID
 
 @Composable
@@ -131,11 +131,11 @@ private fun ShowScreenLayout(state: ShowState, onAction: (ShowAction) -> Unit) {
                     }
             ) {
                 val image = show.images.backdrop
-                val imageUri = image?.uri.toOptimizedImageUri(widthDp = maxWidth, heightDp = maxHeight)
+                val imageUri =
+                    image?.uri.toOptimizedImageUri(widthDp = maxWidth, heightDp = maxHeight)
 
-                val blurPlaceholder = remember(image?.blurHash) {
-                    image?.blurHash.toBlurHashPainter()
-                }
+                val blurPlaceholder =
+                    remember(image?.blurHash) { image?.blurHash.toBlurHashPainter() }
                 AsyncImage(
                     model = imageUri,
                     contentDescription = null,

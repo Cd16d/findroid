@@ -17,7 +17,7 @@ import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 @Composable
 fun AccountMenuOfflineBadge(
     modifier: Modifier = Modifier,
-    shadowElevation: Dp = 0.dp
+    shadowElevation: Dp = 0.dp,
 ) {
     Surface(
         modifier = modifier,
@@ -29,7 +29,7 @@ fun AccountMenuOfflineBadge(
             text = stringResource(CoreR.string.offline),
             style = MaterialTheme.typography.labelLarge,
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-            color = MaterialTheme.colorScheme.onPrimaryContainer
+            color = MaterialTheme.colorScheme.onPrimaryContainer,
         )
     }
 }
@@ -37,7 +37,5 @@ fun AccountMenuOfflineBadge(
 @Preview
 @Composable
 fun AccountMenuOfflineBadgePreview() {
-    FindroidTheme {
-        AccountMenuOfflineBadge()
-    }
+    FindroidTheme { AccountMenuOfflineBadge() }
 }

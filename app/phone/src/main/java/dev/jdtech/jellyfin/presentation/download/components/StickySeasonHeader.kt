@@ -47,18 +47,18 @@ fun CircularSelectionIndicator(
     checked: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    val borderColor by animateColorAsState(
-        targetValue =
-            if (checked) MaterialTheme.colorScheme.primary
-            else MaterialTheme.colorScheme.onSurfaceVariant,
-        label = "selectionBorderColor",
-    )
-    val containerColor by animateColorAsState(
-        targetValue =
-            if (checked) MaterialTheme.colorScheme.primary
-            else Color.Transparent,
-        label = "selectionContainerColor",
-    )
+    val borderColor by
+        animateColorAsState(
+            targetValue =
+                if (checked) MaterialTheme.colorScheme.primary
+                else MaterialTheme.colorScheme.onSurfaceVariant,
+            label = "selectionBorderColor",
+        )
+    val containerColor by
+        animateColorAsState(
+            targetValue = if (checked) MaterialTheme.colorScheme.primary else Color.Transparent,
+            label = "selectionContainerColor",
+        )
 
     Box(
         modifier =
@@ -78,7 +78,7 @@ fun CircularSelectionIndicator(
                 painter = painterResource(R.drawable.ic_check),
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onPrimary,
-                modifier = Modifier.size(16.dp)
+                modifier = Modifier.size(16.dp),
             )
         }
     }
@@ -100,17 +100,19 @@ fun StickySeasonHeader(
         else if (isOverlapping) MaterialTheme.colorScheme.surfaceVariant
         else MaterialTheme.colorScheme.background
 
-    val shadowElevation by animateDpAsState(
-        targetValue = if (isOverlapping) 8.dp else 0.dp,
-        animationSpec = tween(durationMillis = 300),
-        label = "shadowElevation",
-    )
+    val shadowElevation by
+        animateDpAsState(
+            targetValue = if (isOverlapping) 8.dp else 0.dp,
+            animationSpec = tween(durationMillis = 300),
+            label = "shadowElevation",
+        )
 
-    val gradientAlpha by animateFloatAsState(
-        targetValue = if (isOverlapping) 1f else 0f,
-        animationSpec = tween(durationMillis = 250),
-        label = "seasonHeaderGradientAlpha",
-    )
+    val gradientAlpha by
+        animateFloatAsState(
+            targetValue = if (isOverlapping) 1f else 0f,
+            animationSpec = tween(durationMillis = 250),
+            label = "seasonHeaderGradientAlpha",
+        )
 
     Box(
         modifier =
@@ -122,7 +124,7 @@ fun StickySeasonHeader(
                         1.0f to Color.Transparent,
                     )
                 )
-                .padding(contentPadding),
+                .padding(contentPadding)
     ) {
         Surface(
             shape = CircleShape,
@@ -131,8 +133,7 @@ fun StickySeasonHeader(
         ) {
             Row(
                 modifier =
-                    Modifier
-                        .clip(CircleShape)
+                    Modifier.clip(CircleShape)
                         .combinedClickable(
                             onClick = {
                                 if (isSelectionMode) {
@@ -157,9 +158,7 @@ fun StickySeasonHeader(
                             shrinkTowards = Alignment.Start,
                         ) + fadeOut(animationSpec = tween(250)),
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
                         CircularSelectionIndicator(
                             checked = isSelected,
                             modifier = Modifier.size(22.dp),
@@ -183,9 +182,7 @@ fun StickySeasonHeader(
 @Preview(showBackground = true)
 @Composable
 private fun StickySeasonHeaderPreview() {
-    FindroidTheme {
-        StickySeasonHeader(title = "Stagione 1 • 10 episodi")
-    }
+    FindroidTheme { StickySeasonHeader(title = "Stagione 1 • 10 episodi") }
 }
 
 @Preview(showBackground = true)

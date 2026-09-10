@@ -22,7 +22,9 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 @HiltViewModel
-class DownloaderViewModel @Inject constructor(
+class DownloaderViewModel
+@Inject
+constructor(
     private val downloader: Downloader,
     private val downloadQueue: DownloadQueue,
     val appPreferences: AppPreferences,
@@ -41,12 +43,17 @@ class DownloaderViewModel @Inject constructor(
         get() = appPreferences.getValue(appPreferences.defaultTranscodePresetId)
 
     val defaultDownloadStorageIndex: Int
-        get() = appPreferences.getValue(appPreferences.defaultDownloadStorageIndex).toIntOrNull() ?: -1
+        get() =
+            appPreferences.getValue(appPreferences.defaultDownloadStorageIndex).toIntOrNull() ?: -1
 
     val presets: List<DownloadQualityPreset>
         get() = DownloadQualityPresets.loadPresets(appPreferences)
 
-    fun saveDownloadSettings(presetId: String, downloadExternalAudio: Boolean, rememberSettings: Boolean) {
+    fun saveDownloadSettings(
+        presetId: String,
+        downloadExternalAudio: Boolean,
+        rememberSettings: Boolean,
+    ) {
         if (rememberSettings) {
             appPreferences.setValue(appPreferences.askPresetBeforeDownload, false)
             appPreferences.setValue(appPreferences.defaultTranscodePresetId, presetId)
@@ -68,7 +75,10 @@ class DownloaderViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             try {
-                appPreferences.setValue(appPreferences.userCanTranscode, jellyfinRepository.canTranscode())
+                appPreferences.setValue(
+                    appPreferences.userCanTranscode,
+                    jellyfinRepository.canTranscode(),
+                )
             } catch (_: Exception) {
                 // Keep default
             }
@@ -140,11 +150,40 @@ class DownloaderViewModel @Inject constructor(
             if (entry != null) {
                 when (entry.state) {
                     is DownloadQueue.EntryState.Downloading,
-                    is DownloadQueue.EntryState.Converting -> _state.update { it.copy(status = DownloadStatus.RUNNING, progress = entry.progress / 100f, errorText = null) }
-                    is DownloadQueue.EntryState.Pending -> _state.update { it.copy(status = DownloadStatus.PENDING, progress = 0f, errorText = null) }
-                    is DownloadQueue.EntryState.Paused -> _state.update { it.copy(status = DownloadStatus.PAUSED, progress = entry.progress / 100f, errorText = null) }
-                    is DownloadQueue.EntryState.Completed -> _state.update { it.copy(status = DownloadStatus.SUCCESSFUL, progress = 1f, errorText = null) }
-                    is DownloadQueue.EntryState.Failed -> _state.update { it.copy(status = DownloadStatus.FAILED) }
+                    is DownloadQueue.EntryState.Converting ->
+                        _state.update {
+                            it.copy(
+                                status = DownloadStatus.RUNNING,
+                                progress = entry.progress / 100f,
+                                errorText = null,
+                            )
+                        }
+                    is DownloadQueue.EntryState.Pending ->
+                        _state.update {
+                            it.copy(
+                                status = DownloadStatus.PENDING,
+                                progress = 0f,
+                                errorText = null,
+                            )
+                        }
+                    is DownloadQueue.EntryState.Paused ->
+                        _state.update {
+                            it.copy(
+                                status = DownloadStatus.PAUSED,
+                                progress = entry.progress / 100f,
+                                errorText = null,
+                            )
+                        }
+                    is DownloadQueue.EntryState.Completed ->
+                        _state.update {
+                            it.copy(
+                                status = DownloadStatus.SUCCESSFUL,
+                                progress = 1f,
+                                errorText = null,
+                            )
+                        }
+                    is DownloadQueue.EntryState.Failed ->
+                        _state.update { it.copy(status = DownloadStatus.FAILED) }
                 }
             } else if (item.isDownloading()) {
                 val source =
@@ -172,7 +211,9 @@ class DownloaderViewModel @Inject constructor(
     ) {
         this.downloadItem = item
         viewModelScope.launch {
-            _state.update { it.copy(status = DownloadStatus.PENDING, progress = 0f, errorText = null) }
+            _state.update {
+                it.copy(status = DownloadStatus.PENDING, progress = 0f, errorText = null)
+            }
             downloadQueue.enqueue(
                 item = item,
                 presetId = presetId,
@@ -191,8 +232,12 @@ class DownloaderViewModel @Inject constructor(
         audioStreamIndex: Int? = null,
     ) {
         viewModelScope.launch {
-            _state.update { it.copy(status = DownloadStatus.PENDING, progress = 0f, errorText = null) }
-            val toDownload = items.filter { !it.sources.any { src -> src.type == FindroidSourceType.LOCAL } }
+            _state.update {
+                it.copy(status = DownloadStatus.PENDING, progress = 0f, errorText = null)
+            }
+            val toDownload = items.filter {
+                !it.sources.any { src -> src.type == FindroidSourceType.LOCAL }
+            }
             for (item in toDownload) {
                 downloadQueue.enqueue(
                     item = item,
@@ -244,20 +289,22 @@ class DownloaderViewModel @Inject constructor(
 
     fun onAction(action: DownloaderAction) {
         when (action) {
-            is DownloaderAction.Download -> download(
-                item = action.item,
-                storageIndex = action.storageIndex,
-                presetId = action.presetId,
-                downloadExternalAudio = action.downloadExternalAudio,
-                audioStreamIndex = action.audioStreamIndex,
-            )
-            is DownloaderAction.DownloadMany -> downloadMany(
-                items = action.items,
-                storageIndex = action.storageIndex,
-                presetId = action.presetId,
-                downloadExternalAudio = action.downloadExternalAudio,
-                audioStreamIndex = action.audioStreamIndex,
-            )
+            is DownloaderAction.Download ->
+                download(
+                    item = action.item,
+                    storageIndex = action.storageIndex,
+                    presetId = action.presetId,
+                    downloadExternalAudio = action.downloadExternalAudio,
+                    audioStreamIndex = action.audioStreamIndex,
+                )
+            is DownloaderAction.DownloadMany ->
+                downloadMany(
+                    items = action.items,
+                    storageIndex = action.storageIndex,
+                    presetId = action.presetId,
+                    downloadExternalAudio = action.downloadExternalAudio,
+                    audioStreamIndex = action.audioStreamIndex,
+                )
             is DownloaderAction.DeleteDownload -> deleteDownload(action.item)
             is DownloaderAction.DeleteDownloadMany -> deleteDownloadedMany(action.items)
             is DownloaderAction.CancelDownload -> cancelDownload(action.item)

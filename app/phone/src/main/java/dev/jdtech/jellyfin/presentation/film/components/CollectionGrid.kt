@@ -34,12 +34,17 @@ fun CollectionGrid(
     LazyVerticalGrid(
         columns = GridCellsAdaptiveWithMinColumns(minSize = 160.dp, minColumns = 2),
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(
-            start = innerPadding.calculateStartPadding(layoutDirection) + MaterialTheme.spacings.default,
-            top = innerPadding.calculateTopPadding() + MaterialTheme.spacings.default,
-            end = innerPadding.calculateEndPadding(layoutDirection) + MaterialTheme.spacings.default,
-            bottom = innerPadding.calculateBottomPadding() + castPadding
-        ),
+        contentPadding =
+            PaddingValues(
+                start =
+                    innerPadding.calculateStartPadding(layoutDirection) +
+                        MaterialTheme.spacings.default,
+                top = innerPadding.calculateTopPadding() + MaterialTheme.spacings.default,
+                end =
+                    innerPadding.calculateEndPadding(layoutDirection) +
+                        MaterialTheme.spacings.default,
+                bottom = innerPadding.calculateBottomPadding() + castPadding,
+            ),
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacings.default),
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacings.default),
     ) {

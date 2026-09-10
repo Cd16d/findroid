@@ -31,10 +31,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
 import dev.jdtech.jellyfin.presentation.utils.LocalOfflineMode
-import dev.jdtech.jellyfin.core.R as CoreR
 
 @Composable
 fun HomeHeader(
@@ -152,9 +152,7 @@ fun HomeHeader(
 
             Surface(
                 onClick = onUserClick,
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .aspectRatio(1f),
+                modifier = Modifier.fillMaxHeight().aspectRatio(1f),
                 shape = CircleShape,
                 color = MaterialTheme.colorScheme.surfaceContainerHigh,
             ) {
@@ -166,16 +164,14 @@ fun HomeHeader(
                         Icon(
                             painter = painterResource(CoreR.drawable.ic_user),
                             contentDescription = null,
-                            modifier = Modifier
-                                .align(Alignment.Center)
-                                .padding(12.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            modifier = Modifier.align(Alignment.Center).padding(12.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                     AsyncImage(
                         model = userImageUrl,
                         contentDescription = null,
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier.fillMaxSize(),
                     )
                 }
             }

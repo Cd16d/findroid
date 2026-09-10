@@ -13,26 +13,28 @@ import com.google.android.gms.cast.framework.media.NotificationOptions
 class CastOptionsProvider : OptionsProvider {
     override fun getCastOptions(context: Context): CastOptions {
         // Show 4 buttons: "rewind", "play/pause", "forward" and "stop casting".
-        val buttonActions = listOf(
-            MediaIntentReceiver.ACTION_REWIND,
-            MediaIntentReceiver.ACTION_TOGGLE_PLAYBACK,
-            MediaIntentReceiver.ACTION_FORWARD,
-            MediaIntentReceiver.ACTION_STOP_CASTING
-        )
+        val buttonActions =
+            listOf(
+                MediaIntentReceiver.ACTION_REWIND,
+                MediaIntentReceiver.ACTION_TOGGLE_PLAYBACK,
+                MediaIntentReceiver.ACTION_FORWARD,
+                MediaIntentReceiver.ACTION_STOP_CASTING,
+            )
 
         // Showing "play/pause" and "stop casting" in the compat view of the notification.
         val compatButtonActionsIndices = intArrayOf(1, 3)
 
-        // Builds a notification with the above actions. Each tap on the "rewind" and "forward" buttons skips 30 seconds.
-        val notificationOptions = NotificationOptions.Builder()
-            .setActions(buttonActions, compatButtonActionsIndices)
-            .setSkipStepMs(30 * DateUtils.SECOND_IN_MILLIS)
-            .setTargetActivityClassName("dev.jdtech.jellyfin.MainActivity")
-            .build()
+        // Builds a notification with the above actions. Each tap on the "rewind" and "forward"
+        // buttons skips 30 seconds.
+        val notificationOptions =
+            NotificationOptions.Builder()
+                .setActions(buttonActions, compatButtonActionsIndices)
+                .setSkipStepMs(30 * DateUtils.SECOND_IN_MILLIS)
+                .setTargetActivityClassName("dev.jdtech.jellyfin.MainActivity")
+                .build()
 
-        val mediaOptions = CastMediaOptions.Builder()
-            .setNotificationOptions(notificationOptions)
-            .build()
+        val mediaOptions =
+            CastMediaOptions.Builder().setNotificationOptions(notificationOptions).build()
 
         return CastOptions.Builder()
             .setReceiverApplicationId(CastMediaControlIntent.DEFAULT_MEDIA_RECEIVER_APPLICATION_ID)

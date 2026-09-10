@@ -39,11 +39,10 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.window.core.layout.WindowSizeClass
 import coil3.compose.AsyncImage
+import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.core.R
 import dev.jdtech.jellyfin.core.presentation.dummy.dummyMovies
 import dev.jdtech.jellyfin.core.presentation.dummy.dummyPersonDetail
-import dev.jdtech.jellyfin.utils.toBlurHashPainter
-import dev.jdtech.jellyfin.utils.toOptimizedImageUri
 import dev.jdtech.jellyfin.film.presentation.person.PersonAction
 import dev.jdtech.jellyfin.film.presentation.person.PersonState
 import dev.jdtech.jellyfin.film.presentation.person.PersonViewModel
@@ -56,8 +55,9 @@ import dev.jdtech.jellyfin.presentation.film.components.OverviewText
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
 import dev.jdtech.jellyfin.presentation.utils.rememberSafePadding
+import dev.jdtech.jellyfin.utils.toBlurHashPainter
+import dev.jdtech.jellyfin.utils.toOptimizedImageUri
 import java.util.UUID
-import dev.jdtech.jellyfin.core.R as CoreR
 
 @Composable
 fun PersonScreen(
@@ -222,9 +222,7 @@ private fun PersonImage(person: FindroidPerson, modifier: Modifier = Modifier) {
 
         val imageUri = image?.uri.toOptimizedImageUri(widthDp = maxWidth, heightDp = maxHeight)
 
-        val blurPlaceholder = remember(image?.blurHash) {
-            image?.blurHash.toBlurHashPainter()
-        }
+        val blurPlaceholder = remember(image?.blurHash) { image?.blurHash.toBlurHashPainter() }
 
         Icon(
             painter = painterResource(R.drawable.ic_user),
@@ -239,7 +237,7 @@ private fun PersonImage(person: FindroidPerson, modifier: Modifier = Modifier) {
             placeholder = blurPlaceholder,
             error = blurPlaceholder,
             contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize(),
         )
     }
 }

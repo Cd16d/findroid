@@ -9,8 +9,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import com.vanniktech.blurhash.BlurHash
-import org.jellyfin.sdk.model.api.ImageType
 import java.io.File
+import org.jellyfin.sdk.model.api.ImageType
 
 /**
  * Processes and optimizes an image URI for display:
@@ -29,24 +29,27 @@ fun Uri?.toOptimizedImageUri(
     val density = LocalDensity.current
 
     return remember(this, widthDp, heightDp, quality, imageType) {
-        val baseUri = if (scheme == null) {
-            Uri.fromFile(File(context.filesDir, path ?: ""))
-        } else {
-            this
-        }
+        val baseUri =
+            if (scheme == null) {
+                Uri.fromFile(File(context.filesDir, path ?: ""))
+            } else {
+                this
+            }
 
         if (baseUri.scheme?.startsWith("http") == true && widthDp != null && heightDp != null) {
             val targetWidthPx = with(density) { widthDp.toPx().toInt() }
             val targetHeightPx = with(density) { heightDp.toPx().toInt() }
 
             if (imageType == ImageType.LOGO) {
-                baseUri.buildUpon()
+                baseUri
+                    .buildUpon()
                     .appendQueryParameter("fillWidth", targetWidthPx.toString())
                     .appendQueryParameter("fillHeight", targetHeightPx.toString())
                     .appendQueryParameter("quality", quality.toString())
                     .build()
             } else {
-                baseUri.buildUpon()
+                baseUri
+                    .buildUpon()
                     .appendQueryParameter("maxWidth", targetWidthPx.toString())
                     .appendQueryParameter("maxHeight", targetHeightPx.toString())
                     .appendQueryParameter("quality", quality.toString())
@@ -58,19 +61,18 @@ fun Uri?.toOptimizedImageUri(
     }
 }
 
-/**
- * Creates a [BitmapPainter] from a BlurHash string.
- */
+/** Creates a [BitmapPainter] from a BlurHash string. */
 fun String?.toBlurHashPainter(
     width: Int = 25,
     height: Int = 25,
 ): BitmapPainter? {
     if (!this.isNullOrEmpty()) {
-        val bitmap = BlurHash.decode(
-            blurHash = this,
-            width = width,
-            height = height,
-        )
+        val bitmap =
+            BlurHash.decode(
+                blurHash = this,
+                width = width,
+                height = height,
+            )
         return bitmap?.asImageBitmap()?.let { BitmapPainter(it) }
     } else {
         return null

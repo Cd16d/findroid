@@ -48,7 +48,9 @@ class LoginViewModel @Inject constructor(private val repository: SetupRepository
         viewModelScope.launch {
             try {
                 val isEnabled = repository.getIsQuickConnectEnabled()
-                _state.emit(_state.value.copy(quickConnectEnabled = isEnabled, isQuickConnectChecked = true))
+                _state.emit(
+                    _state.value.copy(quickConnectEnabled = isEnabled, isQuickConnectChecked = true)
+                )
             } catch (_: Exception) {
                 _state.emit(_state.value.copy(isQuickConnectChecked = true))
             }
@@ -59,9 +61,7 @@ class LoginViewModel @Inject constructor(private val repository: SetupRepository
         viewModelScope.launch {
             try {
                 val branding = repository.loadBrandingInfo()
-                _state.emit(_state.value.copy(
-                    splashscreenUrl = branding?.splashscreenUrl
-                ))
+                _state.emit(_state.value.copy(splashscreenUrl = branding?.splashscreenUrl))
             } catch (_: Exception) {}
         }
     }
@@ -90,26 +90,24 @@ class LoginViewModel @Inject constructor(private val repository: SetupRepository
             quickConnectJob?.cancel()
             return
         }
-        quickConnectJob =
-            viewModelScope.launch {
-                try {
-                    var quickConnectState = repository.initiateQuickConnect()
-                    _state.emit(_state.value.copy(quickConnectCode = quickConnectState.code))
+        quickConnectJob = viewModelScope.launch {
+            try {
+                var quickConnectState = repository.initiateQuickConnect()
+                _state.emit(_state.value.copy(quickConnectCode = quickConnectState.code))
 
-                    while (!quickConnectState.authenticated) {
-                        delay(5000L)
-                        quickConnectState =
-                            repository.getQuickConnectState(quickConnectState.secret)
-                    }
-
-                    repository.loginWithSecret(quickConnectState.secret)
-
-                    _state.emit(_state.value.copy(quickConnectCode = null))
-                    eventsChannel.send(LoginEvent.Success)
-                } catch (_: Exception) {
-                    _state.emit(_state.value.copy(quickConnectCode = null))
+                while (!quickConnectState.authenticated) {
+                    delay(5000L)
+                    quickConnectState = repository.getQuickConnectState(quickConnectState.secret)
                 }
+
+                repository.loginWithSecret(quickConnectState.secret)
+
+                _state.emit(_state.value.copy(quickConnectCode = null))
+                eventsChannel.send(LoginEvent.Success)
+            } catch (_: Exception) {
+                _state.emit(_state.value.copy(quickConnectCode = null))
             }
+        }
     }
 
     fun onAction(action: LoginAction) {

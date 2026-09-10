@@ -11,15 +11,17 @@ import kotlinx.coroutines.flow.asStateFlow
 
 sealed interface DownloadPresetsAction {
     data class SavePreset(val preset: DownloadQualityPreset) : DownloadPresetsAction
+
     data class DeletePreset(val id: String) : DownloadPresetsAction
+
     data class ImportPresets(val json: String) : DownloadPresetsAction
+
     data object ResetToDefaults : DownloadPresetsAction
 }
 
 @HiltViewModel
-class DownloadPresetsViewModel @Inject constructor(
-    private val appPreferences: AppPreferences,
-) : ViewModel() {
+class DownloadPresetsViewModel @Inject constructor(private val appPreferences: AppPreferences) :
+    ViewModel() {
     private val _presets = MutableStateFlow<List<DownloadQualityPreset>>(emptyList())
     val presets = _presets.asStateFlow()
 
@@ -31,7 +33,10 @@ class DownloadPresetsViewModel @Inject constructor(
         _presets.value = DownloadQualityPresets.loadPresets(appPreferences)
     }
 
-    /** Returns false if the action failed (e.g. invalid JSON for [DownloadPresetsAction.ImportPresets]). */
+    /**
+     * Returns false if the action failed (e.g. invalid JSON for
+     * [DownloadPresetsAction.ImportPresets]).
+     */
     fun onAction(action: DownloadPresetsAction): Boolean {
         when (action) {
             is DownloadPresetsAction.SavePreset -> {
@@ -48,7 +53,8 @@ class DownloadPresetsViewModel @Inject constructor(
             }
             is DownloadPresetsAction.ImportPresets -> {
                 val imported = DownloadQualityPresets.importFromJson(action.json) ?: return false
-                val combined = listOf(DownloadQualityPresets.ORIGINAL) + imported.filter { !it.isOriginal }
+                val combined =
+                    listOf(DownloadQualityPresets.ORIGINAL) + imported.filter { !it.isOriginal }
                 DownloadQualityPresets.savePresets(appPreferences, combined)
                 _presets.value = combined
             }

@@ -23,10 +23,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.core.presentation.theme.EmeraldGreen
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
-import dev.jdtech.jellyfin.core.R as CoreR
 
 @Composable
 fun StorageSummaryCard(
@@ -39,43 +39,40 @@ fun StorageSummaryCard(
     Card(
         modifier =
             if (onClick != null) {
-                modifier
-                    .fillMaxWidth()
-                    .clickable(onClick = onClick)
+                modifier.fillMaxWidth().clickable(onClick = onClick)
             } else {
                 modifier.fillMaxWidth()
             },
         shape = RoundedCornerShape(20.dp),
         colors =
-            CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainer,
-            ),
+            CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
     ) {
         Row(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 14.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Column {
                 Row {
                     Text(
-                        text = stringResource(CoreR.string.storage_downloaded_part, usedStorageFormatted),
+                        text =
+                            stringResource(
+                                CoreR.string.storage_downloaded_part,
+                                usedStorageFormatted,
+                            ),
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
                     )
                     Text(
                         text = " • ",
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
                     )
                     Text(
                         text = stringResource(CoreR.string.storage_free_part, freeStorageFormatted),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = EmeraldGreen
+                        color = EmeraldGreen,
                     )
                 }
                 if (isSmartDownloadsActive) {
@@ -92,7 +89,10 @@ fun StorageSummaryCard(
                         )
                         Text(
                             text = stringResource(CoreR.string.smart_downloads_active),
-                            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
+                            style =
+                                MaterialTheme.typography.bodySmall.copy(
+                                    fontWeight = FontWeight.Medium
+                                ),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }

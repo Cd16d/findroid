@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.jdtech.jellyfin.database.ServerDatabaseDao
+import dev.jdtech.jellyfin.film.R as FilmR
 import dev.jdtech.jellyfin.models.CollectionType
 import dev.jdtech.jellyfin.models.HomeItem
 import dev.jdtech.jellyfin.models.HomeSection
@@ -14,14 +15,13 @@ import dev.jdtech.jellyfin.models.getProfileImageModel
 import dev.jdtech.jellyfin.repository.JellyfinRepository
 import dev.jdtech.jellyfin.settings.domain.AppPreferences
 import dev.jdtech.jellyfin.utils.toView
+import java.util.UUID
+import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import timber.log.Timber
-import java.util.UUID
-import javax.inject.Inject
-import dev.jdtech.jellyfin.film.R as FilmR
 
 @HiltViewModel
 class HomeViewModel

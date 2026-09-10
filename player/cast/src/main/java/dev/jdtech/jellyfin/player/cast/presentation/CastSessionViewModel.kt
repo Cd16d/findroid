@@ -5,14 +5,16 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.jdtech.jellyfin.player.cast.CastPlayerController
 import dev.jdtech.jellyfin.player.cast.CastSessionManager
 import dev.jdtech.jellyfin.player.cast.models.CastConnectionState
+import javax.inject.Inject
 import kotlinx.coroutines.flow.StateFlow
 import org.jellyfin.sdk.model.UUID
-import javax.inject.Inject
 
 @HiltViewModel
-class CastSessionViewModel @Inject constructor(
+class CastSessionViewModel
+@Inject
+constructor(
     val sessionManager: CastSessionManager,
-    private val playerController: CastPlayerController
+    private val playerController: CastPlayerController,
 ) : ViewModel() {
 
     val connectionState: StateFlow<CastConnectionState> = sessionManager.connectionState

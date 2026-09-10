@@ -137,7 +137,7 @@ fun NavigationRoot(
                 },
                 onManualLoginClick = {
                     navController.navigate(LoginRoute(username = route.username))
-                }
+                },
             )
         }
         composable<LoginRoute> { backStackEntry ->

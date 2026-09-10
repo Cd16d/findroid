@@ -68,6 +68,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.window.core.layout.WindowSizeClass
 import coil3.compose.AsyncImage
+import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.film.presentation.account.AccountAction
 import dev.jdtech.jellyfin.film.presentation.account.AccountEvent
 import dev.jdtech.jellyfin.film.presentation.account.AccountViewModel
@@ -81,10 +82,9 @@ import dev.jdtech.jellyfin.presentation.account.components.QuickConnectBottomShe
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
 import dev.jdtech.jellyfin.presentation.utils.LocalOfflineMode
-import kotlinx.coroutines.delay
 import java.util.UUID
 import kotlin.time.Duration.Companion.milliseconds
-import dev.jdtech.jellyfin.core.R as CoreR
+import kotlinx.coroutines.delay
 
 @Composable
 fun AccountMenuWrapper(
@@ -96,7 +96,7 @@ fun AccountMenuWrapper(
     onManageAccounts: () -> Unit,
     onSwitchUser: () -> Unit,
     viewModel: AccountViewModel = hiltViewModel(),
-    content: @Composable () -> Unit
+    content: @Composable () -> Unit,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
@@ -124,7 +124,7 @@ fun AccountMenuWrapper(
     val windowSizeClass = windowAdaptiveInfo.windowSizeClass
     val isTablet =
         windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND) &&
-                windowSizeClass.isHeightAtLeastBreakpoint(WindowSizeClass.HEIGHT_DP_MEDIUM_LOWER_BOUND)
+            windowSizeClass.isHeightAtLeastBreakpoint(WindowSizeClass.HEIGHT_DP_MEDIUM_LOWER_BOUND)
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
     if (showQuickConnect) {
@@ -133,15 +133,13 @@ fun AccountMenuWrapper(
                 showQuickConnect = false
                 viewModel.onAction(AccountAction.ClearQuickConnectStatus)
             },
-            onSubmit = { code ->
-                viewModel.onAction(AccountAction.OnQuickConnectSubmit(code))
-            },
-            onClearError = {
-                viewModel.onAction(AccountAction.ClearQuickConnectStatus)
-            },
+            onSubmit = { code -> viewModel.onAction(AccountAction.OnQuickConnectSubmit(code)) },
+            onClearError = { viewModel.onAction(AccountAction.ClearQuickConnectStatus) },
             isLoading = state.isQuickConnectLoading,
-            error = if (state.quickConnectSuccess == false) stringResource(CoreR.string.invalid_code) else null,
-            isSuccess = state.quickConnectSuccess == true
+            error =
+                if (state.quickConnectSuccess == false) stringResource(CoreR.string.invalid_code)
+                else null,
+            isSuccess = state.quickConnectSuccess == true,
         )
     }
 
@@ -153,9 +151,7 @@ fun AccountMenuWrapper(
         }
     }
 
-    BackHandler(enabled = isMenuOpen) {
-        onCloseMenu()
-    }
+    BackHandler(enabled = isMenuOpen) { onCloseMenu() }
 
     Box(modifier = Modifier.fillMaxSize()) {
         // Main content of the screen
@@ -169,36 +165,37 @@ fun AccountMenuWrapper(
             visible = isMenuOpen,
             enter = enterTransition,
             exit = exitTransition,
-            modifier = Modifier.zIndex(10f)
+            modifier = Modifier.zIndex(10f),
         ) {
             Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.4f)) // Dim background
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = onCloseMenu
-                    ),
-                contentAlignment = Alignment.TopCenter
-            ) {
-                Surface(
-                    modifier = Modifier
-                        .then(
-                            if (isTablet) Modifier
-                                .width(420.dp)
-                                .wrapContentHeight()
-                                .padding(top = 64.dp, bottom = 16.dp)
-                            else Modifier.fillMaxSize()
-                        )
+                modifier =
+                    Modifier.fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.4f)) // Dim background
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
-                            onClick = {} // Catch clicks to prevent closing when interacting with menu
+                            onClick = onCloseMenu,
                         ),
+                contentAlignment = Alignment.TopCenter,
+            ) {
+                Surface(
+                    modifier =
+                        Modifier.then(
+                                if (isTablet)
+                                    Modifier.width(420.dp)
+                                        .wrapContentHeight()
+                                        .padding(top = 64.dp, bottom = 16.dp)
+                                else Modifier.fillMaxSize()
+                            )
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                onClick = {}, // Catch clicks to prevent closing when interacting
+                                // with menu
+                            ),
                     shape = if (isTablet) MaterialTheme.shapes.extraLarge else RectangleShape,
                     color = MaterialTheme.colorScheme.primaryContainer,
-                    tonalElevation = 6.dp
+                    tonalElevation = 6.dp,
                 ) {
                     AccountMenuContent(
                         userName = state.user?.name ?: stringResource(CoreR.string.user_default),
@@ -210,16 +207,16 @@ fun AccountMenuWrapper(
                         isLandscape = isLandscape,
                         onClose = onCloseMenu,
                         onOpenQuickConnect = { showQuickConnect = true },
-                        onNavigateToSettings = {
-                            onNavigateToSettings()
-                        },
-                        onNavigateToAbout = {
-                            onNavigateToAbout()
-                        },
+                        onNavigateToSettings = { onNavigateToSettings() },
+                        onNavigateToAbout = { onNavigateToAbout() },
                         onAddUser = onAddUser,
                         onManageAccounts = onManageAccounts,
-                        onSwitchUser = { user -> viewModel.onAction(AccountAction.SwitchUser(user.id)) },
-                        onToggleAccountList = { viewModel.onAction(AccountAction.ToggleAccountList) },
+                        onSwitchUser = { user ->
+                            viewModel.onAction(AccountAction.SwitchUser(user.id))
+                        },
+                        onToggleAccountList = {
+                            viewModel.onAction(AccountAction.ToggleAccountList)
+                        },
                         onNavigateToGithub = {
                             try {
                                 uriHandler.openUri(
@@ -227,27 +224,25 @@ fun AccountMenuWrapper(
                                 )
                             } catch (e: IllegalArgumentException) {
                                 Toast.makeText(
-                                    context,
-                                    e.localizedMessage,
-                                    Toast.LENGTH_SHORT,
-                                )
+                                        context,
+                                        e.localizedMessage,
+                                        Toast.LENGTH_SHORT,
+                                    )
                                     .show()
                             }
                         },
                         onNavigateToKofi = {
                             try {
-                                uriHandler.openUri(
-                                    "https://ko-fi.com/jarnedemeulemeester"
-                                )
+                                uriHandler.openUri("https://ko-fi.com/jarnedemeulemeester")
                             } catch (e: IllegalArgumentException) {
                                 Toast.makeText(
-                                    context,
-                                    e.localizedMessage,
-                                    Toast.LENGTH_SHORT,
-                                )
+                                        context,
+                                        e.localizedMessage,
+                                        Toast.LENGTH_SHORT,
+                                    )
                                     .show()
                             }
-                        }
+                        },
                     )
                 }
             }
@@ -274,12 +269,14 @@ fun AccountMenuContent(
     onToggleAccountList: () -> Unit,
     onNavigateToGithub: () -> Unit,
     onNavigateToKofi: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val topPadding =
         if (!isTablet) WindowInsets.safeDrawing.asPaddingValues().calculateTopPadding() else 0.dp
-    val startPadding = WindowInsets.safeDrawing.asPaddingValues()
-        .calculateStartPadding(LocalLayoutDirection.current)
+    val startPadding =
+        WindowInsets.safeDrawing
+            .asPaddingValues()
+            .calculateStartPadding(LocalLayoutDirection.current)
     val endPadding =
         WindowInsets.safeDrawing.asPaddingValues().calculateEndPadding(LocalLayoutDirection.current)
     val useSplitLayout = !isTablet && isLandscape
@@ -287,46 +284,40 @@ fun AccountMenuContent(
     val showButtonBackground by remember { derivedStateOf { scrollState.value > 10 } }
 
     Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(
-                top = topPadding,
-                start = startPadding,
-                end = endPadding
-            )
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .padding(
+                    top = topPadding,
+                    start = startPadding,
+                    end = endPadding,
+                )
     ) {
         if (useSplitLayout) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 8.dp, end = 8.dp)
-            ) {
+            Row(modifier = Modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp)) {
                 // Left side: Profile + Footer
                 Column(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .padding(
-                            horizontal = 8.dp,
-                            vertical = 16.dp
-                        ),
+                    modifier =
+                        Modifier.fillMaxHeight()
+                            .padding(
+                                horizontal = 8.dp,
+                                vertical = 16.dp,
+                            ),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.SpaceEvenly
+                    verticalArrangement = Arrangement.SpaceEvenly,
                 ) {
                     AccountMenuProfileSection(
                         userName = userName,
                         userImageUrl = userImageUrl,
-                        modifier = Modifier.padding(top = 16.dp)
+                        modifier = Modifier.padding(top = 16.dp),
                     )
                     AccountMenuFooter()
                 }
 
                 // Right side: Scrollable list
                 Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .verticalScroll(scrollState)
-                        .padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                    modifier = Modifier.weight(1f).verticalScroll(scrollState).padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Spacer(modifier = Modifier.height(48.dp)) // Space for close button
 
@@ -337,7 +328,7 @@ fun AccountMenuContent(
                         onUserClick = onSwitchUser,
                         onAddUserClick = onAddUser,
                         onManageAccountsClick = onManageAccounts,
-                        baseUrl = baseUrl
+                        baseUrl = baseUrl,
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -347,24 +338,22 @@ fun AccountMenuContent(
                         onNavigateToSettings = onNavigateToSettings,
                         onNavigateToAbout = onNavigateToAbout,
                         onNavigateToGithub = onNavigateToGithub,
-                        onNavigateToKofi = onNavigateToKofi
+                        onNavigateToKofi = onNavigateToKofi,
                     )
                     Spacer(modifier = Modifier.height(64.dp))
                 }
             }
         } else {
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(scrollState)
-                    .padding(horizontal = 16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                modifier =
+                    Modifier.fillMaxWidth().verticalScroll(scrollState).padding(horizontal = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Spacer(modifier = Modifier.height(64.dp)) // Header space
 
                 AccountMenuProfileSection(
                     userName = userName,
-                    userImageUrl = userImageUrl
+                    userImageUrl = userImageUrl,
                 )
 
                 Spacer(modifier = Modifier.height(32.dp))
@@ -376,7 +365,7 @@ fun AccountMenuContent(
                     onUserClick = onSwitchUser,
                     onAddUserClick = onAddUser,
                     onManageAccountsClick = onManageAccounts,
-                    baseUrl = baseUrl
+                    baseUrl = baseUrl,
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -386,7 +375,7 @@ fun AccountMenuContent(
                     onNavigateToSettings = onNavigateToSettings,
                     onNavigateToAbout = onNavigateToAbout,
                     onNavigateToGithub = onNavigateToGithub,
-                    onNavigateToKofi = onNavigateToKofi
+                    onNavigateToKofi = onNavigateToKofi,
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -398,65 +387,62 @@ fun AccountMenuContent(
         }
 
         // Fixed Header
-        val shadowElevation by animateDpAsState(
-            targetValue = if (showButtonBackground) 8.dp else 0.dp,
-            animationSpec = tween(durationMillis = 300),
-            label = "shadowElevation"
-        )
+        val shadowElevation by
+            animateDpAsState(
+                targetValue = if (showButtonBackground) 8.dp else 0.dp,
+                animationSpec = tween(durationMillis = 300),
+                label = "shadowElevation",
+            )
 
         Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(64.dp)
-                .then(
-                    if (isTablet) {
-                        if (showButtonBackground) {
-                            Modifier
-                                .shadow(elevation = shadowElevation)
-                                .background(color = MaterialTheme.colorScheme.surfaceVariant)
+            modifier =
+                Modifier.fillMaxWidth()
+                    .height(64.dp)
+                    .then(
+                        if (isTablet) {
+                            if (showButtonBackground) {
+                                Modifier.shadow(elevation = shadowElevation)
+                                    .background(color = MaterialTheme.colorScheme.surfaceVariant)
+                            } else {
+                                Modifier
+                            }
                         } else {
-                            Modifier
-                        }
-                    } else {
-                        Modifier.background(
-                            Brush.verticalGradient(
-                                colors = listOf(
-                                    MaterialTheme.colorScheme.primaryContainer,
-                                    Color.Transparent
+                            Modifier.background(
+                                Brush.verticalGradient(
+                                    colors =
+                                        listOf(
+                                            MaterialTheme.colorScheme.primaryContainer,
+                                            Color.Transparent,
+                                        )
                                 )
                             )
-                        )
-                    }
-                )
+                        }
+                    )
         ) {
-
             Row(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 16.dp),
+                modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 if (showButtonBackground && isTablet) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
                         Surface(
                             shape = CircleShape,
                             modifier = Modifier.size(32.dp),
-                            color = MaterialTheme.colorScheme.surface
+                            color = MaterialTheme.colorScheme.surface,
                         ) {
                             if (userImageUrl != null) {
                                 AsyncImage(
                                     model = userImageUrl,
                                     contentDescription = null,
-                                    modifier = Modifier.fillMaxSize()
+                                    modifier = Modifier.fillMaxSize(),
                                 )
                             } else {
                                 Icon(
-                                    imageVector = ImageVector.vectorResource(CoreR.drawable.ic_user),
+                                    imageVector =
+                                        ImageVector.vectorResource(CoreR.drawable.ic_user),
                                     contentDescription = null,
-                                    modifier = Modifier.padding(4.dp)
+                                    modifier = Modifier.padding(4.dp),
                                 )
                             }
                         }
@@ -477,22 +463,21 @@ fun AccountMenuContent(
 
             Surface(
                 shape = CircleShape,
-                color = if (showButtonBackground) {
-                    if (isTablet) {
-                        MaterialTheme.colorScheme.surfaceVariant
-                    } else {
-                        MaterialTheme.colorScheme.surface
-                    }
-                } else MaterialTheme.colorScheme.primaryContainer,
+                color =
+                    if (showButtonBackground) {
+                        if (isTablet) {
+                            MaterialTheme.colorScheme.surfaceVariant
+                        } else {
+                            MaterialTheme.colorScheme.surface
+                        }
+                    } else MaterialTheme.colorScheme.primaryContainer,
                 shadowElevation = if (!isTablet) shadowElevation else 0.dp,
-                modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .padding(horizontal = 8.dp)
+                modifier = Modifier.align(Alignment.CenterEnd).padding(horizontal = 8.dp),
             ) {
                 IconButton(onClick = onClose) {
                     Icon(
                         imageVector = ImageVector.vectorResource(CoreR.drawable.ic_x),
-                        contentDescription = stringResource(CoreR.string.close_menu)
+                        contentDescription = stringResource(CoreR.string.close_menu),
                     )
                 }
             }
@@ -501,18 +486,19 @@ fun AccountMenuContent(
         // Fixed Footer
         if (!isTablet) {
             Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(64.dp)
-                    .align(Alignment.BottomCenter)
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                Color.Transparent,
-                                MaterialTheme.colorScheme.primaryContainer
+                modifier =
+                    Modifier.fillMaxWidth()
+                        .height(64.dp)
+                        .align(Alignment.BottomCenter)
+                        .background(
+                            Brush.verticalGradient(
+                                colors =
+                                    listOf(
+                                        Color.Transparent,
+                                        MaterialTheme.colorScheme.primaryContainer,
+                                    )
                             )
                         )
-                    )
             )
         }
     }
@@ -525,54 +511,56 @@ fun AccountMenuContentExpandedPreview() {
         CompositionLocalProvider(LocalOfflineMode provides false) {
             val isTablet = false
             Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.4f)) // Dim background
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = {}
-                    ),
-                contentAlignment = Alignment.TopCenter
-            ) {
-                Surface(
-                    modifier = Modifier
-                        .then(
-                            if (isTablet) Modifier
-                                .width(420.dp)
-                                .wrapContentHeight()
-                                .padding(top = 64.dp, bottom = 16.dp)
-                            else Modifier.fillMaxSize()
-                        )
+                modifier =
+                    Modifier.fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.4f)) // Dim background
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
-                            onClick = {} // Catch clicks to prevent closing when interacting with menu
+                            onClick = {},
                         ),
+                contentAlignment = Alignment.TopCenter,
+            ) {
+                Surface(
+                    modifier =
+                        Modifier.then(
+                                if (isTablet)
+                                    Modifier.width(420.dp)
+                                        .wrapContentHeight()
+                                        .padding(top = 64.dp, bottom = 16.dp)
+                                else Modifier.fillMaxSize()
+                            )
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                onClick = {}, // Catch clicks to prevent closing when interacting
+                                // with menu
+                            ),
                     shape = if (isTablet) MaterialTheme.shapes.extraLarge else RectangleShape,
                     color = MaterialTheme.colorScheme.primaryContainer,
-                    tonalElevation = 6.dp
+                    tonalElevation = 6.dp,
                 ) {
                     AccountMenuContent(
                         userName = "Joe",
                         userImageUrl = null,
-                        otherUsers = listOf(
-                            User(
-                                id = UUID.randomUUID(),
-                                name = "Jane",
-                                serverId = "server1"
+                        otherUsers =
+                            listOf(
+                                User(
+                                    id = UUID.randomUUID(),
+                                    name = "Jane",
+                                    serverId = "server1",
+                                ),
+                                User(
+                                    id = UUID.randomUUID(),
+                                    name = "Bob",
+                                    serverId = "server1",
+                                ),
+                                User(
+                                    id = UUID.randomUUID(),
+                                    name = "Alice",
+                                    serverId = "server1",
+                                ),
                             ),
-                            User(
-                                id = UUID.randomUUID(),
-                                name = "Bob",
-                                serverId = "server1"
-                            ),
-                            User(
-                                id = UUID.randomUUID(),
-                                name = "Alice",
-                                serverId = "server1"
-                            )
-                        ),
                         isAccountListExpanded = true,
                         baseUrl = "",
                         isTablet = isTablet,
@@ -603,23 +591,24 @@ fun AccountMenuContentPreview() {
                 AccountMenuContent(
                     userName = "Joe",
                     userImageUrl = null,
-                    otherUsers = listOf(
-                        User(
-                            id = UUID.randomUUID(),
-                            name = "Jane",
-                            serverId = "server1"
+                    otherUsers =
+                        listOf(
+                            User(
+                                id = UUID.randomUUID(),
+                                name = "Jane",
+                                serverId = "server1",
+                            ),
+                            User(
+                                id = UUID.randomUUID(),
+                                name = "Bob",
+                                serverId = "server1",
+                            ),
+                            User(
+                                id = UUID.randomUUID(),
+                                name = "Alice",
+                                serverId = "server1",
+                            ),
                         ),
-                        User(
-                            id = UUID.randomUUID(),
-                            name = "Bob",
-                            serverId = "server1"
-                        ),
-                        User(
-                            id = UUID.randomUUID(),
-                            name = "Alice",
-                            serverId = "server1"
-                        )
-                    ),
                     isAccountListExpanded = false,
                     baseUrl = "",
                     isTablet = false,
@@ -634,7 +623,7 @@ fun AccountMenuContentPreview() {
                     onToggleAccountList = {},
                     onNavigateToGithub = {},
                     onNavigateToKofi = {},
-                    modifier = Modifier.padding(16.dp)
+                    modifier = Modifier.padding(16.dp),
                 )
             }
         }
@@ -650,23 +639,24 @@ fun AccountMenuContentDarkPreview() {
                 AccountMenuContent(
                     userName = "Joe",
                     userImageUrl = null,
-                    otherUsers = listOf(
-                        User(
-                            id = UUID.randomUUID(),
-                            name = "Jane",
-                            serverId = "server1"
+                    otherUsers =
+                        listOf(
+                            User(
+                                id = UUID.randomUUID(),
+                                name = "Jane",
+                                serverId = "server1",
+                            ),
+                            User(
+                                id = UUID.randomUUID(),
+                                name = "Bob",
+                                serverId = "server1",
+                            ),
+                            User(
+                                id = UUID.randomUUID(),
+                                name = "Alice",
+                                serverId = "server1",
+                            ),
                         ),
-                        User(
-                            id = UUID.randomUUID(),
-                            name = "Bob",
-                            serverId = "server1"
-                        ),
-                        User(
-                            id = UUID.randomUUID(),
-                            name = "Alice",
-                            serverId = "server1"
-                        )
-                    ),
                     isAccountListExpanded = false,
                     baseUrl = "",
                     isTablet = false,
@@ -681,7 +671,7 @@ fun AccountMenuContentDarkPreview() {
                     onToggleAccountList = {},
                     onNavigateToGithub = {},
                     onNavigateToKofi = {},
-                    modifier = Modifier.padding(16.dp)
+                    modifier = Modifier.padding(16.dp),
                 )
             }
         }
@@ -697,13 +687,14 @@ fun AccountMenuContentOfflinePreview() {
                 AccountMenuContent(
                     userName = "Joe",
                     userImageUrl = null,
-                    otherUsers = listOf(
-                        User(
-                            id = UUID.randomUUID(),
-                            name = "Jane",
-                            serverId = "server1"
-                        )
-                    ),
+                    otherUsers =
+                        listOf(
+                            User(
+                                id = UUID.randomUUID(),
+                                name = "Jane",
+                                serverId = "server1",
+                            )
+                        ),
                     isAccountListExpanded = false,
                     baseUrl = "",
                     isTablet = false,
@@ -718,7 +709,7 @@ fun AccountMenuContentOfflinePreview() {
                     onToggleAccountList = {},
                     onNavigateToGithub = {},
                     onNavigateToKofi = {},
-                    modifier = Modifier.padding(16.dp)
+                    modifier = Modifier.padding(16.dp),
                 )
             }
         }

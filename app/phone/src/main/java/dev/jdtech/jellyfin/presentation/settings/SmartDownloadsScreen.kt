@@ -90,7 +90,8 @@ private fun SmartDownloadsScreenLayout(
                 title = {
                     Text(
                         text = stringResource(CoreR.string.download_smart_downloads_title),
-                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                        style =
+                            MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                     )
                 },
                 navigationIcon = {
@@ -105,10 +106,9 @@ private fun SmartDownloadsScreenLayout(
         },
     ) { innerPadding ->
         LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(top = innerPadding.calculateTopPadding()),
-            contentPadding = PaddingValues(start = paddingStart, end = paddingEnd, bottom = paddingBottom),
+            modifier = Modifier.fillMaxSize().padding(top = innerPadding.calculateTopPadding()),
+            contentPadding =
+                PaddingValues(start = paddingStart, end = paddingEnd, bottom = paddingBottom),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             // Card 1: Next Episodes Auto-Download
@@ -116,16 +116,17 @@ private fun SmartDownloadsScreenLayout(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                    ),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+                    colors =
+                        CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainer
+                        ),
+                    border =
+                        BorderStroke(
+                            1.dp,
+                            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                        ),
                 ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(18.dp),
-                    ) {
+                    Column(modifier = Modifier.fillMaxWidth().padding(18.dp)) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
@@ -133,13 +134,18 @@ private fun SmartDownloadsScreenLayout(
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = stringResource(CoreR.string.download_smart_downloads_title),
-                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                    text =
+                                        stringResource(CoreR.string.download_smart_downloads_title),
+                                    style =
+                                        MaterialTheme.typography.titleMedium.copy(
+                                            fontWeight = FontWeight.Bold
+                                        ),
                                     color = MaterialTheme.colorScheme.onSurface,
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(
-                                    text = stringResource(CoreR.string.download_smart_downloads_desc),
+                                    text =
+                                        stringResource(CoreR.string.download_smart_downloads_desc),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
@@ -147,22 +153,29 @@ private fun SmartDownloadsScreenLayout(
                             Spacer(modifier = Modifier.width(12.dp))
                             Switch(
                                 checked = state.smartDownloadNextEpisode,
-                                onCheckedChange = { onAction(SmartDownloadsAction.SetSmartDownloadNextEpisode(it)) },
+                                onCheckedChange = {
+                                    onAction(SmartDownloadsAction.SetSmartDownloadNextEpisode(it))
+                                },
                             )
                         }
 
                         AnimatedVisibility(visible = state.smartDownloadNextEpisode) {
                             Column(modifier = Modifier.padding(top = 16.dp)) {
                                 HorizontalDivider(
-                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
+                                    color =
+                                        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
                                     thickness = 0.5.dp,
                                 )
                                 Spacer(modifier = Modifier.height(14.dp))
 
                                 // Number of Next Episodes
                                 Text(
-                                    text = stringResource(CoreR.string.download_next_episodes_label),
-                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                                    text =
+                                        stringResource(CoreR.string.download_next_episodes_label),
+                                    style =
+                                        MaterialTheme.typography.labelMedium.copy(
+                                            fontWeight = FontWeight.SemiBold
+                                        ),
                                     color = MaterialTheme.colorScheme.onSurface,
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
@@ -174,15 +187,33 @@ private fun SmartDownloadsScreenLayout(
                                         val isSelected = state.nextEpisodesCount == count
                                         FilterChip(
                                             selected = isSelected,
-                                            onClick = { onAction(SmartDownloadsAction.SetNextEpisodesCount(count)) },
+                                            onClick = {
+                                                onAction(
+                                                    SmartDownloadsAction.SetNextEpisodesCount(count)
+                                                )
+                                            },
                                             label = {
-                                                val labelText = if (count == 1) stringResource(CoreR.string.download_next_episodes_one) else stringResource(CoreR.string.download_next_episodes_many, count)
+                                                val labelText =
+                                                    if (count == 1)
+                                                        stringResource(
+                                                            CoreR.string.download_next_episodes_one
+                                                        )
+                                                    else
+                                                        stringResource(
+                                                            CoreR.string
+                                                                .download_next_episodes_many,
+                                                            count,
+                                                        )
                                                 Text(text = labelText)
                                             },
-                                            colors = FilterChipDefaults.filterChipColors(
-                                                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                                            ),
+                                            colors =
+                                                FilterChipDefaults.filterChipColors(
+                                                    selectedContainerColor =
+                                                        MaterialTheme.colorScheme.primaryContainer,
+                                                    selectedLabelColor =
+                                                        MaterialTheme.colorScheme
+                                                            .onPrimaryContainer,
+                                                ),
                                         )
                                     }
                                 }
@@ -191,8 +222,12 @@ private fun SmartDownloadsScreenLayout(
 
                                 // Storage Quota Limit
                                 Text(
-                                    text = stringResource(CoreR.string.download_storage_limit_label),
-                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                                    text =
+                                        stringResource(CoreR.string.download_storage_limit_label),
+                                    style =
+                                        MaterialTheme.typography.labelMedium.copy(
+                                            fontWeight = FontWeight.SemiBold
+                                        ),
                                     color = MaterialTheme.colorScheme.onSurface,
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
@@ -207,23 +242,35 @@ private fun SmartDownloadsScreenLayout(
                                     verticalArrangement = Arrangement.spacedBy(8.dp),
                                 ) {
                                     listOf(
-                                        5 to "5 GB",
-                                        10 to "10 GB",
-                                        20 to "20 GB",
-                                        50 to "50 GB",
-                                        0 to "Illimitato",
-                                    ).forEach { (limitGb, label) ->
-                                        val isSelected = state.storageLimitGb == limitGb
-                                        FilterChip(
-                                            selected = isSelected,
-                                            onClick = { onAction(SmartDownloadsAction.SetStorageLimitGb(limitGb)) },
-                                            label = { Text(text = label) },
-                                            colors = FilterChipDefaults.filterChipColors(
-                                                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                                            ),
+                                            5 to "5 GB",
+                                            10 to "10 GB",
+                                            20 to "20 GB",
+                                            50 to "50 GB",
+                                            0 to "Illimitato",
                                         )
-                                    }
+                                        .forEach { (limitGb, label) ->
+                                            val isSelected = state.storageLimitGb == limitGb
+                                            FilterChip(
+                                                selected = isSelected,
+                                                onClick = {
+                                                    onAction(
+                                                        SmartDownloadsAction.SetStorageLimitGb(
+                                                            limitGb
+                                                        )
+                                                    )
+                                                },
+                                                label = { Text(text = label) },
+                                                colors =
+                                                    FilterChipDefaults.filterChipColors(
+                                                        selectedContainerColor =
+                                                            MaterialTheme.colorScheme
+                                                                .primaryContainer,
+                                                        selectedLabelColor =
+                                                            MaterialTheme.colorScheme
+                                                                .onPrimaryContainer,
+                                                    ),
+                                            )
+                                        }
                                 }
                             }
                         }
@@ -236,16 +283,17 @@ private fun SmartDownloadsScreenLayout(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                    ),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+                    colors =
+                        CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainer
+                        ),
+                    border =
+                        BorderStroke(
+                            1.dp,
+                            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                        ),
                 ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(18.dp),
-                    ) {
+                    Column(modifier = Modifier.fillMaxWidth().padding(18.dp)) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
@@ -254,7 +302,10 @@ private fun SmartDownloadsScreenLayout(
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
                                     text = stringResource(CoreR.string.download_auto_delete_title),
-                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                    style =
+                                        MaterialTheme.typography.titleMedium.copy(
+                                            fontWeight = FontWeight.Bold
+                                        ),
                                     color = MaterialTheme.colorScheme.onSurface,
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
@@ -267,7 +318,9 @@ private fun SmartDownloadsScreenLayout(
                             Spacer(modifier = Modifier.width(12.dp))
                             Switch(
                                 checked = state.autoDeleteWatched,
-                                onCheckedChange = { onAction(SmartDownloadsAction.SetAutoDeleteWatched(it)) },
+                                onCheckedChange = {
+                                    onAction(SmartDownloadsAction.SetAutoDeleteWatched(it))
+                                },
                             )
                         }
 
@@ -286,9 +339,7 @@ private fun SmartDownloadsScreenLayout(
                                     painter = painterResource(CoreR.drawable.ic_check),
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier
-                                        .size(18.dp)
-                                        .padding(top = 2.dp),
+                                    modifier = Modifier.size(18.dp).padding(top = 2.dp),
                                 )
                                 Spacer(modifier = Modifier.width(10.dp))
                                 Text(
@@ -305,20 +356,23 @@ private fun SmartDownloadsScreenLayout(
             // Card 3: Link to Download Quality Presets
             item(key = "presets_link_card") {
                 Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(20.dp))
-                        .clickable { onNavigateToPresets() },
+                    modifier =
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).clickable {
+                            onNavigateToPresets()
+                        },
                     shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                    ),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+                    colors =
+                        CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainer
+                        ),
+                    border =
+                        BorderStroke(
+                            1.dp,
+                            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                        ),
                 ) {
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(18.dp),
+                        modifier = Modifier.fillMaxWidth().padding(18.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
@@ -343,13 +397,18 @@ private fun SmartDownloadsScreenLayout(
                             Spacer(modifier = Modifier.width(14.dp))
                             Column {
                                 Text(
-                                    text = stringResource(CoreR.string.download_quality_presets_title),
-                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                    text =
+                                        stringResource(CoreR.string.download_quality_presets_title),
+                                    style =
+                                        MaterialTheme.typography.titleMedium.copy(
+                                            fontWeight = FontWeight.Bold
+                                        ),
                                     color = MaterialTheme.colorScheme.onSurface,
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(
-                                    text = stringResource(CoreR.string.download_quality_presets_desc),
+                                    text =
+                                        stringResource(CoreR.string.download_quality_presets_desc),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
@@ -378,12 +437,13 @@ private fun SmartDownloadsScreenLayout(
 private fun SmartDownloadsScreenPreview() {
     FindroidTheme {
         SmartDownloadsScreenLayout(
-            state = SmartDownloadsState(
-                smartDownloadNextEpisode = true,
-                nextEpisodesCount = 3,
-                storageLimitGb = 10,
-                autoDeleteWatched = true,
-            ),
+            state =
+                SmartDownloadsState(
+                    smartDownloadNextEpisode = true,
+                    nextEpisodesCount = 3,
+                    storageLimitGb = 10,
+                    autoDeleteWatched = true,
+                ),
             onAction = {},
             navigateBack = {},
             onNavigateToPresets = {},
