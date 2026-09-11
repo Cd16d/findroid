@@ -1,6 +1,5 @@
 package dev.jdtech.jellyfin.presentation.download.components
 
-import android.content.SharedPreferences
 import android.text.format.Formatter
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -21,12 +20,14 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -48,6 +49,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -71,6 +73,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -83,7 +86,6 @@ import dev.jdtech.jellyfin.models.FindroidMediaStream
 import dev.jdtech.jellyfin.models.FindroidSeason
 import dev.jdtech.jellyfin.models.FindroidSourceType
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
-import dev.jdtech.jellyfin.settings.domain.AppPreferences
 import dev.jdtech.jellyfin.utils.DeviceCodecCapabilities
 import java.util.Locale
 import kotlinx.coroutines.launch
@@ -93,13 +95,6 @@ import org.jellyfin.sdk.model.api.VideoRangeType
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DownloadPresetBottomSheet(
-    item: FindroidItem? = null,
-    presets: List<DownloadQualityPreset> = emptyList(),
-    initialPresetId: String = "1080p_balanced",
-    hasExternalAudio: Boolean = false,
-    initialDownloadExternalAudio: Boolean = false,
-    initialRememberSetting: Boolean = false,
-    onAddClick: () -> Unit = {},
     onConfirm:
         (
             presetId: String,
@@ -108,15 +103,17 @@ fun DownloadPresetBottomSheet(
             audioStreamIndex: Int?,
         ) -> Unit,
     onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+    item: FindroidItem? = null,
+    presets: List<DownloadQualityPreset> = emptyList(),
+    initialPresetId: String = "1080p_balanced",
+    hasExternalAudio: Boolean = false,
+    initialDownloadExternalAudio: Boolean = false,
+    initialRememberSetting: Boolean = false,
+    onAddClick: () -> Unit = {},
     sheetState: SheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
 ) {
-    val context = LocalContext.current
-    val allPresets =
-        remember(presets) {
-            presets.ifEmpty {
-                DownloadQualityPresets.loadPresets(AppPreferences(context as SharedPreferences))
-            }
-        }
+    val allPresets = remember(presets) { presets.ifEmpty { DownloadQualityPresets.defaultPresets } }
 
     val source =
         remember(item) {
@@ -181,21 +178,24 @@ fun DownloadPresetBottomSheet(
             }
         }
 
-    var selectedPresetId by remember {
-        val initial = if (initialPresetId == "direct") "original" else initialPresetId
-        val valid =
-            if (!isOriginalSupported && initial == "original") {
-                filteredPresets.firstOrNull { !it.isOriginal }?.id ?: "original"
-            } else if (filteredPresets.any { it.id == initial }) {
-                initial
-            } else {
-                filteredPresets.firstOrNull()?.id ?: "original"
-            }
-        mutableStateOf(valid)
-    }
+    var selectedPresetId by
+        remember(initialPresetId, isOriginalSupported, filteredPresets) {
+            val initial = if (initialPresetId == "direct") "original" else initialPresetId
+            val valid =
+                if (!isOriginalSupported && initial == "original") {
+                    filteredPresets.firstOrNull { !it.isOriginal }?.id ?: "original"
+                } else if (filteredPresets.any { it.id == initial }) {
+                    initial
+                } else {
+                    filteredPresets.firstOrNull()?.id ?: "original"
+                }
+            mutableStateOf(valid)
+        }
 
-    var downloadExternalAudio by remember { mutableStateOf(initialDownloadExternalAudio) }
-    var rememberSetting by remember { mutableStateOf(initialRememberSetting) }
+    var downloadExternalAudio by
+        remember(initialDownloadExternalAudio) { mutableStateOf(initialDownloadExternalAudio) }
+    var rememberSetting by
+        remember(initialRememberSetting) { mutableStateOf(initialRememberSetting) }
     var showDetails by remember { mutableStateOf(false) }
 
     var isAtTop by remember { mutableStateOf(false) }
@@ -210,6 +210,7 @@ fun DownloadPresetBottomSheet(
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
+        modifier = modifier,
         sheetState = sheetState,
         shape =
             RoundedCornerShape(
@@ -321,7 +322,7 @@ fun DownloadPresetBottomSheetLayout(
     val currentLocale = configuration.locales[0]
     var audioExpanded by remember { mutableStateOf(false) }
 
-    Column(modifier = modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 16.dp)) {
+    Column(modifier = modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, bottom = 16.dp)) {
         // Header
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -378,7 +379,7 @@ fun DownloadPresetBottomSheetLayout(
             }
         }
 
-        Box(modifier = Modifier.fillMaxWidth().weight(1f, fill = false)) {
+        Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
             Column(
                 modifier =
                     Modifier.fillMaxWidth()
@@ -417,21 +418,25 @@ fun DownloadPresetBottomSheetLayout(
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 presets.forEach { preset ->
-                    DownloadPresetCard(
-                        preset = preset,
-                        isSelected = preset.id == selectedPresetId,
-                        showDetails = showDetails,
-                        runtimeTicks = runtimeTicks,
-                        sourceSize = sourceSize,
-                        originalVideoStream = originalVideoStream,
-                        audioStreams = audioStreams,
-                        isOriginalSupported = isOriginalSupported,
-                        onSelect = { onSelectPreset(preset.id) },
-                    )
+                    key(preset.id) {
+                        DownloadPresetCard(
+                            preset = preset,
+                            isSelected = preset.id == selectedPresetId,
+                            showDetails = showDetails,
+                            runtimeTicks = runtimeTicks,
+                            sourceSize = sourceSize,
+                            isOriginalSupported = isOriginalSupported,
+                            originalVideoStream = originalVideoStream,
+                            onSelect = { onSelectPreset(preset.id) },
+                            audioStreams = audioStreams,
+                            currentLocale = currentLocale,
+                        )
+                    }
                 }
 
                 OutlinedButton(
                     onClick = onAddClick,
+                    modifier = Modifier.defaultMinSize(minHeight = 48.dp),
                     shape = RoundedCornerShape(12.dp),
                     border =
                         BorderStroke(
@@ -462,7 +467,7 @@ fun DownloadPresetBottomSheetLayout(
         Spacer(modifier = Modifier.height(16.dp))
 
         Card(
-            modifier = Modifier.fillMaxWidth().animateContentSize(animationSpec = tween(300)),
+            modifier = Modifier.fillMaxWidth().animateContentSize(animationSpec = tween(150)),
             shape = RoundedCornerShape(16.dp),
             colors =
                 CardDefaults.cardColors(
@@ -512,7 +517,10 @@ fun DownloadPresetBottomSheetLayout(
                                             .clip(
                                                 RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
                                             )
-                                            .clickable { audioExpanded = !audioExpanded }
+                                            .clickable(role = Role.Button) {
+                                                audioExpanded = !audioExpanded
+                                            }
+                                            .defaultMinSize(minHeight = 48.dp)
                                             .padding(horizontal = 16.dp, vertical = 12.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -627,133 +635,140 @@ fun DownloadPresetBottomSheetLayout(
 
                                 AnimatedVisibility(
                                     visible = audioExpanded,
-                                    enter =
-                                        expandVertically(animationSpec = tween(300)) +
-                                            fadeIn(animationSpec = tween(300)),
-                                    exit =
-                                        shrinkVertically(animationSpec = tween(300)) +
-                                            fadeOut(animationSpec = tween(300)),
+                                    enter = expandVertically(animationSpec = tween(150)),
+                                    exit = shrinkVertically(animationSpec = tween(150)),
                                 ) {
                                     Column(modifier = Modifier.fillMaxWidth()) {
                                         audioStreams.forEach { stream ->
-                                            val isSelected =
-                                                stream.index == selectedAudioStreamIndex
-                                            val streamTitle =
-                                                formatAudioTrackName(stream, currentLocale)
+                                            key(stream.index) {
+                                                val isSelected =
+                                                    stream.index == selectedAudioStreamIndex
+                                                val streamTitle =
+                                                    formatAudioTrackName(stream, currentLocale)
 
-                                            HorizontalDivider(
-                                                modifier = Modifier.padding(horizontal = 16.dp),
-                                                color =
-                                                    MaterialTheme.colorScheme.outlineVariant.copy(
-                                                        alpha = 0.3f
-                                                    ),
-                                            )
-                                            Row(
-                                                modifier =
-                                                    Modifier.fillMaxWidth()
-                                                        .clickable {
-                                                            onSelectedAudioStreamIndexChange(
-                                                                stream.index
-                                                            )
-                                                            if (stream.isExternal) {
-                                                                onDownloadExternalAudioChange(true)
-                                                            }
-                                                            audioExpanded = false
-                                                        }
-                                                        .padding(
-                                                            horizontal = 20.dp,
-                                                            vertical = 10.dp,
-                                                        ),
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                horizontalArrangement = Arrangement.SpaceBetween,
-                                            ) {
+                                                HorizontalDivider(
+                                                    modifier = Modifier.padding(horizontal = 16.dp),
+                                                    color =
+                                                        MaterialTheme.colorScheme.outlineVariant
+                                                            .copy(alpha = 0.3f),
+                                                )
                                                 Row(
+                                                    modifier =
+                                                        Modifier.fillMaxWidth()
+                                                            .clickable(role = Role.RadioButton) {
+                                                                onSelectedAudioStreamIndexChange(
+                                                                    stream.index
+                                                                )
+                                                                if (stream.isExternal) {
+                                                                    onDownloadExternalAudioChange(
+                                                                        true
+                                                                    )
+                                                                }
+                                                                audioExpanded = false
+                                                            }
+                                                            .defaultMinSize(minHeight = 48.dp)
+                                                            .padding(
+                                                                horizontal = 20.dp,
+                                                                vertical = 10.dp,
+                                                            ),
                                                     verticalAlignment = Alignment.CenterVertically,
-                                                    modifier = Modifier.weight(1f),
+                                                    horizontalArrangement =
+                                                        Arrangement.SpaceBetween,
                                                 ) {
-                                                    if (isSelected) {
-                                                        Icon(
-                                                            painter =
-                                                                painterResource(
-                                                                    CoreR.drawable.ic_check
-                                                                ),
-                                                            contentDescription = null,
-                                                            modifier = Modifier.size(16.dp),
-                                                            tint =
-                                                                MaterialTheme.colorScheme.primary,
-                                                        )
-                                                        Spacer(modifier = Modifier.width(8.dp))
-                                                    } else {
-                                                        Spacer(modifier = Modifier.width(24.dp))
-                                                    }
-                                                    Text(
-                                                        text = streamTitle,
-                                                        style = MaterialTheme.typography.bodyMedium,
-                                                        fontWeight =
-                                                            if (isSelected) FontWeight.Bold
-                                                            else FontWeight.Normal,
-                                                        color =
-                                                            if (isSelected)
-                                                                MaterialTheme.colorScheme.primary
-                                                            else
-                                                                MaterialTheme.colorScheme.onSurface,
-                                                        maxLines = 1,
-                                                        overflow = TextOverflow.Ellipsis,
-                                                        modifier =
-                                                            Modifier.weight(1f, fill = false),
-                                                    )
-                                                    if (stream.isDefault == true) {
-                                                        Spacer(modifier = Modifier.width(6.dp))
-                                                        Surface(
-                                                            shape = RoundedCornerShape(4.dp),
-                                                            color =
-                                                                MaterialTheme.colorScheme
-                                                                    .surfaceContainerHighest,
-                                                        ) {
-                                                            Text(
-                                                                text =
-                                                                    stringResource(
-                                                                        CoreR.string.track_default
+                                                    Row(
+                                                        verticalAlignment =
+                                                            Alignment.CenterVertically,
+                                                        modifier = Modifier.weight(1f),
+                                                    ) {
+                                                        if (isSelected) {
+                                                            Icon(
+                                                                painter =
+                                                                    painterResource(
+                                                                        CoreR.drawable.ic_check
                                                                     ),
-                                                                style =
-                                                                    MaterialTheme.typography
-                                                                        .labelSmall,
-                                                                color =
+                                                                contentDescription = null,
+                                                                modifier = Modifier.size(16.dp),
+                                                                tint =
                                                                     MaterialTheme.colorScheme
-                                                                        .onSurfaceVariant,
-                                                                modifier =
-                                                                    Modifier.padding(
-                                                                        horizontal = 4.dp,
-                                                                        vertical = 1.dp,
-                                                                    ),
+                                                                        .primary,
                                                             )
+                                                            Spacer(modifier = Modifier.width(8.dp))
+                                                        } else {
+                                                            Spacer(modifier = Modifier.width(24.dp))
                                                         }
-                                                    }
-                                                    if (stream.isExternal) {
-                                                        Spacer(modifier = Modifier.width(6.dp))
-                                                        Surface(
-                                                            shape = RoundedCornerShape(4.dp),
+                                                        Text(
+                                                            text = streamTitle,
+                                                            style =
+                                                                MaterialTheme.typography.bodyMedium,
+                                                            fontWeight =
+                                                                if (isSelected) FontWeight.Bold
+                                                                else FontWeight.Normal,
                                                             color =
-                                                                MaterialTheme.colorScheme
-                                                                    .secondaryContainer,
-                                                        ) {
-                                                            Text(
-                                                                text =
-                                                                    stringResource(
-                                                                        CoreR.string.external
-                                                                    ),
-                                                                style =
-                                                                    MaterialTheme.typography
-                                                                        .labelSmall,
+                                                                if (isSelected)
+                                                                    MaterialTheme.colorScheme
+                                                                        .primary
+                                                                else
+                                                                    MaterialTheme.colorScheme
+                                                                        .onSurface,
+                                                            maxLines = 1,
+                                                            overflow = TextOverflow.Ellipsis,
+                                                            modifier =
+                                                                Modifier.weight(1f, fill = false),
+                                                        )
+                                                        if (stream.isDefault == true) {
+                                                            Spacer(modifier = Modifier.width(6.dp))
+                                                            Surface(
+                                                                shape = RoundedCornerShape(4.dp),
                                                                 color =
                                                                     MaterialTheme.colorScheme
-                                                                        .onSecondaryContainer,
-                                                                modifier =
-                                                                    Modifier.padding(
-                                                                        horizontal = 4.dp,
-                                                                        vertical = 1.dp,
-                                                                    ),
-                                                            )
+                                                                        .surfaceContainerHighest,
+                                                            ) {
+                                                                Text(
+                                                                    text =
+                                                                        stringResource(
+                                                                            CoreR.string
+                                                                                .track_default
+                                                                        ),
+                                                                    style =
+                                                                        MaterialTheme.typography
+                                                                            .labelSmall,
+                                                                    color =
+                                                                        MaterialTheme.colorScheme
+                                                                            .onSurfaceVariant,
+                                                                    modifier =
+                                                                        Modifier.padding(
+                                                                            horizontal = 4.dp,
+                                                                            vertical = 1.dp,
+                                                                        ),
+                                                                )
+                                                            }
+                                                        }
+                                                        if (stream.isExternal) {
+                                                            Spacer(modifier = Modifier.width(6.dp))
+                                                            Surface(
+                                                                shape = RoundedCornerShape(4.dp),
+                                                                color =
+                                                                    MaterialTheme.colorScheme
+                                                                        .secondaryContainer,
+                                                            ) {
+                                                                Text(
+                                                                    text =
+                                                                        stringResource(
+                                                                            CoreR.string.external
+                                                                        ),
+                                                                    style =
+                                                                        MaterialTheme.typography
+                                                                            .labelSmall,
+                                                                    color =
+                                                                        MaterialTheme.colorScheme
+                                                                            .onSecondaryContainer,
+                                                                    modifier =
+                                                                        Modifier.padding(
+                                                                            horizontal = 4.dp,
+                                                                            vertical = 1.dp,
+                                                                        ),
+                                                                )
+                                                            }
                                                         }
                                                     }
                                                 }
@@ -810,10 +825,11 @@ private fun DownloadPresetCard(
     runtimeTicks: Long,
     sourceSize: Long,
     isOriginalSupported: Boolean,
+    originalVideoStream: FindroidMediaStream?,
     onSelect: () -> Unit,
     modifier: Modifier = Modifier,
-    originalVideoStream: FindroidMediaStream?,
     audioStreams: List<FindroidMediaStream> = emptyList(),
+    currentLocale: Locale = LocalConfiguration.current.locales[0],
 ) {
     val context = LocalContext.current
     val isOriginalUnsupported = preset.isOriginal && !isOriginalSupported
@@ -831,25 +847,27 @@ private fun DownloadPresetCard(
     val borderWidth = if (isSelected || isOriginalUnsupported) 2.dp else 1.dp
 
     val sizeBadgeText =
-        if (preset.isOriginal) {
-            if (sourceSize > 0) {
-                Formatter.formatFileSize(context, sourceSize)
+        remember(preset, sourceSize, runtimeTicks, context) {
+            if (preset.isOriginal) {
+                if (sourceSize > 0) {
+                    Formatter.formatFileSize(context, sourceSize)
+                } else {
+                    context.getString(CoreR.string.download_preset_source_size)
+                }
             } else {
-                stringResource(CoreR.string.download_preset_source_size)
-            }
-        } else {
-            if (runtimeTicks > 0) {
-                val durationSec = (runtimeTicks / 10_000_000L).coerceAtLeast(1)
-                val estimatedBytes = (preset.totalBitrateBps * durationSec) / 8L
-                "~${Formatter.formatFileSize(context, estimatedBytes)}"
-            } else {
-                preset.displayApproxSize.asString()
+                if (runtimeTicks > 0) {
+                    val durationSec = (runtimeTicks / 10_000_000L).coerceAtLeast(1)
+                    val estimatedBytes = (preset.totalBitrateBps * durationSec) / 8L
+                    "~${Formatter.formatFileSize(context, estimatedBytes)}"
+                } else {
+                    preset.displayApproxSize.asString(context.resources)
+                }
             }
         }
 
     Card(
-        modifier =
-            modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).clickable(onClick = onSelect),
+        onClick = onSelect,
+        modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors =
             CardDefaults.cardColors(
@@ -957,53 +975,62 @@ private fun DownloadPresetCard(
                                 if (isOriginalUnsupported) MaterialTheme.colorScheme.error
                                 else MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                        val currentLocale = LocalConfiguration.current.locales[0]
                         if (audioStreams.isNotEmpty()) {
                             audioStreams.forEach { stream ->
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(
-                                        text =
-                                            "Audio: ${formatAudioTrackName(stream, currentLocale)}",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                    if (stream.isDefault == true) {
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Surface(
-                                            shape = RoundedCornerShape(4.dp),
-                                            color =
-                                                MaterialTheme.colorScheme.surfaceContainerHighest,
-                                        ) {
-                                            Text(
-                                                text = stringResource(CoreR.string.track_default),
-                                                style = MaterialTheme.typography.labelSmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                modifier =
-                                                    Modifier.padding(
-                                                        horizontal = 4.dp,
-                                                        vertical = 1.dp,
-                                                    ),
-                                            )
-                                        }
-                                    }
-                                    if (stream.isExternal) {
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Surface(
-                                            shape = RoundedCornerShape(4.dp),
-                                            color = MaterialTheme.colorScheme.secondaryContainer,
-                                        ) {
-                                            Text(
-                                                text = stringResource(CoreR.string.external),
-                                                style = MaterialTheme.typography.labelSmall,
+                                key(stream.index) {
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(
+                                            text =
+                                                stringResource(
+                                                    CoreR.string.download_preset_audio,
+                                                    formatAudioTrackName(stream, currentLocale),
+                                                ),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                        if (stream.isDefault == true) {
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Surface(
+                                                shape = RoundedCornerShape(4.dp),
                                                 color =
-                                                    MaterialTheme.colorScheme.onSecondaryContainer,
-                                                modifier =
-                                                    Modifier.padding(
-                                                        horizontal = 4.dp,
-                                                        vertical = 1.dp,
-                                                    ),
-                                            )
+                                                    MaterialTheme.colorScheme
+                                                        .surfaceContainerHighest,
+                                            ) {
+                                                Text(
+                                                    text =
+                                                        stringResource(CoreR.string.track_default),
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color =
+                                                        MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    modifier =
+                                                        Modifier.padding(
+                                                            horizontal = 4.dp,
+                                                            vertical = 1.dp,
+                                                        ),
+                                                )
+                                            }
+                                        }
+                                        if (stream.isExternal) {
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Surface(
+                                                shape = RoundedCornerShape(4.dp),
+                                                color =
+                                                    MaterialTheme.colorScheme.secondaryContainer,
+                                            ) {
+                                                Text(
+                                                    text = stringResource(CoreR.string.external),
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color =
+                                                        MaterialTheme.colorScheme
+                                                            .onSecondaryContainer,
+                                                    modifier =
+                                                        Modifier.padding(
+                                                            horizontal = 4.dp,
+                                                            vertical = 1.dp,
+                                                        ),
+                                                )
+                                            }
                                         }
                                     }
                                 }
@@ -1011,7 +1038,11 @@ private fun DownloadPresetCard(
                         } else {
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
-                                text = "Audio: Direct Stream (Original audio)",
+                                text =
+                                    stringResource(
+                                        CoreR.string.download_preset_audio,
+                                        "Direct Stream (${stringResource(CoreR.string.download_preset_original_audio)})",
+                                    ),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -1026,7 +1057,10 @@ private fun DownloadPresetCard(
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text =
-                                "Audio: ${preset.audioCodec.uppercase(Locale.US)} • ${preset.audioText.asString()}",
+                                stringResource(
+                                    CoreR.string.download_preset_audio,
+                                    "${preset.audioCodec.uppercase(Locale.US)} • ${preset.audioText.asString()}",
+                                ),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -1051,13 +1085,18 @@ private fun CheckboxOptionRow(
             modifier
                 .fillMaxWidth()
                 .clip(shape)
-                .clickable { onCheckedChange(!checked) }
+                .toggleable(
+                    value = checked,
+                    role = Role.Checkbox,
+                    onValueChange = onCheckedChange,
+                )
+                .defaultMinSize(minHeight = 48.dp)
                 .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Checkbox(
             checked = checked,
-            onCheckedChange = onCheckedChange,
+            onCheckedChange = null,
         )
         Spacer(modifier = Modifier.width(10.dp))
         Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {

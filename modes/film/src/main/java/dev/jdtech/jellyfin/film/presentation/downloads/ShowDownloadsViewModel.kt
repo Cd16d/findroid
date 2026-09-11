@@ -2,6 +2,7 @@ package dev.jdtech.jellyfin.film.presentation.downloads
 
 import android.content.Context
 import android.text.format.Formatter
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -22,14 +23,18 @@ import dev.jdtech.jellyfin.utils.Downloader
 import java.util.UUID
 import javax.inject.Inject
 import kotlin.time.Duration.Companion.milliseconds
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import timber.log.Timber
 
 @HiltViewModel
 class ShowDownloadsViewModel
@@ -41,15 +46,75 @@ constructor(
     private val downloadQueue: DownloadQueue,
     private val appPreferences: AppPreferences,
     @ApplicationContext private val context: Context,
+    private val savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
+
+    internal var ioDispatcher: CoroutineDispatcher = Dispatchers.IO
+
+    constructor(
+        repository: JellyfinRepository,
+        database: ServerDatabaseDao,
+        downloader: Downloader,
+        downloadQueue: DownloadQueue,
+        appPreferences: AppPreferences,
+        context: Context,
+        savedStateHandle: SavedStateHandle,
+        ioDispatcher: CoroutineDispatcher,
+    ) : this(
+        repository = repository,
+        database = database,
+        downloader = downloader,
+        downloadQueue = downloadQueue,
+        appPreferences = appPreferences,
+        context = context,
+        savedStateHandle = savedStateHandle,
+    ) {
+        this.ioDispatcher = ioDispatcher
+    }
 
     private val _state = MutableStateFlow(ShowDownloadsState())
     val state = _state.asStateFlow()
 
     private var currentSeriesId: UUID? = null
     private var lastCompletedCount = -1
+    private var loadJob: Job? = null
+    private val deletionJobs = mutableMapOf<UUID, Job>()
+
+    companion object {
+        private const val KEY_SERIES_ID = "current_series_id"
+        private const val KEY_ROUTE_SHOW_ID = "showId"
+        private const val KEY_IS_SELECTION_MODE = "is_selection_mode"
+        private const val KEY_SELECTED_EPISODE_IDS = "selected_episode_ids"
+    }
 
     init {
+        val restoredSeriesIdStr =
+            savedStateHandle.get<String>(KEY_SERIES_ID)
+                ?: savedStateHandle.get<String>(KEY_ROUTE_SHOW_ID)
+        val restoredSeriesId = restoredSeriesIdStr?.let {
+            runCatching { UUID.fromString(it) }.getOrNull()
+        }
+        if (restoredSeriesId != null) {
+            currentSeriesId = restoredSeriesId
+            loadShow(restoredSeriesId, showLoading = true)
+        }
+
+        val restoredSelectionMode = savedStateHandle.get<Boolean>(KEY_IS_SELECTION_MODE) ?: false
+        val restoredSelectedIds =
+            savedStateHandle
+                .get<List<String>>(KEY_SELECTED_EPISODE_IDS)
+                ?.mapNotNull { runCatching { UUID.fromString(it) }.getOrNull() }
+                ?.toSet() ?: emptySet()
+
+        if (restoredSelectionMode || restoredSelectedIds.isNotEmpty()) {
+            _state.update {
+                it.copy(
+                    isSelectionMode = restoredSelectionMode,
+                    selectedEpisodeIds = restoredSelectedIds,
+                )
+            }
+        }
+
         viewModelScope.launch {
             downloadQueue.entries.collect { entries ->
                 _state.update { it.copy(activeDownloads = entries) }
@@ -78,8 +143,10 @@ constructor(
             is ShowDownloadsAction.ClearSelection -> clearSelection()
             is ShowDownloadsAction.DeleteSelected -> deleteSelected()
             is ShowDownloadsAction.PauseOrResumeSelected -> pauseOrResumeSelected(action.pause)
-            is ShowDownloadsAction.EnterSelectionMode ->
+            is ShowDownloadsAction.EnterSelectionMode -> {
+                savedStateHandle[KEY_IS_SELECTION_MODE] = true
                 _state.update { it.copy(isSelectionMode = true) }
+            }
             is ShowDownloadsAction.ExitSelectionMode -> clearSelection()
             is ShowDownloadsAction.MoveEpisodeStorage ->
                 moveEpisodeStorage(action.episode, action.targetStorageIndex)
@@ -91,14 +158,20 @@ constructor(
     }
 
     fun loadShow(seriesId: UUID, showLoading: Boolean = true) {
+        if (loadJob?.isActive == true && currentSeriesId == seriesId && _state.value.isLoading) {
+            return
+        }
         currentSeriesId = seriesId
-        viewModelScope.launch {
-            if (showLoading) {
-                _state.update { it.copy(isLoading = true, error = null) }
-            }
-            try {
-                val currentUserId = repository.getUserId()
-                withContext(Dispatchers.IO) {
+        savedStateHandle[KEY_SERIES_ID] = seriesId.toString()
+        loadJob?.cancel()
+        loadJob =
+            viewModelScope.launch(ioDispatcher) {
+                if (showLoading) {
+                    _state.update { it.copy(isLoading = true, error = null) }
+                }
+                try {
+                    coroutineContext.ensureActive()
+                    val currentUserId = repository.getUserId()
                     val dirs = context.getExternalFilesDirs(null)
                     val hasSdCard =
                         dirs.size > 1 &&
@@ -111,13 +184,13 @@ constructor(
                         } catch (_: Exception) {
                             null
                         }
+                    coroutineContext.ensureActive()
                     val show =
                         showDto?.toFindroidShow(database, currentUserId)
                             ?: run {
                                 val queueEp =
                                     downloadQueue.entries.value
-                                        .map { it.item }
-                                        .filterIsInstance<FindroidEpisode>()
+                                        .mapNotNull { it.item as? FindroidEpisode }
                                         .firstOrNull { it.seriesId == seriesId }
                                 if (queueEp != null) {
                                     FindroidShow(
@@ -146,6 +219,7 @@ constructor(
                                 } else null
                             }
 
+                    coroutineContext.ensureActive()
                     val episodes =
                         try {
                             database
@@ -185,6 +259,8 @@ constructor(
                                 )
                             }
 
+                    val displayExtraInfo = appPreferences.getValue(appPreferences.displayExtraInfo)
+
                     _state.update {
                         it.copy(
                             isLoading = false,
@@ -193,19 +269,18 @@ constructor(
                             totalEpisodesCount = episodes.size,
                             totalDiskSizeFormatted = totalSizeFormatted,
                             hasSdCard = hasSdCard,
-                            displayExtraInfo =
-                                appPreferences.getValue(appPreferences.displayExtraInfo),
+                            displayExtraInfo = displayExtraInfo,
                             error = null,
                         )
                     }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Timber.e(e, "Error loading show $seriesId")
+                    _state.update { it.copy(isLoading = false, error = e) }
                 }
-            } catch (e: Exception) {
-                _state.update { it.copy(isLoading = false, error = e) }
             }
-        }
     }
-
-    private val deletionJobs = mutableMapOf<UUID, Job>()
 
     private suspend fun deleteMediaItem(episode: FindroidEpisode, currentUserId: UUID) {
         val source =
@@ -216,7 +291,7 @@ constructor(
     }
 
     private fun deleteEpisode(episode: FindroidEpisode) {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(ioDispatcher) {
             val currentUserId = repository.getUserId()
             downloadQueue.cancel(episode.id)
             deleteMediaItem(episode, currentUserId)
@@ -227,6 +302,13 @@ constructor(
     private fun stageDeleteEpisode(episode: FindroidEpisode) {
         val id = episode.id
         val currentUserId = repository.getUserId()
+        startPendingDeletion(id) {
+            downloadQueue.cancel(episode.id)
+            deleteMediaItem(episode, currentUserId)
+        }
+    }
+
+    private fun startPendingDeletion(id: UUID, onCommit: suspend () -> Unit) {
         deletionJobs[id]?.cancel()
         val currentMap = _state.value.pendingDeletionIds.toMutableMap()
         currentMap[id] = 5
@@ -235,15 +317,14 @@ constructor(
         val job = viewModelScope.launch {
             for (sec in 4 downTo 1) {
                 delay(1000L.milliseconds)
+                coroutineContext.ensureActive()
                 _state.update { it.copy(pendingDeletionIds = it.pendingDeletionIds + (id to sec)) }
             }
             delay(1000L.milliseconds)
+            coroutineContext.ensureActive()
             _state.update { it.copy(pendingDeletionIds = it.pendingDeletionIds - id) }
             deletionJobs.remove(id)
-            withContext(Dispatchers.IO) {
-                downloadQueue.cancel(episode.id)
-                deleteMediaItem(episode, currentUserId)
-            }
+            withContext(ioDispatcher) { onCommit() }
             currentSeriesId?.let { loadShow(it, showLoading = false) }
         }
         deletionJobs[id] = job
@@ -264,10 +345,13 @@ constructor(
     private fun toggleSelection(id: UUID) {
         val current = _state.value.selectedEpisodeIds
         val updated = if (current.contains(id)) current - id else current + id
+        val isSelection = updated.isNotEmpty()
+        savedStateHandle[KEY_IS_SELECTION_MODE] = isSelection
+        savedStateHandle[KEY_SELECTED_EPISODE_IDS] = updated.map { it.toString() }
         _state.update {
             it.copy(
                 selectedEpisodeIds = updated,
-                isSelectionMode = updated.isNotEmpty(),
+                isSelectionMode = isSelection,
             )
         }
     }
@@ -277,10 +361,13 @@ constructor(
         val current = _state.value.selectedEpisodeIds
         val allSelected = episodeIds.all { current.contains(it) }
         val updated = if (allSelected) current - episodeIds else current + episodeIds
+        val isSelection = updated.isNotEmpty()
+        savedStateHandle[KEY_IS_SELECTION_MODE] = isSelection
+        savedStateHandle[KEY_SELECTED_EPISODE_IDS] = updated.map { it.toString() }
         _state.update {
             it.copy(
                 selectedEpisodeIds = updated,
-                isSelectionMode = updated.isNotEmpty(),
+                isSelectionMode = isSelection,
             )
         }
     }
@@ -299,6 +386,8 @@ constructor(
         if (_state.value.selectedEpisodeIds.size == allIds.size && allIds.isNotEmpty()) {
             clearSelection()
         } else {
+            savedStateHandle[KEY_IS_SELECTION_MODE] = true
+            savedStateHandle[KEY_SELECTED_EPISODE_IDS] = allIds.map { it.toString() }
             _state.update {
                 it.copy(
                     selectedEpisodeIds = allIds,
@@ -316,6 +405,8 @@ constructor(
     }
 
     private fun clearSelection() {
+        savedStateHandle[KEY_IS_SELECTION_MODE] = false
+        savedStateHandle[KEY_SELECTED_EPISODE_IDS] = emptyList<String>()
         _state.update {
             it.copy(
                 selectedEpisodeIds = emptySet(),
@@ -328,15 +419,18 @@ constructor(
         val selected = _state.value.selectedEpisodeIds
         if (selected.isEmpty()) return
 
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(ioDispatcher) {
             for (id in selected) {
+                coroutineContext.ensureActive()
                 downloadQueue.cancel(id)
             }
             val currentUserId = repository.getUserId()
-            for (episode in
+            val episodesToDelete =
                 _state.value.seasonGroups
                     .flatMap { it.episodes }
-                    .filter { selected.contains(it.id) }) {
+                    .filter { selected.contains(it.id) }
+            for (episode in episodesToDelete) {
+                coroutineContext.ensureActive()
                 deleteMediaItem(episode, currentUserId)
             }
             clearSelection()
@@ -354,40 +448,45 @@ constructor(
                 activeTransfers = it.activeTransfers + (id to StorageTransferProgress(itemId = id))
             )
         }
-        downloader.moveItemStorage(episode, targetStorageIndex) { bytesTransferred, totalBytes ->
-            val progress =
-                if (totalBytes > 0L) (bytesTransferred.toFloat() / totalBytes).coerceIn(0f, 1f)
-                else 0f
-            _state.update {
-                it.copy(
-                    activeTransfers =
-                        it.activeTransfers +
-                            (id to
-                                StorageTransferProgress(
-                                    itemId = id,
-                                    bytesTransferred = bytesTransferred,
-                                    totalBytes = totalBytes,
-                                    progress = progress,
-                                ))
-                )
+        try {
+            downloader.moveItemStorage(episode, targetStorageIndex) { bytesTransferred, totalBytes
+                ->
+                val progress =
+                    if (totalBytes > 0L) (bytesTransferred.toFloat() / totalBytes).coerceIn(0f, 1f)
+                    else 0f
+                _state.update {
+                    it.copy(
+                        activeTransfers =
+                            it.activeTransfers +
+                                (id to
+                                    StorageTransferProgress(
+                                        itemId = id,
+                                        bytesTransferred = bytesTransferred,
+                                        totalBytes = totalBytes,
+                                        progress = progress,
+                                    ))
+                    )
+                }
             }
+        } finally {
+            _state.update { it.copy(activeTransfers = it.activeTransfers - id) }
         }
-        _state.update { it.copy(activeTransfers = it.activeTransfers - id) }
     }
 
     private fun moveEpisodeStorage(episode: FindroidEpisode, targetStorageIndex: Int) {
-        viewModelScope.launch {
+        viewModelScope.launch(ioDispatcher) {
             performMoveStorage(episode.id, episode, targetStorageIndex)
             currentSeriesId?.let { loadShow(it, showLoading = false) }
         }
     }
 
     private fun moveSelected(targetStorageIndex: Int) {
-        viewModelScope.launch {
+        viewModelScope.launch(ioDispatcher) {
             val selected = _state.value.selectedEpisodeIds.toList()
             val allEpisodes = _state.value.seasonGroups.flatMap { it.episodes }
             clearSelection()
             for (id in selected) {
+                coroutineContext.ensureActive()
                 val ep = allEpisodes.firstOrNull { it.id == id } ?: continue
                 performMoveStorage(id, ep, targetStorageIndex)
             }
@@ -396,6 +495,8 @@ constructor(
     }
 
     override fun onCleared() {
+        super.onCleared()
+        loadJob?.cancel()
         for (job in deletionJobs.values) {
             job.cancel()
         }

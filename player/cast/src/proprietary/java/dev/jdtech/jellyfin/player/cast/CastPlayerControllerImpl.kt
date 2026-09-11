@@ -1,6 +1,7 @@
 package dev.jdtech.jellyfin.player.cast
 
 import android.content.Context
+import android.media.AudioManager
 import android.net.Uri
 import com.google.android.gms.cast.Cast
 import com.google.android.gms.cast.MediaError
@@ -34,9 +35,11 @@ import dev.jdtech.jellyfin.utils.getTranslatablePartName
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -44,6 +47,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import org.jellyfin.sdk.model.UUID
 import org.jellyfin.sdk.model.api.BaseItemKind
@@ -68,13 +72,47 @@ constructor(
     private val appPreferences: AppPreferences,
 ) : CastPlayerController {
 
+    internal var mainDispatcher: CoroutineDispatcher = Dispatchers.Main.immediate
+    internal var ioDispatcher: CoroutineDispatcher = Dispatchers.IO
+
+    constructor(
+        context: Context,
+        jellyfinApi: JellyfinApi,
+        sessionManager: CastSessionManager,
+        playbackManager: PlaybackManager,
+        playlistManager: PlaylistManager,
+        appPreferences: AppPreferences,
+        mainDispatcher: CoroutineDispatcher,
+        ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    ) : this(
+        context,
+        jellyfinApi,
+        sessionManager,
+        playbackManager,
+        playlistManager,
+        appPreferences,
+    ) {
+        this.mainDispatcher = mainDispatcher
+        this.ioDispatcher = ioDispatcher
+    }
+
     private val _currentItem = MutableStateFlow<CastMediaItem?>(null)
     override val currentItem: StateFlow<CastMediaItem?> = _currentItem.asStateFlow()
 
     private val _playerState = MutableStateFlow(CastPlayerState())
     override val playerState: StateFlow<CastPlayerState> = _playerState.asStateFlow()
 
-    private val castContext: CastContext by lazy { CastContext.getSharedInstance(context) }
+    private var _castContext: CastContext? = null
+    private val castContext: CastContext?
+        get() {
+            if (_castContext != null) return _castContext
+            return try {
+                CastContext.getSharedInstance(context).also { _castContext = it }
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to get CastContext")
+                null
+            }
+        }
 
     private var remoteMediaClient: RemoteMediaClient? = null
     private var castSession: CastSession? = null
@@ -83,16 +121,25 @@ constructor(
 
     private val queueMutex = Mutex()
 
-    private val scope = CoroutineScope(Dispatchers.Main + Job())
+    private val scope = CoroutineScope(mainDispatcher + SupervisorJob())
 
-    var isSessionRestored = false
-    private var isReporting = false
-    private var lastActiveItemId: Int = MediaQueueItem.INVALID_ITEM_ID
+    private var playJob: Job? = null
+    private var audioTrackJob: Job? = null
+    private var queueJob: Job? = null
 
-    private var maxBitrate: Int? = null
-    private lateinit var playMethod: PlayMethod
-    private var audioStreamIndex: Int? = null
-    private var subtitleStreamIndex: Int? = null
+    private val audioManager: AudioManager? by lazy {
+        context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+    }
+
+    @Volatile private var isSessionRestored = false
+    @Volatile private var isReporting = false
+    @Volatile private var lastActiveItemId: Int = MediaQueueItem.INVALID_ITEM_ID
+    @Volatile private var lastActiveItemUuid: UUID? = null
+
+    @Volatile private var maxBitrate: Int? = null
+    @Volatile private var playMethod: PlayMethod = PlayMethod.DIRECT_PLAY
+    @Volatile private var audioStreamIndex: Int? = null
+    @Volatile private var subtitleStreamIndex: Int? = null
 
     private data class BuildMediaResult(
         val mediaInfo: MediaInfo,
@@ -103,6 +150,14 @@ constructor(
 
     private val itemCache = ConcurrentHashMap<UUID, CastMediaItem>()
     private val itemDuration = ConcurrentHashMap<UUID, Long>()
+
+    private fun abandonAudioFocus() {
+        try {
+            @Suppress("DEPRECATION") audioManager?.abandonAudioFocus(null)
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to abandon audio focus")
+        }
+    }
 
     private val remoteMediaClientCallback =
         object : RemoteMediaClient.Callback() {
@@ -118,13 +173,37 @@ constructor(
                 super.onMetadataUpdated()
                 val client = remoteMediaClient ?: return
                 val itemIdStr = client.currentItem?.media?.customData?.optString("itemId") ?: return
-                val cachedItem = itemCache[itemIdStr.toUUID()] ?: return
+                val itemId =
+                    try {
+                        itemIdStr.toUUID()
+                    } catch (e: Exception) {
+                        Timber.e(e, "Failed to parse itemId in onMetadataUpdated: $itemIdStr")
+                        return
+                    }
 
-                _currentItem.value = cachedItem
-
-                itemDuration[itemIdStr.toUUID()] = client.streamDuration
-
-                manageQueue(itemIdStr.toUUID())
+                val cachedItem = itemCache[itemId]
+                if (cachedItem != null) {
+                    _currentItem.value = cachedItem
+                    itemDuration[itemId] = client.streamDuration
+                    manageQueue(itemId)
+                } else {
+                    val playbackInfoStr =
+                        client.currentItem?.media?.customData?.optString("playbackInfo")
+                    val playbackInfo =
+                        if (!playbackInfoStr.isNullOrEmpty()) {
+                            try {
+                                json.decodeFromString<PlaybackInfoResponse>(playbackInfoStr)
+                            } catch (e: Exception) {
+                                Timber.e(e, "Failed to decode playbackInfo in onMetadataUpdated")
+                                null
+                            }
+                        } else null
+                    restoreRemoteItem(
+                        itemIdStr = itemIdStr,
+                        playbackInfo = playbackInfo,
+                        isCurrent = true,
+                    )
+                }
             }
 
             override fun onQueueStatusUpdated() {
@@ -135,22 +214,37 @@ constructor(
                     if (lastActiveItemId != MediaQueueItem.INVALID_ITEM_ID) {
                         val previousItem = client.mediaStatus?.getQueueItemById(lastActiveItemId)
                         val previousItemIdStr = previousItem?.media?.customData?.optString("itemId")
+                        val previousUuid =
+                            try {
+                                previousItemIdStr?.toUUID()
+                            } catch (e: Exception) {
+                                null
+                            } ?: lastActiveItemUuid
 
-                        if (previousItemIdStr != null) {
-                            stopReporting(previousItemIdStr.toUUID())
-                            if (currentActiveItemId != MediaQueueItem.INVALID_ITEM_ID) {
-                                startReporting()
-                            }
+                        if (previousUuid != null) {
+                            stopReporting(previousUuid)
+                        }
+                        if (currentActiveItemId != MediaQueueItem.INVALID_ITEM_ID) {
+                            startReporting()
                         }
                     }
 
                     lastActiveItemId = currentActiveItemId
+                    val currentItem = client.mediaStatus?.getQueueItemById(currentActiveItemId)
+                    val currentItemIdStr = currentItem?.media?.customData?.optString("itemId")
+                    lastActiveItemUuid =
+                        try {
+                            currentItemIdStr?.toUUID()
+                        } catch (e: Exception) {
+                            null
+                        }
                 }
             }
 
             override fun onMediaError(p0: MediaError) {
                 super.onMediaError(p0)
                 Timber.e("Media Error: $p0")
+                _playerState.update { it.copy(status = CastPlaybackStatus.ERROR) }
             }
         }
 
@@ -160,11 +254,17 @@ constructor(
 
     private val remoteMediaClientProgressListener =
         RemoteMediaClient.ProgressListener { progressMs, durationMs ->
+            val safeProgress = progressMs.coerceAtLeast(0L)
+            val safeDuration = durationMs.coerceAtLeast(0L)
             _playerState.update {
                 it.copy(
-                    currentPosition = progressMs,
-                    duration = durationMs,
+                    currentPosition = safeProgress,
+                    duration = safeDuration,
                 )
+            }
+            val currentItemId = _currentItem.value?.item?.itemId
+            if (currentItemId != null && safeDuration > 0L) {
+                itemDuration[currentItemId] = safeDuration
             }
         }
 
@@ -172,11 +272,17 @@ constructor(
         object : Cast.Listener() {
             override fun onVolumeChanged() {
                 val session = castSession ?: return
-                _playerState.update {
-                    it.copy(
-                        volume = session.volume.toFloat(),
-                        isMuted = session.isMute,
-                    )
+                try {
+                    val volume = session.volume.toFloat()
+                    val isMuted = session.isMute
+                    _playerState.update {
+                        it.copy(
+                            volume = volume,
+                            isMuted = isMuted,
+                        )
+                    }
+                } catch (e: Exception) {
+                    Timber.e(e, "Failed to update volume from CastSession")
                 }
             }
 
@@ -192,41 +298,66 @@ constructor(
             sessionManager.connectionState.collect { state ->
                 val session =
                     if (state == CastConnectionState.CONNECTED) {
-                        castContext.sessionManager.currentCastSession
-                    } else null
+                        try {
+                            castContext?.sessionManager?.currentCastSession
+                        } catch (e: Exception) {
+                            Timber.e(e, "Failed to get currentCastSession")
+                            null
+                        }
+                    } else {
+                        null
+                    }
 
                 if (state == CastConnectionState.CONNECTED && session != null) {
                     if (session != castSession) {
+                        abandonAudioFocus()
+
                         // Cleanup previous session
                         if (castSession != null) {
-                            castSession?.removeCastListener(castSessionListener)
-                            remoteMediaClient?.unregisterCallback(remoteMediaClientCallback)
-                            remoteMediaClient?.removeProgressListener(
-                                remoteMediaClientProgressListener
-                            )
-                            remoteMediaClient?.removeProgressListener(playbackReportingCallback)
+                            try {
+                                castSession?.removeCastListener(castSessionListener)
+                                remoteMediaClient?.unregisterCallback(remoteMediaClientCallback)
+                                remoteMediaClient?.removeProgressListener(
+                                    remoteMediaClientProgressListener
+                                )
+                                remoteMediaClient?.removeProgressListener(playbackReportingCallback)
+                            } catch (e: Exception) {
+                                Timber.e(e, "Failed to clean up previous CastSession")
+                            }
                         }
 
                         // Setup new session
                         castSession = session
-                        castSession?.addCastListener(castSessionListener)
+                        try {
+                            castSession?.addCastListener(castSessionListener)
+                        } catch (e: Exception) {
+                            Timber.e(e, "Failed to add cast listener")
+                        }
 
                         remoteMediaClient = session.remoteMediaClient
                         remoteMediaClient?.let { client ->
-                            client.registerCallback(remoteMediaClientCallback)
+                            try {
+                                client.registerCallback(remoteMediaClientCallback)
+                            } catch (e: Exception) {
+                                Timber.e(e, "Failed to register callback on RemoteMediaClient")
+                            }
                             isSessionRestored = false
                             restoreSession()
                         }
 
-                        _playerState.update {
-                            it.copy(
-                                volume = session.volume.toFloat(),
-                                isMuted = session.isMute,
-                            )
+                        try {
+                            _playerState.update {
+                                it.copy(
+                                    volume = session.volume.toFloat(),
+                                    isMuted = session.isMute,
+                                )
+                            }
+                        } catch (e: Exception) {
+                            Timber.e(e, "Failed to read initial volume/mute state")
                         }
 
                         if (maxBitrate == null) {
-                            scope.launch {
+                            scope.launch(ioDispatcher) {
                                 val speedTestBitrate = measureNetworkSpeed(jellyfinApi)
                                 val settingBitrateKbps =
                                     appPreferences.getValue(appPreferences.castMaxBitrateKbps)
@@ -261,15 +392,29 @@ constructor(
 
         stopReporting()
 
-        remoteMediaClient?.unregisterCallback(remoteMediaClientCallback)
-        remoteMediaClient?.removeProgressListener(remoteMediaClientProgressListener)
+        try {
+            remoteMediaClient?.unregisterCallback(remoteMediaClientCallback)
+            remoteMediaClient?.removeProgressListener(remoteMediaClientProgressListener)
+            remoteMediaClient?.removeProgressListener(playbackReportingCallback)
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to unregister remote media client listeners")
+        }
         remoteMediaClient = null
 
-        castSession?.removeCastListener(castSessionListener)
+        try {
+            castSession?.removeCastListener(castSessionListener)
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to remove cast listener")
+        }
         castSession = null
 
         _currentItem.value = null
+        _playerState.update { CastPlayerState() }
         isSessionRestored = false
+        lastActiveItemId = MediaQueueItem.INVALID_ITEM_ID
+        lastActiveItemUuid = null
+        itemCache.clear()
+        itemDuration.clear()
     }
 
     private fun mapPlaybackStatus(client: RemoteMediaClient): CastPlaybackStatus {
@@ -302,21 +447,38 @@ constructor(
                 val itemId = _currentItem.value?.item?.itemId
                 stopReporting(itemId)
                 _currentItem.value = null
-                stopReporting()
-                remoteMediaClient?.removeProgressListener(remoteMediaClientProgressListener)
+                try {
+                    remoteMediaClient?.removeProgressListener(remoteMediaClientProgressListener)
+                } catch (e: Exception) {
+                    Timber.e(e, "Failed to remove progress listener")
+                }
             }
 
             CastPlaybackStatus.PLAYING -> {
+                abandonAudioFocus()
                 startReporting()
-                remoteMediaClient?.addProgressListener(remoteMediaClientProgressListener, 1000L)
+                try {
+                    remoteMediaClient?.removeProgressListener(remoteMediaClientProgressListener)
+                    remoteMediaClient?.addProgressListener(remoteMediaClientProgressListener, 1000L)
+                } catch (e: Exception) {
+                    Timber.e(e, "Failed to add progress listener")
+                }
             }
 
             CastPlaybackStatus.PAUSED -> {
                 if (isReporting) {
                     reportPlaybackProgressAndState()
-                    remoteMediaClient?.removeProgressListener(playbackReportingCallback)
+                    try {
+                        remoteMediaClient?.removeProgressListener(playbackReportingCallback)
+                    } catch (e: Exception) {
+                        Timber.e(e, "Failed to remove playback reporting listener")
+                    }
                 }
-                remoteMediaClient?.removeProgressListener(remoteMediaClientProgressListener)
+                try {
+                    remoteMediaClient?.removeProgressListener(remoteMediaClientProgressListener)
+                } catch (e: Exception) {
+                    Timber.e(e, "Failed to remove progress listener")
+                }
             }
 
             else -> {
@@ -331,16 +493,24 @@ constructor(
         val client = remoteMediaClient ?: return
         val currentItem = _currentItem.value ?: return
         val playbackInfo = currentItem.playbackInfo
+        val safePosition = (positionMs ?: client.approximateStreamPosition).coerceAtLeast(0L)
 
         scope.launch {
-            playbackManager.reportProgress(
-                itemId = currentItem.item.itemId,
-                positionMs = positionMs ?: client.approximateStreamPosition,
-                isPaused = !client.isPlaying,
-                playMethod = playMethod,
-                mediaSourceId = playbackInfo?.mediaSources?.firstOrNull()?.id,
-                playSessionId = playbackInfo?.playSessionId,
-            )
+            try {
+                playbackManager.reportProgress(
+                    itemId = currentItem.item.itemId,
+                    positionMs = safePosition,
+                    isPaused = !client.isPlaying,
+                    playMethod = playMethod,
+                    mediaSourceId = playbackInfo?.mediaSources?.firstOrNull()?.id,
+                    playSessionId = playbackInfo?.playSessionId,
+                )
+            } catch (e: Exception) {
+                Timber.e(
+                    e,
+                    "Failed to report playback progress for item: ${currentItem.item.itemId}",
+                )
+            }
         }
     }
 
@@ -351,8 +521,8 @@ constructor(
             val playbackInfo = currentItem.playbackInfo
             val mediaSource = playbackInfo?.mediaSources?.firstOrNull()
             val startPositionMs =
-                if (client.approximateStreamPosition == 0L) {
-                    currentItem.item.playbackPosition
+                if (client.approximateStreamPosition <= 0L) {
+                    currentItem.item.playbackPosition.coerceAtLeast(0L)
                 } else {
                     client.approximateStreamPosition
                 }
@@ -365,13 +535,17 @@ constructor(
                 }
 
             scope.launch {
-                playbackManager.reportStart(
-                    itemId = currentItem.item.itemId,
-                    positionMs = startPositionMs,
-                    playMethod = playMethod,
-                    mediaSourceId = playbackInfo?.mediaSources?.firstOrNull()?.id,
-                    playSessionId = playbackInfo?.playSessionId,
-                )
+                try {
+                    playbackManager.reportStart(
+                        itemId = currentItem.item.itemId,
+                        positionMs = startPositionMs,
+                        playMethod = playMethod,
+                        mediaSourceId = mediaSource?.id,
+                        playSessionId = playbackInfo?.playSessionId,
+                    )
+                } catch (e: Exception) {
+                    Timber.e(e, "Failed to report start for item: ${currentItem.item.itemId}")
+                }
             }
 
             isReporting = true
@@ -379,25 +553,44 @@ constructor(
             reportPlaybackProgressAndState()
         }
 
-        remoteMediaClient?.addProgressListener(playbackReportingCallback, 10000L)
+        try {
+            remoteMediaClient?.removeProgressListener(playbackReportingCallback)
+            remoteMediaClient?.addProgressListener(playbackReportingCallback, 10000L)
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to add playback reporting progress listener")
+        }
     }
 
     private fun stopReporting(itemId: UUID? = null) {
         if (!isReporting) return
 
-        val targetItemId = itemId ?: _currentItem.value?.item?.itemId ?: return
-        val currentItem = itemCache[targetItemId] ?: return
-        val playbackInfo = currentItem.playbackInfo
-        val playerState = _playerState.value
+        val targetItemId = itemId ?: _currentItem.value?.item?.itemId
+        if (targetItemId != null) {
+            val currentItem =
+                itemCache[targetItemId]
+                    ?: _currentItem.value?.takeIf { it.item.itemId == targetItemId }
+            val playbackInfo = currentItem?.playbackInfo
+            val playerState = _playerState.value
+            val client = remoteMediaClient
+            val duration =
+                itemDuration[targetItemId]?.takeIf { it > 0L }
+                    ?: playerState.duration.takeIf { it > 0L }
+                    ?: client?.streamDuration?.takeIf { it > 0L }
+                    ?: 0L
 
-        scope.launch {
-            playbackManager.reportStop(
-                itemId = targetItemId,
-                positionMs = playerState.currentPosition,
-                durationMs = playerState.duration,
-                mediaSourceId = playbackInfo?.mediaSources?.firstOrNull()?.id,
-                playSessionId = playbackInfo?.playSessionId,
-            )
+            scope.launch {
+                try {
+                    playbackManager.reportStop(
+                        itemId = targetItemId,
+                        positionMs = playerState.currentPosition.coerceAtLeast(0L),
+                        durationMs = duration.coerceAtLeast(1L),
+                        mediaSourceId = playbackInfo?.mediaSources?.firstOrNull()?.id,
+                        playSessionId = playbackInfo?.playSessionId,
+                    )
+                } catch (e: Exception) {
+                    Timber.e(e, "Failed to report playback stop for item: $targetItemId")
+                }
+            }
         }
 
         if (itemId != null) {
@@ -408,7 +601,11 @@ constructor(
             itemDuration.clear()
         }
 
-        remoteMediaClient?.removeProgressListener(playbackReportingCallback)
+        try {
+            remoteMediaClient?.removeProgressListener(playbackReportingCallback)
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to remove playback reporting progress listener")
+        }
         isReporting = false
     }
 
@@ -445,10 +642,16 @@ constructor(
                     }
                 } else null
 
-            if (!itemCache.containsKey(itemIdStr.toUUID())) {
+            val uuid =
+                try {
+                    itemIdStr.toUUID()
+                } catch (e: Exception) {
+                    null
+                }
+            if (uuid != null && !itemCache.containsKey(uuid)) {
                 restoreRemoteItem(
-                    itemIdStr,
-                    playbackInfo,
+                    itemIdStr = itemIdStr,
+                    playbackInfo = playbackInfo,
                     isCurrent = (queueItem.itemId == currentItemId),
                 )
             }
@@ -456,9 +659,14 @@ constructor(
 
         updatePlaybackStatus()
 
-        currentQueueItem?.media?.customData?.optString("itemId")?.let {
-            Timber.d("Managing queue")
-            manageQueue(it.toUUID())
+        currentQueueItem?.media?.customData?.optString("itemId")?.let { idStr ->
+            try {
+                val uuid = idStr.toUUID()
+                Timber.d("Managing queue")
+                manageQueue(uuid)
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to parse UUID for queue management: $idStr")
+            }
         }
 
         Timber.d("Restored Session")
@@ -475,7 +683,10 @@ constructor(
             try {
                 val itemId = UUID.fromString(itemIdStr)
                 val userId = jellyfinApi.userId
-                val findroidItem = jellyfinApi.userLibraryApi.getItem(itemId, userId).content
+                val findroidItem =
+                    withContext(ioDispatcher) {
+                        jellyfinApi.userLibraryApi.getItem(itemId, userId).content
+                    }
                 val itemKind =
                     when (findroidItem.type) {
                         BaseItemKind.MOVIE -> BaseItemKind.MOVIE
@@ -511,7 +722,7 @@ constructor(
 
                     if (isCurrent) {
                         _currentItem.value = castItem
-                        manageQueue(itemIdStr.toUUID())
+                        manageQueue(itemId)
                     }
                 }
             } catch (e: Exception) {
@@ -523,50 +734,51 @@ constructor(
     private suspend fun getPlaybackInfo(
         item: PlayerItem,
         audioStreamIndex: Int?,
-    ): PlaybackInfoResponse? {
-        val userId = jellyfinApi.userId
-        val connectedDevice = sessionManager.connectedDevice.value
-        val profile =
-            if (connectedDevice?.supportsH265 == true) {
-                ChromecastH265.deviceProfile
-            } else {
-                Chromecast.deviceProfile
-            }
+    ): PlaybackInfoResponse? =
+        withContext(ioDispatcher) {
+            val userId = jellyfinApi.userId
+            val connectedDevice = sessionManager.connectedDevice.value
+            val profile =
+                if (connectedDevice?.supportsH265 == true) {
+                    ChromecastH265.deviceProfile
+                } else {
+                    Chromecast.deviceProfile
+                }
 
-        val settingBitrateKbps = appPreferences.getValue(appPreferences.castMaxBitrateKbps)
-        val settingBitrateBps =
-            (settingBitrateKbps * 1_000L).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
-        val currentMaxBitrate = maxBitrate
-        val maxStreamingBitrate =
-            when {
-                settingBitrateBps > 0 && currentMaxBitrate != null ->
-                    minOf(currentMaxBitrate, settingBitrateBps)
-                settingBitrateBps > 0 -> settingBitrateBps
-                else -> currentMaxBitrate
-            }
+            val settingBitrateKbps = appPreferences.getValue(appPreferences.castMaxBitrateKbps)
+            val settingBitrateBps =
+                (settingBitrateKbps * 1_000L).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+            val currentMaxBitrate = maxBitrate
+            val maxStreamingBitrate =
+                when {
+                    settingBitrateBps > 0 && currentMaxBitrate != null ->
+                        minOf(currentMaxBitrate, settingBitrateBps)
+                    settingBitrateBps > 0 -> settingBitrateBps
+                    else -> currentMaxBitrate
+                }
 
-        return try {
-            jellyfinApi.mediaInfoApi
-                .getPostedPlaybackInfo(
-                    item.itemId,
-                    PlaybackInfoDto(
-                        userId = userId,
-                        deviceProfile = profile,
-                        maxStreamingBitrate = maxStreamingBitrate,
-                        audioStreamIndex = audioStreamIndex,
-                        enableDirectPlay = audioStreamIndex == null,
-                        enableDirectStream = true,
-                        enableTranscoding = true,
-                        allowAudioStreamCopy = true,
-                        allowVideoStreamCopy = true,
-                    ),
-                )
-                .content
-        } catch (e: Exception) {
-            Timber.e(e, "Failed to get playback info")
-            null
+            try {
+                jellyfinApi.mediaInfoApi
+                    .getPostedPlaybackInfo(
+                        item.itemId,
+                        PlaybackInfoDto(
+                            userId = userId,
+                            deviceProfile = profile,
+                            maxStreamingBitrate = maxStreamingBitrate,
+                            audioStreamIndex = audioStreamIndex,
+                            enableDirectPlay = audioStreamIndex == null,
+                            enableDirectStream = true,
+                            enableTranscoding = true,
+                            allowAudioStreamCopy = true,
+                            allowVideoStreamCopy = true,
+                        ),
+                    )
+                    .content
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to get playback info")
+                null
+            }
         }
-    }
 
     private fun Uri.toCastOptimizeImageUri(
         mediaType: PlayerMediaType = PlayerMediaType.MOVIE,
@@ -588,164 +800,184 @@ constructor(
             .build()
     }
 
-    private suspend fun buildMediaInfo(item: PlayerItem): BuildMediaResult? {
-        val baseUrl = jellyfinApi.api.baseUrl
-
-        val mediaType =
-            if (item.mediaType == PlayerMediaType.EPISODE) MediaMetadata.MEDIA_TYPE_TV_SHOW
-            else MediaMetadata.MEDIA_TYPE_MOVIE
-        val partName = item.partName
-        val itemTitle =
-            if (partName != null) {
-                "${item.name} - ${partName.getTranslatablePartName(context)}"
-            } else {
-                item.name
+    private suspend fun buildMediaInfo(item: PlayerItem): BuildMediaResult? =
+        withContext(ioDispatcher) {
+            val baseUrl = jellyfinApi.api.baseUrl?.removeSuffix("/").orEmpty()
+            if (baseUrl.isEmpty()) {
+                Timber.e("Base URL is empty, cannot build MediaInfo")
+                return@withContext null
             }
 
-        val mediaMetadata =
-            MediaMetadata(mediaType).apply {
-                putString(MediaMetadata.KEY_TITLE, itemTitle)
-                item.seriesName?.let { putString(MediaMetadata.KEY_SERIES_TITLE, it) }
-
-                item.indexNumber?.let { putInt(MediaMetadata.KEY_EPISODE_NUMBER, it) }
-                item.parentIndexNumber?.let { putInt(MediaMetadata.KEY_SEASON_NUMBER, it) }
-
-                item.images.showPrimary?.uri?.let {
-                    addImage(WebImage(it.toCastOptimizeImageUri()))
-                }
-                item.images.showBackdrop?.uri?.let {
-                    addImage(WebImage(it.toCastOptimizeImageUri(isBackdrop = true)))
+            val mediaType =
+                if (item.mediaType == PlayerMediaType.EPISODE) MediaMetadata.MEDIA_TYPE_TV_SHOW
+                else MediaMetadata.MEDIA_TYPE_MOVIE
+            val partName = item.partName
+            val itemTitle =
+                if (partName != null) {
+                    "${item.name} - ${partName.getTranslatablePartName(context)}"
+                } else {
+                    item.name
                 }
 
-                item.images.primary?.uri?.let {
-                    addImage(WebImage(it.toCastOptimizeImageUri(item.mediaType)))
-                }
-                item.images.backdrop?.uri?.let {
-                    addImage(
-                        WebImage(
-                            it.toCastOptimizeImageUri(
-                                item.mediaType,
-                                isBackdrop = true,
+            val mediaMetadata =
+                MediaMetadata(mediaType).apply {
+                    putString(MediaMetadata.KEY_TITLE, itemTitle)
+                    item.seriesName?.let { putString(MediaMetadata.KEY_SERIES_TITLE, it) }
+
+                    item.indexNumber?.let { putInt(MediaMetadata.KEY_EPISODE_NUMBER, it) }
+                    item.parentIndexNumber?.let { putInt(MediaMetadata.KEY_SEASON_NUMBER, it) }
+
+                    item.images.showPrimary?.uri?.let {
+                        addImage(WebImage(it.toCastOptimizeImageUri()))
+                    }
+                    item.images.showBackdrop?.uri?.let {
+                        addImage(WebImage(it.toCastOptimizeImageUri(isBackdrop = true)))
+                    }
+
+                    item.images.primary?.uri?.let {
+                        addImage(WebImage(it.toCastOptimizeImageUri(item.mediaType)))
+                    }
+                    item.images.backdrop?.uri?.let {
+                        addImage(
+                            WebImage(
+                                it.toCastOptimizeImageUri(
+                                    item.mediaType,
+                                    isBackdrop = true,
+                                )
                             )
                         )
-                    )
+                    }
                 }
-            }
 
-        val playbackInfo = getPlaybackInfo(item, audioStreamIndex) ?: return null
+            val playbackInfo = getPlaybackInfo(item, audioStreamIndex) ?: return@withContext null
 
-        val customData =
-            JSONObject().apply {
-                put("itemId", item.itemId.toString())
-                put("playbackInfo", json.encodeToString(playbackInfo))
-            }
+            val customData =
+                JSONObject().apply {
+                    put("itemId", item.itemId.toString())
+                    put("playbackInfo", json.encodeToString(playbackInfo))
+                }
 
-        val mediaSource = playbackInfo.mediaSources.firstOrNull() ?: return null
+            val mediaSource = playbackInfo.mediaSources.firstOrNull() ?: return@withContext null
 
-        val (streamUrlOriginal, contentType) =
-            if (mediaSource.supportsDirectPlay) {
-                val url =
-                    baseUrl +
-                        "/Videos/${item.itemId}/stream?static=true&MediaSourceId=${mediaSource.id}"
-                val mimeType =
-                    mediaSource.container?.let { if (it.contains("/")) it else "video/$it" }
-                        ?: "video/mp4"
-                url to mimeType
-            } else {
-                val url =
-                    baseUrl +
-                        (mediaSource.transcodingUrl
-                            ?: "/Videos/${item.itemId}/stream?MediaSourceId=${mediaSource.id}")
-                url to "application/x-mpegurl"
-            }
-
-        val streamUrl =
-            if (audioStreamIndex != null) {
-                if (streamUrlOriginal.contains("AudioStreamIndex=")) {
-                    streamUrlOriginal.replace(
-                        Regex("AudioStreamIndex=\\d+"),
-                        "AudioStreamIndex=$audioStreamIndex",
-                    )
+            val (streamUrlOriginal, contentType) =
+                if (mediaSource.supportsDirectPlay) {
+                    val url =
+                        "$baseUrl/Videos/${item.itemId}/stream?static=true&MediaSourceId=${mediaSource.id}"
+                    val mimeType =
+                        mediaSource.container?.let { if (it.contains("/")) it else "video/$it" }
+                            ?: "video/mp4"
+                    url to mimeType
                 } else {
-                    "$streamUrlOriginal&AudioStreamIndex=$audioStreamIndex"
+                    val transcodingUrl = mediaSource.transcodingUrl
+                    val path =
+                        if (transcodingUrl != null) {
+                            if (transcodingUrl.startsWith("/")) transcodingUrl
+                            else "/$transcodingUrl"
+                        } else {
+                            "/Videos/${item.itemId}/stream?MediaSourceId=${mediaSource.id}"
+                        }
+                    val url = "$baseUrl$path"
+                    url to "application/x-mpegurl"
                 }
-            } else {
-                streamUrlOriginal
+
+            val streamUrl =
+                if (audioStreamIndex != null) {
+                    if (streamUrlOriginal.contains("AudioStreamIndex=")) {
+                        streamUrlOriginal.replace(
+                            Regex("AudioStreamIndex=\\d+"),
+                            "AudioStreamIndex=$audioStreamIndex",
+                        )
+                    } else {
+                        val separator = if (streamUrlOriginal.contains("?")) "&" else "?"
+                        "$streamUrlOriginal${separator}AudioStreamIndex=$audioStreamIndex"
+                    }
+                } else {
+                    streamUrlOriginal
+                }
+
+            Timber.d("Video url: $streamUrl")
+
+            val mediaInfoBuilder =
+                MediaInfo.Builder(streamUrl)
+                    .setStreamType(MediaInfo.STREAM_TYPE_BUFFERED)
+                    .setContentType(contentType)
+                    .setMetadata(mediaMetadata)
+                    .setCustomData(customData)
+
+            val (castTracks, subtitles, audio) = getTracks(mediaSource)
+
+            if (castTracks.isNotEmpty()) {
+                mediaInfoBuilder.setMediaTracks(castTracks)
             }
 
-        Timber.d("Video url: $streamUrl")
-
-        val mediaInfoBuilder =
-            MediaInfo.Builder(streamUrl)
-                .setStreamType(MediaInfo.STREAM_TYPE_BUFFERED)
-                .setContentType(contentType)
-                .setMetadata(mediaMetadata)
-                .setCustomData(customData)
-
-        val (castTracks, subtitles, audio) = getTracks(mediaSource)
-
-        if (castTracks.isNotEmpty()) {
-            mediaInfoBuilder.setMediaTracks(castTracks)
+            BuildMediaResult(
+                mediaInfo = mediaInfoBuilder.build(),
+                playbackInfo = playbackInfo,
+                subtitleTracks = subtitles,
+                audioTracks = audio,
+            )
         }
-
-        return BuildMediaResult(
-            mediaInfo = mediaInfoBuilder.build(),
-            playbackInfo = playbackInfo,
-            subtitleTracks = subtitles,
-            audioTracks = audio,
-        )
-    }
 
     private fun getTracks(
         mediaSource: MediaSourceInfo
     ): Triple<List<MediaTrack>, List<Track>, List<Track>> {
-        val baseUrl = jellyfinApi.api.baseUrl
+        val baseUrl = jellyfinApi.api.baseUrl?.removeSuffix("/").orEmpty()
 
         val castTracks = mutableListOf<MediaTrack>()
         val subtitles = mutableListOf<Track>()
         val audio = mutableListOf<Track>()
 
         mediaSource.mediaStreams?.forEach { stream ->
-
             // Subtitle
             if (stream.type == MediaStreamType.SUBTITLE) {
                 val trackId = (stream.index + 100)
-                val trackUrl = baseUrl + stream.deliveryUrl
+                val deliveryUrl = stream.deliveryUrl
 
                 if (subtitleStreamIndex == null && stream.isDefault) {
                     subtitleStreamIndex = trackId
                 }
 
-                val builder =
-                    MediaTrack.Builder(trackId.toLong(), MediaTrack.TYPE_TEXT)
-                        .setContentId(trackUrl)
-                        .setSubtype(MediaTrack.SUBTYPE_SUBTITLES)
-                        .setContentType("text/vtt")
-                        .setLanguage(stream.language)
-                        .setName(stream.title ?: stream.displayTitle ?: "Track ${stream.index}")
+                if (!deliveryUrl.isNullOrEmpty()) {
+                    val trackUrl =
+                        if (
+                            deliveryUrl.startsWith("http://") || deliveryUrl.startsWith("https://")
+                        ) {
+                            deliveryUrl
+                        } else {
+                            val path =
+                                if (deliveryUrl.startsWith("/")) deliveryUrl else "/$deliveryUrl"
+                            "$baseUrl$path"
+                        }
 
-                castTracks.add(builder.build())
+                    val builder =
+                        MediaTrack.Builder(trackId.toLong(), MediaTrack.TYPE_TEXT)
+                            .setContentId(trackUrl)
+                            .setSubtype(MediaTrack.SUBTYPE_SUBTITLES)
+                            .setContentType("text/vtt")
+                            .setLanguage(stream.language)
+                            .setName(stream.title ?: stream.displayTitle ?: "Track ${stream.index}")
+
+                    castTracks.add(builder.build())
+                }
 
                 val track =
                     Track(
                         id = trackId,
-                        label = stream.title,
+                        label = stream.title ?: stream.displayTitle,
                         language = stream.language,
                         codec = stream.codec,
                         selected =
                             if (subtitleStreamIndex != null) trackId == subtitleStreamIndex
                             else stream.isDefault,
-                        supported = true,
+                        supported = !deliveryUrl.isNullOrEmpty(),
                         isExternal = stream.isExternal,
                         isForced = stream.isForced,
                         isHearingImpaired = stream.isHearingImpaired,
                     )
 
                 subtitles.add(track)
-
                 Timber.d("Subtitle track: $stream")
             }
-
             // Audio
             else if (stream.type == MediaStreamType.AUDIO) {
                 if (audioStreamIndex == null && stream.isDefault) {
@@ -755,7 +987,7 @@ constructor(
                 val track =
                     Track(
                         id = stream.index,
-                        label = stream.title,
+                        label = stream.title ?: stream.displayTitle,
                         language = stream.language,
                         codec = stream.codec,
                         selected =
@@ -768,22 +1000,32 @@ constructor(
                     )
 
                 audio.add(track)
-
                 Timber.d("Audio track: $stream")
             }
         }
 
-        return Triple(castTracks.toList(), subtitles.toList(), audio.toList())
+        if (audioStreamIndex == null && audio.isNotEmpty()) {
+            audioStreamIndex = audio.first().id
+            audio[0] = audio[0].copy(selected = true)
+        }
+
+        return Triple(castTracks, subtitles, audio)
     }
 
     override fun playItem(itemId: UUID, itemKind: String, startFromBeginning: Boolean) {
+        stopReporting()
+
         audioStreamIndex = null
         subtitleStreamIndex = null
         isSessionRestored = true
         isReporting = false
         itemCache.clear()
+        itemDuration.clear()
 
-        scope.launch {
+        abandonAudioFocus()
+
+        playJob?.cancel()
+        playJob = scope.launch {
             val initialItem =
                 playlistManager.getInitialItem(
                     itemId = itemId,
@@ -804,11 +1046,12 @@ constructor(
                         audioTracks = result.audioTracks,
                     )
 
+                val startPositionMs = initialItem.playbackPosition.coerceAtLeast(0L)
                 val loadRequest =
                     MediaLoadRequestData.Builder()
                         .setMediaInfo(result.mediaInfo)
                         .setAutoplay(true)
-                        .setCurrentTime(initialItem.playbackPosition)
+                        .setCurrentTime(startPositionMs)
                         .build()
 
                 itemCache[initialItem.itemId] = castItem
@@ -816,11 +1059,11 @@ constructor(
 
                 client.load(loadRequest).setResultCallback { callbackResult ->
                     if (callbackResult.status.isSuccess) {
-                        subtitleStreamIndex?.let {
-                            client.setActiveMediaTracks(longArrayOf(it.toLong()))
+                        subtitleStreamIndex?.let { subId ->
+                            client.setActiveMediaTracks(longArrayOf(subId.toLong()))
                         }
                     } else {
-                        Timber.e("Error: ${callbackResult.status.statusMessage}")
+                        Timber.e("Error loading media: ${callbackResult.status.statusMessage}")
                         _currentItem.value = null
                     }
                 }
@@ -829,7 +1072,8 @@ constructor(
     }
 
     private fun manageQueue(itemId: UUID) {
-        scope.launch {
+        queueJob?.cancel()
+        queueJob = scope.launch {
             val status = remoteMediaClient?.mediaStatus ?: return@launch
             val queueItems = status.queueItems
 
@@ -870,7 +1114,7 @@ constructor(
         }
     }
 
-    suspend fun queueNextItem(item: PlayerItem) {
+    private suspend fun queueNextItem(item: PlayerItem) {
         val result = buildMediaInfo(item) ?: return
         itemCache[item.itemId] =
             CastMediaItem(
@@ -901,11 +1145,15 @@ constructor(
                     MediaQueueItem.INVALID_ITEM_ID
                 }
 
-            client.queueInsertItems(arrayOf(queueItem), nextItemId, null)
+            try {
+                client.queueInsertItems(arrayOf(queueItem), nextItemId, null)
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to insert next queue item")
+            }
         }
     }
 
-    suspend fun queuePreviousItem(item: PlayerItem) {
+    private suspend fun queuePreviousItem(item: PlayerItem) {
         val result = buildMediaInfo(item) ?: return
         itemCache[item.itemId] =
             CastMediaItem(
@@ -927,37 +1175,68 @@ constructor(
 
             val currentItemId = status.currentItemId
 
-            client.queueInsertItems(arrayOf(queueItem), currentItemId, null)
+            try {
+                client.queueInsertItems(arrayOf(queueItem), currentItemId, null)
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to insert previous queue item")
+            }
         }
     }
 
     override fun play() {
-        remoteMediaClient?.play()
+        try {
+            abandonAudioFocus()
+            remoteMediaClient?.play()
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to play")
+        }
     }
 
     override fun pause() {
-        remoteMediaClient?.pause()
+        try {
+            remoteMediaClient?.pause()
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to pause")
+        }
     }
 
     override fun seekTo(position: Long) {
-        val options =
-            MediaSeekOptions.Builder()
-                .setPosition(position)
-                .setResumeState(MediaSeekOptions.RESUME_STATE_UNCHANGED)
-                .build()
-        remoteMediaClient?.seek(options)
+        val safePosition = position.coerceAtLeast(0L)
+        _playerState.update { it.copy(currentPosition = safePosition) }
+        try {
+            val options =
+                MediaSeekOptions.Builder()
+                    .setPosition(safePosition)
+                    .setResumeState(MediaSeekOptions.RESUME_STATE_UNCHANGED)
+                    .build()
+            remoteMediaClient?.seek(options)
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to seek to $safePosition")
+        }
     }
 
     override fun seekToNext() {
-        remoteMediaClient?.queueNext(null)
+        try {
+            remoteMediaClient?.queueNext(null)
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to seek to next item")
+        }
     }
 
     override fun seekToPrevious() {
-        remoteMediaClient?.queuePrev(null)
+        try {
+            remoteMediaClient?.queuePrev(null)
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to seek to previous item")
+        }
     }
 
     override fun setVolume(volume: Float) {
-        castSession?.volume = volume.toDouble()
+        try {
+            castSession?.volume = volume.toDouble().coerceIn(0.0, 1.0)
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to set volume on CastSession")
+        }
     }
 
     override fun setSubtitleTrack(track: Track?) {
@@ -969,7 +1248,16 @@ constructor(
         if (track != null) activeIds.add(track.id.toLong())
         subtitleStreamIndex = track?.id
 
-        client.setActiveMediaTracks(activeIds.toLongArray()).setResultCallback { result ->
+        _currentItem.update { item ->
+            val subtitleTracks =
+                item?.subtitleTracks?.map { it.copy(selected = track != null && it.id == track.id) }
+                    ?: emptyList()
+
+            item?.copy(subtitleTracks = subtitleTracks)
+        }
+
+        val targetIds = activeIds.distinct().toLongArray()
+        client.setActiveMediaTracks(targetIds).setResultCallback { result ->
             if (result.status.isSuccess) {
                 val activeTrackIds = client.mediaStatus?.activeTrackIds?.toList() ?: emptyList()
 
@@ -983,6 +1271,8 @@ constructor(
                 }
 
                 Timber.d("Selected subtitle track: $track")
+            } else {
+                Timber.e("Failed to set subtitle track: ${result.status.statusMessage}")
             }
         }
     }
@@ -992,7 +1282,7 @@ constructor(
         if (audioStreamIndex == track.id) return
         audioStreamIndex = track.id
 
-        // Update to avoid Ui glitches
+        // Update to avoid UI glitches
         _currentItem.update { item ->
             val audioTracks =
                 item?.audioTracks?.map { it.copy(selected = it.id == track.id) } ?: emptyList()
@@ -1000,10 +1290,14 @@ constructor(
             item?.copy(audioTracks = audioTracks)
         }
 
-        scope.launch {
+        audioTrackJob?.cancel()
+        audioTrackJob = scope.launch {
             val client = remoteMediaClient ?: return@launch
-            val cachedMedia = itemCache[itemId] ?: return@launch
-            val currentPositionMs = client.approximateStreamPosition
+            val cachedMedia =
+                itemCache[itemId]
+                    ?: _currentItem.value?.takeIf { it.item.itemId == itemId }
+                    ?: return@launch
+            val currentPositionMs = client.approximateStreamPosition.coerceAtLeast(0L)
 
             // Request new playback info from Jellyfin with the selected audio track index
             val result = buildMediaInfo(cachedMedia.item) ?: return@launch
@@ -1024,19 +1318,31 @@ constructor(
                         cachedMedia.copy(
                             playbackInfo = result.playbackInfo,
                             audioTracks = result.audioTracks,
+                            subtitleTracks = result.subtitleTracks,
                         )
 
                     itemCache[itemId] = updatedMedia
                     _currentItem.value = updatedMedia
 
+                    subtitleStreamIndex?.let { subId ->
+                        client.setActiveMediaTracks(longArrayOf(subId.toLong()))
+                    }
+
                     Timber.d("Selected audio track: $track")
+                } else {
+                    Timber.e("Failed to set audio track: ${callbackResult.status.statusMessage}")
                 }
             }
         }
     }
 
     override fun stop() {
-        remoteMediaClient?.stop()
-        clearSession()
+        try {
+            remoteMediaClient?.stop()
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to stop remote media client")
+        } finally {
+            clearSession()
+        }
     }
 }

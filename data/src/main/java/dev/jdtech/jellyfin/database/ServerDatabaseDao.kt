@@ -105,6 +105,8 @@ interface ServerDatabaseDao {
     @Query("SELECT * FROM sources WHERE itemId = :itemId")
     fun getSources(itemId: UUID): List<FindroidSourceDto>
 
+    @Query("SELECT * FROM sources") fun getAllSources(): List<FindroidSourceDto>
+
     @Query("SELECT * FROM sources WHERE downloadId = :downloadId")
     fun getSourceByDownloadId(downloadId: Long): FindroidSourceDto?
 

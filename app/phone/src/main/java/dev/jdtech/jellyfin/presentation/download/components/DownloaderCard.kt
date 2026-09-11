@@ -11,20 +11,19 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.ProgressIndicatorDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.core.presentation.downloader.DownloaderState
 import dev.jdtech.jellyfin.models.UiText
@@ -34,16 +33,26 @@ import dev.jdtech.jellyfin.utils.download.DownloadStatus
 import kotlin.math.roundToInt
 
 @Composable
-fun DownloaderCard(state: DownloaderState, onCancelClick: () -> Unit, onRetryClick: () -> Unit) {
+fun DownloaderCard(
+    state: DownloaderState,
+    onCancelClick: () -> Unit,
+    onRetryClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val animatedProgress by
         animateFloatAsState(
             targetValue = state.progress,
             animationSpec = ProgressIndicatorDefaults.ProgressAnimationSpec,
+            label = "downloader_progress",
         )
+
+    val progressPercent by remember {
+        derivedStateOf { (animatedProgress.coerceIn(0f, 1f) * 100).roundToInt() }
+    }
 
     val textColor =
         when (state.status) {
-            DownloadStatus.PAUSED -> Color.Yellow
+            DownloadStatus.PAUSED -> MaterialTheme.colorScheme.tertiary
             DownloadStatus.FAILED -> MaterialTheme.colorScheme.error
             else -> MaterialTheme.colorScheme.onSurface
         }
@@ -58,8 +67,8 @@ fun DownloaderCard(state: DownloaderState, onCancelClick: () -> Unit, onRetryCli
 
     val progressIndicatorColor =
         when (state.status) {
-            DownloadStatus.PAUSED -> Color.Yellow
-            DownloadStatus.SUCCESSFUL -> Color.Green
+            DownloadStatus.PAUSED -> MaterialTheme.colorScheme.tertiary
+            DownloadStatus.SUCCESSFUL -> MaterialTheme.colorScheme.primary
             DownloadStatus.FAILED -> MaterialTheme.colorScheme.error
             else -> ProgressIndicatorDefaults.linearColor
         }
@@ -70,10 +79,11 @@ fun DownloaderCard(state: DownloaderState, onCancelClick: () -> Unit, onRetryCli
             else -> ProgressIndicatorDefaults.linearTrackColor
         }
 
-    OutlinedCard {
+    OutlinedCard(modifier = modifier) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacings.medium),
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacings.medium),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Row(
@@ -86,7 +96,7 @@ fun DownloaderCard(state: DownloaderState, onCancelClick: () -> Unit, onRetryCli
                         style = MaterialTheme.typography.bodyLarge,
                     )
                     Text(
-                        text = animatedProgress.times(100).roundToInt().toString() + "%",
+                        text = "$progressPercent%",
                         color = textColor,
                         style = MaterialTheme.typography.bodyLarge,
                     )
@@ -98,7 +108,7 @@ fun DownloaderCard(state: DownloaderState, onCancelClick: () -> Unit, onRetryCli
                     }
                     else -> {
                         LinearProgressIndicator(
-                            progress = { animatedProgress },
+                            progress = { animatedProgress.coerceIn(0f, 1f) },
                             modifier = Modifier.fillMaxWidth(),
                             color = progressIndicatorColor,
                             trackColor = progressTrackColor,
@@ -124,28 +134,27 @@ fun DownloaderCard(state: DownloaderState, onCancelClick: () -> Unit, onRetryCli
                     )
                 }
             }
-            CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 0.dp) {
-                when (state.status) {
-                    DownloadStatus.PENDING,
-                    DownloadStatus.RUNNING -> {
-                        FilledTonalIconButton(onClick = onCancelClick) {
-                            Icon(
-                                painter = painterResource(CoreR.drawable.ic_x),
-                                contentDescription = null,
-                            )
-                        }
+            when (state.status) {
+                DownloadStatus.PENDING,
+                DownloadStatus.RUNNING,
+                DownloadStatus.PAUSED -> {
+                    FilledTonalIconButton(onClick = onCancelClick) {
+                        Icon(
+                            painter = painterResource(CoreR.drawable.ic_x),
+                            contentDescription = stringResource(CoreR.string.cancel),
+                        )
                     }
-                    DownloadStatus.FAILED -> {
-                        FilledTonalIconButton(onClick = onRetryClick) {
-                            Icon(
-                                painter = painterResource(CoreR.drawable.ic_rotate_ccw),
-                                contentDescription = null,
-                            )
-                        }
-                    }
-
-                    else -> {}
                 }
+                DownloadStatus.FAILED -> {
+                    FilledTonalIconButton(onClick = onRetryClick) {
+                        Icon(
+                            painter = painterResource(CoreR.drawable.ic_rotate_ccw),
+                            contentDescription = stringResource(CoreR.string.retry),
+                        )
+                    }
+                }
+
+                else -> {}
             }
         }
     }
@@ -169,6 +178,18 @@ private fun DownloaderCardDownloadingPreview() {
     FindroidTheme {
         DownloaderCard(
             state = DownloaderState(status = DownloadStatus.RUNNING, progress = 0.5f),
+            onCancelClick = {},
+            onRetryClick = {},
+        )
+    }
+}
+
+@Composable
+@Preview
+private fun DownloaderCardPausedPreview() {
+    FindroidTheme {
+        DownloaderCard(
+            state = DownloaderState(status = DownloadStatus.PAUSED, progress = 0.5f),
             onCancelClick = {},
             onRetryClick = {},
         )

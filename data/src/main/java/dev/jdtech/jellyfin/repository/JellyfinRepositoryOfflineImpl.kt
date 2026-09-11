@@ -26,6 +26,7 @@ import dev.jdtech.jellyfin.models.toFindroidSource
 import dev.jdtech.jellyfin.settings.domain.AppPreferences
 import java.io.File
 import java.util.UUID
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
@@ -42,6 +43,7 @@ class JellyfinRepositoryOfflineImpl(
     private val jellyfinApi: JellyfinApi,
     private val database: ServerDatabaseDao,
     private val appPreferences: AppPreferences,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : JellyfinRepository {
 
     override suspend fun getAdditionalParts(itemId: UUID): List<FindroidPart> {
@@ -283,22 +285,23 @@ class JellyfinRepositoryOfflineImpl(
         mediaSourceId: String?,
         playSessionId: String?,
     ) {
-        withContext(Dispatchers.IO) {
+        withContext(ioDispatcher) {
+            val userId = jellyfinApi.userId ?: return@withContext
             when {
                 playedPercentage < 10 -> {
-                    database.setPlaybackPositionTicks(itemId, jellyfinApi.userId!!, 0)
-                    database.setPlayed(jellyfinApi.userId!!, itemId, false)
+                    database.setPlaybackPositionTicks(itemId, userId, 0)
+                    database.setPlayed(userId, itemId, false)
                 }
                 playedPercentage > 90 -> {
-                    database.setPlaybackPositionTicks(itemId, jellyfinApi.userId!!, 0)
-                    database.setPlayed(jellyfinApi.userId!!, itemId, true)
+                    database.setPlaybackPositionTicks(itemId, userId, 0)
+                    database.setPlayed(userId, itemId, true)
                 }
                 else -> {
-                    database.setPlaybackPositionTicks(itemId, jellyfinApi.userId!!, positionTicks)
-                    database.setPlayed(jellyfinApi.userId!!, itemId, false)
+                    database.setPlaybackPositionTicks(itemId, userId, positionTicks)
+                    database.setPlayed(userId, itemId, false)
                 }
             }
-            database.setUserDataToBeSynced(jellyfinApi.userId!!, itemId, true)
+            database.setUserDataToBeSynced(userId, itemId, true)
         }
     }
 
@@ -310,38 +313,43 @@ class JellyfinRepositoryOfflineImpl(
         mediaSourceId: String?,
         playSessionId: String?,
     ) {
-        withContext(Dispatchers.IO) {
-            database.setPlaybackPositionTicks(itemId, jellyfinApi.userId!!, positionTicks)
-            database.setUserDataToBeSynced(jellyfinApi.userId!!, itemId, true)
+        withContext(ioDispatcher) {
+            val userId = jellyfinApi.userId ?: return@withContext
+            database.setPlaybackPositionTicks(itemId, userId, positionTicks)
+            database.setUserDataToBeSynced(userId, itemId, true)
         }
     }
 
     override suspend fun markAsFavorite(itemId: UUID) {
-        withContext(Dispatchers.IO) {
-            database.setFavorite(jellyfinApi.userId!!, itemId, true)
-            database.setUserDataToBeSynced(jellyfinApi.userId!!, itemId, true)
+        withContext(ioDispatcher) {
+            val userId = jellyfinApi.userId ?: return@withContext
+            database.setFavorite(userId, itemId, true)
+            database.setUserDataToBeSynced(userId, itemId, true)
         }
     }
 
     override suspend fun unmarkAsFavorite(itemId: UUID) {
-        withContext(Dispatchers.IO) {
-            database.setFavorite(jellyfinApi.userId!!, itemId, false)
-            database.setUserDataToBeSynced(jellyfinApi.userId!!, itemId, true)
+        withContext(ioDispatcher) {
+            val userId = jellyfinApi.userId ?: return@withContext
+            database.setFavorite(userId, itemId, false)
+            database.setUserDataToBeSynced(userId, itemId, true)
         }
     }
 
     override suspend fun markAsPlayed(itemId: UUID) {
-        withContext(Dispatchers.IO) {
-            database.setPlayed(jellyfinApi.userId!!, itemId, true)
-            database.setPlaybackPositionTicks(itemId, jellyfinApi.userId!!, 0)
-            database.setUserDataToBeSynced(jellyfinApi.userId!!, itemId, true)
+        withContext(ioDispatcher) {
+            val userId = jellyfinApi.userId ?: return@withContext
+            database.setPlayed(userId, itemId, true)
+            database.setPlaybackPositionTicks(itemId, userId, 0)
+            database.setUserDataToBeSynced(userId, itemId, true)
         }
     }
 
     override suspend fun markAsUnplayed(itemId: UUID) {
-        withContext(Dispatchers.IO) {
-            database.setPlayed(jellyfinApi.userId!!, itemId, false)
-            database.setUserDataToBeSynced(jellyfinApi.userId!!, itemId, true)
+        withContext(ioDispatcher) {
+            val userId = jellyfinApi.userId ?: return@withContext
+            database.setPlayed(userId, itemId, false)
+            database.setUserDataToBeSynced(userId, itemId, true)
         }
     }
 

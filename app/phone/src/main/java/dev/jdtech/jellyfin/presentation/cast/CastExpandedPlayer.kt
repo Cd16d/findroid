@@ -24,13 +24,14 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -41,6 +42,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.C
 import androidx.window.core.layout.WindowSizeClass
 import dev.jdtech.jellyfin.models.FindroidSegment
@@ -59,28 +61,29 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 fun CastExpandedPlayer(
     onDeviceClick: () -> Unit,
     onClose: () -> Unit,
+    modifier: Modifier = Modifier,
     onDismissStarted: () -> Unit = {},
     onDismissCanceled: () -> Unit = {},
     viewModel: CastPlayerViewModel = hiltViewModel(),
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val windowAdaptiveInfo = currentWindowAdaptiveInfo()
     val isExpandedScreen =
-        windowAdaptiveInfo.windowSizeClass.isWidthAtLeastBreakpoint(
-            WindowSizeClass.WIDTH_DP_EXPANDED_LOWER_BOUND
-        )
+        remember(windowAdaptiveInfo) {
+            windowAdaptiveInfo.windowSizeClass.isWidthAtLeastBreakpoint(
+                WindowSizeClass.WIDTH_DP_EXPANDED_LOWER_BOUND
+            )
+        }
 
     val actions =
-        remember(viewModel, uiState.playerState.currentPosition) {
+        remember(viewModel, onDeviceClick, onClose) {
             CastPlayerActions(
                 onPlay = { viewModel.playerController.play() },
                 onPause = { viewModel.playerController.pause() },
                 onSeek = { viewModel.playerController.seekTo(it) },
                 onPlayPreviousItem = {
-                    if (
-                        !uiState.playerState.hasPreviousItem ||
-                            uiState.playerState.currentPosition > 5000
-                    ) {
+                    val playerState = viewModel.uiState.value.playerState
+                    if (!playerState.hasPreviousItem || playerState.currentPosition > 5000) {
                         viewModel.playerController.seekTo(0)
                     } else {
                         viewModel.playPreviousItem()
@@ -97,14 +100,17 @@ fun CastExpandedPlayer(
         }
 
     if (!isExpandedScreen) {
+        val currentOnDismissStarted by rememberUpdatedState(onDismissStarted)
+        val currentOnDismissCanceled by rememberUpdatedState(onDismissCanceled)
+
         val sheetState =
             rememberModalBottomSheetState(
                 skipPartiallyExpanded = true,
                 confirmValueChange = { targetValue ->
                     if (targetValue == SheetValue.Hidden) {
-                        onDismissStarted()
+                        currentOnDismissStarted()
                     } else if (targetValue == SheetValue.Expanded) {
-                        onDismissCanceled()
+                        currentOnDismissCanceled()
                     }
                     true
                 },
@@ -115,15 +121,16 @@ fun CastExpandedPlayer(
                 .distinctUntilChanged()
                 .collect { targetValue ->
                     if (targetValue == SheetValue.Hidden) {
-                        onDismissStarted()
+                        currentOnDismissStarted()
                     } else if (targetValue == SheetValue.Expanded) {
-                        onDismissCanceled()
+                        currentOnDismissCanceled()
                     }
                 }
         }
 
         ModalBottomSheet(
             onDismissRequest = onClose,
+            modifier = modifier,
             sheetState = sheetState,
             dragHandle = null,
             containerColor = MaterialTheme.colorScheme.background,
@@ -145,7 +152,7 @@ fun CastExpandedPlayer(
         }
     } else {
         Surface(
-            modifier = Modifier.fillMaxHeight().width(400.dp),
+            modifier = modifier.fillMaxHeight().width(400.dp),
             shadowElevation = 8.dp,
             color = MaterialTheme.colorScheme.background,
         ) {
@@ -158,6 +165,7 @@ fun CastExpandedPlayer(
     }
 }
 
+@Immutable
 data class CastPlayerActions(
     val onPlay: () -> Unit,
     val onPause: () -> Unit,
@@ -177,6 +185,7 @@ private fun CastExpandedPlayerLayout(
     isExpandedScreen: Boolean,
     uiState: CastPlayerViewModel.UiState,
     actions: CastPlayerActions,
+    modifier: Modifier = Modifier,
 ) {
     var isScrubbing by remember { mutableStateOf(false) }
     var scrubPosition by remember { mutableFloatStateOf(0f) }
@@ -184,10 +193,54 @@ private fun CastExpandedPlayerLayout(
     var trackType by remember { mutableIntStateOf(C.TRACK_TYPE_AUDIO) }
 
     val configuration = LocalConfiguration.current
-    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+    val isLandscape =
+        remember(configuration.orientation) {
+            configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+        }
     val safePadding = rememberSafePadding()
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    val onScrubStart: (Float) -> Unit = remember {
+        { position ->
+            isScrubbing = true
+            scrubPosition = position
+        }
+    }
+    val onScrubStop: () -> Unit =
+        remember(actions) {
+            {
+                isScrubbing = false
+                actions.onSeek(scrubPosition.toLong())
+            }
+        }
+    val onClickAudio: () -> Unit = remember {
+        {
+            showTrackSelection = true
+            trackType = C.TRACK_TYPE_AUDIO
+        }
+    }
+    val onClickSubtitle: () -> Unit = remember {
+        {
+            showTrackSelection = true
+            trackType = C.TRACK_TYPE_TEXT
+        }
+    }
+    val onDismissTrackSelection: () -> Unit = remember { { showTrackSelection = false } }
+    val onSetTrack: (Track?) -> Unit =
+        remember(actions) {
+            { track ->
+                if (trackType == C.TRACK_TYPE_AUDIO) {
+                    track?.let { actions.onAudioTrackSelected(it) }
+                } else {
+                    actions.onSubtitleTrackSelected(track)
+                }
+            }
+        }
+    val currentTracks =
+        remember(trackType, uiState.audioTracks, uiState.subtitleTracks) {
+            if (trackType == C.TRACK_TYPE_AUDIO) uiState.audioTracks else uiState.subtitleTracks
+        }
+
+    Box(modifier = modifier.fillMaxSize()) {
         Column(
             modifier =
                 Modifier.fillMaxSize()
@@ -218,28 +271,16 @@ private fun CastExpandedPlayerLayout(
                         uiState = uiState,
                         isScrubbing = isScrubbing,
                         scrubPosition = scrubPosition,
-                        onScrubStart = {
-                            isScrubbing = true
-                            scrubPosition = it
-                        },
-                        onScrubStop = {
-                            isScrubbing = false
-                            actions.onSeek(scrubPosition.toLong())
-                        },
+                        onScrubStart = onScrubStart,
+                        onScrubStop = onScrubStop,
                         onPlay = actions.onPlay,
                         onPause = actions.onPause,
                         onPlayPreviousItem = actions.onPlayPreviousItem,
                         onPlayNextItem = actions.onPlayNextItem,
                         onSkipSegment = actions.onSkipSegment,
                         onVolumeChange = actions.onVolumeChange,
-                        onClickAudio = {
-                            showTrackSelection = true
-                            trackType = C.TRACK_TYPE_AUDIO
-                        },
-                        onClickSubtitle = {
-                            showTrackSelection = true
-                            trackType = C.TRACK_TYPE_TEXT
-                        },
+                        onClickAudio = onClickAudio,
+                        onClickSubtitle = onClickSubtitle,
                         modifier = Modifier.weight(1f),
                     )
                 }
@@ -259,28 +300,16 @@ private fun CastExpandedPlayerLayout(
                     uiState = uiState,
                     isScrubbing = isScrubbing,
                     scrubPosition = scrubPosition,
-                    onScrubStart = {
-                        isScrubbing = true
-                        scrubPosition = it
-                    },
-                    onScrubStop = {
-                        isScrubbing = false
-                        actions.onSeek(scrubPosition.toLong())
-                    },
+                    onScrubStart = onScrubStart,
+                    onScrubStop = onScrubStop,
                     onPlay = actions.onPlay,
                     onPause = actions.onPause,
                     onPlayPreviousItem = actions.onPlayPreviousItem,
                     onPlayNextItem = actions.onPlayNextItem,
                     onSkipSegment = actions.onSkipSegment,
                     onVolumeChange = actions.onVolumeChange,
-                    onClickAudio = {
-                        showTrackSelection = true
-                        trackType = C.TRACK_TYPE_AUDIO
-                    },
-                    onClickSubtitle = {
-                        showTrackSelection = true
-                        trackType = C.TRACK_TYPE_TEXT
-                    },
+                    onClickAudio = onClickAudio,
+                    onClickSubtitle = onClickSubtitle,
                 )
                 Spacer(modifier = Modifier.height(48.dp))
             }
@@ -289,17 +318,9 @@ private fun CastExpandedPlayerLayout(
         CastTrackSelectionDialog(
             visible = showTrackSelection,
             type = trackType,
-            tracks =
-                if (trackType == C.TRACK_TYPE_AUDIO) uiState.audioTracks
-                else uiState.subtitleTracks,
-            onSetTrack = {
-                if (trackType == C.TRACK_TYPE_AUDIO) {
-                    it?.let { actions.onAudioTrackSelected(it) }
-                } else {
-                    actions.onSubtitleTrackSelected(it)
-                }
-            },
-            onDismiss = { showTrackSelection = false },
+            tracks = currentTracks,
+            onSetTrack = onSetTrack,
+            onDismiss = onDismissTrackSelection,
             displayExtraInfo = uiState.displayExtraInfo,
             modifier = Modifier.padding(bottom = safePadding.bottom),
         )
@@ -349,6 +370,18 @@ private fun CastExpandedPlayerMoviePhoneHorizontalPreview() {
         CastExpandedPlayerLayout(
             isExpandedScreen = false,
             uiState = mockUiStateMovie(),
+            actions = mockActions(),
+        )
+    }
+}
+
+@Preview(name = "Expanded Side Sheet", showBackground = true, widthDp = 400, heightDp = 800)
+@Composable
+private fun CastExpandedPlayerExpandedPreview() {
+    FindroidTheme {
+        CastExpandedPlayerLayout(
+            isExpandedScreen = true,
+            uiState = mockUiStateEpisode(),
             actions = mockActions(),
         )
     }

@@ -1,8 +1,9 @@
 package dev.jdtech.jellyfin.presentation.cast.components
 
-import androidx.compose.animation.core.animateIntAsState
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
@@ -34,7 +35,12 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
@@ -52,6 +58,7 @@ fun CastTrackVolumeControls(
     onVolumeChange: (Float) -> Unit,
     onClickAudio: () -> Unit,
     onClickSubtitle: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val audioInteractionSource = remember { MutableInteractionSource() }
     val subtitlesInteractionSource = remember { MutableInteractionSource() }
@@ -60,21 +67,27 @@ fun CastTrackVolumeControls(
     val isSubtitlePressed by subtitlesInteractionSource.collectIsPressedAsState()
 
     val audioButtonCornerShape by
-        animateIntAsState(
-            targetValue = if (isAudioPressed) 50 else 3,
+        animateDpAsState(
+            targetValue = if (isAudioPressed) 50.dp else 3.dp,
             animationSpec = tween(durationMillis = 200),
             label = "audioShapeAnimation",
         )
 
     val subtitleButtonCornerShape by
-        animateIntAsState(
-            targetValue = if (isSubtitlePressed) 50 else 3,
+        animateDpAsState(
+            targetValue = if (isSubtitlePressed) 50.dp else 3.dp,
             animationSpec = tween(durationMillis = 200),
             label = "subtitleShapeAnimation",
         )
 
+    val buttonColors =
+        IconButtonDefaults.filledIconButtonColors(
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary,
+        )
+
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = MaterialTheme.spacings.large),
+        modifier = modifier.fillMaxWidth().padding(horizontal = MaterialTheme.spacings.large),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Row(
@@ -88,20 +101,16 @@ fun CastTrackVolumeControls(
                     RoundedCornerShape(
                         topStart = 50.dp,
                         bottomStart = 50.dp,
-                        topEnd = audioButtonCornerShape.dp,
-                        bottomEnd = audioButtonCornerShape.dp,
+                        topEnd = audioButtonCornerShape,
+                        bottomEnd = audioButtonCornerShape,
                     ),
                 interactionSource = audioInteractionSource,
-                colors =
-                    IconButtonDefaults.filledIconButtonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary,
-                    ),
-                modifier = Modifier.size(42.dp),
+                colors = buttonColors,
+                modifier = Modifier.size(48.dp),
             ) {
                 Icon(
                     painter = painterResource(CoreR.drawable.ic_speaker),
-                    contentDescription = "Audio",
+                    contentDescription = stringResource(CoreR.string.audio),
                     modifier = Modifier.size(24.dp),
                 )
             }
@@ -110,22 +119,18 @@ fun CastTrackVolumeControls(
                 enabled = uiState.subtitleTracks.isNotEmpty(),
                 shape =
                     RoundedCornerShape(
-                        topStart = subtitleButtonCornerShape.dp,
-                        bottomStart = subtitleButtonCornerShape.dp,
+                        topStart = subtitleButtonCornerShape,
+                        bottomStart = subtitleButtonCornerShape,
                         topEnd = 50.dp,
                         bottomEnd = 50.dp,
                     ),
                 interactionSource = subtitlesInteractionSource,
-                colors =
-                    IconButtonDefaults.filledIconButtonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary,
-                    ),
-                modifier = Modifier.size(42.dp),
+                colors = buttonColors,
+                modifier = Modifier.size(48.dp),
             ) {
                 Icon(
                     painter = painterResource(CoreR.drawable.ic_closed_caption),
-                    contentDescription = "Subtitle",
+                    contentDescription = stringResource(CoreR.string.subtitle),
                     modifier = Modifier.size(24.dp),
                 )
             }
@@ -137,19 +142,17 @@ fun CastTrackVolumeControls(
             volume = volume,
             onValueChange = onVolumeChange,
             modifier = Modifier.weight(1.5f),
+            isMuted = uiState.playerState.isMuted,
         )
     }
 }
 
 private object VolumeSliderDefaults {
     val TrackHeight: Dp = 40.dp
-    val HandleHeight: Dp = 52.dp
-    val HandleWidth: Dp = 4.dp
-    val TrackCornerRadius: Dp = 12.dp
     val InsetIconSize: Dp = 24.dp
+    val InsetIconDpSize: DpSize = DpSize(InsetIconSize, InsetIconSize)
     val IconPadding: Dp = 10.dp
     val ThumbTrackGapSize: Dp = 6.dp
-    val StopIndicatorRadius: Dp = 4.dp
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -158,18 +161,29 @@ fun VolumeSlider(
     volume: Float,
     onValueChange: (Float) -> Unit,
     modifier: Modifier = Modifier,
+    isMuted: Boolean = false,
 ) {
-    var localVolume by remember { mutableFloatStateOf(volume) }
+    val safeVolume = remember(volume) { if (volume.isFinite()) volume.coerceIn(0f, 1f) else 0f }
+    var localVolume by remember { mutableFloatStateOf(safeVolume) }
+    val sliderInteractionSource = remember { MutableInteractionSource() }
+    val isPressed by sliderInteractionSource.collectIsPressedAsState()
+    val isDragged by sliderInteractionSource.collectIsDraggedAsState()
+    val hapticFeedback = LocalHapticFeedback.current
 
-    LaunchedEffect(volume) { localVolume = volume }
-
-    val currentIcon =
-        when {
-            localVolume <= 0f -> painterResource(CoreR.drawable.ic_volume_0)
-            localVolume < 0.33f -> painterResource(CoreR.drawable.ic_volume_33)
-            localVolume < 0.66f -> painterResource(CoreR.drawable.ic_volume_66)
-            else -> painterResource(CoreR.drawable.ic_volume_100)
+    LaunchedEffect(safeVolume) {
+        if (!isPressed && !isDragged) {
+            localVolume = safeVolume
         }
+    }
+
+    val iconRes =
+        when {
+            isMuted || localVolume <= 0f -> CoreR.drawable.ic_volume_0
+            localVolume < 0.33f -> CoreR.drawable.ic_volume_33
+            localVolume < 0.66f -> CoreR.drawable.ic_volume_66
+            else -> CoreR.drawable.ic_volume_100
+        }
+    val currentIcon = painterResource(iconRes)
 
     val colors =
         SliderDefaults.colors(
@@ -178,16 +192,24 @@ fun VolumeSlider(
             thumbColor = MaterialTheme.colorScheme.primary,
         )
 
+    val volumeContentDescription = stringResource(CoreR.string.audio)
+
     Slider(
         value = localVolume,
-        onValueChange = { localVolume = it },
-        onValueChangeFinished = { onValueChange(localVolume) },
-        modifier = modifier,
+        onValueChange = { localVolume = it.coerceIn(0f, 1f) },
+        onValueChangeFinished = {
+            val clamped = localVolume.coerceIn(0f, 1f)
+            onValueChange(clamped)
+            if (clamped == 0f || clamped == 1f) {
+                hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+            }
+        },
+        interactionSource = sliderInteractionSource,
+        modifier = modifier.semantics { contentDescription = volumeContentDescription },
         valueRange = 0f..1f,
         colors = colors,
         track = { sliderState ->
-            val iconSize =
-                DpSize(VolumeSliderDefaults.InsetIconSize, VolumeSliderDefaults.InsetIconSize)
+            val iconSize = VolumeSliderDefaults.InsetIconDpSize
             val activeIconColor = MaterialTheme.colorScheme.onPrimary
             val inactiveIconColor = MaterialTheme.colorScheme.onSurfaceVariant
 
@@ -197,7 +219,7 @@ fun VolumeSlider(
                     Modifier.height(VolumeSliderDefaults.TrackHeight).drawWithContent {
                         drawContent()
                         val yOffset = size.height / 2 - iconSize.toSize().height / 2
-                        val fraction = localVolume.coerceIn(0f, 1f)
+                        val fraction = sliderState.value.coerceIn(0f, 1f)
                         val thumbGapPx = VolumeSliderDefaults.ThumbTrackGapSize.toPx()
                         val activeTrackEnd = size.width * fraction - thumbGapPx
                         val inactiveTrackStart = activeTrackEnd + thumbGapPx * 2

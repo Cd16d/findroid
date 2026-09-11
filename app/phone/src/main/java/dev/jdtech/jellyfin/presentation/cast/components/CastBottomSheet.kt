@@ -19,13 +19,13 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.mediarouter.media.MediaRouter
 import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.player.cast.models.CastConnectionState
@@ -39,21 +39,23 @@ import dev.jdtech.jellyfin.presentation.utils.rememberSafePadding
 @Composable
 fun CastBottomSheet(
     onDismissRequest: () -> Unit,
+    modifier: Modifier = Modifier,
     sheetState: SheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
     viewModel: CastPlayerViewModel = hiltViewModel(),
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val devices = uiState.availableDevices
     val connectedDevice = uiState.connectedDevice
     val connectionState = uiState.connectionState
 
-    DisposableEffect(viewModel) {
+    DisposableEffect(viewModel.sessionManager) {
         viewModel.sessionManager.updateDiscovery(MediaRouter.CALLBACK_FLAG_PERFORM_ACTIVE_SCAN)
         onDispose { viewModel.sessionManager.updateDiscovery() }
     }
 
     ModalBottomSheet(
         onDismissRequest = onDismissRequest,
+        modifier = modifier,
         sheetState = sheetState,
         dragHandle = null,
         contentWindowInsets = { WindowInsets(0, 0, 0, 0) },
@@ -75,12 +77,22 @@ fun CastBottomSheetLayout(
     connectionState: CastConnectionState,
     onDeviceSelected: (Device) -> Unit,
     onDisconnect: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val safePadding = rememberSafePadding()
 
     val paddingBottom = safePadding.bottom + MaterialTheme.spacings.default
 
-    Column(modifier = Modifier.fillMaxWidth().padding(bottom = paddingBottom)) {
+    Column(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .padding(
+                    start = safePadding.start,
+                    end = safePadding.end,
+                    bottom = paddingBottom,
+                )
+    ) {
         Text(
             text =
                 if (devices.isEmpty()) {
@@ -92,7 +104,7 @@ fun CastBottomSheetLayout(
             color = MaterialTheme.colorScheme.onSurface,
             modifier =
                 Modifier.padding(
-                    horizontal = 24.dp,
+                    horizontal = MaterialTheme.spacings.default,
                     vertical = MaterialTheme.spacings.medium,
                 ),
         )
@@ -110,7 +122,7 @@ fun CastBottomSheetLayout(
                 text = stringResource(CoreR.string.cast_available_devices).uppercase(),
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.secondary,
-                modifier = Modifier.padding(horizontal = 24.dp),
+                modifier = Modifier.padding(horizontal = MaterialTheme.spacings.default),
             )
 
             Spacer(Modifier.height(MaterialTheme.spacings.medium))
@@ -120,18 +132,28 @@ fun CastBottomSheetLayout(
                 contentPadding = PaddingValues(horizontal = MaterialTheme.spacings.medium),
                 verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacings.small),
             ) {
-                items(items = devices, key = { it.id }) { device ->
+                items(
+                    items = devices,
+                    key = { it.id },
+                    contentType = { "cast_device" },
+                ) { device ->
+                    val isConnected = device.id == connectedDevice?.id
+                    val onClick =
+                        remember(device, isConnected, onDisconnect, onDeviceSelected) {
+                            {
+                                if (isConnected) {
+                                    onDisconnect()
+                                } else {
+                                    onDeviceSelected(device)
+                                }
+                            }
+                        }
                     CastDeviceItem(
                         device = device,
-                        connected = device.id == connectedDevice?.id,
+                        connected = isConnected,
                         connectionState = connectionState,
-                        onClick = {
-                            if (device.id == connectedDevice?.id) {
-                                onDisconnect()
-                            } else {
-                                onDeviceSelected(device)
-                            }
-                        },
+                        onClick = onClick,
+                        modifier = Modifier.fillMaxWidth(),
                     )
                 }
             }
@@ -143,12 +165,11 @@ fun CastBottomSheetLayout(
             text = stringResource(CoreR.string.cast_wifi_instruction),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 24.dp),
+            modifier = Modifier.padding(horizontal = MaterialTheme.spacings.default),
         )
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Preview(showBackground = true)
 @Composable
 private fun CastBottomSheetSearchingPreview() {
@@ -163,7 +184,6 @@ private fun CastBottomSheetSearchingPreview() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Preview(showBackground = true)
 @Composable
 private fun CastBottomSheetPreview() {
@@ -183,7 +203,6 @@ private fun CastBottomSheetPreview() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Preview(showBackground = true)
 @Composable
 private fun CastBottomSheetConnectingPreview() {
@@ -203,7 +222,6 @@ private fun CastBottomSheetConnectingPreview() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Preview(showBackground = true)
 @Composable
 private fun CastBottomSheetConnectedPreview() {

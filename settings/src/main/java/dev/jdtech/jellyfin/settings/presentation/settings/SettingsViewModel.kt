@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.provider.Settings
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -26,11 +27,16 @@ import dev.jdtech.jellyfin.settings.presentation.models.PreferenceSwitch
 import dev.jdtech.jellyfin.settings.presentation.models.StorageDevice
 import dev.jdtech.jellyfin.settings.utils.StorageUtils
 import javax.inject.Inject
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import timber.log.Timber
 
 @HiltViewModel
@@ -39,14 +45,43 @@ class SettingsViewModel
 constructor(
     private val appPreferences: AppPreferences,
     @ApplicationContext private val context: Context,
+    private val savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
+    internal var ioDispatcher: CoroutineDispatcher = Dispatchers.IO
+
+    constructor(
+        appPreferences: AppPreferences,
+        context: Context,
+    ) : this(
+        appPreferences = appPreferences,
+        context = context,
+        savedStateHandle = SavedStateHandle(),
+    )
+
+    constructor(
+        appPreferences: AppPreferences,
+        context: Context,
+        savedStateHandle: SavedStateHandle,
+        ioDispatcher: CoroutineDispatcher,
+    ) : this(
+        appPreferences = appPreferences,
+        context = context,
+        savedStateHandle = savedStateHandle,
+    ) {
+        this.ioDispatcher = ioDispatcher
+    }
+
     private val _state = MutableStateFlow(SettingsState())
     val state = _state.asStateFlow()
 
-    private val eventsChannel = Channel<SettingsEvent>()
+    private val eventsChannel = Channel<SettingsEvent>(Channel.BUFFERED)
     val events = eventsChannel.receiveAsFlow()
 
-    private var initialStorageDeviceOrder: List<Int>? = null
+    private var initialStorageDeviceOrder: List<Int>?
+        get() = savedStateHandle.get<ArrayList<Int>>(KEY_INITIAL_STORAGE_DEVICE_ORDER)
+        set(value) {
+            savedStateHandle[KEY_INITIAL_STORAGE_DEVICE_ORDER] = value?.let { ArrayList(it) }
+        }
 
     private val topLevelPreferences =
         listOf(
@@ -997,6 +1032,7 @@ constructor(
 
     fun loadPreferences(indexes: IntArray = intArrayOf(), deviceType: DeviceType) {
         viewModelScope.launch {
+            _state.update { it.copy(isLoading = true) }
             var preferences = topLevelPreferences
 
             // Show preferences based on the name of the parent
@@ -1026,7 +1062,11 @@ constructor(
 
             if (isDownloadSettings) {
                 try {
-                    val rawDevices = StorageUtils.getStorageDevices(context, defaultIndex)
+                    val rawDevices =
+                        withContext(ioDispatcher) {
+                            StorageUtils.getStorageDevices(context, defaultIndex)
+                        }
+                    if (!isActive) return@launch
                     val order = initialStorageDeviceOrder
                     if (order == null) {
                         // Initial screen visit: place the default device first if one is set
@@ -1185,14 +1225,15 @@ constructor(
                     }
                     .filter { it.preferences.isNotEmpty() }
 
-            _state.emit(
-                _state.value.copy(
+            _state.update {
+                it.copy(
+                    isLoading = false,
                     preferenceGroups = preferences,
                     isDownloadSettings = isDownloadSettings,
                     isSmartDownloadsActive =
                         appPreferences.getValue(appPreferences.smartDownloadNextEpisode),
                 )
-            )
+            }
         }
     }
 
@@ -1234,5 +1275,9 @@ constructor(
             }
             else -> Unit
         }
+    }
+
+    companion object {
+        private const val KEY_INITIAL_STORAGE_DEVICE_ORDER = "initial_storage_device_order"
     }
 }

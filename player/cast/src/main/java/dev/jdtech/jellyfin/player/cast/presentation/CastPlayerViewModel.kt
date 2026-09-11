@@ -3,6 +3,7 @@ package dev.jdtech.jellyfin.player.cast.presentation
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -11,6 +12,7 @@ import dev.jdtech.jellyfin.models.FindroidSegment
 import dev.jdtech.jellyfin.player.cast.CastPlayerController
 import dev.jdtech.jellyfin.player.cast.CastSessionManager
 import dev.jdtech.jellyfin.player.cast.models.CastConnectionState
+import dev.jdtech.jellyfin.player.cast.models.CastPlaybackStatus
 import dev.jdtech.jellyfin.player.cast.models.CastPlayerState
 import dev.jdtech.jellyfin.player.cast.models.Device
 import dev.jdtech.jellyfin.player.core.R
@@ -30,7 +32,11 @@ import dev.jdtech.jellyfin.utils.getTranslatablePartName
 import java.util.UUID
 import javax.inject.Inject
 import kotlin.math.ceil
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -50,7 +56,30 @@ constructor(
     val playerController: CastPlayerController,
     private val repository: JellyfinRepository,
     private val appPreferences: AppPreferences,
+    private val savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
+
+    // Visible for testing / dispatcher overriding
+    internal var defaultDispatcher: CoroutineDispatcher = Dispatchers.Default
+
+    constructor(
+        context: Context,
+        sessionManager: CastSessionManager,
+        playerController: CastPlayerController,
+        repository: JellyfinRepository,
+        appPreferences: AppPreferences,
+        savedStateHandle: SavedStateHandle,
+        defaultDispatcher: CoroutineDispatcher,
+    ) : this(
+        context = context,
+        sessionManager = sessionManager,
+        playerController = playerController,
+        repository = repository,
+        appPreferences = appPreferences,
+        savedStateHandle = savedStateHandle,
+    ) {
+        this.defaultDispatcher = defaultDispatcher
+    }
 
     data class CurrentItemTitle(
         val seriesName: String? = null,
@@ -63,22 +92,22 @@ constructor(
         val playerState: CastPlayerState = CastPlayerState(),
         val availableDevices: List<Device> = emptyList(),
         val connectedDevice: Device? = null,
-        val currentItemTitle: CurrentItemTitle,
-        val currentItemPoster: PlayerImage?,
-        val isMovie: Boolean,
-        val defaultAspectRatio: Float,
-        val trickplayAspectRatio: Float?,
-        val currentSegment: FindroidSegment?,
-        val currentSkipButtonStringRes: Int,
-        val currentTrickplay: Trickplay?,
-        val currentChapters: List<PlayerChapter>,
-        val fileLoaded: Boolean,
+        val currentItemTitle: CurrentItemTitle = CurrentItemTitle(title = ""),
+        val currentItemPoster: PlayerImage? = null,
+        val isMovie: Boolean = false,
+        val defaultAspectRatio: Float = 16f / 10f,
+        val trickplayAspectRatio: Float? = null,
+        val currentSegment: FindroidSegment? = null,
+        val currentSkipButtonStringRes: Int = R.string.player_controls_skip_intro,
+        val currentTrickplay: Trickplay? = null,
+        val currentChapters: List<PlayerChapter> = emptyList(),
+        val fileLoaded: Boolean = false,
         val audioTracks: List<Track> = emptyList(),
         val subtitleTracks: List<Track> = emptyList(),
         val displayExtraInfo: Boolean = false,
     )
 
-    private val _internalUiState =
+    private val _uiState =
         MutableStateFlow(
             UiState(
                 connectionState = sessionManager.connectionState.value,
@@ -101,10 +130,20 @@ constructor(
             )
         )
 
-    val uiState: StateFlow<UiState> = _internalUiState.asStateFlow()
+    val uiState: StateFlow<UiState> = _uiState.asStateFlow()
 
     private var currentMediaItemSegments: List<FindroidSegment> = emptyList()
-    var currentItemId: UUID? = null
+    var currentItemId: UUID? =
+        savedStateHandle.get<String>(KEY_CURRENT_ITEM_ID)?.let {
+            try {
+                UUID.fromString(it)
+            } catch (_: IllegalArgumentException) {
+                null
+            }
+        }
+        private set
+
+    private var trickplayJob: Job? = null
 
     // Segments preferences
     private val segmentsSkipButton: Boolean
@@ -115,20 +154,25 @@ constructor(
 
     init {
         sessionManager.connectionState
-            .onEach { value -> _internalUiState.update { it.copy(connectionState = value) } }
+            .onEach { value ->
+                _uiState.update { it.copy(connectionState = value) }
+                if (value == CastConnectionState.DISCONNECTED) {
+                    onMediaItemCleared()
+                }
+            }
             .launchIn(viewModelScope)
 
         sessionManager.availableDevices
-            .onEach { value -> _internalUiState.update { it.copy(availableDevices = value) } }
+            .onEach { value -> _uiState.update { it.copy(availableDevices = value) } }
             .launchIn(viewModelScope)
 
         sessionManager.connectedDevice
-            .onEach { value -> _internalUiState.update { it.copy(connectedDevice = value) } }
+            .onEach { value -> _uiState.update { it.copy(connectedDevice = value) } }
             .launchIn(viewModelScope)
 
         playerController.playerState
             .onEach { value ->
-                _internalUiState.update { it.copy(playerState = value) }
+                _uiState.update { it.copy(playerState = value) }
                 if (segmentsSkipButton || segmentsAutoSkip) {
                     updateCurrentSegment(value.currentPosition)
                 }
@@ -136,33 +180,28 @@ constructor(
             .launchIn(viewModelScope)
 
         playerController.currentItem
-            .onEach { value ->
-                _internalUiState.update {
+            .onEach { item ->
+                _uiState.update {
                     it.copy(
-                        subtitleTracks = value?.subtitleTracks ?: emptyList(),
-                        audioTracks = value?.audioTracks ?: emptyList(),
+                        subtitleTracks = item?.subtitleTracks ?: emptyList(),
+                        audioTracks = item?.audioTracks ?: emptyList(),
                     )
                 }
-            }
-            .launchIn(viewModelScope)
-
-        viewModelScope.launch {
-            playerController.currentItem.collect { item ->
                 if (item != null) {
                     onMediaItemTransition(item.item)
                 } else {
                     onMediaItemCleared()
                 }
-
                 Timber.d("CurrentItem: $item")
             }
-        }
+            .launchIn(viewModelScope)
     }
 
     /** Handles the transition when a new media item starts playing. */
     private suspend fun onMediaItemTransition(item: PlayerItem) {
         Timber.d("Cast MediaItem transition: ${item.itemId}")
         currentItemId = item.itemId
+        savedStateHandle[KEY_CURRENT_ITEM_ID] = item.itemId.toString()
         val isMovie = item.mediaType == PlayerMediaType.MOVIE
 
         val defaultRatio =
@@ -211,7 +250,10 @@ constructor(
                 )
             }
 
-        _internalUiState.update {
+        val oldTrickplay = _uiState.value.currentTrickplay
+        oldTrickplay?.images?.forEach { it.recycle() }
+
+        _uiState.update {
             it.copy(
                 currentItemTitle = itemTitle,
                 currentItemPoster = item.images.primary,
@@ -219,6 +261,7 @@ constructor(
                 defaultAspectRatio = defaultRatio,
                 trickplayAspectRatio = trickplayRatio,
                 currentSegment = null,
+                currentTrickplay = null,
                 currentChapters = item.chapters,
                 fileLoaded = true,
             )
@@ -226,8 +269,9 @@ constructor(
 
         currentMediaItemSegments = getSegments(item.itemId, repository)
 
+        trickplayJob?.cancel()
         if (appPreferences.getValue(appPreferences.playerTrickplay)) {
-            getTrickplay(item)
+            trickplayJob = viewModelScope.launch(defaultDispatcher) { getTrickplay(item) }
         }
     }
 
@@ -244,9 +288,13 @@ constructor(
         }
 
         if (currentSegment == null) {
-            if (_internalUiState.value.currentSegment != null) {
-                _internalUiState.update { it.copy(currentSegment = null) }
+            if (_uiState.value.currentSegment != null) {
+                _uiState.update { it.copy(currentSegment = null) }
             }
+            return
+        }
+
+        if (_uiState.value.currentSegment == currentSegment) {
             return
         }
 
@@ -267,7 +315,7 @@ constructor(
         ) {
             skipSegment(currentSegment)
         } else if (segmentsSkipButtonTypes.contains(currentSegment.type.toString())) {
-            _internalUiState.update {
+            _uiState.update {
                 it.copy(
                     currentSegment = currentSegment,
                     currentSkipButtonStringRes =
@@ -278,10 +326,43 @@ constructor(
                 )
             }
         } else {
-            _internalUiState.update { it.copy(currentSegment = null) }
+            _uiState.update { it.copy(currentSegment = null) }
         }
 
-        Timber.d("Updated current segment: ${uiState.value.currentSegment?.type}")
+        Timber.d("Updated current segment: ${_uiState.value.currentSegment?.type}")
+    }
+
+    fun play() {
+        playerController.play()
+    }
+
+    fun pause() {
+        playerController.pause()
+    }
+
+    fun togglePlayPause() {
+        if (_uiState.value.playerState.status == CastPlaybackStatus.PLAYING) {
+            pause()
+        } else {
+            play()
+        }
+    }
+
+    fun seekTo(positionMs: Long) {
+        playerController.seekTo(positionMs)
+    }
+
+    fun setVolume(volume: Float) {
+        playerController.setVolume(volume)
+    }
+
+    fun rewindOrPlayPreviousItem() {
+        val playerState = _uiState.value.playerState
+        if (!playerState.hasPreviousItem || playerState.currentPosition > 5000) {
+            seekTo(0)
+        } else {
+            playPreviousItem()
+        }
     }
 
     /**
@@ -295,18 +376,18 @@ constructor(
         } else {
             playerController.seekTo(segment.endTicks)
         }
-        _internalUiState.update { it.copy(currentSegment = null) }
+        _uiState.update { it.copy(currentSegment = null) }
     }
 
     /** Skips playback to the next item in the playlist queue. */
     fun playNextItem() {
-        _internalUiState.update { it.copy(fileLoaded = false) }
+        _uiState.update { it.copy(fileLoaded = false) }
         playerController.seekToNext()
     }
 
     /** Reverts playback to the previous item in the playlist queue. */
     fun playPreviousItem() {
-        _internalUiState.update { it.copy(fileLoaded = false) }
+        _uiState.update { it.copy(fileLoaded = false) }
         playerController.seekToPrevious()
     }
 
@@ -315,7 +396,7 @@ constructor(
      * the [playerController] to switch the track.
      */
     fun onAudioTrackSelected(track: Track?) {
-        _internalUiState.update { state ->
+        _uiState.update { state ->
             state.copy(
                 audioTracks = state.audioTracks.map { it.copy(selected = it.id == track?.id) }
             )
@@ -328,7 +409,7 @@ constructor(
      * tells the [playerController] to switch the track.
      */
     fun onSubtitleTrackSelected(track: Track?) {
-        _internalUiState.update { state ->
+        _uiState.update { state ->
             state.copy(
                 subtitleTracks = state.subtitleTracks.map { it.copy(selected = it.id == track?.id) }
             )
@@ -341,8 +422,14 @@ constructor(
      * disconnects.
      */
     private fun onMediaItemCleared() {
+        trickplayJob?.cancel()
+        trickplayJob = null
+        currentItemId = null
+        savedStateHandle.remove<String>(KEY_CURRENT_ITEM_ID)
         currentMediaItemSegments = emptyList()
-        _internalUiState.update {
+        val oldTrickplay = _uiState.value.currentTrickplay
+        oldTrickplay?.images?.forEach { it.recycle() }
+        _uiState.update {
             it.copy(
                 currentItemTitle = CurrentItemTitle(title = ""),
                 currentItemPoster = null,
@@ -381,27 +468,33 @@ constructor(
      */
     private suspend fun getTrickplay(item: PlayerItem) {
         val trickplayInfo = item.trickplayInfo ?: return
-        withContext(Dispatchers.Default) {
-            try {
-                val maxIndex =
-                    ceil(
-                            trickplayInfo.thumbnailCount
-                                .toDouble()
-                                .div(trickplayInfo.tileWidth * trickplayInfo.tileHeight)
-                        )
-                        .toInt()
-                val bitmaps = mutableListOf<Bitmap>()
+        withContext(defaultDispatcher) {
+            val maxIndex =
+                ceil(
+                        trickplayInfo.thumbnailCount
+                            .toDouble()
+                            .div(trickplayInfo.tileWidth * trickplayInfo.tileHeight)
+                    )
+                    .toInt()
+            val bitmaps = mutableListOf<Bitmap>()
+            var success = false
 
+            try {
                 for (i in 0..maxIndex) {
-                    repository.getTrickplayData(item.itemId, trickplayInfo.width, i)?.let {
-                        byteArray ->
-                        val fullBitmap = BitmapFactory.decodeByteArray(byteArray, 0, byteArray.size)
+                    coroutineContext.ensureActive()
+                    val byteArray =
+                        repository.getTrickplayData(item.itemId, trickplayInfo.width, i) ?: continue
+                    coroutineContext.ensureActive()
+                    val fullBitmap =
+                        BitmapFactory.decodeByteArray(byteArray, 0, byteArray.size) ?: continue
+                    try {
                         for (offsetY in
                             0..<trickplayInfo.height * trickplayInfo.tileHeight step
                                 trickplayInfo.height) {
                             for (offsetX in
                                 0..<trickplayInfo.width * trickplayInfo.tileWidth step
                                     trickplayInfo.width) {
+                                coroutineContext.ensureActive()
                                 if (bitmaps.size < trickplayInfo.thumbnailCount) {
                                     val bitmap =
                                         Bitmap.createBitmap(
@@ -415,14 +508,41 @@ constructor(
                                 }
                             }
                         }
+                    } finally {
+                        fullBitmap.recycle()
                     }
                 }
-                _internalUiState.update {
-                    it.copy(currentTrickplay = Trickplay(trickplayInfo.interval, bitmaps))
+
+                coroutineContext.ensureActive()
+                if (currentItemId == item.itemId) {
+                    val oldTrickplay = _uiState.value.currentTrickplay
+                    oldTrickplay?.images?.forEach { it.recycle() }
+                    _uiState.update {
+                        it.copy(currentTrickplay = Trickplay(trickplayInfo.interval, bitmaps))
+                    }
+                    success = true
                 }
-            } catch (e: Exception) {
-                Timber.e(e)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Throwable) {
+                Timber.e(e, "Failed to decode trickplay thumbnails")
+            } finally {
+                if (!success) {
+                    bitmaps.forEach { it.recycle() }
+                    bitmaps.clear()
+                }
             }
         }
+    }
+
+    override fun onCleared() {
+        trickplayJob?.cancel()
+        val oldTrickplay = _uiState.value.currentTrickplay
+        oldTrickplay?.images?.forEach { it.recycle() }
+        super.onCleared()
+    }
+
+    companion object {
+        private const val KEY_CURRENT_ITEM_ID = "cast_current_item_id"
     }
 }

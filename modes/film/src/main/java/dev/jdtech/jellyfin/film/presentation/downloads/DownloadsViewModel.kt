@@ -27,9 +27,11 @@ import dev.jdtech.jellyfin.settings.utils.StorageUtils
 import dev.jdtech.jellyfin.utils.Downloader
 import java.util.UUID
 import javax.inject.Inject
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -48,6 +50,20 @@ constructor(
     private val appPreferences: AppPreferences,
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
+
+    internal var ioDispatcher: CoroutineDispatcher = Dispatchers.IO
+
+    constructor(
+        repository: JellyfinRepository,
+        database: ServerDatabaseDao,
+        downloader: Downloader,
+        downloadQueue: DownloadQueue,
+        appPreferences: AppPreferences,
+        context: Context,
+        ioDispatcher: CoroutineDispatcher,
+    ) : this(repository, database, downloader, downloadQueue, appPreferences, context) {
+        this.ioDispatcher = ioDispatcher
+    }
 
     private val _state = MutableStateFlow(DownloadsState())
     val state = _state.asStateFlow()
@@ -112,7 +128,7 @@ constructor(
                 }
                 val currentUserId = repository.getUserId()
 
-                withContext(Dispatchers.IO) {
+                withContext(ioDispatcher) {
                     val movies = fetchDownloadedMovies(currentUserId)
                     val showItems = fetchDownloadedShows(currentUserId)
 
@@ -262,7 +278,7 @@ constructor(
     }
 
     private fun deleteMovie(movie: FindroidMovie) {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(ioDispatcher) {
             val currentUserId = repository.getUserId()
             downloadQueue.cancel(movie.id)
             deleteMediaItem(movie, currentUserId)
@@ -271,7 +287,7 @@ constructor(
     }
 
     private fun deleteShow(showItem: DownloadedShowItem) {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(ioDispatcher) {
             val currentUserId = repository.getUserId()
             val queued =
                 downloadQueue.entries.value.filter {
@@ -332,7 +348,7 @@ constructor(
             delay(1000L)
             _state.update { it.copy(pendingDeletionIds = it.pendingDeletionIds - id) }
             deletionJobs.remove(id)
-            withContext(Dispatchers.IO) { onCommit() }
+            withContext(ioDispatcher) { onCommit() }
             loadItems(showLoading = false)
         }
         deletionJobs[id] = job
@@ -385,15 +401,9 @@ constructor(
 
     private fun selectAll() {
         val activeShowIds =
-            _state.value.activeDownloads
-                .map { it.item }
-                .filterIsInstance<FindroidEpisode>()
-                .map { it.seriesId }
+            _state.value.activeDownloads.mapNotNull { (it.item as? FindroidEpisode)?.seriesId }
         val activeMovieIds =
-            _state.value.activeDownloads
-                .map { it.item }
-                .filterIsInstance<FindroidMovie>()
-                .map { it.id }
+            _state.value.activeDownloads.mapNotNull { (it.item as? FindroidMovie)?.id }
 
         val allIds =
             (_state.value.movies.map { it.id } +
@@ -434,8 +444,9 @@ constructor(
         val selected = _state.value.selectedItemIds
         if (selected.isEmpty()) return
 
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(ioDispatcher) {
             for (id in selected) {
+                coroutineContext.ensureActive()
                 downloadQueue.cancel(id)
                 val queuedEpisodes =
                     downloadQueue.entries.value.filter {
@@ -447,10 +458,13 @@ constructor(
             }
             val currentUserId = repository.getUserId()
             for (movie in _state.value.movies.filter { selected.contains(it.id) }) {
+                coroutineContext.ensureActive()
                 deleteMediaItem(movie, currentUserId)
             }
             for (showItem in _state.value.shows.filter { selected.contains(it.show.id) }) {
+                coroutineContext.ensureActive()
                 for (episode in showItem.episodes) {
+                    coroutineContext.ensureActive()
                     deleteMediaItem(episode, currentUserId)
                 }
             }
@@ -469,25 +483,28 @@ constructor(
                 activeTransfers = it.activeTransfers + (id to StorageTransferProgress(itemId = id))
             )
         }
-        downloader.moveItemStorage(item, targetStorageIndex) { bytesTransferred, totalBytes ->
-            val progress =
-                if (totalBytes > 0L) (bytesTransferred.toFloat() / totalBytes).coerceIn(0f, 1f)
-                else 0f
-            _state.update {
-                it.copy(
-                    activeTransfers =
-                        it.activeTransfers +
-                            (id to
-                                StorageTransferProgress(
-                                    itemId = id,
-                                    bytesTransferred = bytesTransferred,
-                                    totalBytes = totalBytes,
-                                    progress = progress,
-                                ))
-                )
+        try {
+            downloader.moveItemStorage(item, targetStorageIndex) { bytesTransferred, totalBytes ->
+                val progress =
+                    if (totalBytes > 0L) (bytesTransferred.toFloat() / totalBytes).coerceIn(0f, 1f)
+                    else 0f
+                _state.update {
+                    it.copy(
+                        activeTransfers =
+                            it.activeTransfers +
+                                (id to
+                                    StorageTransferProgress(
+                                        itemId = id,
+                                        bytesTransferred = bytesTransferred,
+                                        totalBytes = totalBytes,
+                                        progress = progress,
+                                    ))
+                    )
+                }
             }
+        } finally {
+            _state.update { it.copy(activeTransfers = it.activeTransfers - id) }
         }
-        _state.update { it.copy(activeTransfers = it.activeTransfers - id) }
     }
 
     private fun moveItemStorage(id: UUID, targetStorageIndex: Int) {
@@ -505,6 +522,7 @@ constructor(
             val selected = _state.value.selectedItemIds.toList()
             clearSelection()
             for (id in selected) {
+                coroutineContext.ensureActive()
                 val movie = _state.value.movies.firstOrNull { it.id == id }
                 val showItem = _state.value.shows.firstOrNull { it.show.id == id }
                 val item = movie ?: showItem?.show ?: continue

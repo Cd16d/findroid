@@ -2,7 +2,9 @@ package dev.jdtech.jellyfin.core.presentation.downloader
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.work.Constraints
@@ -14,6 +16,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.jdtech.jellyfin.core.Constants
 import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.database.ServerDatabaseDao
+import dev.jdtech.jellyfin.di.ApplicationScope
 import dev.jdtech.jellyfin.models.DownloadQualityPresets
 import dev.jdtech.jellyfin.models.FindroidEpisode
 import dev.jdtech.jellyfin.models.FindroidItem
@@ -33,17 +36,22 @@ import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Provider
 import javax.inject.Singleton
+import kotlin.coroutines.cancellation.CancellationException
+import kotlin.coroutines.coroutineContext
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import timber.log.Timber
 
 /**
@@ -60,7 +68,30 @@ constructor(
     private val repositoryProvider: Provider<JellyfinRepository>,
     private val database: ServerDatabaseDao,
     @ApplicationContext private val context: Context,
+    @ApplicationScope externalScope: CoroutineScope,
 ) {
+    internal var ioDispatcher: CoroutineDispatcher = Dispatchers.IO
+
+    // Secondary constructor for testing with custom dispatcher / scope
+    constructor(
+        downloader: Downloader,
+        appPreferences: AppPreferences,
+        repositoryProvider: Provider<JellyfinRepository>,
+        database: ServerDatabaseDao,
+        context: Context,
+        externalScope: CoroutineScope,
+        ioDispatcher: CoroutineDispatcher,
+    ) : this(
+        downloader,
+        appPreferences,
+        repositoryProvider,
+        database,
+        context,
+        externalScope,
+    ) {
+        this.ioDispatcher = ioDispatcher
+    }
+
     private val repository: JellyfinRepository
         get() = repositoryProvider.get()
 
@@ -103,11 +134,12 @@ constructor(
     private val _entries = MutableStateFlow<List<Entry>>(emptyList())
     val entries: StateFlow<List<Entry>> = _entries.asStateFlow()
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val scope =
+        CoroutineScope(SupervisorJob(externalScope.coroutineContext[Job]) + ioDispatcher)
     private val mutex = Mutex()
     private var pumpJob: Job? = null
 
-    private val speedTrackers = mutableMapOf<Long, DownloadSpeedTracker>()
+    private val speedTrackers = ConcurrentHashMap<Long, DownloadSpeedTracker>()
     private val activeFinalizations = ConcurrentHashMap.newKeySet<Long>()
 
     suspend fun enqueue(
@@ -116,68 +148,80 @@ constructor(
         downloadExternalAudio: Boolean = false,
         storageIndex: Int = -1,
         audioStreamIndex: Int? = null,
-    ) {
-        mutex.withLock {
-            if (
-                _entries.value.any {
-                    it.id == item.id &&
-                        it.state !is EntryState.Failed &&
-                        it.state !is EntryState.Completed
-                }
-            ) {
-                return@withLock
-            }
-            val filtered = _entries.value.filterNot { it.id == item.id }
+    ) =
+        withContext(ioDispatcher) {
             val isTranscoding =
                 DownloadQualityPresets.isTranscodingPreset(
                     presetId ?: appPreferences.getValue(appPreferences.defaultTranscodePresetId),
                     appPreferences,
                 )
-            val newEntry =
-                Entry(
-                    id = item.id,
-                    item = item,
-                    addedAt = System.currentTimeMillis(),
-                    state = EntryState.Pending,
-                    presetId = presetId,
-                    downloadExternalAudio = downloadExternalAudio,
-                    storageIndex = storageIndex,
-                    audioStreamIndex = audioStreamIndex,
-                    isTranscode = isTranscoding,
-                )
-            _entries.value = sort(filtered + newEntry)
-        }
-        ensurePump()
-    }
-
-    suspend fun restoreAll() {
-        val active =
-            try {
-                downloader.getActiveDownloads()
-            } catch (e: Exception) {
-                Timber.e(e, "Failed to query active downloads for restore")
-                emptyList()
-            }
-        if (active.isEmpty()) return
-        mutex.withLock {
-            val known = _entries.value.map { it.id }.toSet()
-            val now = System.currentTimeMillis()
-            val addedActive =
-                active
-                    .filter { (item, _) -> item.id !in known }
-                    .map { (item, dlId) ->
-                        Entry(
-                            id = item.id,
-                            item = item,
-                            addedAt = now - 1,
-                            state = EntryState.Pending,
-                            downloadId = dlId,
-                        )
+            var shouldPump = false
+            mutex.withLock {
+                if (
+                    _entries.value.any {
+                        it.id == item.id &&
+                            it.state !is EntryState.Failed &&
+                            it.state !is EntryState.Completed
                     }
-            _entries.value = sort(_entries.value + addedActive)
+                ) {
+                    return@withLock
+                }
+                val filtered = _entries.value.filterNot { it.id == item.id }
+                val newEntry =
+                    Entry(
+                        id = item.id,
+                        item = item,
+                        addedAt = System.currentTimeMillis(),
+                        state = EntryState.Pending,
+                        presetId = presetId,
+                        downloadExternalAudio = downloadExternalAudio,
+                        storageIndex = storageIndex,
+                        audioStreamIndex = audioStreamIndex,
+                        isTranscode = isTranscoding,
+                    )
+                _entries.value = sort(filtered + newEntry)
+                shouldPump = true
+            }
+            if (shouldPump) {
+                ensurePump()
+            }
         }
-        ensurePump()
-    }
+
+    suspend fun restoreAll() =
+        withContext(ioDispatcher) {
+            val active =
+                try {
+                    downloader.getActiveDownloads()
+                } catch (e: Exception) {
+                    Timber.e(e, "Failed to query active downloads for restore")
+                    emptyList()
+                }
+            if (active.isEmpty()) return@withContext
+            var changed = false
+            mutex.withLock {
+                val known = _entries.value.map { it.id }.toSet()
+                val now = System.currentTimeMillis()
+                val addedActive =
+                    active
+                        .filter { (item, _) -> item.id !in known }
+                        .map { (item, dlId) ->
+                            Entry(
+                                id = item.id,
+                                item = item,
+                                addedAt = now - 1,
+                                state = EntryState.Pending,
+                                downloadId = dlId,
+                            )
+                        }
+                if (addedActive.isNotEmpty()) {
+                    changed = true
+                    _entries.value = sort(_entries.value + addedActive)
+                }
+            }
+            if (changed) {
+                ensurePump()
+            }
+        }
 
     fun cancel(id: UUID) {
         scope.launch {
@@ -197,16 +241,19 @@ constructor(
                     }
                 }
             }
+            ensurePump()
         }
     }
 
     fun retry(id: UUID) {
         scope.launch {
+            var updated = false
             mutex.withLock {
                 _entries.value =
                     sort(
                         _entries.value.map { entry ->
                             if (entry.id == id && entry.state is EntryState.Failed) {
+                                updated = true
                                 entry.copy(
                                     state = EntryState.Pending,
                                     addedAt = System.currentTimeMillis(),
@@ -222,7 +269,9 @@ constructor(
                         }
                     )
             }
-            ensurePump()
+            if (updated) {
+                ensurePump()
+            }
         }
     }
 
@@ -232,10 +281,12 @@ constructor(
             mutex.withLock {
                 toCancel.addAll(_entries.value)
                 _entries.value = emptyList()
+                pumpJob?.cancel()
+                pumpJob = null
             }
+            speedTrackers.clear()
             for (entry in toCancel) {
                 entry.downloadId?.let { dlId ->
-                    speedTrackers.remove(dlId)
                     try {
                         downloader.cancelDownload(entry.item, dlId)
                     } catch (e: Exception) {
@@ -278,6 +329,7 @@ constructor(
                     Timber.e(e, "Failed to pause download $dlId")
                 }
             }
+            ensurePump()
         }
     }
 
@@ -330,8 +382,12 @@ constructor(
             pumpJob = scope.launch {
                 try {
                     pump()
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     Timber.e(e, "DownloadQueue pump crashed")
+                } finally {
+                    mutex.withLock { pumpJob = null }
                 }
             }
         }
@@ -339,6 +395,7 @@ constructor(
 
     private suspend fun pump() {
         while (true) {
+            coroutineContext.ensureActive()
             val active =
                 _entries.value.filter {
                     it.state is EntryState.Downloading ||
@@ -355,6 +412,7 @@ constructor(
                 val dlIds = active.mapNotNull { it.downloadId }
                 val snapshots = downloader.getProgress(dlIds)
                 for (entry in active) {
+                    coroutineContext.ensureActive()
                     val dlId = entry.downloadId ?: continue
                     val snapshot =
                         snapshots[dlId]
@@ -364,28 +422,24 @@ constructor(
                                 -1L,
                                 -1L,
                             )
-                    val isUserPaused = entry.state is EntryState.Paused
                     val newState: EntryState? =
                         if (entry.state is EntryState.Converting) {
-                            null
-                        } else if (isUserPaused) {
                             when (snapshot.status) {
-                                DownloadStatus.SUCCESSFUL ->
-                                    if (entry.isTranscode) EntryState.Converting
-                                    else EntryState.Completed
                                 DownloadStatus.FAILED -> EntryState.Failed(null)
                                 else -> null
                             }
                         } else {
                             when (snapshot.status) {
-                                DownloadStatus.PENDING,
-                                DownloadStatus.RUNNING -> null
+                                DownloadStatus.RUNNING ->
+                                    if (entry.isTranscode) EntryState.Converting
+                                    else EntryState.Downloading
                                 DownloadStatus.PAUSED -> EntryState.Paused
                                 DownloadStatus.SUCCESSFUL ->
                                     if (entry.isTranscode) EntryState.Converting
                                     else EntryState.Completed
                                 DownloadStatus.FAILED -> EntryState.Failed(null)
-                                else -> EntryState.Failed(null)
+                                DownloadStatus.PENDING,
+                                DownloadStatus.NONE -> null
                             }
                         }
                     val originalSize =
@@ -448,9 +502,10 @@ constructor(
                     for (entry in convertingNow) {
                         val dlId = entry.downloadId ?: continue
                         if (!activeFinalizations.add(dlId)) continue
-                        scope.launch(Dispatchers.IO) {
+                        scope.launch(ioDispatcher) {
+                            var success = false
                             try {
-                                downloader.finalizeDownload(dlId)
+                                success = downloader.finalizeDownload(dlId)
                             } catch (e: Exception) {
                                 Timber.e(
                                     e,
@@ -463,11 +518,28 @@ constructor(
                                 _entries.value =
                                     sort(
                                         _entries.value.map {
-                                            if (it.id == entry.id)
-                                                it.copy(state = EntryState.Completed)
-                                            else it
+                                            if (it.id == entry.id) {
+                                                if (success) {
+                                                    it.copy(
+                                                        state = EntryState.Completed,
+                                                        progress = 100,
+                                                    )
+                                                } else {
+                                                    it.copy(
+                                                        state =
+                                                            EntryState.Failed(
+                                                                UiText.StringResource(
+                                                                    CoreR.string.downloading_error
+                                                                )
+                                                            )
+                                                    )
+                                                }
+                                            } else it
                                         }
                                     )
+                            }
+                            if (success && entry.item is FindroidEpisode) {
+                                smartEnqueueNext(entry.item)
                             }
                         }
                     }
@@ -475,9 +547,10 @@ constructor(
                     for (entry in completedNow) {
                         val dlId = entry.downloadId ?: continue
                         if (!activeFinalizations.add(dlId)) continue
-                        scope.launch(Dispatchers.IO) {
+                        scope.launch(ioDispatcher) {
+                            var success = false
                             try {
-                                downloader.finalizeDownload(dlId)
+                                success = downloader.finalizeDownload(dlId)
                             } catch (e: Exception) {
                                 Timber.e(
                                     e,
@@ -485,6 +558,25 @@ constructor(
                                 )
                             } finally {
                                 activeFinalizations.remove(dlId)
+                            }
+                            if (!success) {
+                                mutex.withLock {
+                                    _entries.value =
+                                        sort(
+                                            _entries.value.map {
+                                                if (it.id == entry.id) {
+                                                    it.copy(
+                                                        state =
+                                                            EntryState.Failed(
+                                                                UiText.StringResource(
+                                                                    CoreR.string.downloading_error
+                                                                )
+                                                            )
+                                                    )
+                                                } else it
+                                            }
+                                        )
+                                }
                             }
                         }
                     }
@@ -543,7 +635,8 @@ constructor(
             }
 
             // 2. Fill free slots from Pending queue
-            val maxConcurrent = appPreferences.getValue(appPreferences.maxConcurrentDownloads)
+            val maxConcurrent =
+                appPreferences.getValue(appPreferences.maxConcurrentDownloads).coerceAtLeast(1)
             val currentlyActive =
                 _entries.value.count {
                     it.state is EntryState.Downloading || it.state is EntryState.Converting
@@ -559,6 +652,7 @@ constructor(
                         }
                         .take(freeSlots)
                 for (entry in pending) {
+                    coroutineContext.ensureActive()
                     startDownload(entry)
                 }
             }
@@ -580,7 +674,13 @@ constructor(
                 }
             }
             if (shouldExit) return
-            delay(Constants.DOWNLOAD_POLL_INTERVAL_MS)
+            val pollInterval =
+                if (active.isNotEmpty() && active.all { it.state is EntryState.Paused }) {
+                    1_500L
+                } else {
+                    Constants.DOWNLOAD_POLL_INTERVAL_MS
+                }
+            delay(pollInterval)
         }
     }
 
@@ -600,6 +700,7 @@ constructor(
             }
 
         var orphaned = false
+        var notifyItem: FindroidItem? = null
         mutex.withLock {
             val stillPresent = _entries.value.any { it.id == entry.id }
             if (!stillPresent) {
@@ -618,17 +719,39 @@ constructor(
                                 progress = 100,
                                 downloadId = 0L,
                             )
-                        } else if (downloadId != -1L) {
+                        } else if (downloadId > 0L) {
                             e.copy(
                                 state = activeState,
                                 downloadId = downloadId,
                                 startedAt = System.currentTimeMillis(),
                             )
                         } else {
-                            e.copy(state = EntryState.Failed(errorText))
+                            if (e.retryCount < MAX_AUTO_RETRIES) {
+                                val backoffMs =
+                                    RETRY_BACKOFF_MS[
+                                        e.retryCount.coerceAtMost(RETRY_BACKOFF_MS.lastIndex)]
+                                Timber.w(
+                                    "Scheduling retry #${e.retryCount + 1} for ${e.item.name} in ${backoffMs / 1000}s"
+                                )
+                                e.copy(
+                                    state = EntryState.Pending,
+                                    downloadId = null,
+                                    startedAt = null,
+                                    progress = 0,
+                                    retryCount = e.retryCount + 1,
+                                    retryAt = System.currentTimeMillis() + backoffMs,
+                                )
+                            } else {
+                                notifyItem = e.item
+                                e.copy(state = EntryState.Failed(errorText))
+                            }
                         }
                     }
                 )
+        }
+        notifyItem?.let {
+            Timber.e("Max auto-retries reached for ${it.name} during start, notifying user")
+            notifyFailure(it)
         }
         if (downloadId == 0L) {
             val item = entry.item
@@ -666,11 +789,24 @@ constructor(
             } else {
                 item.name
             }
+        val launchIntent =
+            context.packageManager.getLaunchIntentForPackage(context.packageName)?.apply {
+                flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+        val pendingIntent = launchIntent?.let {
+            PendingIntent.getActivity(
+                context,
+                item.id.hashCode(),
+                it,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            )
+        }
         val notification =
             NotificationCompat.Builder(context, FAILURE_CHANNEL_ID)
                 .setSmallIcon(CoreR.drawable.ic_x)
                 .setContentTitle(context.getString(CoreR.string.download_failed))
                 .setContentText(title)
+                .setContentIntent(pendingIntent)
                 .setAutoCancel(true)
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                 .build()
@@ -680,193 +816,220 @@ constructor(
     private fun isStorageLimitReached(limitGb: Long): Boolean {
         if (limitGb <= 0) return false
         val totalDownloadedBytes =
-            database.getMoviesAndSources().values.flatten().sumOf { s ->
-                val f = File(s.path)
-                if (f.exists()) f.length() else 0L
+            database.getAllSources().sumOf { s ->
+                try {
+                    val f = File(s.path)
+                    if (f.exists()) f.length() else 0L
+                } catch (_: Exception) {
+                    0L
+                }
             }
         val limitBytes = limitGb * 1024L * 1024L * 1024L
         return totalDownloadedBytes >= limitBytes
     }
 
-    suspend fun smartEnqueueNext(episode: FindroidEpisode) {
-        if (!appPreferences.getValue(appPreferences.smartDownloadNextEpisode)) return
-        try {
-            val limitGb =
-                appPreferences.getValue(appPreferences.smartDownloadStorageLimitGb).toLong()
-            if (isStorageLimitReached(limitGb)) {
-                Timber.i(
-                    "Smart Downloads: storage limit reached ($limitGb GB), skipping auto-enqueue"
-                )
-                return
-            }
-
-            val targetCount = appPreferences.getValue(appPreferences.smartDownloadNextEpisodesCount)
-            val currentUserId = repository.getUserId()
-
-            // Count existing unwatched episodes (downloaded or queued)
-            val downloadedEpisodes = database.getEpisodesByShowId(episode.seriesId)
-            val downloadedUnwatchedIds =
-                downloadedEpisodes
-                    .filter { ep ->
-                        database.getSources(ep.id).any { !it.path.endsWith(".download") } &&
-                            database.getUserData(ep.id, currentUserId)?.played != true
-                    }
-                    .map { it.id }
-                    .toSet()
-
-            val queuedForSeries =
-                _entries.value.filter {
-                    it.item is FindroidEpisode &&
-                        it.item.seriesId == episode.seriesId &&
-                        it.state !is EntryState.Completed &&
-                        it.state !is EntryState.Failed
-                }
-            val queuedIds = queuedForSeries.map { it.id }.toSet()
-
-            val currentUnwatchedCount = downloadedUnwatchedIds.union(queuedIds).size
-            if (currentUnwatchedCount >= targetCount) {
-                Timber.d(
-                    "Smart Downloads: already have $currentUnwatchedCount unwatched episodes (target: $targetCount), skipping"
-                )
-                return
-            }
-
-            val needed = targetCount - currentUnwatchedCount
-            val episodes =
-                repository.getEpisodes(
-                    seriesId = episode.seriesId,
-                    seasonId = episode.seasonId,
-                )
-            val currentIdx = episodes.indexOfFirst { it.id == episode.id }
-            if (currentIdx == -1) return
-
-            val candidates =
-                episodes
-                    .drop(currentIdx + 1)
-                    .filter { cand ->
-                        cand.id !in downloadedUnwatchedIds &&
-                            cand.id !in queuedIds &&
-                            database.getUserData(cand.id, currentUserId)?.played != true &&
-                            database.getSources(cand.id).none { !it.path.endsWith(".download") }
-                    }
-                    .take(needed)
-
-            for (next in candidates) {
+    suspend fun smartEnqueueNext(episode: FindroidEpisode) =
+        withContext(ioDispatcher) {
+            if (!appPreferences.getValue(appPreferences.smartDownloadNextEpisode))
+                return@withContext
+            try {
+                val limitGb =
+                    appPreferences.getValue(appPreferences.smartDownloadStorageLimitGb).toLong()
                 if (isStorageLimitReached(limitGb)) {
                     Timber.i(
-                        "Smart Downloads: storage limit reached ($limitGb GB) while auto-queueing, stopping"
+                        "Smart Downloads: storage limit reached ($limitGb GB), skipping auto-enqueue"
                     )
-                    break
+                    return@withContext
                 }
-                Timber.i(
-                    "Smart Downloads: auto-queueing episode ${next.seriesName} S%02dE%02d"
-                        .format(next.parentIndexNumber, next.indexNumber)
-                )
-                enqueue(next)
-            }
-        } catch (e: Exception) {
-            Timber.e(e, "Smart Downloads: failed to fetch next episodes after ${episode.name}")
-        }
-    }
 
-    suspend fun checkSmartDownloadOnWatched(completedItemId: UUID) {
-        if (!appPreferences.getValue(appPreferences.smartDownloadNextEpisode)) return
-        try {
-            val episodeDto =
-                try {
-                    database.getEpisode(completedItemId)
-                } catch (e: Exception) {
-                    null
-                } ?: return
-            val episode = episodeDto.toFindroidEpisode(database, repository.getUserId())
-            smartEnqueueNext(episode)
-        } catch (e: Exception) {
-            Timber.e(e, "Smart Downloads: failed to trigger on watched episode $completedItemId")
-        }
-    }
+                val targetCount =
+                    appPreferences.getValue(appPreferences.smartDownloadNextEpisodesCount)
+                val currentUserId = repository.getUserId()
 
-    suspend fun checkAutoDeleteWatched(completedItemId: UUID) {
-        if (!appPreferences.getValue(appPreferences.autoDeleteWatched)) return
-        try {
-            val currentUserId = repository.getUserId()
-            val episode =
-                try {
-                    database.getEpisode(completedItemId)
-                } catch (_: Exception) {
-                    null
-                }
-            if (episode != null) {
-                val seasonEpisodes =
-                    try {
-                            repository.getEpisodes(
-                                seriesId = episode.seriesId,
-                                seasonId = episode.seasonId,
-                            )
-                        } catch (e: Exception) {
-                            database.getEpisodesBySeasonId(episode.seasonId).map {
-                                it.toFindroidEpisode(database, currentUserId)
-                            }
+                // Count existing unwatched episodes (downloaded or queued)
+                val downloadedEpisodes = database.getEpisodesByShowId(episode.seriesId)
+                coroutineContext.ensureActive()
+                val downloadedUnwatchedIds =
+                    downloadedEpisodes
+                        .filter { ep ->
+                            database.getSources(ep.id).any { !it.path.endsWith(".download") } &&
+                                database.getUserData(ep.id, currentUserId)?.played != true
                         }
-                        .sortedBy { it.indexNumber }
+                        .map { it.id }
+                        .toSet()
 
-                for (candEp in seasonEpisodes) {
-                    val candSources =
-                        database.getSources(candEp.id).filter { !it.path.endsWith(".download") }
-                    if (candSources.isEmpty()) continue
-
-                    val candWatched =
-                        candEp.id == completedItemId ||
-                            database.getUserData(candEp.id, currentUserId)?.played == true
-                    if (!candWatched) continue
-
-                    val candIdx = seasonEpisodes.indexOfFirst { it.id == candEp.id }
-                    if (candIdx != -1 && candIdx < seasonEpisodes.lastIndex) {
-                        val nextEp = seasonEpisodes[candIdx + 1]
-                        val nextWatched =
-                            nextEp.id == completedItemId ||
-                                database.getUserData(nextEp.id, currentUserId)?.played == true
-                        if (nextWatched) {
-                            for (candSource in candSources) {
-                                Timber.i(
-                                    "AutoDeleteWatched: safely deleting episode ${candEp.name} (S${candEp.parentIndexNumber}E${candEp.indexNumber}) because next episode ${nextEp.name} is also watched"
-                                )
-                                downloader.deleteItem(
-                                    candEp,
-                                    candSource.toFindroidSource(database),
-                                    currentUserId,
-                                )
-                            }
-                        }
+                val queuedForSeries =
+                    _entries.value.filter {
+                        it.item is FindroidEpisode &&
+                            it.item.seriesId == episode.seriesId &&
+                            it.state !is EntryState.Completed &&
+                            it.state !is EntryState.Failed
                     }
+                val queuedIds = queuedForSeries.map { it.id }.toSet()
+
+                val currentUnwatchedCount = downloadedUnwatchedIds.union(queuedIds).size
+                if (currentUnwatchedCount >= targetCount) {
+                    Timber.d(
+                        "Smart Downloads: already have $currentUnwatchedCount unwatched episodes (target: $targetCount), skipping"
+                    )
+                    return@withContext
                 }
-            } else {
-                val movie =
+
+                val needed = targetCount - currentUnwatchedCount
+                val episodes =
+                    repository.getEpisodes(
+                        seriesId = episode.seriesId,
+                        seasonId = episode.seasonId,
+                    )
+                coroutineContext.ensureActive()
+                val currentIdx = episodes.indexOfFirst { it.id == episode.id }
+                if (currentIdx == -1) return@withContext
+
+                val candidates =
+                    episodes
+                        .drop(currentIdx + 1)
+                        .filter { cand ->
+                            cand.id !in downloadedUnwatchedIds &&
+                                cand.id !in queuedIds &&
+                                database.getUserData(cand.id, currentUserId)?.played != true &&
+                                database.getSources(cand.id).none { !it.path.endsWith(".download") }
+                        }
+                        .take(needed)
+
+                for (next in candidates) {
+                    coroutineContext.ensureActive()
+                    if (isStorageLimitReached(limitGb)) {
+                        Timber.i(
+                            "Smart Downloads: storage limit reached ($limitGb GB) while auto-queueing, stopping"
+                        )
+                        break
+                    }
+                    Timber.i(
+                        "Smart Downloads: auto-queueing episode ${next.seriesName} S%02dE%02d"
+                            .format(next.parentIndexNumber, next.indexNumber)
+                    )
+                    enqueue(next)
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Timber.e(e, "Smart Downloads: failed to fetch next episodes after ${episode.name}")
+            }
+        }
+
+    suspend fun checkSmartDownloadOnWatched(completedItemId: UUID) =
+        withContext(ioDispatcher) {
+            if (!appPreferences.getValue(appPreferences.smartDownloadNextEpisode))
+                return@withContext
+            try {
+                val episodeDto =
                     try {
-                        database.getMovie(completedItemId)
+                        database.getEpisode(completedItemId)
                     } catch (e: Exception) {
                         null
+                    } ?: return@withContext
+                val episode = episodeDto.toFindroidEpisode(database, repository.getUserId())
+                smartEnqueueNext(episode)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Timber.e(
+                    e,
+                    "Smart Downloads: failed to trigger on watched episode $completedItemId",
+                )
+            }
+        }
+
+    suspend fun checkAutoDeleteWatched(completedItemId: UUID) =
+        withContext(ioDispatcher) {
+            if (!appPreferences.getValue(appPreferences.autoDeleteWatched)) return@withContext
+            try {
+                val currentUserId = repository.getUserId()
+                val episode =
+                    try {
+                        database.getEpisode(completedItemId)
+                    } catch (_: Exception) {
+                        null
                     }
-                if (movie != null) {
-                    val sources =
-                        database.getSources(completedItemId).filter {
-                            !it.path.endsWith(".download")
+                if (episode != null) {
+                    val seasonEpisodes =
+                        try {
+                                repository.getEpisodes(
+                                    seriesId = episode.seriesId,
+                                    seasonId = episode.seasonId,
+                                )
+                            } catch (e: Exception) {
+                                database.getEpisodesBySeasonId(episode.seasonId).map {
+                                    it.toFindroidEpisode(database, currentUserId)
+                                }
+                            }
+                            .sortedBy { it.indexNumber }
+
+                    for (candEp in seasonEpisodes) {
+                        coroutineContext.ensureActive()
+                        val candSources =
+                            database.getSources(candEp.id).filter { !it.path.endsWith(".download") }
+                        if (candSources.isEmpty()) continue
+
+                        val candWatched =
+                            candEp.id == completedItemId ||
+                                database.getUserData(candEp.id, currentUserId)?.played == true
+                        if (!candWatched) continue
+
+                        val candIdx = seasonEpisodes.indexOfFirst { it.id == candEp.id }
+                        if (candIdx != -1 && candIdx < seasonEpisodes.lastIndex) {
+                            val nextEp = seasonEpisodes[candIdx + 1]
+                            val nextWatched =
+                                nextEp.id == completedItemId ||
+                                    database.getUserData(nextEp.id, currentUserId)?.played == true
+                            if (nextWatched) {
+                                for (candSource in candSources) {
+                                    Timber.i(
+                                        "AutoDeleteWatched: safely deleting episode ${candEp.name} (S${candEp.parentIndexNumber}E${candEp.indexNumber}) because next episode ${nextEp.name} is also watched"
+                                    )
+                                    downloader.deleteItem(
+                                        candEp,
+                                        candSource.toFindroidSource(database),
+                                        currentUserId,
+                                    )
+                                }
+                            }
                         }
-                    for (source in sources) {
-                        Timber.i("AutoDeleteWatched: deleting watched movie ${movie.name}")
-                        downloader.deleteItem(
-                            movie.toFindroidMovie(database, currentUserId),
-                            source.toFindroidSource(database),
-                            currentUserId,
-                        )
+                    }
+                } else {
+                    val movie =
+                        try {
+                            database.getMovie(completedItemId)
+                        } catch (e: Exception) {
+                            null
+                        }
+                    if (movie != null) {
+                        val sources =
+                            database.getSources(completedItemId).filter {
+                                !it.path.endsWith(".download")
+                            }
+                        for (source in sources) {
+                            coroutineContext.ensureActive()
+                            Timber.i("AutoDeleteWatched: deleting watched movie ${movie.name}")
+                            downloader.deleteItem(
+                                movie.toFindroidMovie(database, currentUserId),
+                                source.toFindroidSource(database),
+                                currentUserId,
+                            )
+                        }
                     }
                 }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Timber.e(
+                    e,
+                    "AutoDeleteWatched: error while checking auto delete for $completedItemId",
+                )
+            } finally {
+                scheduleUserDataSync()
             }
-        } catch (e: Exception) {
-            Timber.e(e, "AutoDeleteWatched: error while checking auto delete for $completedItemId")
-        } finally {
-            scheduleUserDataSync()
         }
-    }
 
     fun scheduleUserDataSync() {
         try {
@@ -905,6 +1068,7 @@ constructor(
                 { priority(it.state) },
                 { it.startedAt ?: it.addedAt },
                 { it.addedAt },
+                { it.id },
             )
     }
 }
