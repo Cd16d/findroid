@@ -5,7 +5,6 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
@@ -111,7 +110,7 @@ fun DownloadPresetBottomSheet(
     initialDownloadExternalAudio: Boolean = false,
     initialRememberSetting: Boolean = false,
     onAddClick: () -> Unit = {},
-    sheetState: SheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+    sheetState: SheetState = rememberModalBottomSheetState(),
 ) {
     val allPresets = remember(presets) { presets.ifEmpty { DownloadQualityPresets.defaultPresets } }
 
@@ -199,12 +198,6 @@ fun DownloadPresetBottomSheet(
     var showDetails by remember { mutableStateOf(false) }
 
     var isAtTop by remember { mutableStateOf(false) }
-    val animatedCornerRadius by
-        animateDpAsState(
-            targetValue = if (isAtTop) 0.dp else 28.dp,
-            animationSpec = tween(durationMillis = 180),
-            label = "sheetCornerRadius",
-        )
 
     val scope = rememberCoroutineScope()
 
@@ -212,20 +205,6 @@ fun DownloadPresetBottomSheet(
         onDismissRequest = onDismiss,
         modifier = modifier,
         sheetState = sheetState,
-        shape =
-            RoundedCornerShape(
-                topStart = animatedCornerRadius,
-                topEnd = animatedCornerRadius,
-            ),
-        dragHandle = {
-            Surface(
-                modifier = Modifier.padding(vertical = 10.dp),
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                shape = RoundedCornerShape(2.dp),
-            ) {
-                Box(modifier = Modifier.size(width = 36.dp, height = 4.dp))
-            }
-        },
         containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
     ) {
         DownloadPresetBottomSheetLayout(
@@ -846,13 +825,16 @@ private fun DownloadPresetCard(
         )
     val borderWidth = if (isSelected || isOriginalUnsupported) 2.dp else 1.dp
 
+    val sourceSizeStr = stringResource(CoreR.string.download_preset_source_size)
+    val approxSizeStr = preset.displayApproxSize.asString()
+
     val sizeBadgeText =
-        remember(preset, sourceSize, runtimeTicks, context) {
+        remember(preset, sourceSize, runtimeTicks, context, sourceSizeStr, approxSizeStr) {
             if (preset.isOriginal) {
                 if (sourceSize > 0) {
                     Formatter.formatFileSize(context, sourceSize)
                 } else {
-                    context.getString(CoreR.string.download_preset_source_size)
+                    sourceSizeStr
                 }
             } else {
                 if (runtimeTicks > 0) {
@@ -860,7 +842,7 @@ private fun DownloadPresetCard(
                     val estimatedBytes = (preset.totalBitrateBps * durationSec) / 8L
                     "~${Formatter.formatFileSize(context, estimatedBytes)}"
                 } else {
-                    preset.displayApproxSize.asString(context.resources)
+                    approxSizeStr
                 }
             }
         }

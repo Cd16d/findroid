@@ -219,9 +219,7 @@ fun AccountMenuWrapper(
                         },
                         onNavigateToGithub = {
                             try {
-                                uriHandler.openUri(
-                                    "https://github.com/jarnedemeulemeester/findroid"
-                                )
+                                uriHandler.openUri("https://github.com/Cd16d/findroid")
                             } catch (e: IllegalArgumentException) {
                                 Toast.makeText(
                                         context,

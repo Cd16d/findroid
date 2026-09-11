@@ -158,7 +158,7 @@
     <string name="codec_not_supported">Not supported</string>
     <string name="downloads_storage_overview">Device storage</string>
     <string name="downloads_storage_used_of">%1$s used of %2$s</string>
-    <string name="downloads_storage_legend_findroid">Findroid: %s</string>
+    <string name="downloads_storage_legend_findroid">Findroid Beta: %s</string>
     <string name="downloads_storage_legend_other">Other apps: %s</string>
     <string name="downloads_storage_legend_other_apps">Other apps</string>
     <string name="downloads_storage_legend_free">Free: %s</string>

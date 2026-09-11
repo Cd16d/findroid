@@ -110,6 +110,7 @@ private fun CastPlayerArtwork(
     BoxWithConstraints(
         modifier =
             modifier
+                .padding(horizontal = MaterialTheme.spacings.default)
                 .padding(bottom = MaterialTheme.spacings.default)
                 .aspectRatio(aspectRatio)
                 .clip(RoundedCornerShape(24.dp))

@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose.compiler)
@@ -7,15 +9,38 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
-val isBetaBuild = gradle.startParameter.taskNames.any { it.contains("Beta", ignoreCase = true) }
+val keystorePropertiesFile = rootProject.file("keystore.properties")
+val envKeystoreFile: String? = System.getenv("KEYSTORE_FILE")
+val keystoreProps: Properties? =
+    if (envKeystoreFile == null && keystorePropertiesFile.exists()) {
+        Properties().apply { load(keystorePropertiesFile.inputStream()) }
+    } else null
 
 android {
     namespace = "dev.jdtech.jellyfin"
     compileSdk = Versions.COMPILE_SDK
     buildToolsVersion = Versions.BUILD_TOOLS
 
+    if (envKeystoreFile != null || keystoreProps != null) {
+        signingConfigs {
+            create("release") {
+                if (envKeystoreFile != null) {
+                    storeFile = file(envKeystoreFile)
+                    storePassword = System.getenv("KEYSTORE_PASSWORD")
+                    keyAlias = System.getenv("KEY_ALIAS")
+                    keyPassword = System.getenv("KEY_PASSWORD")
+                } else {
+                    storeFile = rootProject.file(keystoreProps!!.getProperty("storeFile"))
+                    storePassword = keystoreProps.getProperty("storePassword")
+                    keyAlias = keystoreProps.getProperty("keyAlias")
+                    keyPassword = keystoreProps.getProperty("keyPassword")
+                }
+            }
+        }
+    }
+
     defaultConfig {
-        applicationId = if (isBetaBuild) "dev.cd16d.jellyfin" else "dev.jdtech.jellyfin"
+        applicationId = "dev.cd16d.jellyfin"
         minSdk = Versions.MIN_SDK
         targetSdk = Versions.TARGET_SDK
 
@@ -26,17 +51,7 @@ android {
     buildTypes {
         named("debug") { applicationIdSuffix = ".debug" }
         named("release") {
-            isMinifyEnabled = true
-            isShrinkResources = true
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro",
-            )
-        }
-        register("beta") {
-            initWith(getByName("release"))
-            applicationIdSuffix = ".beta"
-
+            signingConfigs.findByName("release")?.let { signingConfig = it }
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(

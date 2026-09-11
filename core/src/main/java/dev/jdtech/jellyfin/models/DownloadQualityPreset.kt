@@ -260,7 +260,7 @@ object DownloadQualityPresets {
                 )
             }
             list
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             null
         }
     }
