@@ -15,4 +15,6 @@ data class DownloadItemCardState(
     val displayExtraInfo: Boolean = true,
     val isPaused: Boolean = false,
     val pendingDeletionSeconds: Int? = null,
+    val downloadedSizeBytes: Long = 0L,
+    val downloadSpeedBytesPerSec: Long = 0L,
 )

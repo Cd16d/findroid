@@ -10,6 +10,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.core.presentation.downloader.DownloadQueue
 import dev.jdtech.jellyfin.database.ServerDatabaseDao
+import dev.jdtech.jellyfin.di.ApplicationScope
 import dev.jdtech.jellyfin.models.FindroidEpisode
 import dev.jdtech.jellyfin.models.FindroidItem
 import dev.jdtech.jellyfin.models.FindroidMovie
@@ -28,8 +29,10 @@ import dev.jdtech.jellyfin.utils.Downloader
 import java.util.UUID
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -49,6 +52,7 @@ constructor(
     private val downloadQueue: DownloadQueue,
     private val appPreferences: AppPreferences,
     @ApplicationContext private val context: Context,
+    @param:ApplicationScope private val appScope: CoroutineScope,
 ) : ViewModel() {
 
     internal var ioDispatcher: CoroutineDispatcher = Dispatchers.IO
@@ -61,7 +65,8 @@ constructor(
         appPreferences: AppPreferences,
         context: Context,
         ioDispatcher: CoroutineDispatcher,
-    ) : this(repository, database, downloader, downloadQueue, appPreferences, context) {
+        appScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
+    ) : this(repository, database, downloader, downloadQueue, appPreferences, context, appScope) {
         this.ioDispatcher = ioDispatcher
     }
 
@@ -98,6 +103,10 @@ constructor(
             is DownloadsAction.StageDeleteMovie -> stageDeleteMovie(action.movie)
             is DownloadsAction.StageDeleteShow -> stageDeleteShow(action.showItem)
             is DownloadsAction.UndoDelete -> undoDelete(action.id)
+            is DownloadsAction.CommitPendingDeletions -> commitAllPendingDeletions()
+            is DownloadsAction.GoOnline -> {
+                appPreferences.setValue(appPreferences.offlineMode, false)
+            }
             is DownloadsAction.ToggleSelection -> toggleSelection(action.id)
             is DownloadsAction.SelectAll -> selectAll()
             is DownloadsAction.ClearSelection -> clearSelection()
@@ -268,6 +277,7 @@ constructor(
     }
 
     private val deletionJobs = mutableMapOf<UUID, Job>()
+    private val pendingDeletions = mutableMapOf<UUID, suspend () -> Unit>()
 
     private suspend fun deleteMediaItem(item: FindroidItem, currentUserId: UUID) {
         val source =
@@ -336,6 +346,7 @@ constructor(
 
     private fun startPendingDeletion(id: UUID, onCommit: suspend () -> Unit) {
         deletionJobs[id]?.cancel()
+        pendingDeletions[id] = onCommit
         val currentMap = _state.value.pendingDeletionIds.toMutableMap()
         currentMap[id] = 5
         _state.update { it.copy(pendingDeletionIds = currentMap) }
@@ -346,10 +357,19 @@ constructor(
                 _state.update { it.copy(pendingDeletionIds = it.pendingDeletionIds + (id to sec)) }
             }
             delay(1000L)
-            _state.update { it.copy(pendingDeletionIds = it.pendingDeletionIds - id) }
             deletionJobs.remove(id)
-            withContext(ioDispatcher) { onCommit() }
-            loadItems(showLoading = false)
+            val commit = pendingDeletions.remove(id)
+            _state.update {
+                it.copy(
+                    pendingDeletionIds = it.pendingDeletionIds - id,
+                    movies = it.movies.filterNot { movie -> movie.id == id },
+                    shows = it.shows.filterNot { showItem -> showItem.show.id == id },
+                )
+            }
+            if (commit != null) {
+                withContext(ioDispatcher) { commit() }
+                loadItems(showLoading = false)
+            }
         }
         deletionJobs[id] = job
     }
@@ -358,11 +378,41 @@ constructor(
         if (id != null) {
             deletionJobs[id]?.cancel()
             deletionJobs.remove(id)
+            pendingDeletions.remove(id)
             _state.update { it.copy(pendingDeletionIds = it.pendingDeletionIds - id) }
         } else {
             deletionJobs.values.forEach { it.cancel() }
             deletionJobs.clear()
+            pendingDeletions.clear()
             _state.update { it.copy(pendingDeletionIds = emptyMap()) }
+        }
+    }
+
+    fun commitAllPendingDeletions() {
+        if (pendingDeletions.isEmpty()) return
+        val deletionsToRun = pendingDeletions.values.toList()
+        val idsToEliminate = pendingDeletions.keys.toSet()
+        pendingDeletions.clear()
+        deletionJobs.values.forEach { it.cancel() }
+        deletionJobs.clear()
+
+        _state.update {
+            it.copy(
+                pendingDeletionIds = it.pendingDeletionIds - idsToEliminate,
+                movies = it.movies.filterNot { movie -> movie.id in idsToEliminate },
+                shows = it.shows.filterNot { showItem -> showItem.show.id in idsToEliminate },
+            )
+        }
+
+        appScope.launch(ioDispatcher) {
+            for (commit in deletionsToRun) {
+                try {
+                    commit()
+                } catch (e: Exception) {
+                    Timber.e(e, "Error committing pending deletion")
+                }
+            }
+            loadItems(showLoading = false)
         }
     }
 
@@ -534,9 +584,6 @@ constructor(
 
     override fun onCleared() {
         super.onCleared()
-        for (job in deletionJobs.values) {
-            job.cancel()
-        }
-        deletionJobs.clear()
+        commitAllPendingDeletions()
     }
 }

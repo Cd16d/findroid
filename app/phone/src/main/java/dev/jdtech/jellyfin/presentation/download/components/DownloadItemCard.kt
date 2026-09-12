@@ -30,8 +30,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SuggestionChip
-import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -73,6 +71,18 @@ fun DownloadItemCard(
     val sizeFormatted =
         remember(state.sizeBytes, context) {
             if (state.sizeBytes > 0L) Formatter.formatFileSize(context, state.sizeBytes) else ""
+        }
+    val downloadedSizeFormatted =
+        remember(state.downloadedSizeBytes, context) {
+            if (state.downloadedSizeBytes > 0L)
+                Formatter.formatFileSize(context, state.downloadedSizeBytes)
+            else ""
+        }
+    val speedFormatted =
+        remember(state.downloadSpeedBytesPerSec, context) {
+            if (state.downloadSpeedBytesPerSec > 0L)
+                "${Formatter.formatFileSize(context, state.downloadSpeedBytesPerSec)}/s"
+            else ""
         }
 
     DownloadSwipeToDismissBox(
@@ -189,31 +199,43 @@ fun DownloadItemCard(
                     Spacer(modifier = Modifier.height(6.dp))
 
                     // Chips Row
-                    if (state.displayExtraInfo && sizeFormatted.isNotEmpty()) {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            SuggestionChip(
-                                onClick = {},
-                                label = {
-                                    Text(
-                                        text = sizeFormatted,
-                                        style =
-                                            MaterialTheme.typography.labelSmall.copy(
-                                                fontWeight = FontWeight.Medium
-                                            ),
-                                    )
-                                },
-                                colors =
-                                    SuggestionChipDefaults.suggestionChipColors(
-                                        containerColor =
-                                            MaterialTheme.colorScheme.surfaceContainerHigh,
-                                        labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    ),
-                                border = null,
-                                modifier = Modifier.height(24.dp),
-                            )
+                    if (state.displayExtraInfo) {
+                        val isDownloadingOrTransferring =
+                            state.status == DownloadStatus.DOWNLOADING ||
+                                state.status == DownloadStatus.TRANSFERRING
+                        val isConverting = state.status == DownloadStatus.CONVERTING
+
+                        val sizeText =
+                            if (isDownloadingOrTransferring || isConverting) {
+                                if (
+                                    downloadedSizeFormatted.isNotEmpty() &&
+                                        sizeFormatted.isNotEmpty()
+                                ) {
+                                    "$downloadedSizeFormatted / $sizeFormatted"
+                                } else {
+                                    downloadedSizeFormatted.ifEmpty { sizeFormatted }
+                                }
+                            } else {
+                                sizeFormatted
+                            }
+
+                        val speedText =
+                            if (isDownloadingOrTransferring && !state.isPaused) {
+                                speedFormatted
+                            } else ""
+
+                        if (sizeText.isNotEmpty() || speedText.isNotEmpty()) {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                if (sizeText.isNotEmpty()) {
+                                    DownloadInfoChip(text = sizeText)
+                                }
+                                if (speedText.isNotEmpty()) {
+                                    DownloadInfoChip(text = speedText)
+                                }
+                            }
                         }
                     }
                 }
@@ -365,6 +387,30 @@ fun DownloadItemCard(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun DownloadInfoChip(
+    text: String,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier =
+            modifier
+                .height(22.dp)
+                .clip(RoundedCornerShape(6.dp))
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                .padding(horizontal = 6.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 

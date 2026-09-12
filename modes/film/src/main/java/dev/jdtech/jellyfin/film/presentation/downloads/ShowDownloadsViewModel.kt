@@ -10,6 +10,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.core.presentation.downloader.DownloadQueue
 import dev.jdtech.jellyfin.database.ServerDatabaseDao
+import dev.jdtech.jellyfin.di.ApplicationScope
 import dev.jdtech.jellyfin.models.FindroidEpisode
 import dev.jdtech.jellyfin.models.FindroidShow
 import dev.jdtech.jellyfin.models.FindroidSourceType
@@ -25,8 +26,10 @@ import javax.inject.Inject
 import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -47,6 +50,7 @@ constructor(
     private val appPreferences: AppPreferences,
     @ApplicationContext private val context: Context,
     private val savedStateHandle: SavedStateHandle,
+    @param:ApplicationScope private val appScope: CoroutineScope,
 ) : ViewModel() {
 
     internal var ioDispatcher: CoroutineDispatcher = Dispatchers.IO
@@ -60,6 +64,7 @@ constructor(
         context: Context,
         savedStateHandle: SavedStateHandle,
         ioDispatcher: CoroutineDispatcher,
+        appScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
     ) : this(
         repository = repository,
         database = database,
@@ -68,6 +73,7 @@ constructor(
         appPreferences = appPreferences,
         context = context,
         savedStateHandle = savedStateHandle,
+        appScope = appScope,
     ) {
         this.ioDispatcher = ioDispatcher
     }
@@ -79,6 +85,7 @@ constructor(
     private var lastCompletedCount = -1
     private var loadJob: Job? = null
     private val deletionJobs = mutableMapOf<UUID, Job>()
+    private val pendingDeletions = mutableMapOf<UUID, suspend () -> Unit>()
 
     companion object {
         private const val KEY_SERIES_ID = "current_series_id"
@@ -137,6 +144,7 @@ constructor(
             is ShowDownloadsAction.DeleteEpisode -> deleteEpisode(action.episode)
             is ShowDownloadsAction.StageDeleteEpisode -> stageDeleteEpisode(action.episode)
             is ShowDownloadsAction.UndoDelete -> undoDelete(action.id)
+            is ShowDownloadsAction.CommitPendingDeletions -> commitAllPendingDeletions()
             is ShowDownloadsAction.ToggleSelection -> toggleSelection(action.id)
             is ShowDownloadsAction.ToggleSeasonSelection -> toggleSeasonSelection(action.episodeIds)
             is ShowDownloadsAction.SelectAll -> selectAll()
@@ -310,6 +318,7 @@ constructor(
 
     private fun startPendingDeletion(id: UUID, onCommit: suspend () -> Unit) {
         deletionJobs[id]?.cancel()
+        pendingDeletions[id] = onCommit
         val currentMap = _state.value.pendingDeletionIds.toMutableMap()
         currentMap[id] = 5
         _state.update { it.copy(pendingDeletionIds = currentMap) }
@@ -322,10 +331,24 @@ constructor(
             }
             delay(1000L.milliseconds)
             coroutineContext.ensureActive()
-            _state.update { it.copy(pendingDeletionIds = it.pendingDeletionIds - id) }
             deletionJobs.remove(id)
-            withContext(ioDispatcher) { onCommit() }
-            currentSeriesId?.let { loadShow(it, showLoading = false) }
+            val commit = pendingDeletions.remove(id)
+            _state.update { currentState ->
+                val updatedSeasonGroups =
+                    currentState.seasonGroups.mapNotNull { group ->
+                        val remaining = group.episodes.filterNot { it.id == id }
+                        if (remaining.isNotEmpty()) group.copy(episodes = remaining) else null
+                    }
+                currentState.copy(
+                    pendingDeletionIds = currentState.pendingDeletionIds - id,
+                    seasonGroups = updatedSeasonGroups,
+                    totalEpisodesCount = updatedSeasonGroups.sumOf { it.episodes.size },
+                )
+            }
+            if (commit != null) {
+                withContext(ioDispatcher) { commit() }
+                currentSeriesId?.let { loadShow(it, showLoading = false) }
+            }
         }
         deletionJobs[id] = job
     }
@@ -334,11 +357,46 @@ constructor(
         if (id != null) {
             deletionJobs[id]?.cancel()
             deletionJobs.remove(id)
+            pendingDeletions.remove(id)
             _state.update { it.copy(pendingDeletionIds = it.pendingDeletionIds - id) }
         } else {
             deletionJobs.values.forEach { it.cancel() }
             deletionJobs.clear()
+            pendingDeletions.clear()
             _state.update { it.copy(pendingDeletionIds = emptyMap()) }
+        }
+    }
+
+    fun commitAllPendingDeletions() {
+        if (pendingDeletions.isEmpty()) return
+        val deletionsToRun = pendingDeletions.values.toList()
+        val idsToEliminate = pendingDeletions.keys.toSet()
+        pendingDeletions.clear()
+        deletionJobs.values.forEach { it.cancel() }
+        deletionJobs.clear()
+
+        _state.update { currentState ->
+            val updatedSeasonGroups =
+                currentState.seasonGroups.mapNotNull { group ->
+                    val remaining = group.episodes.filterNot { it.id in idsToEliminate }
+                    if (remaining.isNotEmpty()) group.copy(episodes = remaining) else null
+                }
+            currentState.copy(
+                pendingDeletionIds = currentState.pendingDeletionIds - idsToEliminate,
+                seasonGroups = updatedSeasonGroups,
+                totalEpisodesCount = updatedSeasonGroups.sumOf { it.episodes.size },
+            )
+        }
+
+        appScope.launch(ioDispatcher) {
+            for (commit in deletionsToRun) {
+                try {
+                    commit()
+                } catch (e: Exception) {
+                    Timber.e(e, "Error committing pending deletion")
+                }
+            }
+            currentSeriesId?.let { loadShow(it, showLoading = false) }
         }
     }
 
@@ -497,9 +555,6 @@ constructor(
     override fun onCleared() {
         super.onCleared()
         loadJob?.cancel()
-        for (job in deletionJobs.values) {
-            job.cancel()
-        }
-        deletionJobs.clear()
+        commitAllPendingDeletions()
     }
 }

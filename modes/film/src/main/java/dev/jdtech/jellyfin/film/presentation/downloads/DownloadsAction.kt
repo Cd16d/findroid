@@ -14,6 +14,10 @@ sealed interface DownloadsAction {
 
     data class UndoDelete(val id: UUID? = null) : DownloadsAction
 
+    data object CommitPendingDeletions : DownloadsAction
+
+    data object GoOnline : DownloadsAction
+
     data class ToggleSelection(val id: UUID) : DownloadsAction
 
     data object SelectAll : DownloadsAction

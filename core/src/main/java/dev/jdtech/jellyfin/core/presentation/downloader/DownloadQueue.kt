@@ -343,10 +343,7 @@ constructor(
                             if (entry.id == id && entry.state is EntryState.Paused) {
                                 if (entry.downloadId != null) {
                                     dlIdToResume = entry.downloadId
-                                    val activeState =
-                                        if (entry.isTranscode) EntryState.Converting
-                                        else EntryState.Downloading
-                                    entry.copy(state = activeState)
+                                    entry.copy(state = EntryState.Downloading)
                                 } else {
                                     entry.copy(state = EntryState.Pending)
                                 }
@@ -430,9 +427,7 @@ constructor(
                             }
                         } else {
                             when (snapshot.status) {
-                                DownloadStatus.RUNNING ->
-                                    if (entry.isTranscode) EntryState.Converting
-                                    else EntryState.Downloading
+                                DownloadStatus.RUNNING -> EntryState.Downloading
                                 DownloadStatus.PAUSED -> EntryState.Paused
                                 DownloadStatus.SUCCESSFUL ->
                                     if (entry.isTranscode) EntryState.Converting

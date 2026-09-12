@@ -1,5 +1,6 @@
 package dev.jdtech.jellyfin
 
+import android.app.Activity
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedVisibility
@@ -104,6 +105,8 @@ import dev.jdtech.jellyfin.presentation.setup.welcome.WelcomeScreen
 import dev.jdtech.jellyfin.presentation.theme.spacings
 import dev.jdtech.jellyfin.presentation.utils.LocalOfflineMode
 import dev.jdtech.jellyfin.presentation.utils.rememberSafePadding
+import dev.jdtech.jellyfin.settings.domain.AppPreferences
+import dev.jdtech.jellyfin.utils.restart
 import java.util.UUID
 import kotlinx.serialization.Serializable
 
@@ -543,6 +546,13 @@ fun NavigationRoot(
                                             launchSingleTop = true
                                             restoreState = true
                                         }
+                                    },
+                                    onGoOnlineClick = {
+                                        val appPreferences = AppPreferences(context)
+                                        appPreferences.setValue(appPreferences.offlineMode, false)
+                                        try {
+                                            (context as Activity).restart()
+                                        } catch (_: Exception) {}
                                     },
                                 )
                             }

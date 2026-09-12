@@ -42,6 +42,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -58,6 +59,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.jdtech.jellyfin.LocalCastPlayerHeight
 import dev.jdtech.jellyfin.core.R as CoreR
@@ -81,6 +85,7 @@ import dev.jdtech.jellyfin.presentation.download.models.DownloadCardActions
 import dev.jdtech.jellyfin.presentation.download.models.DownloadItemCardState
 import dev.jdtech.jellyfin.presentation.download.models.DownloadStatus
 import dev.jdtech.jellyfin.presentation.film.components.PlaceholderScreen
+import dev.jdtech.jellyfin.presentation.utils.LocalOfflineMode
 import dev.jdtech.jellyfin.presentation.utils.rememberSafePadding
 import java.util.UUID
 
@@ -91,10 +96,26 @@ fun DownloadsScreen(
     onShowClick: (show: FindroidShow) -> Unit,
     onStorageClick: () -> Unit,
     onExploreLibraryClick: () -> Unit,
+    onGoOnlineClick: () -> Unit = {},
     viewModel: DownloadsViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val isOfflineMode = LocalOfflineMode.current
     val state by viewModel.state.collectAsStateWithLifecycle()
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_PAUSE || event == Lifecycle.Event.ON_STOP) {
+                viewModel.onAction(DownloadsAction.CommitPendingDeletions)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            viewModel.onAction(DownloadsAction.CommitPendingDeletions)
+        }
+    }
     val listState = rememberLazyListState()
     val canScrollForward by remember { derivedStateOf { listState.canScrollForward } }
 
@@ -362,8 +383,20 @@ fun DownloadsScreen(
                 PlaceholderScreen(
                     title = stringResource(CoreR.string.no_downloads_title),
                     subtitle = stringResource(CoreR.string.no_downloads),
-                    buttonText = stringResource(CoreR.string.explore_library),
-                    onButtonClick = onExploreLibraryClick,
+                    buttonText =
+                        if (isOfflineMode) {
+                            stringResource(CoreR.string.offline_mode_go_online)
+                        } else {
+                            stringResource(CoreR.string.explore_library)
+                        },
+                    onButtonClick = {
+                        if (isOfflineMode) {
+                            viewModel.onAction(DownloadsAction.GoOnline)
+                            onGoOnlineClick()
+                        } else {
+                            onExploreLibraryClick()
+                        }
+                    },
                     image = CoreR.drawable.download_page_placeholder,
                     isEmpty = true,
                     modifier =
@@ -521,7 +554,26 @@ fun DownloadsScreen(
                                     title = movie.name,
                                     metadataText = metadataText,
                                     sizeBytes =
-                                        if (state.displayExtraInfo) movie.diskSize() else 0L,
+                                        when {
+                                            transfer != null -> transfer.totalBytes
+                                            activeEntry?.totalBytes != null &&
+                                                activeEntry.totalBytes > 0 -> activeEntry.totalBytes
+                                            state.displayExtraInfo -> movie.diskSize()
+                                            else -> 0L
+                                        },
+                                    downloadedSizeBytes =
+                                        when {
+                                            transfer != null -> transfer.bytesTransferred
+                                            activeEntry != null &&
+                                                activeEntry.bytesDownloaded > 0 ->
+                                                activeEntry.bytesDownloaded
+                                            else -> 0L
+                                        },
+                                    downloadSpeedBytesPerSec =
+                                        when {
+                                            activeEntry != null -> activeEntry.bytesPerSecond
+                                            else -> 0L
+                                        },
                                     status = status,
                                     downloadProgress = dlProgress,
                                     playbackProgress = playbackProgress,
@@ -725,14 +777,35 @@ fun DownloadsScreen(
                             }
                         }
 
+                        val showDownloadedSizeBytes =
+                            when {
+                                showTransfer != null -> showTransfer.bytesTransferred
+                                activeEpisodes.isNotEmpty() ->
+                                    activeEpisodes.sumOf { it.bytesDownloaded.coerceAtLeast(0L) }
+                                else -> 0L
+                            }
+                        val showSizeBytes =
+                            when {
+                                showTransfer != null -> showTransfer.totalBytes
+                                activeEpisodes.isNotEmpty() &&
+                                    activeEpisodes.any { it.totalBytes > 0 } ->
+                                    activeEpisodes.sumOf { it.totalBytes.coerceAtLeast(0L) }
+                                state.displayExtraInfo -> showItem.totalDiskSize
+                                else -> 0L
+                            }
+                        val showDownloadSpeedBytesPerSec = activeEpisodes.sumOf {
+                            it.bytesPerSecond
+                        }
+
                         DownloadItemCard(
                             item = showItem.show,
                             state =
                                 DownloadItemCardState(
                                     title = showItem.show.name,
                                     metadataText = metadataText,
-                                    sizeBytes =
-                                        if (state.displayExtraInfo) showItem.totalDiskSize else 0L,
+                                    sizeBytes = showSizeBytes,
+                                    downloadedSizeBytes = showDownloadedSizeBytes,
+                                    downloadSpeedBytesPerSec = showDownloadSpeedBytesPerSec,
                                     status = status,
                                     downloadProgress = totalProgress,
                                     playbackProgress = 0f,

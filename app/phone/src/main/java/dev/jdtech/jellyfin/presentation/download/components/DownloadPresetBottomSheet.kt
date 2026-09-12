@@ -4,7 +4,6 @@ import android.text.format.Formatter
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
@@ -14,7 +13,6 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -110,7 +108,7 @@ fun DownloadPresetBottomSheet(
     initialDownloadExternalAudio: Boolean = false,
     initialRememberSetting: Boolean = false,
     onAddClick: () -> Unit = {},
-    sheetState: SheetState = rememberModalBottomSheetState(),
+    sheetState: SheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
 ) {
     val allPresets = remember(presets) { presets.ifEmpty { DownloadQualityPresets.defaultPresets } }
 
@@ -358,95 +356,92 @@ fun DownloadPresetBottomSheetLayout(
             }
         }
 
-        Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
-            Column(
-                modifier =
-                    Modifier.fillMaxWidth()
-                        .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
-                        .drawWithContent {
-                            drawContent()
-                            val edgeHeight = 16.dp.toPx()
+        Column(
+            modifier =
+                Modifier.fillMaxWidth()
+                    .weight(1f, fill = false)
+                    .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
+                    .drawWithContent {
+                        drawContent()
+                        val edgeHeight = 16.dp.toPx()
 
-                            if (scrollState.canScrollBackward) {
-                                drawRect(
-                                    brush =
-                                        Brush.verticalGradient(
-                                            colors = listOf(Color.Transparent, Color.Black),
-                                            startY = 0f,
-                                            endY = edgeHeight,
-                                        ),
-                                    blendMode = BlendMode.DstIn,
-                                )
-                            }
-
-                            if (scrollState.canScrollForward) {
-                                drawRect(
-                                    brush =
-                                        Brush.verticalGradient(
-                                            colors = listOf(Color.Black, Color.Transparent),
-                                            startY = size.height - edgeHeight,
-                                            endY = size.height,
-                                        ),
-                                    blendMode = BlendMode.DstIn,
-                                )
-                            }
+                        if (scrollState.canScrollBackward) {
+                            drawRect(
+                                brush =
+                                    Brush.verticalGradient(
+                                        colors = listOf(Color.Transparent, Color.Black),
+                                        startY = 0f,
+                                        endY = edgeHeight,
+                                    ),
+                                blendMode = BlendMode.DstIn,
+                            )
                         }
-                        .nestedScroll(stopScrollPropagation)
-                        .verticalScroll(scrollState),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                presets.forEach { preset ->
-                    key(preset.id) {
-                        DownloadPresetCard(
-                            preset = preset,
-                            isSelected = preset.id == selectedPresetId,
-                            showDetails = showDetails,
-                            runtimeTicks = runtimeTicks,
-                            sourceSize = sourceSize,
-                            isOriginalSupported = isOriginalSupported,
-                            originalVideoStream = originalVideoStream,
-                            onSelect = { onSelectPreset(preset.id) },
-                            audioStreams = audioStreams,
-                            currentLocale = currentLocale,
-                        )
-                    }
-                }
 
-                OutlinedButton(
-                    onClick = onAddClick,
-                    modifier = Modifier.defaultMinSize(minHeight = 48.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    border =
-                        BorderStroke(
-                            1.dp,
-                            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f),
-                        ),
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                ) {
-                    Icon(
-                        painter = painterResource(CoreR.drawable.ic_add),
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                        tint = MaterialTheme.colorScheme.primary,
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = stringResource(CoreR.string.download_preset_add_preset),
-                        style =
-                            MaterialTheme.typography.labelMedium.copy(
-                                fontWeight = FontWeight.SemiBold
-                            ),
-                        color = MaterialTheme.colorScheme.onSurface,
+                        if (scrollState.canScrollForward) {
+                            drawRect(
+                                brush =
+                                    Brush.verticalGradient(
+                                        colors = listOf(Color.Black, Color.Transparent),
+                                        startY = size.height - edgeHeight,
+                                        endY = size.height,
+                                    ),
+                                blendMode = BlendMode.DstIn,
+                            )
+                        }
+                    }
+                    .nestedScroll(stopScrollPropagation)
+                    .verticalScroll(scrollState),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            presets.forEach { preset ->
+                key(preset.id) {
+                    DownloadPresetCard(
+                        preset = preset,
+                        isSelected = preset.id == selectedPresetId,
+                        showDetails = showDetails,
+                        runtimeTicks = runtimeTicks,
+                        sourceSize = sourceSize,
+                        isOriginalSupported = isOriginalSupported,
+                        originalVideoStream = originalVideoStream,
+                        onSelect = { onSelectPreset(preset.id) },
+                        audioStreams = audioStreams,
+                        currentLocale = currentLocale,
                     )
                 }
+            }
+
+            OutlinedButton(
+                onClick = onAddClick,
+                modifier = Modifier.defaultMinSize(minHeight = 32.dp),
+                shape = RoundedCornerShape(12.dp),
+                border =
+                    BorderStroke(
+                        1.dp,
+                        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f),
+                    ),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+            ) {
+                Icon(
+                    painter = painterResource(CoreR.drawable.ic_add),
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = stringResource(CoreR.string.download_preset_add_preset),
+                    style =
+                        MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
             }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
         Card(
-            modifier = Modifier.fillMaxWidth().animateContentSize(animationSpec = tween(150)),
+            modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
             colors =
                 CardDefaults.cardColors(

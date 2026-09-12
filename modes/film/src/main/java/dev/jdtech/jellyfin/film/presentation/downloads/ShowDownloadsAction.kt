@@ -10,6 +10,8 @@ sealed interface ShowDownloadsAction {
 
     data class UndoDelete(val id: UUID? = null) : ShowDownloadsAction
 
+    data object CommitPendingDeletions : ShowDownloadsAction
+
     data class ToggleSelection(val id: UUID) : ShowDownloadsAction
 
     data class ToggleSeasonSelection(val episodeIds: Set<UUID>) : ShowDownloadsAction
