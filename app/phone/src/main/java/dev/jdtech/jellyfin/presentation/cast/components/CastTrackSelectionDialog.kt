@@ -406,7 +406,7 @@ fun CastTrackSelectionDialog(
                                     }
                                 }
                             }
-                            items(tracks, key = { it.id }) { track ->
+                            items(tracks.distinctBy { it.id }, key = { it.id }) { track ->
                                 TrackRow(
                                     track = track,
                                     displayExtraInfo = displayExtraInfo,

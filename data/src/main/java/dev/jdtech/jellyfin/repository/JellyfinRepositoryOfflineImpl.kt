@@ -149,7 +149,7 @@ class JellyfinRepositoryOfflineImpl(
                 database.searchDownloadedEpisodes(serverId, userId, query).map {
                     it.toFindroidEpisode(database, userId)
                 }
-            movies + shows + episodes
+            (movies + shows + episodes).distinctBy { it.id }
         }
     }
 
@@ -174,7 +174,7 @@ class JellyfinRepositoryOfflineImpl(
                     .getDownloadedEpisodesByServerAndUser(serverId, userId)
                     .map { it.toFindroidEpisode(database, userId) }
                     .filter { it.playbackPositionTicks > 0 }
-            movies + episodes
+            (movies + episodes).distinctBy { it.id }
         }
     }
 

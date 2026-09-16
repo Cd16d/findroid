@@ -147,7 +147,7 @@ private fun MediaScreenLayout(
             item(span = { GridItemSpan(maxLineSpan) }) {
                 FavoritesCard(onClick = { onAction(MediaAction.OnFavoritesClick) })
             }
-            items(state.libraries, key = { it.id }) { library ->
+            items(state.libraries.distinctBy { it.id }, key = { it.id }) { library ->
                 ItemCard(
                     item = library,
                     direction = Direction.HORIZONTAL,

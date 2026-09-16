@@ -443,7 +443,7 @@ fun DownloadsScreen(
 
                     // Movies
                     items(
-                        items = allMovies,
+                        items = allMovies.distinctBy { it.id },
                         key = { "movie_${it.id}" },
                     ) { movie ->
                         val activeEntry = state.activeDownloads.firstOrNull { it.id == movie.id }
@@ -637,7 +637,7 @@ fun DownloadsScreen(
 
                     // Shows
                     items(
-                        items = allShows,
+                        items = allShows.distinctBy { it.show.id },
                         key = { "show_${it.show.id}" },
                     ) { showItem ->
                         val activeEpisodes =

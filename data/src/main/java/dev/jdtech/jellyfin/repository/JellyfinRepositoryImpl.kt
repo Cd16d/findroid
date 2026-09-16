@@ -131,9 +131,12 @@ class JellyfinRepositoryImpl(
 
     override suspend fun getLibraries(): List<FindroidCollection> =
         withContext(Dispatchers.IO) {
-            jellyfinApi.libraryApi.getItems(jellyfinApi.userId!!).content.items.mapNotNull {
-                it.toFindroidCollection(this@JellyfinRepositoryImpl)
-            }
+            jellyfinApi.libraryApi
+                .getItems(jellyfinApi.userId!!)
+                .content
+                .items
+                .mapNotNull { it.toFindroidCollection(this@JellyfinRepositoryImpl) }
+                .distinctBy { it.id }
         }
 
     override suspend fun getItem(itemId: UUID): FindroidItem? =
@@ -170,6 +173,7 @@ class JellyfinRepositoryImpl(
                 .content
                 .items
                 .mapNotNull { it.toFindroidItem(this@JellyfinRepositoryImpl, database) }
+                .distinctBy { it.id }
         }
 
     override suspend fun getItemsPaging(
@@ -221,6 +225,7 @@ class JellyfinRepositoryImpl(
                 .content
                 .items
                 .mapNotNull { it.toFindroidItem(this@JellyfinRepositoryImpl, database) }
+                .distinctBy { it.id }
         }
 
     override suspend fun getFavoriteItems(): List<FindroidItem> =
@@ -236,6 +241,7 @@ class JellyfinRepositoryImpl(
                 .content
                 .items
                 .mapNotNull { it.toFindroidItem(this@JellyfinRepositoryImpl, database) }
+                .distinctBy { it.id }
         }
 
     override suspend fun getSearchItems(query: String): List<FindroidItem> =
@@ -251,6 +257,7 @@ class JellyfinRepositoryImpl(
                 .content
                 .items
                 .mapNotNull { it.toFindroidItem(this@JellyfinRepositoryImpl, database) }
+                .distinctBy { it.id }
         }
 
     override suspend fun getSuggestions(): List<FindroidItem> =
@@ -264,6 +271,7 @@ class JellyfinRepositoryImpl(
                 .content
                 .items
                 .mapNotNull { it.toFindroidItem(this@JellyfinRepositoryImpl, database) }
+                .distinctBy { it.id }
         }
 
     override suspend fun getResumeItems(): List<FindroidItem> =
@@ -277,6 +285,7 @@ class JellyfinRepositoryImpl(
                 .content
                 .items
                 .mapNotNull { it.toFindroidItem(this@JellyfinRepositoryImpl, database) }
+                .distinctBy { it.id }
         }
 
     override suspend fun getLatestMedia(parentId: UUID): List<FindroidItem> =
@@ -285,18 +294,23 @@ class JellyfinRepositoryImpl(
                 .getLatestMedia(jellyfinApi.userId!!, parentId = parentId, limit = 16)
                 .content
                 .mapNotNull { it.toFindroidItem(this@JellyfinRepositoryImpl, database) }
+                .distinctBy { it.id }
         }
 
     override suspend fun getSeasons(seriesId: UUID, offline: Boolean): List<FindroidSeason> =
         withContext(Dispatchers.IO) {
             if (!offline) {
-                jellyfinApi.showApi.getSeasons(seriesId, jellyfinApi.userId!!).content.items.map {
-                    it.toFindroidSeason(this@JellyfinRepositoryImpl)
-                }
+                jellyfinApi.showApi
+                    .getSeasons(seriesId, jellyfinApi.userId!!)
+                    .content
+                    .items
+                    .map { it.toFindroidSeason(this@JellyfinRepositoryImpl) }
+                    .distinctBy { it.id }
             } else {
-                database.getSeasonsByShowId(seriesId).map {
-                    it.toFindroidSeason(database, jellyfinApi.userId!!)
-                }
+                database
+                    .getSeasonsByShowId(seriesId)
+                    .map { it.toFindroidSeason(database, jellyfinApi.userId!!) }
+                    .distinctBy { it.id }
             }
         }
 
@@ -312,6 +326,7 @@ class JellyfinRepositoryImpl(
                 .content
                 .items
                 .mapNotNull { it.toFindroidEpisode(this@JellyfinRepositoryImpl) }
+                .distinctBy { it.id }
         }
 
     override suspend fun getEpisodes(
@@ -336,10 +351,12 @@ class JellyfinRepositoryImpl(
                     .content
                     .items
                     .mapNotNull { it.toFindroidEpisode(this@JellyfinRepositoryImpl, database) }
+                    .distinctBy { it.id }
             } else {
-                database.getEpisodesBySeasonId(seasonId).map {
-                    it.toFindroidEpisode(database, jellyfinApi.userId!!)
-                }
+                database
+                    .getEpisodesBySeasonId(seasonId)
+                    .map { it.toFindroidEpisode(database, jellyfinApi.userId!!) }
+                    .distinctBy { it.id }
             }
         }
 

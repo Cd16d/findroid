@@ -85,7 +85,8 @@ private fun ServerSelectionBottomSheetLayout(
                 ),
             verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacings.medium),
         ) {
-            items(items = state.servers, key = { it.server.id }) { server ->
+            items(items = state.servers.distinctBy { it.server.id }, key = { it.server.id }) {
+                server ->
                 ServerSelectionItem(
                     server = server,
                     selected = server.server.id == currentServerId,

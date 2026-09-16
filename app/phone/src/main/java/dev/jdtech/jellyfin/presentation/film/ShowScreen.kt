@@ -281,7 +281,10 @@ private fun ShowScreenLayout(state: ShowState, onAction: (ShowAction) -> Unit) {
                         horizontalArrangement =
                             Arrangement.spacedBy(MaterialTheme.spacings.default),
                     ) {
-                        items(items = state.seasons, key = { item -> item.id }) { season ->
+                        items(
+                            items = state.seasons.distinctBy { it.id },
+                            key = { item -> item.id },
+                        ) { season ->
                             ItemCard(
                                 item = season,
                                 direction = Direction.VERTICAL,

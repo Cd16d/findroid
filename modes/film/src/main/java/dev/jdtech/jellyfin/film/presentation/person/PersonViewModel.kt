@@ -31,8 +31,8 @@ class PersonViewModel @Inject internal constructor(private val repository: Jelly
                         recursive = true,
                     )
 
-                val movies = items.filterIsInstance<FindroidMovie>()
-                val shows = items.filterIsInstance<FindroidShow>()
+                val movies = items.filterIsInstance<FindroidMovie>().distinctBy { it.id }
+                val shows = items.filterIsInstance<FindroidShow>().distinctBy { it.id }
 
                 _state.emit(
                     _state.value.copy(

@@ -504,14 +504,20 @@ fun NavigationRoot(
                                     onUserClick = { isAccountMenuOpen = true },
                                     onManageServers = { navController.safeNavigate(ServersRoute) },
                                     onItemClick = { item ->
-                                        navigateToItem(navController = navController, item = item)
+                                        navigateToItem(
+                                            navController = navController,
+                                            item = item,
+                                        )
                                     },
                                 )
                             }
                             composable<MediaRoute> {
                                 MediaScreen(
                                     onItemClick = { item ->
-                                        navigateToItem(navController = navController, item = item)
+                                        navigateToItem(
+                                            navController = navController,
+                                            item = item,
+                                        )
                                     },
                                     onFavoritesClick = {
                                         navController.safeNavigate(FavoritesRoute)
@@ -551,7 +557,10 @@ fun NavigationRoot(
                                     },
                                     onGoOnlineClick = {
                                         val appPreferences = AppPreferences(context)
-                                        appPreferences.setValue(appPreferences.offlineMode, false)
+                                        appPreferences.setValue(
+                                            appPreferences.offlineMode,
+                                            false,
+                                        )
                                         try {
                                             (context as Activity).restart()
                                         } catch (_: Exception) {}
@@ -578,7 +587,10 @@ fun NavigationRoot(
                                     libraryName = route.libraryName,
                                     libraryType = route.libraryType,
                                     onItemClick = { item ->
-                                        navigateToItem(navController = navController, item = item)
+                                        navigateToItem(
+                                            navController = navController,
+                                            item = item,
+                                        )
                                     },
                                     navigateBack = { navController.safePopBackStack() },
                                 )
@@ -589,7 +601,10 @@ fun NavigationRoot(
                                     collectionId = UUID.fromString(route.collectionId),
                                     collectionName = route.collectionName,
                                     onItemClick = { item ->
-                                        navigateToItem(navController = navController, item = item)
+                                        navigateToItem(
+                                            navController = navController,
+                                            item = item,
+                                        )
                                     },
                                     navigateBack = { navController.safePopBackStack() },
                                 )
@@ -597,7 +612,10 @@ fun NavigationRoot(
                             composable<FavoritesRoute> {
                                 FavoritesScreen(
                                     onItemClick = { item ->
-                                        navigateToItem(navController = navController, item = item)
+                                        navigateToItem(
+                                            navController = navController,
+                                            item = item,
+                                        )
                                     },
                                     navigateBack = { navController.safePopBackStack() },
                                     onExploreLibraryClick = {
@@ -639,7 +657,10 @@ fun NavigationRoot(
                                     navigateBack = { navController.safePopBackStack() },
                                     navigateHome = { navigateHome(navController) },
                                     navigateToItem = { item ->
-                                        navigateToItem(navController = navController, item = item)
+                                        navigateToItem(
+                                            navController = navController,
+                                            item = item,
+                                        )
                                     },
                                     navigateToPerson = { personId ->
                                         navController.safeNavigate(PersonRoute(personId.toString()))
@@ -653,7 +674,10 @@ fun NavigationRoot(
                                     navigateBack = { navController.safePopBackStack() },
                                     navigateHome = { navigateHome(navController) },
                                     navigateToItem = { item ->
-                                        navigateToItem(navController = navController, item = item)
+                                        navigateToItem(
+                                            navController = navController,
+                                            item = item,
+                                        )
                                     },
                                     navigateToSeries = { seriesId ->
                                         navController.safeNavigate(
@@ -697,7 +721,10 @@ fun NavigationRoot(
                                     navigateBack = { navController.safePopBackStack() },
                                     navigateHome = { navigateHome(navController) },
                                     navigateToItem = { item ->
-                                        navigateToItem(navController = navController, item = item)
+                                        navigateToItem(
+                                            navController = navController,
+                                            item = item,
+                                        )
                                     },
                                 )
                             }

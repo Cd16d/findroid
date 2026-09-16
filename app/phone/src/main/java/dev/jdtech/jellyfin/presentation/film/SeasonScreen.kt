@@ -395,7 +395,10 @@ private fun SeasonScreenLayout(
                         canPlay = state.episodes.isNotEmpty(),
                     )
                 }
-                items(items = state.episodes, key = { episode -> episode.id }) { episode ->
+                items(
+                    items = state.episodes.distinctBy { it.id },
+                    key = { episode -> episode.id },
+                ) { episode ->
                     val queueEntry = queueEntries.firstOrNull { it.id == episode.id }
                     val isDownloading =
                         queueEntry?.state is DownloadQueue.EntryState.Downloading ||

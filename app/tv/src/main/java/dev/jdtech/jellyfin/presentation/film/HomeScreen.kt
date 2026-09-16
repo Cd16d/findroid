@@ -107,7 +107,7 @@ private fun HomeScreenLayout(state: HomeState, onAction: (HomeAction) -> Unit) {
                 )
             }
         }
-        items(state.views, key = { it.id }) { view ->
+        items(state.views.distinctBy { it.id }, key = { it.id }) { view ->
             HomeView(
                 view = view,
                 itemsPadding = itemsPadding,

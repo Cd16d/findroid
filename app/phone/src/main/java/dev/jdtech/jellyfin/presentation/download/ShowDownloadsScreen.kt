@@ -453,7 +453,7 @@ private fun ShowDownloadsScreenLayout(
                         }
 
                         items(
-                            items = seasonGroup.episodes,
+                            items = seasonGroup.episodes.distinctBy { it.id },
                             key = { it.id },
                         ) { episode ->
                             val queueEntry =

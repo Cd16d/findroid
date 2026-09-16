@@ -158,7 +158,10 @@ private fun PersonScreenLayout(state: PersonState, onAction: (PersonAction) -> U
                                 horizontalArrangement =
                                     Arrangement.spacedBy(MaterialTheme.spacings.default),
                             ) {
-                                items(state.starredInMovies, key = { it.id }) { item ->
+                                items(
+                                    state.starredInMovies.distinctBy { it.id },
+                                    key = { it.id },
+                                ) { item ->
                                     ItemCard(
                                         item = item,
                                         direction = Direction.VERTICAL,
@@ -182,7 +185,8 @@ private fun PersonScreenLayout(state: PersonState, onAction: (PersonAction) -> U
                                 horizontalArrangement =
                                     Arrangement.spacedBy(MaterialTheme.spacings.default),
                             ) {
-                                items(state.starredInShows, key = { it.id }) { item ->
+                                items(state.starredInShows.distinctBy { it.id }, key = { it.id }) {
+                                    item ->
                                     ItemCard(
                                         item = item,
                                         direction = Direction.VERTICAL,

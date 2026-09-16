@@ -63,7 +63,10 @@ fun CollectionGrid(
                     )
                 }
             }
-            items(items = section.items, key = { it.id }) { item ->
+            items(
+                items = section.items.distinctBy { it.id },
+                key = { "${section.id}_${it.id}" },
+            ) { item ->
                 ItemCard(
                     item = item,
                     direction =

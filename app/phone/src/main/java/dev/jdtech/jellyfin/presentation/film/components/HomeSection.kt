@@ -40,7 +40,7 @@ fun HomeSection(
             contentPadding = itemsPadding,
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacings.default),
         ) {
-            items(section.items, key = { it.id }) { item ->
+            items(section.items.distinctBy { it.id }, key = { it.id }) { item ->
                 ItemCard(
                     item = item,
                     direction = Direction.HORIZONTAL,
