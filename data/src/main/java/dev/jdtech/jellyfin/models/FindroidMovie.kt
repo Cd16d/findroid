@@ -101,7 +101,10 @@ suspend fun BaseItemDto.toFindroidMovie(
     )
 }
 
-fun FindroidMovieDto.toFindroidMovie(database: ServerDatabaseDao, userId: UUID): FindroidMovie {
+suspend fun FindroidMovieDto.toFindroidMovie(
+    database: ServerDatabaseDao,
+    userId: UUID,
+): FindroidMovie {
     val userData = database.getUserDataOrCreateNew(id, userId)
     val isDownloaded = database.isItemDownloadedForUser(userId, id)
     val sources =

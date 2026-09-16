@@ -341,7 +341,7 @@ class DownloaderImpl(
         }
     }
 
-    private fun cleanupShowData(seriesId: UUID) {
+    private suspend fun cleanupShowData(seriesId: UUID) {
         database.deleteShow(seriesId)
         if (database.countUserDataToBeSynced(seriesId) == 0) {
             database.deleteUserData(seriesId)
@@ -350,7 +350,7 @@ class DownloaderImpl(
         File(context.filesDir, "images/$seriesId").deleteRecursively()
     }
 
-    private fun cleanupSeasonData(seasonId: UUID) {
+    private suspend fun cleanupSeasonData(seasonId: UUID) {
         database.deleteSeason(seasonId)
         if (database.countUserDataToBeSynced(seasonId) == 0) {
             database.deleteUserData(seasonId)
@@ -359,7 +359,7 @@ class DownloaderImpl(
         File(context.filesDir, "images/$seasonId").deleteRecursively()
     }
 
-    private fun cleanupEpisodeParents(item: FindroidEpisode) {
+    private suspend fun cleanupEpisodeParents(item: FindroidEpisode) {
         val remainingEpisodes = database.getEpisodesBySeasonId(item.seasonId)
         if (remainingEpisodes.isEmpty()) {
             cleanupSeasonData(item.seasonId)
@@ -370,7 +370,7 @@ class DownloaderImpl(
         }
     }
 
-    private fun deleteSourcesAndStreamsFiles(itemId: UUID, source: FindroidSource) {
+    private suspend fun deleteSourcesAndStreamsFiles(itemId: UUID, source: FindroidSource) {
         val allSources = database.getSources(itemId)
         for (s in allSources.ifEmpty { listOf(source.toFindroidSourceDto(itemId, source.path)) }) {
             database.deleteSource(s.id)
@@ -495,7 +495,7 @@ class DownloaderImpl(
             val basePath = source.path.removeSuffix(".download")
             val isFragmented =
                 if (partialFile.exists()) Mp4Remuxer.isFragmentedMp4(partialFile) else false
-            val finalFile =
+            val finalFile: File =
                 if (isFragmented || !basePath.substringAfterLast('/', "").contains('.')) {
                     File("$basePath.mp4")
                 } else {
@@ -655,7 +655,7 @@ class DownloaderImpl(
         return if (total > 0L) total else 1L
     }
 
-    private fun moveSourcesAndStreams(
+    private suspend fun moveSourcesAndStreams(
         itemId: UUID,
         targetDir: File,
         onBytesCopied: ((Long) -> Unit)? = null,

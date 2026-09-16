@@ -644,7 +644,9 @@ class JellyfinRepositoryImpl(
     }
 
     override suspend fun getCurrentServer(): Server? {
-        return appPreferences.getValue(appPreferences.currentServer)?.let { id -> database.get(id) }
+        return appPreferences.getValue(appPreferences.currentServer)?.let { id ->
+            database.getServer(id)
+        }
     }
 
     override suspend fun refreshUser(userId: UUID): String? {
@@ -671,7 +673,7 @@ class JellyfinRepositoryImpl(
         val server = getCurrentServer() ?: return
         val user = database.getUser(userId) ?: return
         server.currentUserId = user.id
-        database.update(server)
+        database.updateServer(server)
 
         jellyfinApi.apply {
             api.update(accessToken = user.accessToken)

@@ -63,7 +63,7 @@ suspend fun BaseItemDto.toFindroidPart(
     }
 }
 
-fun FindroidPartDto.toFindroidPart(
+suspend fun FindroidPartDto.toFindroidPart(
     database: ServerDatabaseDao,
     userId: UUID,
 ): FindroidPart {

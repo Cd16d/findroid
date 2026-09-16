@@ -63,6 +63,8 @@ I am developing this application in my spare time.
   - Audio and subtitle track switching on remote receivers
   - Remote volume adjustment and timeline scrubbing with trickplay preview thumbnails
   - Automatic session recovery across transient Wi-Fi drops and app restarts
+- Quick Connect support
+  - Fast passwordless authentication via Quick Connect code input and directly in login screen
 
 ## Planned features
 - Android TV
