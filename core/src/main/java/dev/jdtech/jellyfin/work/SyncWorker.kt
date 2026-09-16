@@ -55,7 +55,7 @@ constructor(
                     val pendingUserData = database.getAllUserDataToBeSynced(user.id)
                     for (userData in pendingUserData) {
                         try {
-                            jellyfinApi.itemsApi.updateItemUserData(
+                            jellyfinApi.userDataApi.updateItemUserData(
                                 itemId = userData.itemId,
                                 userId = user.id,
                                 data =

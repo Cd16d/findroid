@@ -56,7 +56,13 @@ suspend fun BaseItemDto.toFindroidPart(
             playbackPositionTicks = userData?.playbackPositionTicks ?: 0L,
             images = toFindroidImages(jellyfinRepository),
             trickplayInfo =
-                trickplay?.mapValues { it.value[it.value.keys.max()]!!.toFindroidTrickplayInfo() },
+                trickplay
+                    ?.mapNotNull { (key, value) ->
+                        val maxKey = value?.keys?.maxOrNull() ?: return@mapNotNull null
+                        val info = value[maxKey] ?: return@mapNotNull null
+                        key to info.toFindroidTrickplayInfo()
+                    }
+                    ?.toMap(),
         )
     } catch (_: NullPointerException) {
         null

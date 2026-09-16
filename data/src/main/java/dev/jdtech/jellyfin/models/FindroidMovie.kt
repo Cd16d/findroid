@@ -78,7 +78,13 @@ suspend fun BaseItemDto.toFindroidMovie(
         images = toFindroidImages(jellyfinRepository),
         chapters = toFindroidChapters(),
         trickplayInfo =
-            trickplay?.mapValues { it.value[it.value.keys.max()]!!.toFindroidTrickplayInfo() },
+            trickplay
+                ?.mapNotNull { (key, value) ->
+                    val maxKey = value?.keys?.maxOrNull() ?: return@mapNotNull null
+                    val info = value[maxKey] ?: return@mapNotNull null
+                    key to info.toFindroidTrickplayInfo()
+                }
+                ?.toMap(),
         additionalParts =
             if ((partCount ?: 0) > 1) {
                 val movieImages = toFindroidImages(jellyfinRepository)

@@ -685,7 +685,7 @@ constructor(
                 val userId = jellyfinApi.userId
                 val findroidItem =
                     withContext(ioDispatcher) {
-                        jellyfinApi.userLibraryApi.getItem(itemId, userId).content
+                        jellyfinApi.libraryApi.getItem(itemId, userId).content
                     }
                 val itemKind =
                     when (findroidItem.type) {
