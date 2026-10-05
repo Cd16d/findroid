@@ -2,13 +2,23 @@ name: Format
 
 on:
   push:
+    branches:
+      - beta
+      - main
     paths:
       - '**.kt'
       - '**.kts'
   pull_request:
+    branches:
+      - beta
+      - main
     paths:
       - '**.kt'
       - '**.kts'
+
+concurrency:
+  group: format-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   format:
