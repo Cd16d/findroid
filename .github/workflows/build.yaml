@@ -1,10 +1,20 @@
 name: Build
 
 on:
+  push:
+    branches:
+      - main
+      - beta
+    paths-ignore:
+      - '**.md'
+      - '.github/workflows/format.yaml'
+      - '.gitignore'
+      - 'LICENSE'
+      - 'PRIVACY'
   pull_request:
     branches:
-      - beta
       - main
+      - beta
     paths-ignore:
       - '**.md'
       - '.github/workflows/format.yaml'
