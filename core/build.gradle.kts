@@ -6,6 +6,8 @@ plugins {
     alias(libs.plugins.hilt)
 }
 
+java { toolchain { languageVersion = Versions.JAVA } }
+
 android {
     namespace = "dev.jdtech.jellyfin.core"
     compileSdk = Versions.COMPILE_SDK
@@ -21,11 +23,6 @@ android {
     flavorDimensions += "variant"
     productFlavors { register("libre") }
 
-    compileOptions {
-        sourceCompatibility = Versions.JAVA
-        targetCompatibility = Versions.JAVA
-    }
-
     buildFeatures { compose = true }
 }
 
@@ -39,7 +36,7 @@ dependencies {
     ksp(libs.androidx.hilt.compiler)
     implementation(libs.androidx.lifecycle.viewmodel)
     implementation(libs.androidx.paging)
-    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room3.runtime)
     implementation(libs.androidx.work)
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)

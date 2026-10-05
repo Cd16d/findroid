@@ -1,8 +1,11 @@
 plugins {
     alias(libs.plugins.android.library)
+    alias(libs.plugins.androidx.room3)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
 }
+
+java { toolchain { languageVersion = Versions.JAVA } }
 
 android {
     namespace = "dev.jdtech.jellyfin.data"
@@ -24,24 +27,16 @@ android {
         register("beta") { initWith(getByName("release")) }
     }
 
-    compileOptions {
-        sourceCompatibility = Versions.JAVA
-        targetCompatibility = Versions.JAVA
-    }
-
     buildFeatures { buildConfig = true }
 }
 
-ksp {
-    arg("room.schemaLocation", "$projectDir/schemas")
-    arg("room.generateKotlin", "true")
-}
+room3 { schemaDirectory("$projectDir/schemas") }
 
 dependencies {
     implementation(projects.settings)
     implementation(libs.androidx.paging)
-    implementation(libs.androidx.room.runtime)
-    ksp(libs.androidx.room.compiler)
+    implementation(libs.androidx.room3.runtime)
+    ksp(libs.androidx.room3.compiler)
     implementation(libs.jellyfin.core)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.okhttp)

@@ -4,16 +4,13 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
+java { toolchain { languageVersion = Versions.JAVA } }
+
 android {
     namespace = "dev.jdtech.jellyfin.player.cast"
     compileSdk = Versions.COMPILE_SDK
 
     defaultConfig { minSdk = Versions.MIN_SDK }
-
-    compileOptions {
-        sourceCompatibility = Versions.JAVA
-        targetCompatibility = Versions.JAVA
-    }
 
     buildTypes {
         named("release") { isMinifyEnabled = false }

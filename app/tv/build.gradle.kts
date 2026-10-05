@@ -9,6 +9,8 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
+java { toolchain { languageVersion = Versions.JAVA } }
+
 val keystorePropertiesFile = rootProject.file("keystore.properties")
 val envKeystoreFile: String? = System.getenv("KEYSTORE_FILE")
 val keystoreProps: Properties? =
@@ -84,13 +86,6 @@ android {
         }
     }
 
-    compileOptions {
-        isCoreLibraryDesugaringEnabled = true
-
-        sourceCompatibility = Versions.JAVA
-        targetCompatibility = Versions.JAVA
-    }
-
     buildFeatures {
         buildConfig = true
         compose = true
@@ -139,8 +134,6 @@ dependencies {
     implementation(libs.media3.ffmpeg.decoder)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.timber)
-
-    coreLibraryDesugaring(libs.android.desugar.jdk)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
 }

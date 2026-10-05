@@ -3,6 +3,8 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
+java { toolchain { languageVersion = Versions.JAVA } }
+
 android {
     namespace = "dev.jdtech.jellyfin.settings"
     compileSdk = Versions.COMPILE_SDK
@@ -24,12 +26,6 @@ android {
             matchingFallbacks += listOf("libre")
         }
     }
-
-    compileOptions {
-        sourceCompatibility = Versions.JAVA
-        targetCompatibility = Versions.JAVA
-    }
-
     buildFeatures { buildConfig = true }
 }
 

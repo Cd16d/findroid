@@ -1,10 +1,10 @@
 package dev.jdtech.jellyfin.models
 
-import androidx.room.Embedded
-import androidx.room.Relation
+import androidx.room3.Embedded
+import androidx.room3.Relation
 
 data class FindroidShowWithEpisodes(
     @Embedded val show: FindroidShowDto,
-    @Relation(parentColumn = "id", entityColumn = "seriesId")
+    @Relation(parentColumns = ["id"], entityColumns = ["seriesId"])
     val episodes: List<FindroidEpisodeDto>,
 )

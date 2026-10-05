@@ -9,8 +9,6 @@ import dagger.assisted.AssistedInject
 import dev.jdtech.jellyfin.api.JellyfinApi
 import dev.jdtech.jellyfin.database.ServerDatabaseDao
 import dev.jdtech.jellyfin.settings.domain.AppPreferences
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import org.jellyfin.sdk.model.api.UpdateUserItemDataDto
 import timber.log.Timber
@@ -36,57 +34,55 @@ constructor(
                 okHttpClient = okHttpClient,
             )
 
-        return withContext(Dispatchers.IO) {
-            val servers = database.getServers()
+        val servers = database.getServers()
 
-            for (server in servers) {
-                val serverWithAddressesAndUsers =
-                    database.getServerWithAddressesAndUsers(server.id) ?: continue
-                val serverAddress =
-                    serverWithAddressesAndUsers.addresses.firstOrNull {
-                        it.id == server.currentServerAddressId
-                    } ?: continue
-                for (user in serverWithAddressesAndUsers.users) {
-                    jellyfinApi.apply {
-                        api.update(baseUrl = serverAddress.address, accessToken = user.accessToken)
-                        userId = user.id
-                    }
+        for (server in servers) {
+            val serverWithAddressesAndUsers =
+                database.getServerWithAddressesAndUsers(server.id) ?: continue
+            val serverAddress =
+                serverWithAddressesAndUsers.addresses.firstOrNull {
+                    it.id == server.currentServerAddressId
+                } ?: continue
+            for (user in serverWithAddressesAndUsers.users) {
+                jellyfinApi.apply {
+                    api.update(baseUrl = serverAddress.address, accessToken = user.accessToken)
+                    userId = user.id
+                }
 
-                    val pendingUserData = database.getAllUserDataToBeSynced(user.id)
-                    for (userData in pendingUserData) {
-                        try {
-                            jellyfinApi.userDataApi.updateItemUserData(
-                                itemId = userData.itemId,
-                                userId = user.id,
-                                data =
-                                    UpdateUserItemDataDto(
-                                        playbackPositionTicks = userData.playbackPositionTicks,
-                                        isFavorite = userData.favorite,
-                                        played = userData.played,
-                                    ),
-                            )
+                val pendingUserData = database.getAllUserDataToBeSynced(user.id)
+                for (userData in pendingUserData) {
+                    try {
+                        jellyfinApi.userDataApi.updateItemUserData(
+                            itemId = userData.itemId,
+                            userId = user.id,
+                            data =
+                                UpdateUserItemDataDto(
+                                    playbackPositionTicks = userData.playbackPositionTicks,
+                                    isFavorite = userData.favorite,
+                                    played = userData.played,
+                                ),
+                        )
 
-                            database.setUserDataToBeSynced(user.id, userData.itemId, false)
+                        database.setUserDataToBeSynced(user.id, userData.itemId, false)
 
-                            // If this item was deleted and only kept to sync progress, clean up its
-                            // userdata now
-                            if (
-                                database.getSources(userData.itemId).isEmpty() &&
-                                    database.countUserDataToBeSynced(userData.itemId) == 0
-                            ) {
-                                database.deleteUserData(userData.itemId)
-                            }
-                        } catch (e: Exception) {
-                            Timber.e(
-                                e,
-                                "SyncWorker: failed to sync user data for item ${userData.itemId}",
-                            )
+                        // If this item was deleted and only kept to sync progress, clean up its
+                        // userdata now
+                        if (
+                            database.getSources(userData.itemId).isEmpty() &&
+                                database.countUserDataToBeSynced(userData.itemId) == 0
+                        ) {
+                            database.deleteUserData(userData.itemId)
                         }
+                    } catch (e: Exception) {
+                        Timber.e(
+                            e,
+                            "SyncWorker: failed to sync user data for item ${userData.itemId}",
+                        )
                     }
                 }
             }
-
-            Result.success()
         }
+
+        return Result.success()
     }
 }

@@ -11,6 +11,8 @@ plugins {
     alias(libs.plugins.aboutlibraries.android)
 }
 
+java { toolchain { languageVersion = Versions.JAVA } }
+
 val keystorePropertiesFile = rootProject.file("keystore.properties")
 val envKeystoreFile: String? = System.getenv("KEYSTORE_FILE")
 val keystoreProps: Properties? =
@@ -90,13 +92,6 @@ android {
         }
     }
 
-    compileOptions {
-        isCoreLibraryDesugaringEnabled = true
-
-        sourceCompatibility = Versions.JAVA
-        targetCompatibility = Versions.JAVA
-    }
-
     buildFeatures {
         buildConfig = true
         viewBinding = true
@@ -158,8 +153,6 @@ dependencies {
     implementation(libs.material)
     implementation(libs.media3.ffmpeg.decoder)
     implementation(libs.timber)
-
-    coreLibraryDesugaring(libs.android.desugar.jdk)
 
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.androidx.navigation.compose)

@@ -1,13 +1,14 @@
 package dev.jdtech.jellyfin.database
 
-import androidx.room.AutoMigration
-import androidx.room.Database
-import androidx.room.DeleteTable
-import androidx.room.RoomDatabase
-import androidx.room.TypeConverters
-import androidx.room.migration.AutoMigrationSpec
-import androidx.room.migration.Migration
-import androidx.sqlite.db.SupportSQLiteDatabase
+import androidx.room3.AutoMigration
+import androidx.room3.ColumnTypeConverters
+import androidx.room3.Database
+import androidx.room3.DeleteTable
+import androidx.room3.RoomDatabase
+import androidx.room3.migration.AutoMigrationSpec
+import androidx.room3.migration.Migration
+import androidx.sqlite.SQLiteConnection
+import androidx.sqlite.execSQL
 import dev.jdtech.jellyfin.models.FindroidEpisodeDto
 import dev.jdtech.jellyfin.models.FindroidMediaStreamDto
 import dev.jdtech.jellyfin.models.FindroidMovieDto
@@ -52,7 +53,7 @@ import dev.jdtech.jellyfin.models.UserDownloadDto
             AutoMigration(from = 8, to = 9),
         ],
 )
-@TypeConverters(Converters::class)
+@ColumnTypeConverters(Converters::class)
 abstract class ServerDatabase : RoomDatabase() {
     abstract fun getServerDatabaseDao(): ServerDatabaseDao
 
@@ -63,9 +64,9 @@ abstract class ServerDatabase : RoomDatabase() {
 
 val MIGRATION_6_7 =
     object : Migration(startVersion = 6, endVersion = 7) {
-        override fun migrate(db: SupportSQLiteDatabase) {
-            db.execSQL("DROP TABLE segments")
-            db.execSQL(
+        override suspend fun migrate(connection: SQLiteConnection) {
+            connection.execSQL("DROP TABLE segments")
+            connection.execSQL(
                 "CREATE TABLE segments (`itemId` TEXT NOT NULL, `type` TEXT NOT NULL, `startTicks` INTEGER NOT NULL, `endTicks` INTEGER NOT NULL, PRIMARY KEY(`itemId`, `type`), FOREIGN KEY(`itemId`) REFERENCES `episodes`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )"
             )
         }
@@ -73,11 +74,11 @@ val MIGRATION_6_7 =
 
 val MIGRATION_9_10 =
     object : Migration(startVersion = 9, endVersion = 10) {
-        override fun migrate(db: SupportSQLiteDatabase) {
-            db.execSQL(
+        override suspend fun migrate(connection: SQLiteConnection) {
+            connection.execSQL(
                 "CREATE TABLE IF NOT EXISTS `user_downloads` (`userId` TEXT NOT NULL, `itemId` TEXT NOT NULL, `downloadedAt` INTEGER NOT NULL, PRIMARY KEY(`userId`, `itemId`))"
             )
-            db.execSQL(
+            connection.execSQL(
                 """
                 INSERT OR IGNORE INTO user_downloads (userId, itemId, downloadedAt)
                 SELECT u.id, s.itemId, 0
@@ -88,7 +89,7 @@ val MIGRATION_9_10 =
                 """
                     .trimIndent()
             )
-            db.execSQL(
+            connection.execSQL(
                 """
                 INSERT OR IGNORE INTO user_downloads (userId, itemId, downloadedAt)
                 SELECT u.id, s.itemId, 0
@@ -99,7 +100,7 @@ val MIGRATION_9_10 =
                 """
                     .trimIndent()
             )
-            db.execSQL(
+            connection.execSQL(
                 """
                 INSERT OR IGNORE INTO user_downloads (userId, itemId, downloadedAt)
                 SELECT ud.userId, s.itemId, 0
