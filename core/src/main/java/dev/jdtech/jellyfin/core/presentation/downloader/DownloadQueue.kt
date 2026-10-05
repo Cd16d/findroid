@@ -437,8 +437,13 @@ constructor(
                                 DownloadStatus.NONE -> null
                             }
                         }
-                    val originalSize =
+                    val mainOriginalSize =
                         (entry.item as? FindroidSources)?.sources?.maxOfOrNull { it.size } ?: 0L
+                    val partsOriginalSize =
+                        entry.item.additionalParts.sumOf { part ->
+                            part.sources.maxOfOrNull { it.size } ?: 0L
+                        }
+                    val originalSize = mainOriginalSize + partsOriginalSize
                     val estimating =
                         snapshot.totalBytes <= 0L &&
                             originalSize > 0L &&

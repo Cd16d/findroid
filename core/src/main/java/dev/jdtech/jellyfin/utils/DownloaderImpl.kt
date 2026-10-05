@@ -23,6 +23,7 @@ import dev.jdtech.jellyfin.models.toFindroidEpisode
 import dev.jdtech.jellyfin.models.toFindroidEpisodeDto
 import dev.jdtech.jellyfin.models.toFindroidMovie
 import dev.jdtech.jellyfin.models.toFindroidMovieDto
+import dev.jdtech.jellyfin.models.toFindroidPartDto
 import dev.jdtech.jellyfin.models.toFindroidSeasonDto
 import dev.jdtech.jellyfin.models.toFindroidSegmentsDto
 import dev.jdtech.jellyfin.models.toFindroidShowDto
@@ -37,6 +38,7 @@ import dev.jdtech.jellyfin.work.ImagesDownloaderWorker
 import dev.jdtech.jellyfin.work.MediaAttachmentsWorker
 import java.io.File
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
@@ -55,6 +57,36 @@ class DownloaderImpl(
 ) : Downloader {
 
     private val idCounter = AtomicLong(System.currentTimeMillis())
+    private val partDownloadMap = ConcurrentHashMap<Long, List<Long>>()
+
+    private suspend fun getAssociatedPartDownloadIds(downloadId: Long): List<Long> {
+        partDownloadMap[downloadId]?.let {
+            return it
+        }
+        return try {
+            val source = database.getSourceByDownloadId(downloadId) ?: return emptyList()
+            val partIds =
+                try {
+                    database.getMovie(source.itemId).additionalPartIds
+                } catch (_: Exception) {
+                    try {
+                        database.getEpisode(source.itemId).additionalPartIds
+                    } catch (_: Exception) {
+                        null
+                    }
+                } ?: emptyList()
+            if (partIds.isEmpty()) return emptyList()
+            val ids = partIds.flatMap { pId ->
+                database.getSources(pId).mapNotNull { it.downloadId }
+            }
+            if (ids.isNotEmpty()) {
+                partDownloadMap[downloadId] = ids
+            }
+            ids
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
 
     override suspend fun downloadItem(
         item: FindroidItem,
@@ -65,7 +97,28 @@ class DownloaderImpl(
         audioStreamIndex: Int?,
     ): Pair<Long, UiText?> = coroutineScope {
         try {
-            val sources = jellyfinRepository.getMediaSources(item.id, true)
+            val additionalParts =
+                item.additionalParts.ifEmpty {
+                    try {
+                        jellyfinRepository.getAdditionalParts(item.id)
+                    } catch (e: Exception) {
+                        Timber.w(e, "Failed to get additional parts for ${item.name}")
+                        emptyList()
+                    }
+                }
+            val effectiveItem =
+                when {
+                    item.additionalParts.isEmpty() && additionalParts.isNotEmpty() -> {
+                        when (item) {
+                            is FindroidMovie -> item.copy(additionalParts = additionalParts)
+                            is FindroidEpisode -> item.copy(additionalParts = additionalParts)
+                            else -> item
+                        }
+                    }
+                    else -> item
+                }
+
+            val sources = jellyfinRepository.getMediaSources(effectiveItem.id, true)
             val source =
                 if (sourceId != null) {
                     sources.firstOrNull { it.id == sourceId } ?: sources.firstOrNull()
@@ -86,34 +139,106 @@ class DownloaderImpl(
 
             val currentUserId = jellyfinRepository.getUserId()
 
-            if (linkExistingDiskDownload(item, currentUserId)) {
+            if (linkExistingDiskDownload(effectiveItem, currentUserId)) {
                 return@coroutineScope Pair(0L, null)
+            }
+
+            val partsWithParents = additionalParts.map { part ->
+                if (part.parentName.isEmpty()) {
+                    part.copy(
+                        parentName = effectiveItem.name,
+                        images =
+                            if (part.images.primary == null) {
+                                part.images.copy(
+                                    primary = effectiveItem.images.primary,
+                                    backdrop =
+                                        part.images.backdrop ?: effectiveItem.images.backdrop,
+                                    logo = part.images.logo ?: effectiveItem.images.logo,
+                                )
+                            } else {
+                                part.images
+                            },
+                    )
+                } else {
+                    part
+                }
+            }
+
+            val partsWithSources = partsWithParents.mapNotNull { part ->
+                val partSources =
+                    try {
+                        jellyfinRepository.getMediaSources(part.id, true)
+                    } catch (e: Exception) {
+                        Timber.w(e, "Failed to get media sources for part ${part.name}")
+                        emptyList()
+                    }
+                val partSource = partSources.firstOrNull()
+                if (partSource != null) part to partSource else null
             }
 
             val activePresetId =
                 presetId ?: appPreferences.getValue(appPreferences.defaultTranscodePresetId)
-            val downloadUrl = resolveDownloadUrl(item, source, activePresetId, audioStreamIndex)
+            val downloadUrl =
+                resolveDownloadUrl(effectiveItem, source, activePresetId, audioStreamIndex)
 
             val isTranscoding =
                 DownloadQualityPresets.isTranscodingPreset(activePresetId, appPreferences) &&
                     downloadUrl != source.path
             val estimatedBytes =
-                calculateEstimatedBytes(item, source, activePresetId, isTranscoding)
+                calculateEstimatedBytes(effectiveItem, source, activePresetId, isTranscoding)
 
-            val destFile = File(storageLocation, "downloads/${item.id}.${source.id}.download")
+            val destFile =
+                File(storageLocation, "downloads/${effectiveItem.id}.${source.id}.download")
             destFile.parentFile?.mkdirs()
 
+            val allowMetered = appPreferences.getValue(appPreferences.downloadOverMobileData)
+            val allowRoaming = appPreferences.getValue(appPreferences.downloadWhenRoaming)
+
+            val partRequests = partsWithSources.map { (part, partSource) ->
+                val partDestFile =
+                    File(storageLocation, "downloads/${part.id}.${partSource.id}.download")
+                partDestFile.parentFile?.mkdirs()
+                val existingPartSourceDto =
+                    database.getSourceByDownloadId(partSource.downloadId ?: -1L)
+                val partDownloadId =
+                    existingPartSourceDto?.downloadId ?: idCounter.incrementAndGet()
+
+                val pDownloadUrl =
+                    resolveDownloadUrl(part, partSource, activePresetId, audioStreamIndex)
+                val pIsTranscoding =
+                    DownloadQualityPresets.isTranscodingPreset(
+                        activePresetId,
+                        appPreferences,
+                    ) && pDownloadUrl != partSource.path
+                val pEstimatedBytes =
+                    calculateEstimatedBytes(part, partSource, activePresetId, pIsTranscoding)
+
+                Triple(
+                    part,
+                    partSource,
+                    MediaDownloadEngine.Request(
+                        id = partDownloadId,
+                        url = pDownloadUrl,
+                        destFile = partDestFile,
+                        allowMetered = allowMetered,
+                        allowRoaming = allowRoaming,
+                        estimatedTotalBytes = pEstimatedBytes,
+                    ),
+                )
+            }
+
+            val totalEstimatedBytes =
+                estimatedBytes + partRequests.sumOf { it.third.estimatedTotalBytes }
+            val totalFallbackSize = source.size + partRequests.sumOf { it.second.size }
+
             val storageError =
-                checkAvailableStorageSpace(storageLocation, estimatedBytes, source.size)
+                checkAvailableStorageSpace(storageLocation, totalEstimatedBytes, totalFallbackSize)
             if (storageError != null) {
                 return@coroutineScope Pair(-1L, storageError)
             }
 
             val existingSourceDto = database.getSourceByDownloadId(source.downloadId ?: -1L)
             val downloadId = existingSourceDto?.downloadId ?: idCounter.incrementAndGet()
-
-            val allowMetered = appPreferences.getValue(appPreferences.downloadOverMobileData)
-            val allowRoaming = appPreferences.getValue(appPreferences.downloadWhenRoaming)
 
             engine.start(
                 MediaDownloadEngine.Request(
@@ -126,19 +251,44 @@ class DownloaderImpl(
                 )
             )
 
-            insertItemMetadataToDb(item, appPreferences.getValue(appPreferences.currentServer))
+            for ((_, _, partRequest) in partRequests) {
+                engine.start(partRequest)
+            }
+            val partDlIds = partRequests.map { it.third.id }
+            if (partDlIds.isNotEmpty()) {
+                partDownloadMap[downloadId] = partDlIds
+            }
 
-            val sourceDto = source.toFindroidSourceDto(item.id, destFile.absolutePath)
+            val serverId = appPreferences.getValue(appPreferences.currentServer)
+            insertItemMetadataToDb(effectiveItem, serverId)
+
+            val sourceDto = source.toFindroidSourceDto(effectiveItem.id, destFile.absolutePath)
             database.insertSource(sourceDto.copy(downloadId = downloadId))
-            database.insertUserData(item.toFindroidUserDataDto(currentUserId))
-            database.insertUserDownload(UserDownloadDto(userId = currentUserId, itemId = item.id))
+            database.insertUserData(effectiveItem.toFindroidUserDataDto(currentUserId))
+            database.insertUserDownload(
+                UserDownloadDto(userId = currentUserId, itemId = effectiveItem.id)
+            )
 
-            startAttachmentsWorker(item, source.id, effectiveIndex, downloadExternalAudio)
+            startAttachmentsWorker(effectiveItem, source.id, effectiveIndex, downloadExternalAudio)
 
-            val segments = jellyfinRepository.getSegments(item.id)
-            segments.forEach { database.insertSegment(it.toFindroidSegmentsDto(item.id)) }
+            for ((part, partSource, partRequest) in partRequests) {
+                val partSourceDto =
+                    partSource.toFindroidSourceDto(part.id, partRequest.destFile.absolutePath)
+                database.insertSource(partSourceDto.copy(downloadId = partRequest.id))
+                database.insertPart(part.toFindroidPartDto(serverId))
+                database.insertUserData(part.toFindroidUserDataDto(currentUserId))
+                database.insertUserDownload(
+                    UserDownloadDto(userId = currentUserId, itemId = part.id)
+                )
+                startAttachmentsWorker(part, partSource.id, effectiveIndex, downloadExternalAudio)
+            }
 
-            Timber.i("downloadItem enqueued for ${item.name}, downloadId=$downloadId")
+            val segments = jellyfinRepository.getSegments(effectiveItem.id)
+            segments.forEach { database.insertSegment(it.toFindroidSegmentsDto(effectiveItem.id)) }
+
+            Timber.i(
+                "downloadItem enqueued for ${effectiveItem.name}, downloadId=$downloadId, parts=${partDlIds.size}"
+            )
 
             Pair(downloadId, null)
         } catch (e: Exception) {
@@ -219,18 +369,22 @@ class DownloaderImpl(
     }
 
     override suspend fun cancelDownload(item: FindroidItem, downloadId: Long) {
-        engine.cancel(downloadId)
+        val allIds = listOf(downloadId) + getAssociatedPartDownloadIds(downloadId)
+        allIds.forEach { engine.cancel(it) }
+        partDownloadMap.remove(downloadId)
         val source =
             database.getSourceByDownloadId(downloadId)?.toFindroidSource(database) ?: return
         deleteItem(item, source)
     }
 
     override suspend fun pauseDownload(downloadId: Long) {
-        engine.pause(downloadId)
+        val allIds = listOf(downloadId) + getAssociatedPartDownloadIds(downloadId)
+        allIds.forEach { engine.pause(it) }
     }
 
     override suspend fun resumeDownload(downloadId: Long) {
-        engine.resume(downloadId)
+        val allIds = listOf(downloadId) + getAssociatedPartDownloadIds(downloadId)
+        allIds.forEach { engine.resume(it) }
     }
 
     private suspend fun insertItemMetadataToDb(
@@ -288,13 +442,28 @@ class DownloaderImpl(
             Timber.i(
                 "downloadItem: item ${item.name} already exists on disk, linking to user $currentUserId"
             )
+            val serverId = appPreferences.getValue(appPreferences.currentServer)
             insertItemMetadataToDb(
                 item,
-                appPreferences.getValue(appPreferences.currentServer),
+                serverId,
                 wrapShowInTryCatch = true,
             )
             database.insertUserDownload(UserDownloadDto(userId = currentUserId, itemId = item.id))
             database.insertUserData(item.toFindroidUserDataDto(currentUserId))
+
+            val additionalParts =
+                when (item) {
+                    is FindroidMovie -> item.additionalParts
+                    is FindroidEpisode -> item.additionalParts
+                    else -> emptyList()
+                }
+            for (part in additionalParts) {
+                database.insertPart(part.toFindroidPartDto(serverId))
+                database.insertUserDownload(
+                    UserDownloadDto(userId = currentUserId, itemId = part.id)
+                )
+                database.insertUserData(part.toFindroidUserDataDto(currentUserId))
+            }
             return true
         }
         return false
@@ -370,9 +539,19 @@ class DownloaderImpl(
         }
     }
 
-    private suspend fun deleteSourcesAndStreamsFiles(itemId: UUID, source: FindroidSource) {
+    private suspend fun deleteSourcesAndStreamsFiles(
+        itemId: UUID,
+        fallbackSource: FindroidSource? = null,
+    ) {
         val allSources = database.getSources(itemId)
-        for (s in allSources.ifEmpty { listOf(source.toFindroidSourceDto(itemId, source.path)) }) {
+        val sourcesToDelete = allSources.ifEmpty {
+            if (fallbackSource != null) {
+                listOf(fallbackSource.toFindroidSourceDto(itemId, fallbackSource.path))
+            } else {
+                emptyList()
+            }
+        }
+        for (s in sourcesToDelete) {
             database.deleteSource(s.id)
             File(s.path).delete()
             val mediaStreams = database.getMediaStreamsBySourceId(s.id)
@@ -381,8 +560,10 @@ class DownloaderImpl(
             }
             database.deleteMediaStreamsBySourceId(s.id)
         }
-        database.deleteSource(source.id)
-        File(source.path).delete()
+        if (fallbackSource != null) {
+            database.deleteSource(fallbackSource.id)
+            File(fallbackSource.path).delete()
+        }
     }
 
     override suspend fun deleteItem(item: FindroidItem, source: FindroidSource, userId: UUID?) {
@@ -393,10 +574,42 @@ class DownloaderImpl(
                 } catch (_: Exception) {
                     null
                 }
+
+        val additionalPartIds =
+            when (item) {
+                is FindroidMovie ->
+                    item.additionalParts
+                        .map { it.id }
+                        .ifEmpty {
+                            try {
+                                database.getMovie(item.id).additionalPartIds ?: emptyList()
+                            } catch (_: Exception) {
+                                emptyList()
+                            }
+                        }
+                is FindroidEpisode ->
+                    item.additionalParts
+                        .map { it.id }
+                        .ifEmpty {
+                            try {
+                                database.getEpisode(item.id).additionalPartIds ?: emptyList()
+                            } catch (_: Exception) {
+                                emptyList()
+                            }
+                        }
+                else -> emptyList()
+            }
+
         if (targetUserId != null) {
             database.deleteUserDownload(targetUserId, item.id)
+            for (pId in additionalPartIds) {
+                database.deleteUserDownload(targetUserId, pId)
+            }
         } else {
             database.deleteUserDownloadsByItemId(item.id)
+            for (pId in additionalPartIds) {
+                database.deleteUserDownloadsByItemId(pId)
+            }
         }
 
         if (database.countUserDownloads(item.id) > 0) {
@@ -418,6 +631,23 @@ class DownloaderImpl(
 
         deleteSourcesAndStreamsFiles(item.id, source)
 
+        for (partId in additionalPartIds) {
+            val partSources = database.getSources(partId)
+            for (partSource in partSources) {
+                val dlId = partSource.downloadId
+                if (dlId != null) {
+                    engine.cancel(dlId)
+                }
+            }
+            deleteSourcesAndStreamsFiles(partId)
+            database.deletePart(partId)
+            if (database.countUserDataToBeSynced(partId) == 0) {
+                database.deleteUserData(partId)
+            }
+            File(context.filesDir, "trickplay/$partId").deleteRecursively()
+            File(context.filesDir, "images/$partId").deleteRecursively()
+        }
+
         if (database.countUserDataToBeSynced(item.id) == 0) {
             database.deleteUserData(item.id)
         }
@@ -427,34 +657,47 @@ class DownloaderImpl(
 
     override suspend fun getProgress(downloadId: Long?): Downloader.Progress {
         if (downloadId == null) return Downloader.Progress(DownloadStatus.FAILED, 0, -1L, -1L)
-        val snap =
-            engine.snapshot(downloadId)
-                ?: return Downloader.Progress(DownloadStatus.FAILED, 0, -1L, -1L)
-        val progress = calculateProgressPercentage(snap.bytesDownloaded, snap.totalBytes)
+        val partIds = getAssociatedPartDownloadIds(downloadId)
+        if (partIds.isEmpty()) {
+            val snap =
+                engine.snapshot(downloadId)
+                    ?: return Downloader.Progress(DownloadStatus.FAILED, 0, -1L, -1L)
+            val progress = calculateProgressPercentage(snap.bytesDownloaded, snap.totalBytes)
+            return Downloader.Progress(
+                status = snap.status,
+                progress = progress,
+                bytesDownloaded = snap.bytesDownloaded,
+                totalBytes = snap.totalBytes,
+            )
+        }
+
+        val allIds = listOf(downloadId) + partIds
+        val snaps = allIds.mapNotNull { engine.snapshot(it) }
+        if (snaps.isEmpty()) return Downloader.Progress(DownloadStatus.FAILED, 0, -1L, -1L)
+
+        val aggregatedStatus =
+            when {
+                snaps.any { it.status == DownloadStatus.FAILED } -> DownloadStatus.FAILED
+                snaps.any { it.status == DownloadStatus.PAUSED } -> DownloadStatus.PAUSED
+                snaps.all { it.status == DownloadStatus.SUCCESSFUL } -> DownloadStatus.SUCCESSFUL
+                snaps.any { it.status == DownloadStatus.RUNNING } -> DownloadStatus.RUNNING
+                else -> snaps.firstOrNull()?.status ?: DownloadStatus.PENDING
+            }
+
+        val totalBytesDownloaded = snaps.sumOf { it.bytesDownloaded }
+        val totalBytes = snaps.sumOf { it.totalBytes.coerceAtLeast(0L) }
+        val progress = calculateProgressPercentage(totalBytesDownloaded, totalBytes)
+
         return Downloader.Progress(
-            status = snap.status,
+            status = aggregatedStatus,
             progress = progress,
-            bytesDownloaded = snap.bytesDownloaded,
-            totalBytes = snap.totalBytes,
+            bytesDownloaded = totalBytesDownloaded,
+            totalBytes = totalBytes,
         )
     }
 
     override suspend fun getProgress(downloadIds: List<Long>): Map<Long, Downloader.Progress> {
-        val snapshots = engine.snapshots(downloadIds)
-        return downloadIds.associateWith { id ->
-            val snap = snapshots[id]
-            if (snap != null) {
-                val progress = calculateProgressPercentage(snap.bytesDownloaded, snap.totalBytes)
-                Downloader.Progress(
-                    status = snap.status,
-                    progress = progress,
-                    bytesDownloaded = snap.bytesDownloaded,
-                    totalBytes = snap.totalBytes,
-                )
-            } else {
-                Downloader.Progress(DownloadStatus.FAILED, 0, -1L, -1L)
-            }
-        }
+        return downloadIds.associateWith { id -> getProgress(id) }
     }
 
     override suspend fun getActiveDownloads(): List<Pair<FindroidItem, Long>> =
@@ -487,6 +730,23 @@ class DownloaderImpl(
         }
 
     override suspend fun finalizeDownload(downloadId: Long): Boolean =
+        withContext(Dispatchers.IO) {
+            val partIds = getAssociatedPartDownloadIds(downloadId)
+            val allIds = listOf(downloadId) + partIds
+            var allSuccess = true
+            for (id in allIds) {
+                val success = finalizeSingleDownload(id)
+                if (!success) {
+                    allSuccess = false
+                }
+            }
+            if (allSuccess) {
+                partDownloadMap.remove(downloadId)
+            }
+            allSuccess
+        }
+
+    private suspend fun finalizeSingleDownload(downloadId: Long): Boolean =
         withContext(Dispatchers.IO) {
             val source = database.getSourceByDownloadId(downloadId) ?: return@withContext false
             if (!source.path.endsWith(".download")) return@withContext true
@@ -608,16 +868,49 @@ class DownloaderImpl(
                 }
 
                 when (item) {
-                    is FindroidMovie ->
+                    is FindroidMovie -> {
                         moveSourcesAndStreams(item.id, targetDownloadsDir, progressCallback)
-                    is FindroidEpisode ->
+                        val partIds =
+                            item.additionalParts
+                                .map { it.id }
+                                .ifEmpty {
+                                    try {
+                                        database.getMovie(item.id).additionalPartIds ?: emptyList()
+                                    } catch (_: Exception) {
+                                        emptyList()
+                                    }
+                                }
+                        for (pId in partIds) {
+                            moveSourcesAndStreams(pId, targetDownloadsDir, progressCallback)
+                        }
+                    }
+                    is FindroidEpisode -> {
                         moveSourcesAndStreams(item.id, targetDownloadsDir, progressCallback)
+                        val partIds =
+                            item.additionalParts
+                                .map { it.id }
+                                .ifEmpty {
+                                    try {
+                                        database.getEpisode(item.id).additionalPartIds
+                                            ?: emptyList()
+                                    } catch (_: Exception) {
+                                        emptyList()
+                                    }
+                                }
+                        for (pId in partIds) {
+                            moveSourcesAndStreams(pId, targetDownloadsDir, progressCallback)
+                        }
+                    }
                     is FindroidShow -> {
                         val epList =
                             database.getDownloadedEpisodesByShowId(item.id).firstOrNull()
                                 ?: emptyList()
                         for (ep in epList) {
                             moveSourcesAndStreams(ep.id, targetDownloadsDir, progressCallback)
+                            val partIds = ep.additionalPartIds ?: emptyList()
+                            for (pId in partIds) {
+                                moveSourcesAndStreams(pId, targetDownloadsDir, progressCallback)
+                            }
                         }
                     }
                 }
@@ -633,11 +926,32 @@ class DownloaderImpl(
         var total = 0L
         val itemIds =
             when (item) {
-                is FindroidMovie,
-                is FindroidEpisode -> listOf(item.id)
+                is FindroidMovie ->
+                    listOf(item.id) +
+                        (item.additionalParts
+                            .map { it.id }
+                            .ifEmpty {
+                                try {
+                                    database.getMovie(item.id).additionalPartIds ?: emptyList()
+                                } catch (_: Exception) {
+                                    emptyList()
+                                }
+                            })
+                is FindroidEpisode ->
+                    listOf(item.id) +
+                        (item.additionalParts
+                            .map { it.id }
+                            .ifEmpty {
+                                try {
+                                    database.getEpisode(item.id).additionalPartIds ?: emptyList()
+                                } catch (_: Exception) {
+                                    emptyList()
+                                }
+                            })
                 is FindroidShow ->
-                    database.getDownloadedEpisodesByShowId(item.id).firstOrNull()?.map { it.id }
-                        ?: emptyList()
+                    database.getDownloadedEpisodesByShowId(item.id).firstOrNull()?.flatMap { ep ->
+                        listOf(ep.id) + (ep.additionalPartIds ?: emptyList())
+                    } ?: emptyList()
                 else -> emptyList()
             }
         for (id in itemIds) {

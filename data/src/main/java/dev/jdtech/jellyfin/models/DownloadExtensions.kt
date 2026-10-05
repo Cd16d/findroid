@@ -4,7 +4,12 @@ import android.content.Context
 import org.jellyfin.sdk.model.api.MediaStreamType
 import org.jellyfin.sdk.model.api.VideoRangeType
 
-fun FindroidSources.diskSize(): Long = sources.sumOf { it.size }
+fun FindroidSources.diskSize(): Long {
+    val mainSize = sources.sumOf { it.size }
+    val partsSize =
+        (this as? FindroidItem)?.additionalParts?.sumOf { it.sources.sumOf { s -> s.size } } ?: 0L
+    return mainSize + partsSize
+}
 
 fun FindroidShow.totalDiskSize(episodes: List<FindroidEpisode>): Long = episodes.sumOf {
     it.diskSize()
