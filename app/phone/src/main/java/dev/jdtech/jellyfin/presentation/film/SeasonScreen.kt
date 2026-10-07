@@ -412,6 +412,7 @@ private fun SeasonScreenLayout(
                         isDownloading = isDownloading,
                         isPending = isPending,
                         downloadProgress = downloadProgress,
+                        hideEpisodeSpoilers = state.hideEpisodeSpoilers,
                     )
                 }
             }

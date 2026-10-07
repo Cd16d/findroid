@@ -34,6 +34,7 @@ fun HomeView(
     itemsPadding: PaddingValues,
     onAction: (HomeAction) -> Unit,
     modifier: Modifier = Modifier,
+    hideEpisodeSpoilers: Boolean = false,
 ) {
     Column(modifier = modifier) {
         Box(modifier = Modifier.fillMaxWidth().height(42.dp).padding(itemsPadding)) {
@@ -73,6 +74,7 @@ fun HomeView(
                     item = item,
                     direction = Direction.VERTICAL,
                     onClick = { onAction(HomeAction.OnItemClick(item)) },
+                    hideEpisodeSpoilers = hideEpisodeSpoilers,
                 )
             }
         }

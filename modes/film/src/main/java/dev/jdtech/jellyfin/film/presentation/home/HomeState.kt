@@ -10,6 +10,7 @@ data class HomeState(
     val resumeSection: HomeItem.Section? = null,
     val nextUpSection: HomeItem.Section? = null,
     val views: List<HomeItem.ViewItem> = emptyList(),
+    val hideEpisodeSpoilers: Boolean = false,
     val isLoading: Boolean = false,
     val error: Exception? = null,
 )

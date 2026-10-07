@@ -215,7 +215,15 @@ constructor(
                                                         R.string.extra_info_summary,
                                                     backendPreference =
                                                         appPreferences.displayExtraInfo,
-                                                )
+                                                ),
+                                                PreferenceSwitch(
+                                                    nameStringResource =
+                                                        R.string.hide_episode_spoilers,
+                                                    descriptionStringRes =
+                                                        R.string.hide_episode_spoilers_summary,
+                                                    backendPreference =
+                                                        appPreferences.hideEpisodeSpoilers,
+                                                ),
                                             )
                                     ),
                                 ),

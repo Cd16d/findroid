@@ -63,8 +63,9 @@ fun Uri?.toOptimizedImageUri(
 
 /** Creates a [BitmapPainter] from a BlurHash string. */
 fun String?.toBlurHashPainter(
-    width: Int = 25,
-    height: Int = 25,
+    width: Int = 64,
+    height: Int = 36,
+    punch: Float = 1.25f,
 ): BitmapPainter? {
     if (!this.isNullOrEmpty()) {
         val bitmap =
@@ -72,6 +73,7 @@ fun String?.toBlurHashPainter(
                 blurHash = this,
                 width = width,
                 height = height,
+                punch = punch,
             )
         return bitmap?.asImageBitmap()?.let { BitmapPainter(it) }
     } else {

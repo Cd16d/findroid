@@ -123,6 +123,7 @@ private fun HomeScreenLayout(
                             itemsPadding = itemsPadding,
                             onAction = onAction,
                             modifier = Modifier.animateItem(),
+                            hideEpisodeSpoilers = state.hideEpisodeSpoilers,
                         )
                     }
                 }
@@ -133,6 +134,7 @@ private fun HomeScreenLayout(
                             itemsPadding = itemsPadding,
                             onAction = onAction,
                             modifier = Modifier.animateItem(),
+                            hideEpisodeSpoilers = state.hideEpisodeSpoilers,
                         )
                     }
                 }
@@ -142,6 +144,7 @@ private fun HomeScreenLayout(
                         itemsPadding = itemsPadding,
                         onAction = onAction,
                         modifier = Modifier.animateItem(),
+                        hideEpisodeSpoilers = state.hideEpisodeSpoilers,
                     )
                 }
             }
