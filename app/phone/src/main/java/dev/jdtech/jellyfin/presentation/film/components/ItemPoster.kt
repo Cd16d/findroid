@@ -1,5 +1,6 @@
 package dev.jdtech.jellyfin.presentation.film.components
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.aspectRatio
@@ -25,6 +26,7 @@ fun ItemPoster(
     item: FindroidItem,
     direction: Direction,
     modifier: Modifier = Modifier,
+    blurOnly: Boolean = false,
 ) {
     val image =
         when (direction) {
@@ -45,15 +47,28 @@ fun ItemPoster(
     ) {
         val imageUri = image?.uri.toOptimizedImageUri(widthDp = maxWidth, heightDp = maxHeight)
 
-        val blurPlaceholder = remember(image?.blurHash) { image?.blurHash.toBlurHashPainter() }
+        val blurPlaceholder =
+            remember(image?.blurHash, direction) {
+                val (w, h) = if (direction == Direction.HORIZONTAL) 64 to 36 else 36 to 54
+                image?.blurHash.toBlurHashPainter(width = w, height = h, punch = 1.25f)
+            }
 
-        AsyncImage(
-            model = imageUri,
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            placeholder = blurPlaceholder,
-            error = blurPlaceholder,
-            modifier = Modifier.fillMaxSize(),
-        )
+        if (blurOnly && blurPlaceholder != null) {
+            Image(
+                painter = blurPlaceholder,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+        } else {
+            AsyncImage(
+                model = imageUri,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                placeholder = blurPlaceholder,
+                error = blurPlaceholder,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
     }
 }

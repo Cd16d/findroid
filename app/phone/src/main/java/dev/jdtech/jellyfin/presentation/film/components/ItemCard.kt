@@ -30,6 +30,7 @@ import dev.jdtech.jellyfin.models.FindroidItem
 import dev.jdtech.jellyfin.models.FindroidMovie
 import dev.jdtech.jellyfin.models.FindroidShow
 import dev.jdtech.jellyfin.models.isDownloaded
+import dev.jdtech.jellyfin.presentation.components.SpoilerMask
 import dev.jdtech.jellyfin.presentation.download.components.DownloadedBadge
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
@@ -41,6 +42,7 @@ fun ItemCard(
     direction: Direction,
     onClick: (FindroidItem) -> Unit,
     modifier: Modifier = Modifier,
+    hideEpisodeSpoilers: Boolean = false,
 ) {
     val width =
         when (direction) {
@@ -53,11 +55,22 @@ fun ItemCard(
                 Modifier.clip(MaterialTheme.shapes.small).clickable(onClick = { onClick(item) }),
             shape = MaterialTheme.shapes.small,
         ) {
+            val isEpisodeSpoiler = hideEpisodeSpoilers && item is FindroidEpisode && !item.played
+            val hasBlurHash =
+                item.images.backdrop?.blurHash != null || item.images.primary?.blurHash != null
             Box {
-                ItemPoster(
-                    item = item,
-                    direction = direction,
-                )
+                SpoilerMask(
+                    enabled = isEpisodeSpoiler,
+                    consumeClickOnMask = false,
+                    shape = MaterialTheme.shapes.small,
+                    blurRadius = if (hasBlurHash) 4.dp else 16.dp,
+                ) {
+                    ItemPoster(
+                        item = item,
+                        direction = direction,
+                        blurOnly = isEpisodeSpoiler,
+                    )
+                }
                 Row(
                     modifier =
                         Modifier.align(Alignment.TopEnd).padding(MaterialTheme.spacings.small),

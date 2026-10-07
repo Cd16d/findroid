@@ -20,6 +20,7 @@ import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
@@ -44,10 +45,25 @@ constructor(
     private val uiTextContinueWatching = UiText.StringResource(FilmR.string.continue_watching)
     private val uiTextNextUp = UiText.StringResource(FilmR.string.next_up)
 
+    init {
+        viewModelScope.launch {
+            appPreferences.observe(appPreferences.hideEpisodeSpoilers).collect { hideSpoilers ->
+                _state.update { it.copy(hideEpisodeSpoilers = hideSpoilers) }
+            }
+        }
+    }
+
     fun loadData() {
         Timber.i("Loading data")
         viewModelScope.launch(Dispatchers.Default) {
-            _state.emit(_state.value.copy(isLoading = true, error = null))
+            val hideEpisodeSpoilers = appPreferences.getValue(appPreferences.hideEpisodeSpoilers)
+            _state.emit(
+                _state.value.copy(
+                    isLoading = true,
+                    error = null,
+                    hideEpisodeSpoilers = hideEpisodeSpoilers,
+                )
+            )
             try {
                 appPreferences.getValue(appPreferences.currentServer)?.let { serverId ->
                     loadServerName(serverId)

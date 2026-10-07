@@ -380,7 +380,7 @@ fun AccountMenuContent(
 
                 AccountMenuFooter()
 
-                Spacer(modifier = Modifier.height(64.dp))
+                Spacer(modifier = Modifier.height(if (isTablet) 16.dp else 64.dp))
             }
         }
 

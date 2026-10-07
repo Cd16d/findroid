@@ -23,6 +23,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -50,6 +53,7 @@ import dev.jdtech.jellyfin.film.presentation.episode.EpisodeState
 import dev.jdtech.jellyfin.film.presentation.episode.EpisodeViewModel
 import dev.jdtech.jellyfin.player.cast.models.CastConnectionState
 import dev.jdtech.jellyfin.player.cast.presentation.CastSessionViewModel
+import dev.jdtech.jellyfin.presentation.components.SpoilerMask
 import dev.jdtech.jellyfin.presentation.film.components.ActorsRow
 import dev.jdtech.jellyfin.presentation.film.components.ExtraInfoCard
 import dev.jdtech.jellyfin.presentation.film.components.ItemButtonsBar
@@ -172,6 +176,7 @@ private fun EpisodeScreenLayout(
     val paddingBottom = safePadding.bottom + castPadding
 
     val scrollState = rememberScrollState()
+    var isRevealed by rememberSaveable(state.episode?.id) { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         state.episode?.let { episode ->
@@ -179,6 +184,9 @@ private fun EpisodeScreenLayout(
                 ItemHeader(
                     item = episode,
                     scrollState = scrollState,
+                    hideEpisodeSpoilers = state.hideEpisodeSpoilers,
+                    isRevealed = isRevealed,
+                    onRevealChange = { isRevealed = it },
                     content = {
                         Column(
                             modifier =
@@ -329,7 +337,15 @@ private fun EpisodeScreenLayout(
                         )
                         Spacer(Modifier.height(MaterialTheme.spacings.medium))
                     }
-                    OverviewText(text = episode.overview)
+                    SpoilerMask(
+                        enabled = state.hideEpisodeSpoilers && !episode.played,
+                        isRevealed = isRevealed,
+                        onRevealChange = { isRevealed = it },
+                        consumeClickOnMask = true,
+                        contentAlphaWhenMasked = 0f,
+                    ) {
+                        OverviewText(text = episode.overview)
+                    }
                     Spacer(Modifier.height(MaterialTheme.spacings.medium))
                 }
                 if (state.actors.isNotEmpty()) {

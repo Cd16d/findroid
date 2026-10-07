@@ -5,6 +5,9 @@ import android.content.SharedPreferences
 import androidx.core.content.edit
 import dev.jdtech.jellyfin.settings.domain.models.Preference
 import javax.inject.Inject
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 import timber.log.Timber
 
 class AppPreferences @Inject constructor(val sharedPreferences: SharedPreferences) {
@@ -32,6 +35,7 @@ class AppPreferences @Inject constructor(val sharedPreferences: SharedPreference
     val homeNextUp = Preference<Boolean>("home_next_up", true)
     val homeLatest = Preference<Boolean>("home_latest", true)
     val displayExtraInfo = Preference("pref_display_extra_info", false)
+    val hideEpisodeSpoilers = Preference("hide_episode_spoilers", false)
 
     // Player
     val playerBackend = Preference("pref_player_backend", "exoplayer")
@@ -187,5 +191,16 @@ class AppPreferences @Inject constructor(val sharedPreferences: SharedPreference
                 else -> throw Exception()
             }
         }
+    }
+
+    inline fun <reified T> observe(preference: Preference<T>): Flow<T> = callbackFlow {
+        val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            if (key == preference.backendName || key == null) {
+                trySend(getValue(preference))
+            }
+        }
+        trySend(getValue(preference))
+        sharedPreferences.registerOnSharedPreferenceChangeListener(listener)
+        awaitClose { sharedPreferences.unregisterOnSharedPreferenceChangeListener(listener) }
     }
 }

@@ -1,6 +1,5 @@
 package dev.jdtech.jellyfin.presentation.film.components
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,12 +14,14 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -28,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import dev.jdtech.jellyfin.core.presentation.dummy.dummyEpisode
 import dev.jdtech.jellyfin.models.FindroidEpisode
 import dev.jdtech.jellyfin.models.isDownloaded
+import dev.jdtech.jellyfin.presentation.components.SpoilerMask
 import dev.jdtech.jellyfin.presentation.download.components.DownloadedBadge
 import dev.jdtech.jellyfin.presentation.download.components.DownloadingBadge
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
@@ -41,8 +43,9 @@ fun EpisodeCard(
     isDownloading: Boolean = false,
     isPending: Boolean = false,
     downloadProgress: Float? = null,
+    hideEpisodeSpoilers: Boolean = false,
 ) {
-    val backgroundColor = MaterialTheme.colorScheme.background
+    var isRevealed by rememberSaveable(episode.id) { mutableStateOf(false) }
 
     Row(
         modifier =
@@ -52,12 +55,25 @@ fun EpisodeCard(
                 .clip(MaterialTheme.shapes.medium)
                 .clickable(onClick = onClick)
     ) {
+        val isEpisodeSpoiler = hideEpisodeSpoilers && !episode.played
+        val hasBlurHash =
+            episode.images.backdrop?.blurHash != null || episode.images.primary?.blurHash != null
         Box {
-            ItemPoster(
-                item = episode,
-                direction = Direction.HORIZONTAL,
-                modifier = Modifier.clip(MaterialTheme.shapes.small),
-            )
+            SpoilerMask(
+                enabled = isEpisodeSpoiler,
+                isRevealed = isRevealed,
+                onRevealChange = { isRevealed = it },
+                consumeClickOnMask = true,
+                shape = MaterialTheme.shapes.small,
+                blurRadius = if (hasBlurHash) 4.dp else 16.dp,
+            ) {
+                ItemPoster(
+                    item = episode,
+                    direction = Direction.HORIZONTAL,
+                    modifier = Modifier.clip(MaterialTheme.shapes.small),
+                    blurOnly = isEpisodeSpoiler && !isRevealed,
+                )
+            }
             Row(
                 modifier = Modifier.align(Alignment.TopEnd).padding(MaterialTheme.spacings.small),
                 horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacings.small),
@@ -71,39 +87,31 @@ fun EpisodeCard(
             }
         }
         Spacer(Modifier.width(MaterialTheme.spacings.default / 2))
-        Box(modifier = Modifier.fillMaxHeight()) {
-            Column {
-                Text(
-                    text =
-                        stringResource(
-                            id = dev.jdtech.jellyfin.core.R.string.episode_name,
-                            episode.indexNumber,
-                            episode.name,
-                        ),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    style = MaterialTheme.typography.bodyMedium,
-                )
+        Column(modifier = Modifier.fillMaxHeight()) {
+            Text(
+                text =
+                    stringResource(
+                        id = dev.jdtech.jellyfin.core.R.string.episode_name,
+                        episode.indexNumber,
+                        episode.name,
+                    ),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            SpoilerMask(
+                enabled = isEpisodeSpoiler,
+                isRevealed = isRevealed,
+                onRevealChange = { isRevealed = it },
+                consumeClickOnMask = true,
+                contentAlphaWhenMasked = 0f,
+            ) {
                 Text(
                     text = episode.overview,
                     modifier = Modifier.alpha(0.7f),
-                    maxLines = 5,
+                    maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
                     style = MaterialTheme.typography.bodySmall,
-                )
-            }
-            Canvas(
-                modifier =
-                    Modifier.align(Alignment.BottomStart)
-                        .fillMaxWidth()
-                        .height(MaterialTheme.spacings.default)
-            ) {
-                drawRect(
-                    brush =
-                        Brush.verticalGradient(
-                            colors = listOf(Color.Transparent, backgroundColor),
-                            startY = 0f,
-                        )
                 )
             }
         }

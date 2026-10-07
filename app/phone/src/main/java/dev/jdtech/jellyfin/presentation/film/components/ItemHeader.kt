@@ -1,7 +1,13 @@
 package dev.jdtech.jellyfin.presentation.film.components
 
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.BoxWithConstraintsScope
@@ -12,9 +18,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -35,11 +43,36 @@ fun ItemHeader(
     item: FindroidItem,
     scrollState: ScrollState,
     showLogo: Boolean = false,
+    hideEpisodeSpoilers: Boolean = false,
+    isRevealed: Boolean = false,
+    onRevealChange: ((Boolean) -> Unit)? = null,
     content: @Composable (BoxScope.() -> Unit) = {},
 ) {
+    val isEpisodeSpoiler = hideEpisodeSpoilers && item is FindroidEpisode && !item.played
+    val hasBlurHash =
+        when (item) {
+            is FindroidEpisode ->
+                item.images.primary?.blurHash != null || item.images.backdrop?.blurHash != null
+            else -> item.images.backdrop?.blurHash != null || item.images.primary?.blurHash != null
+        }
+    val blurRadius by
+        animateDpAsState(
+            targetValue =
+                if (isEpisodeSpoiler && !isRevealed) {
+                    if (hasBlurHash) 6.dp else 32.dp
+                } else {
+                    0.dp
+                },
+            animationSpec = tween(durationMillis = 350),
+            label = "headerBlur",
+        )
+
     ItemHeaderBase(
         item = item,
         showLogo = showLogo,
+        hideEpisodeSpoilers = hideEpisodeSpoilers,
+        isRevealed = isRevealed,
+        onRevealChange = onRevealChange,
         backdropImage = {
             val image =
                 when (item) {
@@ -50,18 +83,34 @@ fun ItemHeader(
             val backdropUri =
                 image?.uri.toOptimizedImageUri(widthDp = maxWidth, heightDp = maxHeight)
 
-            val blurPlaceholder = remember(image?.blurHash) { image?.blurHash.toBlurHashPainter() }
+            val blurPlaceholder =
+                remember(image?.blurHash) {
+                    image?.blurHash.toBlurHashPainter(width = 64, height = 36, punch = 1.25f)
+                }
 
-            AsyncImage(
-                model = backdropUri,
-                contentDescription = null,
-                modifier =
-                    Modifier.fillMaxSize()
-                        .parallaxLayoutModifier(scrollState = scrollState, rate = 2),
-                placeholder =
-                    blurPlaceholder ?: ColorPainter(MaterialTheme.colorScheme.surfaceContainer),
-                contentScale = ContentScale.Crop,
-            )
+            if (isEpisodeSpoiler && !isRevealed && blurPlaceholder != null) {
+                Image(
+                    painter = blurPlaceholder,
+                    contentDescription = null,
+                    modifier =
+                        Modifier.fillMaxSize()
+                            .parallaxLayoutModifier(scrollState = scrollState, rate = 2)
+                            .then(if (blurRadius > 0.dp) Modifier.blur(blurRadius) else Modifier),
+                    contentScale = ContentScale.Crop,
+                )
+            } else {
+                AsyncImage(
+                    model = backdropUri,
+                    contentDescription = null,
+                    modifier =
+                        Modifier.fillMaxSize()
+                            .parallaxLayoutModifier(scrollState = scrollState, rate = 2)
+                            .then(if (blurRadius > 0.dp) Modifier.blur(blurRadius) else Modifier),
+                    placeholder =
+                        blurPlaceholder ?: ColorPainter(MaterialTheme.colorScheme.surfaceContainer),
+                    contentScale = ContentScale.Crop,
+                )
+            }
         },
         content = content,
     )
@@ -72,11 +121,36 @@ fun ItemHeader(
     item: FindroidItem,
     lazyListState: LazyListState,
     showLogo: Boolean = false,
+    hideEpisodeSpoilers: Boolean = false,
+    isRevealed: Boolean = false,
+    onRevealChange: ((Boolean) -> Unit)? = null,
     content: @Composable (BoxScope.() -> Unit) = {},
 ) {
+    val isEpisodeSpoiler = hideEpisodeSpoilers && item is FindroidEpisode && !item.played
+    val hasBlurHash =
+        when (item) {
+            is FindroidEpisode ->
+                item.images.primary?.blurHash != null || item.images.backdrop?.blurHash != null
+            else -> item.images.backdrop?.blurHash != null || item.images.primary?.blurHash != null
+        }
+    val blurRadius by
+        animateDpAsState(
+            targetValue =
+                if (isEpisodeSpoiler && !isRevealed) {
+                    if (hasBlurHash) 6.dp else 32.dp
+                } else {
+                    0.dp
+                },
+            animationSpec = tween(durationMillis = 350),
+            label = "headerBlur",
+        )
+
     ItemHeaderBase(
         item = item,
         showLogo = showLogo,
+        hideEpisodeSpoilers = hideEpisodeSpoilers,
+        isRevealed = isRevealed,
+        onRevealChange = onRevealChange,
         backdropImage = {
             val image =
                 when (item) {
@@ -88,18 +162,34 @@ fun ItemHeader(
             val backdropUri =
                 image?.uri.toOptimizedImageUri(widthDp = maxWidth, heightDp = maxHeight)
 
-            val blurPlaceholder = remember(image?.blurHash) { image?.blurHash.toBlurHashPainter() }
+            val blurPlaceholder =
+                remember(image?.blurHash) {
+                    image?.blurHash.toBlurHashPainter(width = 64, height = 36, punch = 1.25f)
+                }
 
-            AsyncImage(
-                model = backdropUri,
-                contentDescription = null,
-                modifier =
-                    Modifier.fillMaxSize()
-                        .parallaxLayoutModifier(lazyListState = lazyListState, rate = 2),
-                placeholder =
-                    blurPlaceholder ?: ColorPainter(MaterialTheme.colorScheme.surfaceContainer),
-                contentScale = ContentScale.Crop,
-            )
+            if (isEpisodeSpoiler && !isRevealed && blurPlaceholder != null) {
+                Image(
+                    painter = blurPlaceholder,
+                    contentDescription = null,
+                    modifier =
+                        Modifier.fillMaxSize()
+                            .parallaxLayoutModifier(lazyListState = lazyListState, rate = 2)
+                            .then(if (blurRadius > 0.dp) Modifier.blur(blurRadius) else Modifier),
+                    contentScale = ContentScale.Crop,
+                )
+            } else {
+                AsyncImage(
+                    model = backdropUri,
+                    contentDescription = null,
+                    modifier =
+                        Modifier.fillMaxSize()
+                            .parallaxLayoutModifier(lazyListState = lazyListState, rate = 2)
+                            .then(if (blurRadius > 0.dp) Modifier.blur(blurRadius) else Modifier),
+                    placeholder =
+                        blurPlaceholder ?: ColorPainter(MaterialTheme.colorScheme.surfaceContainer),
+                    contentScale = ContentScale.Crop,
+                )
+            }
         },
         content = content,
     )
@@ -109,6 +199,9 @@ fun ItemHeader(
 private fun ItemHeaderBase(
     item: FindroidItem,
     showLogo: Boolean = false,
+    hideEpisodeSpoilers: Boolean = false,
+    isRevealed: Boolean = false,
+    onRevealChange: ((Boolean) -> Unit)? = null,
     backdropImage: @Composable (BoxWithConstraintsScope.() -> Unit),
     content: @Composable (BoxScope.() -> Unit) = {},
 ) {
@@ -120,10 +213,31 @@ private fun ItemHeaderBase(
             else -> item.images.logo
         }
 
-    BoxWithConstraints(modifier = Modifier.height(288.dp).clipToBounds()) {
+    val isEpisodeSpoiler = hideEpisodeSpoilers && item is FindroidEpisode && !item.played
+    val scrimAlpha by
+        animateFloatAsState(
+            targetValue = if (isEpisodeSpoiler && !isRevealed) 0.5f else 0.1f,
+            animationSpec = tween(durationMillis = 350),
+            label = "headerScrim",
+        )
+
+    val headerClickModifier =
+        if (isEpisodeSpoiler && !isRevealed && onRevealChange != null) {
+            Modifier.clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = { onRevealChange(true) },
+            )
+        } else {
+            Modifier
+        }
+
+    BoxWithConstraints(
+        modifier = Modifier.height(288.dp).clipToBounds().then(headerClickModifier)
+    ) {
         backdropImage()
         Canvas(modifier = Modifier.fillMaxSize()) {
-            drawRect(Color.Black.copy(alpha = 0.1f))
+            drawRect(Color.Black.copy(alpha = scrimAlpha))
             drawRect(
                 brush =
                     Brush.verticalGradient(
