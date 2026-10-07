@@ -29,12 +29,6 @@ I am developing this application in my spare time.
 - Supported media items: movies, series, seasons, episodes 
   - Direct play only, (no transcoding)
 - Offline playback / downloads
-  - Resumable direct-stream downloads with HTTP 206 Range support powered by OkHttp 3
-  - Foreground download service with persistent progress notifications
-  - Multiple quality presets with automatic MP4 progressive container remuxing
-  - Background attachment caching for subtitles, trickplay thumbnails, and artwork
-  - Multi-storage volume management (internal storage & SD card) and in-place storage migration
-  - Smart download queue with automatic playback pacing during foreground UI activity
 - ExoPlayer
   - Video codecs: H.263, H.264, H.265, VP8, VP9, AV1 
     - Support depends on Android device
@@ -56,15 +50,23 @@ I am developing this application in my spare time.
 - Media segments (requires Jellyfin 10.10 or higher)
   - Skip button
   - Auto skip
+
+
+### New
+- Offline playback / downloads
+  - Redesigned Downloads page
+  - Resumable direct-stream downloads powered by OkHttp 3
+  - Foreground download service with persistent progress notifications
+  - Multi-storage volume management (internal storage & SD card)
+  - Smart Downloads
+  - **Beta:** Transcoded downloads
+- Images
+  - Blur placeholder
+  - Request exact dimension images from the server
 - Google Cast (Chromecast) support
-  - Stream movies and series to Chromecast and Google Cast-enabled receivers
-  - Seamless local-to-remote playback handoff preserving playback position and track selections
-  - Dedicated mini player and expanded bottom sheet remote controller
-  - Audio and subtitle track switching on remote receivers
-  - Remote volume adjustment and timeline scrubbing with trickplay preview thumbnails
-  - Automatic session recovery across transient Wi-Fi drops and app restarts
-- Quick Connect support
-  - Fast passwordless authentication via Quick Connect code input and directly in login screen
+- Account menu
+- Quick Connect support (also input)
+- Spoiler Mode: blur episode images and descriptions
 
 ## Planned features
 - Android TV
