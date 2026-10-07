@@ -64,6 +64,8 @@ fun EpisodeCard(
                 isRevealed = isRevealed,
                 onRevealChange = { isRevealed = it },
                 consumeClickOnMask = true,
+                revealOnLongPress = true,
+                onTap = onClick,
                 shape = MaterialTheme.shapes.small,
                 blurRadius = if (hasBlurHash) 4.dp else 16.dp,
             ) {
@@ -104,6 +106,8 @@ fun EpisodeCard(
                 isRevealed = isRevealed,
                 onRevealChange = { isRevealed = it },
                 consumeClickOnMask = true,
+                revealOnLongPress = true,
+                onTap = onClick,
                 contentAlphaWhenMasked = 0f,
             ) {
                 Text(

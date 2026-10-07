@@ -10,7 +10,8 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -27,6 +28,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.PointerEventTimeoutCancellationException
+import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -46,6 +49,8 @@ fun SpoilerMask(
     onRevealChange: ((Boolean) -> Unit)? = null,
     blurRadius: Dp = 16.dp,
     consumeClickOnMask: Boolean = true,
+    revealOnLongPress: Boolean = false,
+    onTap: (() -> Unit)? = null,
     contentAlphaWhenMasked: Float = 1f,
     content: @Composable () -> Unit,
 ) {
@@ -59,6 +64,7 @@ fun SpoilerMask(
     val revealed = isRevealed ?: internalRevealed
 
     var tapOffset by remember { mutableStateOf<Offset?>(null) }
+    var touchOffset by remember { mutableStateOf<Offset?>(null) }
 
     val revealProgress by
         animateFloatAsState(
@@ -73,21 +79,78 @@ fun SpoilerMask(
 
     val isTextMask = contentAlphaWhenMasked < 0.5f
 
-    val clickableModifier =
-        if (consumeClickOnMask && !revealed) {
-            Modifier.pointerInput(enabled, revealed) {
-                detectTapGestures { offset ->
-                    tapOffset = offset
-                    val nextRevealed = true
-                    internalRevealed = nextRevealed
-                    onRevealChange?.invoke(nextRevealed)
+    val gestureModifier =
+        if (!revealed) {
+            Modifier.pointerInput(enabled, revealed, consumeClickOnMask, revealOnLongPress) {
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    touchOffset = down.position
+                    val longPressTimeout = viewConfiguration.longPressTimeoutMillis
+                    var isLongPress = false
+                    var isCancelled = false
+                    var upOrCancel: PointerInputChange? = null
+
+                    try {
+                        withTimeout(longPressTimeout) {
+                            while (true) {
+                                val event = awaitPointerEvent()
+                                val change = event.changes.firstOrNull { it.id == down.id }
+                                if (change == null || !change.pressed) {
+                                    upOrCancel = change
+                                    break
+                                }
+                                if (change.isConsumed) {
+                                    isCancelled = true
+                                    break
+                                }
+                                touchOffset = change.position
+                            }
+                        }
+                    } catch (_: PointerEventTimeoutCancellationException) {
+                        if (!isCancelled) {
+                            isLongPress = true
+                        }
+                    }
+
+                    val finalUp = upOrCancel
+                    if (isLongPress && consumeClickOnMask) {
+                        val finalPos = touchOffset ?: down.position
+                        tapOffset = finalPos
+                        val nextRevealed = true
+                        internalRevealed = nextRevealed
+                        onRevealChange?.invoke(nextRevealed)
+
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            val change = event.changes.firstOrNull { it.id == down.id }
+                            if (change == null || !change.pressed) {
+                                change?.consume()
+                                break
+                            }
+                            change.consume()
+                            touchOffset = change.position
+                        }
+                    } else if (
+                        !isCancelled && finalUp != null && !finalUp.isConsumed && consumeClickOnMask
+                    ) {
+                        finalUp.consume()
+                        if (revealOnLongPress) {
+                            onTap?.invoke()
+                        } else {
+                            tapOffset = down.position
+                            val nextRevealed = true
+                            internalRevealed = nextRevealed
+                            onRevealChange?.invoke(nextRevealed)
+                        }
+                    }
+                    touchOffset = null
                 }
             }
         } else {
             Modifier
         }
 
-    Box(modifier = modifier.clip(shape).then(clickableModifier)) {
+    Box(modifier = modifier.clip(shape).then(gestureModifier)) {
         Box(
             modifier =
                 Modifier.clip(shape)
@@ -114,6 +177,7 @@ fun SpoilerMask(
             SpoilerParticleOverlay(
                 revealProgress = revealProgress,
                 tapOffset = tapOffset,
+                touchOffset = touchOffset,
                 isTextMask = isTextMask,
                 particleColor = particleColor,
                 modifier = Modifier.matchParentSize(),
@@ -162,6 +226,7 @@ private fun respawnParticle(
 private fun SpoilerParticleOverlay(
     revealProgress: Float,
     tapOffset: Offset?,
+    touchOffset: Offset?,
     isTextMask: Boolean,
     particleColor: Color,
     modifier: Modifier = Modifier,
@@ -268,6 +333,20 @@ private fun SpoilerParticleOverlay(
             var drawX = p.x
             var drawY = p.y
             var drawAlpha = p.alphaTier * lifeFade
+
+            if (touchOffset != null) {
+                val tdx = drawX - touchOffset.x
+                val tdy = drawY - touchOffset.y
+                val tdist = hypot(tdx, tdy)
+                val repelRadius = 42.dp.toPx()
+                if (tdist < repelRadius) {
+                    val repelFactor = 1f - (tdist / repelRadius)
+                    val repelPush = repelFactor * 26.dp.toPx()
+                    val safeTDist = tdist.coerceAtLeast(1f)
+                    drawX += (tdx / safeTDist) * repelPush
+                    drawY += (tdy / safeTDist) * repelPush
+                }
+            }
 
             if (tapOffset != null && currentRadius > 0f) {
                 val dx = p.x - tapOffset.x

@@ -50,6 +50,7 @@ import dev.jdtech.jellyfin.film.presentation.show.ShowViewModel
 import dev.jdtech.jellyfin.models.FindroidItem
 import dev.jdtech.jellyfin.player.cast.models.CastConnectionState
 import dev.jdtech.jellyfin.player.cast.presentation.CastSessionViewModel
+import dev.jdtech.jellyfin.presentation.components.SpoilerMask
 import dev.jdtech.jellyfin.presentation.film.components.ActorsRow
 import dev.jdtech.jellyfin.presentation.film.components.Direction
 import dev.jdtech.jellyfin.presentation.film.components.InfoText
@@ -241,17 +242,29 @@ private fun ShowScreenLayout(state: ShowState, onAction: (ShowAction) -> Unit) {
                             style = MaterialTheme.typography.titleMedium,
                         )
                         Spacer(Modifier.height(MaterialTheme.spacings.small))
+                        val isEpisodeSpoiler = state.hideEpisodeSpoilers && !nextUp.played
+                        val hasBlurHash =
+                            nextUp.images.backdrop?.blurHash != null ||
+                                nextUp.images.primary?.blurHash != null
                         Column(
                             modifier =
                                 Modifier.widthIn(max = 420.dp)
                                     .clip(MaterialTheme.shapes.small)
                                     .clickable { onAction(ShowAction.NavigateToItem(nextUp)) }
                         ) {
-                            ItemPoster(
-                                item = nextUp,
-                                direction = Direction.HORIZONTAL,
-                                modifier = Modifier.clip(MaterialTheme.shapes.medium),
-                            )
+                            SpoilerMask(
+                                enabled = isEpisodeSpoiler,
+                                consumeClickOnMask = false,
+                                shape = MaterialTheme.shapes.medium,
+                                blurRadius = if (hasBlurHash) 4.dp else 16.dp,
+                            ) {
+                                ItemPoster(
+                                    item = nextUp,
+                                    direction = Direction.HORIZONTAL,
+                                    modifier = Modifier.clip(MaterialTheme.shapes.medium),
+                                    blurOnly = isEpisodeSpoiler,
+                                )
+                            }
                             Spacer(Modifier.height(MaterialTheme.spacings.extraSmall))
                             Text(
                                 text =
