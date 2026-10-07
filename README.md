@@ -52,21 +52,22 @@ I am developing this application in my spare time.
   - Auto skip
 
 
-### New
+### ✨ New - Beta only
 - Offline playback / downloads
   - Redesigned Downloads page
   - Resumable direct-stream downloads powered by OkHttp 3
   - Foreground download service with persistent progress notifications
   - Multi-storage volume management (internal storage & SD card)
-  - Smart Downloads
-  - **Beta:** Transcoded downloads
+  - **Test** (100% vibecoded)**:**
+    - Smart Downloads
+    - Transcoded downloads
 - Images
   - Blur placeholder
   - Request exact dimension images from the server
 - Google Cast (Chromecast) support
 - Account menu
 - Quick Connect support (also input)
-- Spoiler Mode: blur episode images and descriptions
+- Anti Spoiler Mode
 
 ## Planned features
 - Android TV
