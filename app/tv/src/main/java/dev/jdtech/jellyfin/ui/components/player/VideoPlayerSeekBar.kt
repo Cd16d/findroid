@@ -35,6 +35,10 @@ fun VideoPlayerSeekBar(
     progress: Float,
     onSeek: (seekProgress: Float) -> Unit,
     state: VideoPlayerState,
+    durationMs: Long = 0L,
+    trickplayIntervalMs: Long = 0L,
+    isScrubbing: Boolean = false,
+    onScrubbingChanged: (isScrubbing: Boolean, scrubPositionMs: Long) -> Unit = { _, _ -> },
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     var isSelected by remember { mutableStateOf(false) }
@@ -52,11 +56,27 @@ fun VideoPlayerSeekBar(
     var seekProgress by remember { mutableFloatStateOf(0f) }
     val focusManager = LocalFocusManager.current
 
+    LaunchedEffect(isScrubbing) {
+        if (!isScrubbing && isSelected) {
+            isSelected = false
+        }
+    }
+
     LaunchedEffect(isSelected) {
         if (isSelected) {
             state.showControls(seconds = Int.MAX_VALUE)
+        } else {
+            state.showControls()
         }
     }
+
+    val stepFraction =
+        if (durationMs > 0) {
+            val stepMs = if (trickplayIntervalMs > 0) trickplayIntervalMs else 10_000L
+            (stepMs.toFloat() / durationMs).coerceIn(0.001f, 0.05f)
+        } else {
+            0.05f
+        }
 
     Canvas(
         modifier =
@@ -67,22 +87,27 @@ fun VideoPlayerSeekBar(
                     onEnter = {
                         if (isSelected) {
                             onSeek(seekProgress)
+                            onScrubbingChanged(false, (seekProgress * durationMs).toLong())
                             focusManager.moveFocus(FocusDirection.Exit)
+                            isSelected = false
                         } else {
                             seekProgress = progress
+                            isSelected = true
+                            onScrubbingChanged(true, (progress * durationMs).toLong())
                         }
-                        isSelected = !isSelected
                     },
                     onLeft = {
                         if (isSelected) {
-                            seekProgress = (seekProgress - 0.05f).coerceAtLeast(0f)
+                            seekProgress = (seekProgress - stepFraction).coerceAtLeast(0f)
+                            onScrubbingChanged(true, (seekProgress * durationMs).toLong())
                         } else {
                             focusManager.moveFocus(FocusDirection.Left)
                         }
                     },
                     onRight = {
                         if (isSelected) {
-                            seekProgress = (seekProgress + 0.05f).coerceAtMost(1f)
+                            seekProgress = (seekProgress + stepFraction).coerceAtMost(1f)
+                            onScrubbingChanged(true, (seekProgress * durationMs).toLong())
                         } else {
                             focusManager.moveFocus(FocusDirection.Right)
                         }

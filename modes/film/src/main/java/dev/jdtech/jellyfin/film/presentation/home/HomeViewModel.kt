@@ -49,6 +49,9 @@ constructor(
                     loadServerName(serverId)
                 }
 
+                val showLogos = appPreferences.getValue(appPreferences.tvShowLogos)
+                _state.emit(_state.value.copy(showLogos = showLogos))
+
                 loadSuggestions()
                 loadResumeItems()
                 loadNextUpItems()

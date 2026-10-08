@@ -1,5 +1,18 @@
 package dev.jdtech.jellyfin.ui
 
+import androidx.activity.compose.BackHandler
+import androidx.annotation.OptIn
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -8,18 +21,21 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
@@ -37,6 +53,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaSession
+import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
@@ -44,9 +61,11 @@ import androidx.tv.material3.Glow
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import dev.jdtech.jellyfin.core.R
-import dev.jdtech.jellyfin.player.core.domain.models.Track
 import dev.jdtech.jellyfin.player.local.presentation.PlayerViewModel
 import dev.jdtech.jellyfin.presentation.theme.spacings
+import dev.jdtech.jellyfin.ui.components.player.PlayerSidePanel
+import dev.jdtech.jellyfin.ui.components.player.PlayerSidePanelType
+import dev.jdtech.jellyfin.ui.components.player.TrickplayScrubber
 import dev.jdtech.jellyfin.ui.components.player.VideoPlayerControlsLayout
 import dev.jdtech.jellyfin.ui.components.player.VideoPlayerMediaButton
 import dev.jdtech.jellyfin.ui.components.player.VideoPlayerMediaTitle
@@ -55,18 +74,16 @@ import dev.jdtech.jellyfin.ui.components.player.VideoPlayerSeeker
 import dev.jdtech.jellyfin.ui.components.player.VideoPlayerState
 import dev.jdtech.jellyfin.ui.components.player.rememberVideoPlayerState
 import dev.jdtech.jellyfin.utils.handleDPadKeyEvents
-import java.util.Locale
 import java.util.UUID
 import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.delay
 
+@OptIn(UnstableApi::class)
 @Composable
 fun PlayerScreen(
     itemId: UUID,
     itemKind: String,
     startFromBeginning: Boolean,
-    // resultRecipient: ResultRecipient<VideoPlayerTrackSelectorDialogDestination,
-    // VideoPlayerTrackSelectorDialogResult>,
 ) {
     val viewModel = hiltViewModel<PlayerViewModel>()
 
@@ -75,7 +92,7 @@ fun PlayerScreen(
     val context = LocalContext.current
     val currentView = LocalView.current
 
-    // Keep the screen on while player is show
+    // Keep the screen on while player is shown
     DisposableEffect(Unit) {
         currentView.keepScreenOn = true
         onDispose { currentView.keepScreenOn = false }
@@ -91,12 +108,10 @@ fun PlayerScreen(
             // Handle creation and release of media session
             when (lifecycle) {
                 Lifecycle.Event.ON_STOP -> {
-                    println("ON_STOP")
                     mediaSession?.release()
                 }
 
                 Lifecycle.Event.ON_START -> {
-                    println("ON_START")
                     mediaSession = MediaSession.Builder(context, viewModel.player).build()
                 }
 
@@ -120,38 +135,51 @@ fun PlayerScreen(
         }
     }
 
-    // TODO: implement the track selection dialogs
-    /*
-    resultRecipient.onNavResult { result ->
-        when (result) {
-            is NavResult.Canceled -> Unit
-            is NavResult.Value -> {
-                val trackType = result.value.trackType
-                val index = result.value.index
+    // Side panel state (Audio, Subtitles, Settings)
+    var sidePanel by remember { mutableStateOf(PlayerSidePanelType.NONE) }
+    val isPanelOpen = sidePanel != PlayerSidePanelType.NONE
 
-                if (index == -1) {
-                    viewModel.player.trackSelectionParameters = viewModel.player.trackSelectionParameters
-                        .buildUpon()
-                        .clearOverridesOfType(trackType)
-                        .setTrackTypeDisabled(trackType, true)
-                        .build()
-                } else {
-                    viewModel.player.trackSelectionParameters = viewModel.player.trackSelectionParameters
-                        .buildUpon()
-                        .setOverrideForType(
-                            TrackSelectionOverride(viewModel.player.currentTracks.groups[index].mediaTrackGroup, 0),
-                        )
-                        .setTrackTypeDisabled(trackType, false)
-                        .build()
-                }
-            }
-        }
-    }
-     */
+    // Trickplay scrubbing state
+    var isScrubbing by remember { mutableStateOf(false) }
+    var scrubPositionMs by remember { mutableLongStateOf(0L) }
+
+    // Video aspect ratio / resize mode
+    var resizeMode by remember { mutableIntStateOf(AspectRatioFrameLayout.RESIZE_MODE_FIT) }
+
+    // Remote back button handling: dismiss side panel first, then dismiss scrubbing
+    BackHandler(enabled = isPanelOpen) { sidePanel = PlayerSidePanelType.NONE }
+
+    BackHandler(enabled = isScrubbing && !isPanelOpen) { isScrubbing = false }
+
+    // Smooth YouTube TV-style video shrink animation
+    val videoPaddingEnd by
+        animateDpAsState(
+            targetValue = if (isPanelOpen) 390.dp else 0.dp,
+            animationSpec = tween(durationMillis = 350, easing = FastOutSlowInEasing),
+            label = "videoPaddingEnd",
+        )
+    val videoPaddingVertical by
+        animateDpAsState(
+            targetValue = if (isPanelOpen) 28.dp else 0.dp,
+            animationSpec = tween(durationMillis = 350, easing = FastOutSlowInEasing),
+            label = "videoPaddingVertical",
+        )
+    val videoPaddingStart by
+        animateDpAsState(
+            targetValue = if (isPanelOpen) 28.dp else 0.dp,
+            animationSpec = tween(durationMillis = 350, easing = FastOutSlowInEasing),
+            label = "videoPaddingStart",
+        )
+    val videoCornerRadius by
+        animateDpAsState(
+            targetValue = if (isPanelOpen) 20.dp else 0.dp,
+            animationSpec = tween(durationMillis = 350, easing = FastOutSlowInEasing),
+            label = "videoCornerRadius",
+        )
 
     // Media Segments
     val segment = uiState.currentSegment
-    if (segment != null && !videoPlayerState.controlsVisible) {
+    if (segment != null && !videoPlayerState.controlsVisible && !isPanelOpen) {
         val skipButtonFocusRequester = remember { FocusRequester() }
 
         SkipButton(
@@ -169,58 +197,139 @@ fun PlayerScreen(
 
     Box(
         modifier =
-            Modifier.dPadEvents(exoPlayer = viewModel.player, videoPlayerState = videoPlayerState)
+            Modifier.fillMaxSize()
+                .background(Color.Black)
+                .dPadEvents(
+                    exoPlayer = viewModel.player,
+                    videoPlayerState = videoPlayerState,
+                    isPanelOpen = isPanelOpen,
+                )
                 .focusable()
     ) {
-        AndroidView(
-            factory = { context ->
-                PlayerView(context).also { playerView ->
-                    playerView.player = viewModel.player
-                    playerView.useController = false
-                    viewModel.initializePlayer(
-                        itemId = itemId,
-                        itemKind = itemKind,
-                        startFromBeginning = startFromBeginning,
+        // Video player view with animated bounds, position shift, and rounded corners
+        Box(
+            modifier =
+                Modifier.fillMaxSize()
+                    .padding(
+                        start = videoPaddingStart,
+                        end = videoPaddingEnd,
+                        top = videoPaddingVertical,
+                        bottom = videoPaddingVertical,
                     )
-                    playerView.setBackgroundColor(
-                        context.resources.getColor(android.R.color.black, context.theme)
+                    .clip(RoundedCornerShape(videoCornerRadius))
+                    .background(Color.Black)
+        ) {
+            AndroidView(
+                factory = { context ->
+                    PlayerView(context).also { playerView ->
+                        playerView.player = viewModel.player
+                        playerView.useController = false
+                        playerView.resizeMode = resizeMode
+                        viewModel.initializePlayer(
+                            itemId = itemId,
+                            itemKind = itemKind,
+                            startFromBeginning = startFromBeginning,
+                        )
+                        playerView.setBackgroundColor(
+                            context.resources.getColor(android.R.color.black, context.theme)
+                        )
+                    }
+                },
+                update = { playerView ->
+                    playerView.resizeMode = resizeMode
+                    when (lifecycle) {
+                        Lifecycle.Event.ON_PAUSE -> {
+                            playerView.onPause()
+                            playerView.player?.pause()
+                        }
+
+                        Lifecycle.Event.ON_RESUME -> {
+                            playerView.onResume()
+                        }
+
+                        else -> Unit
+                    }
+                },
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+
+        // Trickplay scrubber preview (centered on screen while scrubbing)
+        AnimatedVisibility(
+            visible = isScrubbing,
+            enter =
+                fadeIn(animationSpec = tween(200)) +
+                    scaleIn(initialScale = 0.9f, animationSpec = tween(200)),
+            exit =
+                fadeOut(animationSpec = tween(150)) +
+                    scaleOut(targetScale = 0.9f, animationSpec = tween(150)),
+            modifier = Modifier.align(Alignment.Center).zIndex(5f),
+        ) {
+            TrickplayScrubber(
+                trickplay = uiState.currentTrickplay,
+                currentPositionMs = scrubPositionMs,
+                durationMs = viewModel.player.duration,
+            )
+        }
+
+        // Side panel for Audio, Subtitles, Settings (YouTube TV style)
+        AnimatedVisibility(
+            visible = isPanelOpen,
+            enter =
+                slideInHorizontally(
+                    initialOffsetX = { it },
+                    animationSpec = tween(durationMillis = 350, easing = FastOutSlowInEasing),
+                ) + fadeIn(animationSpec = tween(300)),
+            exit =
+                slideOutHorizontally(
+                    targetOffsetX = { it },
+                    animationSpec = tween(durationMillis = 250, easing = FastOutSlowInEasing),
+                ) + fadeOut(animationSpec = tween(250)),
+            modifier = Modifier.align(Alignment.CenterEnd).zIndex(10f),
+        ) {
+            PlayerSidePanel(
+                panelType = sidePanel,
+                onPanelTypeChange = { sidePanel = it },
+                viewModel = viewModel,
+                currentResizeMode = resizeMode,
+                onResizeModeChange = { resizeMode = it },
+                onClose = { sidePanel = PlayerSidePanelType.NONE },
+            )
+        }
+
+        // Player controls overlay (hidden when side panel is open)
+        if (!isPanelOpen) {
+            val focusRequester = remember { FocusRequester() }
+            val trickplayIntervalMs =
+                (uiState.currentTrickplay?.interval ?: 0).let {
+                    if (it > 1000) it.toLong() else it.toLong() * 1000L
+                }
+
+            VideoPlayerOverlay(
+                modifier = Modifier.align(Alignment.BottomCenter),
+                focusRequester = focusRequester,
+                state = videoPlayerState,
+                isPlaying = isPlaying,
+                controls = {
+                    VideoPlayerControls(
+                        title = uiState.currentItemTitle,
+                        isPlaying = isPlaying,
+                        contentCurrentPosition = currentPosition,
+                        player = viewModel.player,
+                        state = videoPlayerState,
+                        focusRequester = focusRequester,
+                        trickplayIntervalMs = trickplayIntervalMs,
+                        isScrubbing = isScrubbing,
+                        scrubPositionMs = scrubPositionMs,
+                        onScrubbingChanged = { scrubbing, pos ->
+                            isScrubbing = scrubbing
+                            scrubPositionMs = pos
+                        },
+                        onOpenSidePanel = { panel -> sidePanel = panel },
                     )
-                }
-            },
-            update = {
-                when (lifecycle) {
-                    Lifecycle.Event.ON_PAUSE -> {
-                        it.onPause()
-                        it.player?.pause()
-                    }
-
-                    Lifecycle.Event.ON_RESUME -> {
-                        it.onResume()
-                    }
-
-                    else -> Unit
-                }
-            },
-            modifier = Modifier.fillMaxSize(),
-        )
-        val focusRequester = remember { FocusRequester() }
-        VideoPlayerOverlay(
-            modifier = Modifier.align(Alignment.BottomCenter),
-            focusRequester = focusRequester,
-            state = videoPlayerState,
-            isPlaying = isPlaying,
-            controls = {
-                VideoPlayerControls(
-                    title = uiState.currentItemTitle,
-                    isPlaying = isPlaying,
-                    contentCurrentPosition = currentPosition,
-                    player = viewModel.player,
-                    state = videoPlayerState,
-                    focusRequester = focusRequester,
-                    // navigator = navigator,
-                )
-            },
-        )
+                },
+            )
+        }
     }
 }
 
@@ -233,7 +342,11 @@ fun VideoPlayerControls(
     player: Player,
     state: VideoPlayerState,
     focusRequester: FocusRequester,
-    // navigator: DestinationsNavigator,
+    trickplayIntervalMs: Long = 0L,
+    isScrubbing: Boolean = false,
+    scrubPositionMs: Long = 0L,
+    onScrubbingChanged: (isScrubbing: Boolean, scrubPositionMs: Long) -> Unit = { _, _ -> },
+    onOpenSidePanel: (PlayerSidePanelType) -> Unit = {},
 ) {
     val onPlayPauseToggle = { shouldPlay: Boolean ->
         if (shouldPlay) {
@@ -254,6 +367,10 @@ fun VideoPlayerControls(
                 onSeek = { player.seekTo(player.duration.times(it).toLong()) },
                 contentProgress = contentCurrentPosition.milliseconds,
                 contentDuration = player.duration.milliseconds,
+                trickplayIntervalMs = trickplayIntervalMs,
+                isScrubbing = isScrubbing,
+                scrubPositionMs = scrubPositionMs,
+                onScrubbingChanged = onScrubbingChanged,
             )
         },
         mediaActions = {
@@ -262,21 +379,19 @@ fun VideoPlayerControls(
                     icon = painterResource(id = R.drawable.ic_speaker),
                     state = state,
                     isPlaying = isPlaying,
-                    onClick = {
-                        // val tracks = getTracks(player, C.TRACK_TYPE_AUDIO)
-                        // navigator.navigate(VideoPlayerTrackSelectorDialogDestination(C.TRACK_TYPE_AUDIO,
-                        // tracks))
-                    },
+                    onClick = { onOpenSidePanel(PlayerSidePanelType.AUDIO) },
                 )
                 VideoPlayerMediaButton(
                     icon = painterResource(id = R.drawable.ic_closed_caption),
                     state = state,
                     isPlaying = isPlaying,
-                    onClick = {
-                        // val tracks = getTracks(player, C.TRACK_TYPE_TEXT)
-                        // navigator.navigate(VideoPlayerTrackSelectorDialogDestination(C.TRACK_TYPE_TEXT,
-                        // tracks))
-                    },
+                    onClick = { onOpenSidePanel(PlayerSidePanelType.SUBTITLES) },
+                )
+                VideoPlayerMediaButton(
+                    icon = painterResource(id = R.drawable.ic_settings),
+                    state = state,
+                    isPlaying = isPlaying,
+                    onClick = { onOpenSidePanel(PlayerSidePanelType.SETTINGS) },
                 )
             }
         },
@@ -311,48 +426,27 @@ private fun SkipButton(
     }
 }
 
-private fun Modifier.dPadEvents(exoPlayer: Player, videoPlayerState: VideoPlayerState): Modifier =
-    this.handleDPadKeyEvents(
-        onLeft = {},
-        onRight = {},
-        onUp = {},
-        onDown = {},
-        onEnter = {
-            exoPlayer.pause()
-            videoPlayerState.showControls()
-        },
-    )
-
-@androidx.annotation.OptIn(UnstableApi::class)
-private fun getTracks(player: Player, type: Int): Array<Track> {
-    val tracks = arrayListOf<Track>()
-    for (groupIndex in 0 until player.currentTracks.groups.count()) {
-        val group = player.currentTracks.groups[groupIndex]
-        if (group.type == type) {
-            val format = group.mediaTrackGroup.getFormat(0)
-
-            val track =
-                Track(
-                    id = groupIndex,
-                    label = format.label,
-                    language = Locale(format.language.toString()).displayLanguage,
-                    codec = format.codecs,
-                    selected = group.isSelected,
-                    supported = group.isSupported,
-                )
-
-            tracks.add(track)
-        }
-    }
-
-    val noneTrack =
-        Track(
-            id = -1,
-            label = null,
-            language = null,
-            codec = null,
-            selected = !tracks.any { it.selected },
-            supported = true,
+private fun Modifier.dPadEvents(
+    exoPlayer: Player,
+    videoPlayerState: VideoPlayerState,
+    isPanelOpen: Boolean,
+): Modifier =
+    if (isPanelOpen) this
+    else
+        this.handleDPadKeyEvents(
+            onLeft = {},
+            onRight = {},
+            onUp = { videoPlayerState.showControls() },
+            onDown = { videoPlayerState.showControls() },
+            onEnter = {
+                if (!videoPlayerState.controlsVisible) {
+                    videoPlayerState.showControls()
+                } else {
+                    if (exoPlayer.isPlaying) {
+                        exoPlayer.pause()
+                    } else {
+                        exoPlayer.play()
+                    }
+                }
+            },
         )
-    return arrayOf(noneTrack) + tracks
-}

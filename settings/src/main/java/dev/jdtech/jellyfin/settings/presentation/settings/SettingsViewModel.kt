@@ -196,7 +196,14 @@ class SettingsViewModel @Inject constructor(private val appPreferences: AppPrefe
                                                         R.string.extra_info_summary,
                                                     backendPreference =
                                                         appPreferences.displayExtraInfo,
-                                                )
+                                                ),
+                                                PreferenceSwitch(
+                                                    nameStringResource = R.string.tv_show_logos,
+                                                    descriptionStringRes =
+                                                        R.string.tv_show_logos_summary,
+                                                    supportedDeviceTypes = listOf(DeviceType.TV),
+                                                    backendPreference = appPreferences.tvShowLogos,
+                                                ),
                                             )
                                     ),
                                 ),

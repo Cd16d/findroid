@@ -2,9 +2,9 @@ package dev.jdtech.jellyfin.ui
 
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -24,6 +24,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -105,86 +106,7 @@ private fun MainScreenLayout(
         else -> Unit
     }
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        Box(
-            modifier =
-                Modifier.fillMaxWidth()
-                    .height(80.dp)
-                    .padding(horizontal = MaterialTheme.spacings.default)
-        ) {
-            Icon(
-                painter = painterResource(id = CoreR.drawable.ic_logo),
-                contentDescription = null,
-                tint = Color.Unspecified,
-                modifier = Modifier.size(32.dp).align(Alignment.CenterStart),
-            )
-            TabRow(
-                selectedTabIndex = focusedTabIndex,
-                indicator = { tabPositions, isActivated ->
-                    // FocusedTab's indicator
-                    PillBorderIndicator(
-                        currentTabPosition = tabPositions[focusedTabIndex],
-                        activeBorderColor = Color.White,
-                        inactiveBorderColor = Color.Transparent,
-                        doesTabRowHaveFocus = isActivated,
-                    )
-
-                    // SelectedTab's indicator
-                    TabRowDefaults.PillIndicator(
-                        currentTabPosition = tabPositions[activeTabIndex],
-                        activeColor = Color.White,
-                        inactiveColor = Color.White,
-                        doesTabRowHaveFocus = isActivated,
-                    )
-                },
-                modifier = Modifier.align(Alignment.Center),
-            ) {
-                TabDestination.entries.forEachIndexed { index, tab ->
-                    Tab(
-                        selected = activeTabIndex == index,
-                        onFocus = { focusedTabIndex = index },
-                        colors =
-                            TabDefaults.pillIndicatorTabColors(
-                                contentColor =
-                                    MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f),
-                                selectedContentColor = MaterialTheme.colorScheme.onPrimary,
-                                focusedContentColor =
-                                    MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f),
-                                focusedSelectedContentColor = MaterialTheme.colorScheme.onPrimary,
-                            ),
-                        onClick = {
-                            focusedTabIndex = index
-                            activeTabIndex = index
-                        },
-                        modifier =
-                            Modifier.padding(
-                                horizontal = MaterialTheme.spacings.default / 2,
-                                vertical = MaterialTheme.spacings.small,
-                            ),
-                    ) {
-                        Icon(
-                            painter = painterResource(id = tab.icon),
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp),
-                        )
-                        Spacer(modifier = Modifier.width(MaterialTheme.spacings.extraSmall))
-                        Text(
-                            text = stringResource(id = tab.label),
-                            style = MaterialTheme.typography.titleSmall,
-                        )
-                    }
-                }
-            }
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacings.medium),
-                modifier = Modifier.align(Alignment.CenterEnd),
-            ) {
-                if (isLoading) {
-                    LoadingIndicator()
-                }
-                ProfileButton(user = user, onClick = { navigateToSettings() })
-            }
-        }
+    Box(modifier = Modifier.fillMaxSize()) {
         when (activeTabIndex) {
             1 -> {
                 HomeScreen(
@@ -195,7 +117,108 @@ private fun MainScreenLayout(
                 )
             }
             2 -> {
-                MediaScreen(navigateToLibrary = navigateToLibrary, isLoading = { isLoading = it })
+                Box(modifier = Modifier.fillMaxSize().padding(top = 84.dp)) {
+                    MediaScreen(
+                        navigateToLibrary = navigateToLibrary,
+                        isLoading = { isLoading = it },
+                    )
+                }
+            }
+        }
+        Box(
+            modifier =
+                Modifier.fillMaxWidth()
+                    .height(84.dp)
+                    .background(
+                        Brush.verticalGradient(
+                            colors =
+                                listOf(
+                                    Color.Black.copy(alpha = 0.85f),
+                                    Color.Black.copy(alpha = 0.4f),
+                                    Color.Transparent,
+                                )
+                        )
+                    )
+                    .padding(horizontal = MaterialTheme.spacings.large)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacings.medium),
+                modifier = Modifier.align(Alignment.CenterStart),
+            ) {
+                ProfileButton(user = user, onClick = { navigateToSettings() })
+                TabRow(
+                    selectedTabIndex = focusedTabIndex,
+                    indicator = { tabPositions, isActivated ->
+                        // FocusedTab's indicator
+                        PillBorderIndicator(
+                            currentTabPosition = tabPositions[focusedTabIndex],
+                            activeBorderColor = Color.White,
+                            inactiveBorderColor = Color.Transparent,
+                            doesTabRowHaveFocus = isActivated,
+                        )
+
+                        // SelectedTab's indicator
+                        TabRowDefaults.PillIndicator(
+                            currentTabPosition = tabPositions[activeTabIndex],
+                            activeColor = Color.White,
+                            inactiveColor = Color.White,
+                            doesTabRowHaveFocus = isActivated,
+                        )
+                    },
+                ) {
+                    TabDestination.entries.forEachIndexed { index, tab ->
+                        Tab(
+                            selected = activeTabIndex == index,
+                            onFocus = { focusedTabIndex = index },
+                            colors =
+                                TabDefaults.pillIndicatorTabColors(
+                                    contentColor =
+                                        MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f),
+                                    selectedContentColor = MaterialTheme.colorScheme.onPrimary,
+                                    focusedContentColor =
+                                        MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f),
+                                    focusedSelectedContentColor =
+                                        MaterialTheme.colorScheme.onPrimary,
+                                ),
+                            onClick = {
+                                focusedTabIndex = index
+                                activeTabIndex = index
+                            },
+                            modifier =
+                                Modifier.padding(
+                                    horizontal = MaterialTheme.spacings.default / 2,
+                                    vertical = MaterialTheme.spacings.small,
+                                ),
+                        ) {
+                            Icon(
+                                painter = painterResource(id = tab.icon),
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                            )
+                            Spacer(modifier = Modifier.width(MaterialTheme.spacings.extraSmall))
+                            Text(
+                                text = stringResource(id = tab.label),
+                                style = MaterialTheme.typography.titleSmall,
+                            )
+                        }
+                    }
+                }
+            }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacings.medium),
+                modifier = Modifier.align(Alignment.CenterEnd),
+            ) {
+                if (isLoading) {
+                    LoadingIndicator()
+                }
+                Icon(
+                    painter = painterResource(id = CoreR.drawable.ic_logo),
+                    contentDescription = null,
+                    tint = Color.Unspecified,
+                    modifier = Modifier.size(32.dp),
+                )
             }
         }
     }

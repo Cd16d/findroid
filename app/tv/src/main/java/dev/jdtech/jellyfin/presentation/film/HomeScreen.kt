@@ -3,7 +3,7 @@ package dev.jdtech.jellyfin.presentation.film
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
@@ -11,6 +11,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.MaterialTheme
@@ -68,12 +69,13 @@ fun HomeScreen(
 @Composable
 private fun HomeScreenLayout(state: HomeState, onAction: (HomeAction) -> Unit) {
     val itemsPadding = PaddingValues(horizontal = MaterialTheme.spacings.large)
+    val topPadding = if (state.suggestionsSection != null) 0.dp else 84.dp
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding =
             PaddingValues(
-                top = MaterialTheme.spacings.extraSmall,
+                top = topPadding,
                 bottom = MaterialTheme.spacings.large,
             ),
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacings.large),
@@ -83,7 +85,8 @@ private fun HomeScreenLayout(state: HomeState, onAction: (HomeAction) -> Unit) {
                 HomeCarousel(
                     items = section.items,
                     onAction = onAction,
-                    modifier = Modifier.animateItem().padding(itemsPadding),
+                    showLogos = state.showLogos,
+                    modifier = Modifier.animateItem().fillMaxWidth(),
                 )
             }
         }
@@ -93,6 +96,7 @@ private fun HomeScreenLayout(state: HomeState, onAction: (HomeAction) -> Unit) {
                     section = section.homeSection,
                     itemsPadding = itemsPadding,
                     onAction = onAction,
+                    showLogos = state.showLogos,
                     modifier = Modifier.animateItem(),
                 )
             }
@@ -103,6 +107,7 @@ private fun HomeScreenLayout(state: HomeState, onAction: (HomeAction) -> Unit) {
                     section = section.homeSection,
                     itemsPadding = itemsPadding,
                     onAction = onAction,
+                    showLogos = state.showLogos,
                     modifier = Modifier.animateItem(),
                 )
             }
@@ -112,6 +117,7 @@ private fun HomeScreenLayout(state: HomeState, onAction: (HomeAction) -> Unit) {
                 view = view,
                 itemsPadding = itemsPadding,
                 onAction = onAction,
+                showLogos = state.showLogos,
                 modifier = Modifier.animateItem(),
             )
         }

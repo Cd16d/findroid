@@ -109,4 +109,9 @@
     <string name="download_paused">Paused</string>
     <string name="download_downloading">Downloading…</string>
     <string name="download_failed">Failed to download</string>
+    <string name="playback_speed">Playback speed</string>
+    <string name="aspect_ratio">Aspect ratio</string>
+    <string name="aspect_ratio_fit">Fit</string>
+    <string name="aspect_ratio_zoom">Zoom</string>
+    <string name="aspect_ratio_fill">Stretch</string>
 </resources>

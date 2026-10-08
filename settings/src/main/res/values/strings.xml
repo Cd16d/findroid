@@ -70,6 +70,8 @@
     <string name="dynamic_colors_summary">Use Material You Dynamic colors (only available on Android 12+)</string>
     <string name="extra_info">Display Extra Info</string>
     <string name="extra_info_summary">Displays detailed information about Audio, Video and Subtitles</string>
+    <string name="tv_show_logos">Show titles as logos</string>
+    <string name="tv_show_logos_summary">Display series and movie logos instead of text when available</string>
     <string name="mb">MB</string>
     <string name="ms">ms</string>
     <string name="seconds">s</string>

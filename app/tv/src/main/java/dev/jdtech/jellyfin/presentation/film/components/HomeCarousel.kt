@@ -23,15 +23,18 @@ fun HomeCarousel(
     items: List<FindroidItem>,
     onAction: (HomeAction) -> Unit,
     modifier: Modifier = Modifier,
+    showLogos: Boolean = false,
 ) {
+    if (items.isEmpty()) return
+
     Carousel(
         itemCount = items.size,
-        modifier = modifier.height(300.dp).fillMaxWidth(),
-        contentTransformEndToStart = fadeIn(tween(1000)).togetherWith(fadeOut(tween(1000))),
-        contentTransformStartToEnd = fadeIn(tween(1000)).togetherWith(fadeOut(tween(1000))),
+        modifier = modifier.height(480.dp).fillMaxWidth(),
+        contentTransformEndToStart = fadeIn(tween(800)).togetherWith(fadeOut(tween(800))),
+        contentTransformStartToEnd = fadeIn(tween(800)).togetherWith(fadeOut(tween(800))),
     ) { itemIndex ->
         val item = items[itemIndex]
-        HomeCarouselItem(item = item, onAction = onAction)
+        HomeCarouselItem(item = item, onAction = onAction, showLogos = showLogos)
     }
 }
 

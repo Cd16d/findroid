@@ -23,6 +23,7 @@ import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun VideoPlayerSeeker(
@@ -33,8 +34,13 @@ fun VideoPlayerSeeker(
     onSeek: (Float) -> Unit,
     contentProgress: Duration,
     contentDuration: Duration,
+    trickplayIntervalMs: Long = 0L,
+    isScrubbing: Boolean = false,
+    scrubPositionMs: Long = 0L,
+    onScrubbingChanged: (isScrubbing: Boolean, scrubPositionMs: Long) -> Unit = { _, _ -> },
 ) {
-    val contentProgressString = contentProgress.toComponents { h, m, s, _ ->
+    val currentDisplayProgress = if (isScrubbing) scrubPositionMs.milliseconds else contentProgress
+    val contentProgressString = currentDisplayProgress.toComponents { h, m, s, _ ->
         if (h > 0) {
             "$h:${m.padStartWith0()}:${s.padStartWith0()}"
         } else {
@@ -85,9 +91,16 @@ fun VideoPlayerSeeker(
             }
             Spacer(modifier = Modifier.height(MaterialTheme.spacings.small))
             VideoPlayerSeekBar(
-                progress = (contentProgress / contentDuration).toFloat(),
+                progress =
+                    if (contentDuration.inWholeMilliseconds > 0) {
+                        (contentProgress / contentDuration).toFloat()
+                    } else 0f,
                 onSeek = onSeek,
                 state = state,
+                durationMs = contentDuration.inWholeMilliseconds,
+                trickplayIntervalMs = trickplayIntervalMs,
+                isScrubbing = isScrubbing,
+                onScrubbingChanged = onScrubbingChanged,
             )
         }
     }
