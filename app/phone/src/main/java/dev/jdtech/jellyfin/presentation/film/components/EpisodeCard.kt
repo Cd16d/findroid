@@ -1,6 +1,5 @@
 package dev.jdtech.jellyfin.presentation.film.components
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,12 +15,15 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -30,6 +32,8 @@ import dev.jdtech.jellyfin.core.presentation.dummy.dummyEpisode
 import dev.jdtech.jellyfin.models.FindroidEpisode
 import dev.jdtech.jellyfin.models.isDownloaded
 import dev.jdtech.jellyfin.presentation.components.SpoilerMask
+import dev.jdtech.jellyfin.presentation.components.rememberSpoilerState
+import dev.jdtech.jellyfin.presentation.components.spoilerCardGesture
 import dev.jdtech.jellyfin.presentation.download.components.DownloadedBadge
 import dev.jdtech.jellyfin.presentation.download.components.DownloadingBadge
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
@@ -46,6 +50,20 @@ fun EpisodeCard(
     hideEpisodeSpoilers: Boolean = false,
 ) {
     var isRevealed by rememberSaveable(episode.id) { mutableStateOf(false) }
+    val isEpisodeSpoiler = hideEpisodeSpoilers && !episode.played
+
+    val spoilerState =
+        rememberSpoilerState(
+            enabled = isEpisodeSpoiler,
+            isRevealed = isRevealed,
+            onRevealChange = { isRevealed = it },
+        )
+
+    val density = LocalDensity.current
+    val posterWidthPx = remember(density) { with(density) { (84.dp * (16f / 9f)).toPx() } }
+    val spacerWidthPx =
+        remember(density) { with(density) { (MaterialTheme.spacings.default / 2).toPx() } }
+    val columnOffsetX = posterWidthPx + spacerWidthPx
 
     Row(
         modifier =
@@ -53,19 +71,17 @@ fun EpisodeCard(
                 .height(84.dp)
                 .fillMaxWidth()
                 .clip(MaterialTheme.shapes.medium)
-                .clickable(onClick = onClick)
+                .spoilerCardGesture(
+                    state = spoilerState,
+                    onClick = onClick,
+                )
     ) {
-        val isEpisodeSpoiler = hideEpisodeSpoilers && !episode.played
         val hasBlurHash =
             episode.images.backdrop?.blurHash != null || episode.images.primary?.blurHash != null
         Box {
             SpoilerMask(
-                enabled = isEpisodeSpoiler,
-                isRevealed = isRevealed,
-                onRevealChange = { isRevealed = it },
-                consumeClickOnMask = true,
-                revealOnLongPress = true,
-                onTap = onClick,
+                state = spoilerState,
+                isTarget = { offset -> offset.x <= posterWidthPx },
                 shape = MaterialTheme.shapes.small,
                 blurRadius = if (hasBlurHash) 4.dp else 16.dp,
             ) {
@@ -102,12 +118,9 @@ fun EpisodeCard(
                 style = MaterialTheme.typography.bodyMedium,
             )
             SpoilerMask(
-                enabled = isEpisodeSpoiler,
-                isRevealed = isRevealed,
-                onRevealChange = { isRevealed = it },
-                consumeClickOnMask = true,
-                revealOnLongPress = true,
-                onTap = onClick,
+                state = spoilerState,
+                isTarget = { offset -> offset.x > posterWidthPx },
+                touchOffsetCorrection = { offset -> Offset(offset.x - columnOffsetX, offset.y) },
                 contentAlphaWhenMasked = 0f,
             ) {
                 Text(

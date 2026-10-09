@@ -25,6 +25,7 @@ data class ShowDownloadsState(
     val displayExtraInfo: Boolean = false,
     val activeDownloads: List<DownloadQueue.Entry> = emptyList(),
     val activeTransfers: Map<UUID, StorageTransferProgress> = emptyMap(),
+    val hideEpisodeSpoilers: Boolean = false,
     val error: Exception? = null,
 ) {
     val subtitle: String

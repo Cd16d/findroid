@@ -342,6 +342,7 @@ private fun EpisodeScreenLayout(
                         isRevealed = isRevealed,
                         onRevealChange = { isRevealed = it },
                         consumeClickOnMask = true,
+                        revealOnLongPress = true,
                         contentAlphaWhenMasked = 0f,
                     ) {
                         OverviewText(text = episode.overview)

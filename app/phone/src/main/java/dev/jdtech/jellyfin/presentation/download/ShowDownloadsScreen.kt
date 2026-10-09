@@ -535,6 +535,7 @@ private fun ShowDownloadsScreenLayout(
                                         pendingDeletionSeconds =
                                             state.pendingDeletionIds[episode.id],
                                         displayExtraInfo = state.displayExtraInfo,
+                                        hideEpisodeSpoilers = state.hideEpisodeSpoilers,
                                     ),
                                 actions =
                                     DownloadCardActions(

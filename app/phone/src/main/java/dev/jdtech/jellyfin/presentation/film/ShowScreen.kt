@@ -2,7 +2,6 @@ package dev.jdtech.jellyfin.presentation.film
 
 import android.content.Intent
 import android.widget.Toast
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,6 +25,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -51,6 +53,8 @@ import dev.jdtech.jellyfin.models.FindroidItem
 import dev.jdtech.jellyfin.player.cast.models.CastConnectionState
 import dev.jdtech.jellyfin.player.cast.presentation.CastSessionViewModel
 import dev.jdtech.jellyfin.presentation.components.SpoilerMask
+import dev.jdtech.jellyfin.presentation.components.rememberSpoilerState
+import dev.jdtech.jellyfin.presentation.components.spoilerCardGesture
 import dev.jdtech.jellyfin.presentation.film.components.ActorsRow
 import dev.jdtech.jellyfin.presentation.film.components.Direction
 import dev.jdtech.jellyfin.presentation.film.components.InfoText
@@ -246,15 +250,25 @@ private fun ShowScreenLayout(state: ShowState, onAction: (ShowAction) -> Unit) {
                         val hasBlurHash =
                             nextUp.images.backdrop?.blurHash != null ||
                                 nextUp.images.primary?.blurHash != null
+                        var isNextUpRevealed by
+                            rememberSaveable(nextUp.id) { mutableStateOf(false) }
+                        val nextUpSpoilerState =
+                            rememberSpoilerState(
+                                enabled = isEpisodeSpoiler,
+                                isRevealed = isNextUpRevealed,
+                                onRevealChange = { isNextUpRevealed = it },
+                            )
                         Column(
                             modifier =
                                 Modifier.widthIn(max = 420.dp)
                                     .clip(MaterialTheme.shapes.small)
-                                    .clickable { onAction(ShowAction.NavigateToItem(nextUp)) }
+                                    .spoilerCardGesture(
+                                        state = nextUpSpoilerState,
+                                        onClick = { onAction(ShowAction.NavigateToItem(nextUp)) },
+                                    )
                         ) {
                             SpoilerMask(
-                                enabled = isEpisodeSpoiler,
-                                consumeClickOnMask = false,
+                                state = nextUpSpoilerState,
                                 shape = MaterialTheme.shapes.medium,
                                 blurRadius = if (hasBlurHash) 4.dp else 16.dp,
                             ) {
@@ -262,7 +276,7 @@ private fun ShowScreenLayout(state: ShowState, onAction: (ShowAction) -> Unit) {
                                     item = nextUp,
                                     direction = Direction.HORIZONTAL,
                                     modifier = Modifier.clip(MaterialTheme.shapes.medium),
-                                    blurOnly = isEpisodeSpoiler,
+                                    blurOnly = isEpisodeSpoiler && !isNextUpRevealed,
                                 )
                             }
                             Spacer(Modifier.height(MaterialTheme.spacings.extraSmall))

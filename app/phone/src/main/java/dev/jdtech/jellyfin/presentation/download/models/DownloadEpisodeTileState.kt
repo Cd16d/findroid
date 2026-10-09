@@ -17,4 +17,5 @@ data class DownloadEpisodeTileState(
     val isPaused: Boolean = false,
     val pendingDeletionSeconds: Int? = null,
     val displayExtraInfo: Boolean = false,
+    val hideEpisodeSpoilers: Boolean = false,
 )
