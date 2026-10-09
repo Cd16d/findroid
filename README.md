@@ -61,6 +61,7 @@ I am developing this application in my spare time.
   - **Test** (100% vibecoded)**:**
     - Smart Downloads
     - Transcoded downloads
+- Multi parts video support
 - Images
   - Blur placeholder
   - Request exact dimension images from the server
