@@ -492,8 +492,7 @@ private fun SpoilerParticleOverlay(
 
         val widthDp = w / density
         val heightDp = h / density
-        val targetCount =
-            particleCount(widthDp * heightDp).coerceAtMost(particles.size)
+        val targetCount = particleCount(widthDp * heightDp).coerceAtMost(particles.size)
 
         val now = SystemClock.uptimeMillis()
         val dt = if (state.lastTime == 0L) 16L else (now - state.lastTime).coerceIn(1L, 40L)
