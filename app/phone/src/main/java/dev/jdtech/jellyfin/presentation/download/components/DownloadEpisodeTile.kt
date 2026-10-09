@@ -34,7 +34,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -51,6 +54,9 @@ import dev.jdtech.jellyfin.core.presentation.dummy.dummyEpisode
 import dev.jdtech.jellyfin.models.FindroidEpisode
 import dev.jdtech.jellyfin.models.diskSize
 import dev.jdtech.jellyfin.models.formatDuration
+import dev.jdtech.jellyfin.presentation.components.SpoilerMask
+import dev.jdtech.jellyfin.presentation.components.rememberSpoilerState
+import dev.jdtech.jellyfin.presentation.components.spoilerCardGesture
 import dev.jdtech.jellyfin.presentation.download.models.DownloadCardActions
 import dev.jdtech.jellyfin.presentation.download.models.DownloadEpisodeTileState
 import dev.jdtech.jellyfin.presentation.download.models.DownloadStatus
@@ -66,6 +72,7 @@ fun DownloadEpisodeTile(
     state: DownloadEpisodeTileState,
     modifier: Modifier = Modifier,
     actions: DownloadCardActions = DownloadCardActions(),
+    hideEpisodeSpoilers: Boolean = state.hideEpisodeSpoilers,
 ) {
     val context = LocalContext.current
     val actualSizeBytes =
@@ -101,6 +108,16 @@ fun DownloadEpisodeTile(
     val cardShape = RoundedCornerShape(16.dp)
     val cardHeight = 76.dp
 
+    var isRevealed by rememberSaveable(episode.id) { mutableStateOf(false) }
+    val isEpisodeSpoiler = (hideEpisodeSpoilers || state.hideEpisodeSpoilers) && !episode.played
+
+    val spoilerState =
+        rememberSpoilerState(
+            enabled = isEpisodeSpoiler,
+            isRevealed = isRevealed,
+            onRevealChange = { isRevealed = it },
+        )
+
     DownloadSwipeToDismissBox(
         itemId = episode.id.toString(),
         title = titleText,
@@ -133,9 +150,18 @@ fun DownloadEpisodeTile(
                             )
                         else Modifier
                     )
-                    .combinedClickable(
-                        onClick = actions.onClick,
-                        onLongClick = actions.onLongClick,
+                    .then(
+                        if (isEpisodeSpoiler && !isRevealed && !state.isSelectionMode) {
+                            Modifier.spoilerCardGesture(
+                                state = spoilerState,
+                                onClick = actions.onClick,
+                            )
+                        } else {
+                            Modifier.combinedClickable(
+                                onClick = actions.onClick,
+                                onLongClick = actions.onLongClick,
+                            )
+                        }
                     ),
         ) {
             Row(
@@ -157,11 +183,21 @@ fun DownloadEpisodeTile(
                     modifier =
                         Modifier.height(56.dp).aspectRatio(16f / 9f).clip(RoundedCornerShape(10.dp))
                 ) {
-                    ItemPoster(
-                        item = episode,
-                        direction = Direction.HORIZONTAL,
-                        modifier = Modifier.fillMaxHeight(),
-                    )
+                    val hasBlurHash =
+                        episode.images.backdrop?.blurHash != null ||
+                            episode.images.primary?.blurHash != null
+                    SpoilerMask(
+                        state = spoilerState,
+                        shape = RoundedCornerShape(10.dp),
+                        blurRadius = if (hasBlurHash) 4.dp else 16.dp,
+                    ) {
+                        ItemPoster(
+                            item = episode,
+                            direction = Direction.HORIZONTAL,
+                            modifier = Modifier.fillMaxHeight(),
+                            blurOnly = isEpisodeSpoiler && !isRevealed,
+                        )
+                    }
 
                     if (state.status == DownloadStatus.DOWNLOADED) {
                         if (episode.played) {

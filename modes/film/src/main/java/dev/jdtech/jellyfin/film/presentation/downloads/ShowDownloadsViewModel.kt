@@ -137,6 +137,12 @@ constructor(
                 }
             }
         }
+
+        viewModelScope.launch {
+            appPreferences.observe(appPreferences.hideEpisodeSpoilers).collect { hideSpoilers ->
+                _state.update { it.copy(hideEpisodeSpoilers = hideSpoilers) }
+            }
+        }
     }
 
     fun onAction(action: ShowDownloadsAction) {
