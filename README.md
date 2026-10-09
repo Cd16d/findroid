@@ -1,6 +1,6 @@
 ![Findroid banner](images/findroid-banner.png)
 
-# Findroid
+# Findroid - Beta
 ![GitHub release (with filter)](https://img.shields.io/github/v/release/jarnedemeulemeester/findroid?style=for-the-badge)
 ![GitHub repo stars](https://img.shields.io/github/stars/jarnedemeulemeester/findroid?style=for-the-badge)
 ![GitHub issues](https://img.shields.io/github/issues/jarnedemeulemeester/findroid?style=for-the-badge)
@@ -51,10 +51,28 @@ I am developing this application in my spare time.
   - Skip button
   - Auto skip
 
+
+### ✨ New - Beta only
+- Offline playback / downloads
+  - Redesigned Downloads page
+  - Resumable direct-stream downloads powered by OkHttp 3
+  - Foreground download service with persistent progress notifications
+  - Multi-storage volume management (internal storage & SD card)
+  - **Test** (100% vibecoded)**:**
+    - Smart Downloads
+    - Transcoded downloads
+- Multi parts video support
+- Images
+  - Blur placeholder
+  - Request exact dimension images from the server
+- Google Cast (Chromecast) support
+- Account menu
+- Quick Connect support (also input)
+- Anti Spoiler Mode
+
 ## Planned features
 - Android TV
 - Websocket connection (Syncplay)
-- Chromecast support
 
 ## Translating
 [JDTech Weblate](https://weblate.jdtech.dev) is a self-hosted instance of Weblate where you can translate this project and future projects of mine.

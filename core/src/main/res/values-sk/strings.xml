@@ -53,7 +53,7 @@
     <string name="check_button_description">Označiť ako pozreté alebo nepozreté</string>
     <string name="favorite_button_description">Obľúbené</string>
     <string name="episode_watched_indicator">Indikátor pozretia epizódy</string>
-    <string name="no_downloads">Nemáte nič stiahnuté</string>
+
     <string name="view_details">Zobraziť detaily</string>
     <string name="search_hint">Vyhľadávanie filmov, seriálov, epizód…</string>
     <string name="sort_by">Zoradiť podľa</string>

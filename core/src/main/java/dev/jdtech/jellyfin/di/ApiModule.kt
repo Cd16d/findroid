@@ -11,6 +11,7 @@ import dev.jdtech.jellyfin.database.ServerDatabaseDao
 import dev.jdtech.jellyfin.settings.domain.AppPreferences
 import javax.inject.Singleton
 import kotlinx.coroutines.runBlocking
+import okhttp3.OkHttpClient
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -21,6 +22,7 @@ object ApiModule {
         @ApplicationContext application: Context,
         appPreferences: AppPreferences,
         database: ServerDatabaseDao,
+        okHttpClient: OkHttpClient,
     ): JellyfinApi {
         val jellyfinApi =
             JellyfinApi.getInstance(
@@ -28,6 +30,7 @@ object ApiModule {
                 requestTimeout = appPreferences.getValue(appPreferences.requestTimeout),
                 connectTimeout = appPreferences.getValue(appPreferences.connectTimeout),
                 socketTimeout = appPreferences.getValue(appPreferences.socketTimeout),
+                okHttpClient = okHttpClient,
             )
 
         val serverId = appPreferences.getValue(appPreferences.currentServer) ?: return jellyfinApi

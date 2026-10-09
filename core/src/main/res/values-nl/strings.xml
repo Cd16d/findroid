@@ -49,7 +49,7 @@
     <string name="next_up">Volgende</string>
     <string name="series_poster">Series poster</string>
     <string name="no_favorites">Jij hebt geen favoriten</string>
-    <string name="no_downloads">Jij hebt niks gedownload</string>
+
     <string name="device_name">Apparaatnaam</string>
     <string name="error_preparing_player_items">Fout bij het voorbereiden van spelers items.</string>
     <string name="view_details">Bekijk details</string>

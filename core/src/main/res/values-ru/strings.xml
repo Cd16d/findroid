@@ -32,7 +32,7 @@
     <string name="view_details_underlined"><u>Детали</u></string>
     <string name="unknown_error">Неизвестная ошибка</string>
     <string name="search_hint">Поиск кино, сериалов, эпизодов…</string>
-    <string name="no_downloads">Вы ничего не скачивали</string>
+
     <string name="download_button_description">Скачать</string>
     <string name="person_detail_title">Детали</string>
     <string name="movies_label">Фильмы</string>

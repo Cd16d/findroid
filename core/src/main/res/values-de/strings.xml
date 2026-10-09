@@ -16,7 +16,7 @@
     <string name="episode_name">%1$d. %2$s</string>
     <string name="episode_name_extended">S%1$d:E%2$d - %3$s</string>
     <string name="next_up">Als Nächstes</string>
-    <string name="no_downloads">Du hast nichts heruntergeladen</string>
+
     <string name="search">Suchen</string>
     <string name="no_search_results">Keine Suchergebnisse</string>
     <string name="device_name">Gerätename</string>

@@ -166,7 +166,7 @@ fun FilmSearchBar(
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacings.default),
             verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacings.default),
         ) {
-            items(items = state.items, key = { it.id }) { item ->
+            items(items = state.items.distinctBy { it.id }, key = { it.id }) { item ->
                 ItemCard(
                     item = item,
                     direction = Direction.VERTICAL,

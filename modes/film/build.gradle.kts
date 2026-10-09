@@ -10,11 +10,14 @@ android {
     compileSdk = Versions.COMPILE_SDK
     buildToolsVersion = Versions.BUILD_TOOLS
 
-    defaultConfig { minSdk = Versions.MIN_SDK }
+    defaultConfig {
+        minSdk = Versions.MIN_SDK
+        missingDimensionStrategy("variant", "proprietary", "libre")
+    }
 
     buildTypes {
         named("release") { isMinifyEnabled = false }
-        register("staging") { initWith(getByName("release")) }
+        register("beta") { initWith(getByName("release")) }
     }
 }
 

@@ -17,25 +17,29 @@ import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dev.jdtech.jellyfin.di.ApplicationScope
 import dev.jdtech.jellyfin.models.FindroidSegment
-import dev.jdtech.jellyfin.models.FindroidSegmentType
+import dev.jdtech.jellyfin.player.core.R as CoreR
+import dev.jdtech.jellyfin.player.core.domain.PlaybackManager
+import dev.jdtech.jellyfin.player.core.domain.PlaylistManager
 import dev.jdtech.jellyfin.player.core.domain.models.PlayerChapter
 import dev.jdtech.jellyfin.player.core.domain.models.PlayerItem
 import dev.jdtech.jellyfin.player.core.domain.models.Trickplay
-import dev.jdtech.jellyfin.player.local.R
-import dev.jdtech.jellyfin.player.local.domain.PlaylistManager
+import dev.jdtech.jellyfin.player.core.domain.utils.ChapterUtils
+import dev.jdtech.jellyfin.player.core.domain.utils.SegmentUtils
+import dev.jdtech.jellyfin.player.core.domain.utils.SegmentUtils.getSegments
+import dev.jdtech.jellyfin.player.core.domain.utils.SegmentUtils.getSkipButtonTextStringId
 import dev.jdtech.jellyfin.player.local.mpv.MPVPlayer
 import dev.jdtech.jellyfin.repository.JellyfinRepository
 import dev.jdtech.jellyfin.settings.domain.AppPreferences
 import dev.jdtech.jellyfin.settings.domain.Constants
+import dev.jdtech.jellyfin.utils.getTranslatablePartName
 import java.util.UUID
 import javax.inject.Inject
 import kotlin.math.ceil
-import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -43,6 +47,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jellyfin.sdk.model.api.BaseItemKind
+import org.jellyfin.sdk.model.api.PlayMethod
 import timber.log.Timber
 
 @HiltViewModel
@@ -51,9 +56,11 @@ class PlayerViewModel
 constructor(
     private val application: Application,
     private val playlistManager: PlaylistManager,
+    private val playbackManager: PlaybackManager,
     private val repository: JellyfinRepository,
     private val appPreferences: AppPreferences,
     private val savedStateHandle: SavedStateHandle,
+    @param:ApplicationScope private val appScope: CoroutineScope,
 ) : ViewModel(), Player.Listener {
     val player: Player
 
@@ -62,7 +69,7 @@ constructor(
             UiState(
                 currentItemTitle = "",
                 currentSegment = null,
-                currentSkipButtonStringRes = R.string.player_controls_skip_intro,
+                currentSkipButtonStringRes = CoreR.string.player_controls_skip_intro,
                 currentTrickplay = null,
                 currentChapters = emptyList(),
                 fileLoaded = false,
@@ -101,6 +108,8 @@ constructor(
     var playbackSpeed: Float = 1f
 
     var isInPictureInPictureMode: Boolean = false
+
+    private var hasReportedStart = false
 
     init {
         segmentsSkipButton = appPreferences.getValue(appPreferences.playerMediaSegmentsSkipButton)
@@ -227,7 +236,7 @@ constructor(
         val mediaSubtitles = externalSubtitles.map { externalSubtitle ->
             MediaItem.SubtitleConfiguration.Builder(externalSubtitle.uri)
                 .setLabel(
-                    externalSubtitle.title.ifBlank { application.getString(R.string.external) }
+                    externalSubtitle.title.ifBlank { application.getString(CoreR.string.external) }
                 )
                 .setMimeType(externalSubtitle.mimeType)
                 .setLanguage(externalSubtitle.language)
@@ -235,36 +244,36 @@ constructor(
         }
 
         Timber.d("Stream url: $streamUrl")
+        val partName = this.partName
+        val title =
+            if (partName != null) {
+                "$name - ${partName.getTranslatablePartName(application)}"
+            } else {
+                name
+            }
+
         val mediaItem =
             MediaItem.Builder()
                 .setMediaId(itemId.toString())
                 .setUri(streamUrl)
-                .setMediaMetadata(MediaMetadata.Builder().setTitle(name).build())
+                .setMediaMetadata(MediaMetadata.Builder().setTitle(title).build())
                 .setSubtitleConfigurations(mediaSubtitles)
                 .build()
 
         return mediaItem
     }
 
-    @OptIn(DelicateCoroutinesApi::class)
     private fun releasePlayer() {
-        val mediaId = player.currentMediaItem?.mediaId
+        val mediaId = player.currentMediaItem?.mediaId ?: return
         val position = player.currentPosition
         val duration = player.duration
-        GlobalScope.launch {
-            delay(200L)
-            try {
-                if (mediaId != null && duration != C.TIME_UNSET) {
-                    Timber.d("Sending playback stop")
-                    repository.postPlaybackStop(
-                        UUID.fromString(mediaId),
-                        position.times(10000),
-                        position.div(duration.toFloat()).times(100).toInt(),
-                    )
-                }
-            } catch (e: Exception) {
-                Timber.e(e)
-            }
+
+        appScope.launch {
+            playbackManager.reportStop(
+                itemId = UUID.fromString(mediaId),
+                positionMs = position,
+                durationMs = duration,
+            )
         }
 
         _uiState.update { it.copy(currentTrickplay = null) }
@@ -281,15 +290,11 @@ constructor(
             savedStateHandle["position"] = player.currentPosition
             if (player.currentMediaItem != null && player.currentMediaItem!!.mediaId.isNotEmpty()) {
                 val itemId = UUID.fromString(player.currentMediaItem!!.mediaId)
-                try {
-                    repository.postPlaybackProgress(
-                        itemId,
-                        player.currentPosition.times(10000),
-                        !player.isPlaying,
-                    )
-                } catch (e: Exception) {
-                    Timber.e(e)
-                }
+                playbackManager.reportProgress(
+                    itemId = itemId,
+                    positionMs = player.currentPosition,
+                    isPaused = !player.isPlaying,
+                )
             }
         }
     }
@@ -332,7 +337,11 @@ constructor(
                 _uiState.update {
                     it.copy(
                         currentSegment = currentSegment,
-                        currentSkipButtonStringRes = getSkipButtonTextStringId(currentSegment),
+                        currentSkipButtonStringRes =
+                            getSkipButtonTextStringId(
+                                currentSegment,
+                                shouldSkipToNextEpisode(currentSegment),
+                            ),
                     )
                 }
             } else {
@@ -351,13 +360,25 @@ constructor(
                     .let { item ->
                         val itemTitle =
                             if (item.parentIndexNumber != null && item.indexNumber != null) {
-                                if (item.indexNumberEnd == null) {
-                                    "S${item.parentIndexNumber}:E${item.indexNumber} - ${item.name}"
+                                val baseStr =
+                                    if (item.indexNumberEnd == null) {
+                                        "S${item.parentIndexNumber}:E${item.indexNumber}"
+                                    } else {
+                                        "S${item.parentIndexNumber}:E${item.indexNumber}-${item.indexNumberEnd}"
+                                    }
+                                val partName = item.partName
+                                if (partName != null) {
+                                    "$baseStr - ${partName.getTranslatablePartName(application)} - ${item.name}"
                                 } else {
-                                    "S${item.parentIndexNumber}:E${item.indexNumber}-${item.indexNumberEnd} - ${item.name}"
+                                    "$baseStr - ${item.name}"
                                 }
                             } else {
-                                item.name
+                                val partName = item.partName
+                                if (partName != null) {
+                                    "${item.name} - ${partName.getTranslatablePartName(application)}"
+                                } else {
+                                    item.name
+                                }
                             }
                         _uiState.update {
                             it.copy(
@@ -368,10 +389,10 @@ constructor(
                             )
                         }
 
-                        repository.postPlaybackStart(item.itemId)
+                        hasReportedStart = false
 
                         if (segmentsSkipButton || segmentsAutoSkip) {
-                            getSegments(item.itemId)
+                            currentMediaItemSegments = getSegments(item.itemId, repository)
                         }
 
                         if (appPreferences.getValue(appPreferences.playerTrickplay)) {
@@ -381,7 +402,7 @@ constructor(
                         playlistManager.setCurrentMediaItemIndex(item.itemId)
 
                         val previousItem = playlistManager.getPreviousPlayerItem()
-                        if (previousItem != null) {
+                        if (previousItem != null && previousItem !in items) {
                             items.add(player.currentMediaItemIndex, previousItem)
                             player.addMediaItem(
                                 player.currentMediaItemIndex,
@@ -390,7 +411,7 @@ constructor(
                         }
 
                         val nextItem = playlistManager.getNextPlayerItem()
-                        if (nextItem != null) {
+                        if (nextItem != null && nextItem !in items) {
                             items.add(player.currentMediaItemIndex + 1, nextItem)
                             player.addMediaItem(
                                 player.currentMediaItemIndex + 1,
@@ -414,18 +435,14 @@ constructor(
                 player.playbackState == ExoPlayer.STATE_READY
         ) {
             viewModelScope.launch {
-                val mediaId = player.currentMediaItem?.mediaId
+                val mediaId = player.currentMediaItem?.mediaId ?: return@launch
                 val position = player.currentPosition
                 val duration = player.duration
-                try {
-                    repository.postPlaybackStop(
-                        UUID.fromString(mediaId),
-                        position.times(10000),
-                        position.div(duration.toFloat()).times(100).toInt(),
-                    )
-                } catch (e: Exception) {
-                    Timber.e(e)
-                }
+                playbackManager.reportStop(
+                    itemId = UUID.fromString(mediaId),
+                    positionMs = position,
+                    durationMs = duration,
+                )
                 player.seekToNextMediaItem()
                 player.play()
             }
@@ -438,13 +455,16 @@ constructor(
             ExoPlayer.STATE_IDLE -> {
                 stateString = "ExoPlayer.STATE_IDLE      -"
             }
+
             ExoPlayer.STATE_BUFFERING -> {
                 stateString = "ExoPlayer.STATE_BUFFERING -"
             }
+
             ExoPlayer.STATE_READY -> {
                 stateString = "ExoPlayer.STATE_READY     -"
                 _uiState.update { it.copy(fileLoaded = true) }
             }
+
             ExoPlayer.STATE_ENDED -> {
                 stateString = "ExoPlayer.STATE_ENDED     -"
                 eventsChannel.trySend(PlayerEvents.NavigateBack)
@@ -454,7 +474,6 @@ constructor(
     }
 
     override fun onCleared() {
-        super.onCleared()
         Timber.d("Clearing Player ViewModel")
         releasePlayer()
     }
@@ -488,15 +507,6 @@ constructor(
     fun selectSpeed(speed: Float) {
         player.setPlaybackSpeed(speed)
         playbackSpeed = speed
-    }
-
-    private suspend fun getSegments(itemId: UUID) {
-        try {
-            currentMediaItemSegments = repository.getSegments(itemId)
-        } catch (e: Exception) {
-            currentMediaItemSegments = emptyList()
-            Timber.e(e)
-        }
     }
 
     private suspend fun getTrickplay(item: PlayerItem) {
@@ -550,34 +560,14 @@ constructor(
         _uiState.update { it.copy(currentSegment = null) }
     }
 
-    // Check if the outro segment's end time is within n milliseconds of the player's total duration
     private fun shouldSkipToNextEpisode(segment: FindroidSegment): Boolean {
-        return if (segment.type == FindroidSegmentType.OUTRO && player.hasNextMediaItem()) {
-            val segmentEndTimeMillis = segment.endTicks
-            val playerDurationMillis = player.duration
-            val thresholdMillis =
-                playerDurationMillis -
-                    appPreferences.getValue(appPreferences.playerMediaSegmentsNextEpisodeThreshold)
-
-            segmentEndTimeMillis > thresholdMillis
-        } else {
-            false
-        }
-    }
-
-    private fun getSkipButtonTextStringId(segment: FindroidSegment): Int {
-        return when (shouldSkipToNextEpisode(segment)) {
-            true -> R.string.player_controls_next_episode
-            false ->
-                when (segment.type) {
-                    FindroidSegmentType.INTRO -> R.string.player_controls_skip_intro
-                    FindroidSegmentType.OUTRO -> R.string.player_controls_skip_outro
-                    FindroidSegmentType.RECAP -> R.string.player_controls_skip_recap
-                    FindroidSegmentType.COMMERCIAL -> R.string.player_controls_skip_commercial
-                    FindroidSegmentType.PREVIEW -> R.string.player_controls_skip_preview
-                    else -> R.string.player_controls_skip_unknown
-                }
-        }
+        return SegmentUtils.shouldSkipToNextEpisode(
+            segment = segment,
+            hasNextMediaItem = player.hasNextMediaItem(),
+            playerDurationMillis = player.duration,
+            nextEpisodeThreshold =
+                appPreferences.getValue(appPreferences.playerMediaSegmentsNextEpisodeThreshold),
+        )
     }
 
     /**
@@ -595,15 +585,7 @@ constructor(
      * @return the index of the current chapter
      */
     private fun getCurrentChapterIndex(): Int? {
-        val chapters = getChapters()
-
-        for (i in chapters.indices.reversed()) {
-            if (chapters[i].startPosition < player.currentPosition) {
-                return i
-            }
-        }
-
-        return null
+        return ChapterUtils.getCurrentChapterIndex(getChapters(), player.currentPosition)
     }
 
     /**
@@ -612,10 +594,7 @@ constructor(
      * @return the index of the next chapter
      */
     private fun getNextChapterIndex(): Int? {
-        val chapters = getChapters()
-        val currentChapterIndex = getCurrentChapterIndex() ?: return null
-
-        return minOf(chapters.size - 1, currentChapterIndex + 1)
+        return ChapterUtils.getNextChapterIndex(getChapters(), player.currentPosition)
     }
 
     /**
@@ -625,19 +604,10 @@ constructor(
      * @return the index of the previous chapter
      */
     private fun getPreviousChapterIndex(): Int? {
-        val chapters = getChapters()
-        val currentChapterIndex = getCurrentChapterIndex() ?: return null
-
-        // Return current chapter when more than 5 seconds past chapter start
-        if (player.currentPosition > chapters[currentChapterIndex].startPosition + 5000L) {
-            return currentChapterIndex
-        }
-
-        return maxOf(0, currentChapterIndex - 1)
+        return ChapterUtils.getPreviousChapterIndex(getChapters(), player.currentPosition)
     }
 
-    fun isLastChapter(): Boolean =
-        getChapters().let { chapters -> getCurrentChapterIndex() == chapters.size - 1 }
+    fun isLastChapter(): Boolean = ChapterUtils.isLastChapter(getChapters(), player.currentPosition)
 
     /**
      * Seek to chapter
@@ -673,6 +643,21 @@ constructor(
     override fun onIsPlayingChanged(isPlaying: Boolean) {
         super.onIsPlayingChanged(isPlaying)
         eventsChannel.trySend(PlayerEvents.IsPlayingChanged(isPlaying))
+
+        if (isPlaying && !hasReportedStart) {
+            val mediaId = player.currentMediaItem?.mediaId
+            if (mediaId != null) {
+                viewModelScope.launch {
+                    playbackManager.reportStart(
+                        itemId = UUID.fromString(mediaId),
+                        playMethod = PlayMethod.DIRECT_PLAY,
+                    )
+                }
+                hasReportedStart = true
+            }
+        } else if (hasReportedStart) {
+            updatePlaybackProgress()
+        }
     }
 }
 

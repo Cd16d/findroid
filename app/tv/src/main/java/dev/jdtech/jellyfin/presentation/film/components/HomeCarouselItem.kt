@@ -3,6 +3,7 @@ package dev.jdtech.jellyfin.presentation.film.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -49,6 +50,8 @@ import dev.jdtech.jellyfin.models.FindroidMovie
 import dev.jdtech.jellyfin.models.FindroidShow
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
+import dev.jdtech.jellyfin.utils.toBlurHashPainter
+import dev.jdtech.jellyfin.utils.toOptimizedImageUri
 
 @Composable
 fun HomeCarouselItem(
@@ -65,10 +68,15 @@ fun HomeCarouselItem(
         scale = ClickableSurfaceScale.None,
         modifier = Modifier.fillMaxSize().onFocusChanged { isFocused = it.isFocused },
     ) {
-        Box(modifier = Modifier.fillMaxSize()) {
+        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            val image = item.images.backdrop
+            val imageUri = image?.uri.toOptimizedImageUri(widthDp = maxWidth, heightDp = maxHeight)
+
+            val blurPlaceholder = remember(image?.blurHash) { image?.blurHash.toBlurHashPainter() }
             AsyncImage(
-                model = item.images.backdrop,
-                placeholder = ColorPainter(MaterialTheme.colorScheme.surface),
+                model = imageUri,
+                placeholder = blurPlaceholder ?: ColorPainter(MaterialTheme.colorScheme.surface),
+                error = blurPlaceholder,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),

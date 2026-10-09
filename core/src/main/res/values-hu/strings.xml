@@ -22,7 +22,7 @@
     <string name="next_up">Következik</string>
     <string name="series_poster">Sorozat poszterje</string>
     <string name="no_favorites">Nincsenek még kedvenceid</string>
-    <string name="no_downloads">Még nincsenek letöltéseid</string>
+
     <string name="search">Keresés</string>
     <string name="device_name">Eszköz neve</string>
     <string name="error_preparing_player_items">Hiba a lejátszó elemeinek előkészítése során.</string>

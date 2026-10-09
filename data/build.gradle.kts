@@ -14,6 +14,7 @@ android {
 
     defaultConfig {
         minSdk = Versions.MIN_SDK
+        missingDimensionStrategy("variant", "proprietary", "libre")
 
         buildConfigField("int", "VERSION_CODE", Versions.APP_CODE.toString())
         buildConfigField("String", "VERSION_NAME", "\"${Versions.APP_NAME}\"")
@@ -23,7 +24,7 @@ android {
 
     buildTypes {
         named("release") { isMinifyEnabled = false }
-        register("staging") { initWith(getByName("release")) }
+        register("beta") { initWith(getByName("release")) }
     }
 
     buildFeatures { buildConfig = true }
@@ -38,5 +39,6 @@ dependencies {
     ksp(libs.androidx.room3.compiler)
     implementation(libs.jellyfin.core)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.okhttp)
     implementation(libs.timber)
 }

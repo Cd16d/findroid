@@ -35,6 +35,7 @@ data class FindroidEpisode(
     override val images: FindroidImages,
     override val chapters: List<FindroidChapter>,
     override val trickplayInfo: Map<String, FindroidTrickplayInfo>?,
+    override val additionalParts: List<FindroidPart> = emptyList(),
 ) : FindroidItem, FindroidSources
 
 suspend fun BaseItemDto.toFindroidEpisode(
@@ -44,7 +45,15 @@ suspend fun BaseItemDto.toFindroidEpisode(
     val sources = mutableListOf<FindroidSource>()
     sources.addAll(mediaSources?.map { it.toFindroidSource(jellyfinRepository, id) } ?: emptyList())
     if (database != null) {
-        sources.addAll(database.getSources(id).map { it.toFindroidSource(database) })
+        val currentUserId =
+            try {
+                jellyfinRepository.getUserId()
+            } catch (_: Exception) {
+                null
+            }
+        if (currentUserId != null && database.isItemDownloadedForUser(currentUserId, id)) {
+            sources.addAll(database.getSources(id).map { it.toFindroidSource(database) })
+        }
     }
     return try {
         FindroidEpisode(
@@ -73,7 +82,40 @@ suspend fun BaseItemDto.toFindroidEpisode(
             images = toFindroidImages(jellyfinRepository),
             chapters = toFindroidChapters(),
             trickplayInfo =
-                trickplay?.mapValues { it.value[it.value.keys.max()]!!.toFindroidTrickplayInfo() },
+                trickplay
+                    ?.mapNotNull { (key, value) ->
+                        val maxKey = value?.keys?.maxOrNull() ?: return@mapNotNull null
+                        val info = value[maxKey] ?: return@mapNotNull null
+                        key to info.toFindroidTrickplayInfo()
+                    }
+                    ?.toMap(),
+            additionalParts =
+                if ((partCount ?: 0) > 1) {
+                    val episodeImages = toFindroidImages(jellyfinRepository)
+                    jellyfinRepository.getAdditionalParts(id).map { part ->
+                        part.copy(
+                            parentName = name.orEmpty(),
+                            parentIndexNumber = parentIndexNumber ?: 0,
+                            indexNumber = indexNumber ?: 0,
+                            indexNumberEnd = indexNumberEnd,
+                            images =
+                                if (part.images.primary == null) {
+                                    part.images.copy(
+                                        primary = episodeImages.primary,
+                                        backdrop = part.images.backdrop ?: episodeImages.backdrop,
+                                        logo = part.images.logo ?: episodeImages.logo,
+                                        showPrimary =
+                                            part.images.showPrimary ?: episodeImages.showPrimary,
+                                        showBackdrop =
+                                            part.images.showBackdrop ?: episodeImages.showBackdrop,
+                                        showLogo = part.images.showLogo ?: episodeImages.showLogo,
+                                    )
+                                } else part.images,
+                        )
+                    }
+                } else {
+                    emptyList()
+                },
         )
     } catch (_: NullPointerException) {
         null
@@ -85,7 +127,10 @@ suspend fun FindroidEpisodeDto.toFindroidEpisode(
     userId: UUID,
 ): FindroidEpisode {
     val userData = database.getUserDataOrCreateNew(id, userId)
-    val sources = database.getSources(id).map { it.toFindroidSource(database) }
+    val isDownloaded = database.isItemDownloadedForUser(userId, id)
+    val sources =
+        if (isDownloaded) database.getSources(id).map { it.toFindroidSource(database) }
+        else emptyList()
     val trickplayInfos = mutableMapOf<String, FindroidTrickplayInfo>()
     for (source in sources) {
         database.getTrickplayInfo(source.id)?.toFindroidTrickplayInfo()?.let {
@@ -103,7 +148,7 @@ suspend fun FindroidEpisodeDto.toFindroidEpisode(
         sources = sources,
         played = userData.played,
         favorite = userData.favorite,
-        canPlay = true,
+        canPlay = isDownloaded,
         canDownload = false,
         runtimeTicks = runtimeTicks,
         playbackPositionTicks = userData.playbackPositionTicks,
@@ -117,5 +162,35 @@ suspend fun FindroidEpisodeDto.toFindroidEpisode(
         images = toLocalFindroidImages(itemId = id),
         chapters = chapters ?: emptyList(),
         trickplayInfo = trickplayInfos,
+        additionalParts =
+            additionalPartIds
+                ?.takeIf { it.isNotEmpty() }
+                ?.let { database.getParts(it) }
+                ?.map {
+                    val part =
+                        it.toFindroidPart(database, userId)
+                            .copy(
+                                parentName = name,
+                                parentIndexNumber = parentIndexNumber,
+                                indexNumber = indexNumber,
+                                indexNumberEnd = indexNumberEnd,
+                            )
+                    val episodeImages = toLocalFindroidImages(itemId = id)
+                    part.copy(
+                        images =
+                            if (part.images.primary == null) {
+                                part.images.copy(
+                                    primary = episodeImages.primary,
+                                    backdrop = part.images.backdrop ?: episodeImages.backdrop,
+                                    logo = part.images.logo ?: episodeImages.logo,
+                                    showPrimary =
+                                        part.images.showPrimary ?: episodeImages.showPrimary,
+                                    showBackdrop =
+                                        part.images.showBackdrop ?: episodeImages.showBackdrop,
+                                    showLogo = part.images.showLogo ?: episodeImages.showLogo,
+                                )
+                            } else part.images
+                    )
+                } ?: emptyList(),
     )
 }

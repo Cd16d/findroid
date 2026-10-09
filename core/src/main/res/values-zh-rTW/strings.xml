@@ -55,7 +55,7 @@
     <string name="title_favorite">收藏夾</string>
     <string name="error_loading_data">載入資料時發生錯誤</string>
     <string name="episode_watched_indicator">影集觀看指標</string>
-    <string name="no_downloads">你還沒有下載任何東西</string>
+
     <string name="view_details">查看詳情</string>
     <string name="view_details_underlined"><u>查看詳情</u></string>
     <string name="sort_by">排序方式</string>

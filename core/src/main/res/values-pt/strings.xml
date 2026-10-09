@@ -52,7 +52,7 @@
     <string name="trailer_button_description">Ver o trailer</string>
     <string name="episode_watched_indicator">Indicador de episódio visto</string>
     <string name="error_preparing_player_items">Erro na preparação de itens do reprodutor.</string>
-    <string name="no_downloads">Não tem nada transferido</string>
+
     <string name="no_search_results">Sem resultados da pesquisa</string>
     <string name="external">Externo</string>
     <string name="episode_name">%1$d. %2$s</string>

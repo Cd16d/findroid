@@ -79,3 +79,6 @@ data object ColorDark {
 }
 
 val Yellow = Color(0xFFF2C94C)
+val EmeraldGreen = Color(0xFF10B981)
+val DeleteRed = Color(0xFFB71C1C)
+val DeleteContentWhite = Color(0xFFFAFAFA)

@@ -1,0 +1,436 @@
+package dev.jdtech.jellyfin.presentation.cast
+
+import android.content.res.Configuration
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.SheetValue
+import androidx.compose.material3.Surface
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.media3.common.C
+import androidx.window.core.layout.WindowSizeClass
+import dev.jdtech.jellyfin.models.FindroidSegment
+import dev.jdtech.jellyfin.player.cast.presentation.CastPlayerViewModel
+import dev.jdtech.jellyfin.player.core.R as PlayerCoreR
+import dev.jdtech.jellyfin.player.core.domain.models.Track
+import dev.jdtech.jellyfin.presentation.cast.components.CastTrackSelectionDialog
+import dev.jdtech.jellyfin.presentation.cast.components.PlayerBottomSection
+import dev.jdtech.jellyfin.presentation.cast.components.PlayerTopSection
+import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
+import dev.jdtech.jellyfin.presentation.utils.rememberSafePadding
+import kotlinx.coroutines.flow.distinctUntilChanged
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CastExpandedPlayer(
+    onDeviceClick: () -> Unit,
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier,
+    onDismissStarted: () -> Unit = {},
+    onDismissCanceled: () -> Unit = {},
+    viewModel: CastPlayerViewModel = hiltViewModel(),
+) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val windowAdaptiveInfo = currentWindowAdaptiveInfo()
+    val isExpandedScreen =
+        remember(windowAdaptiveInfo) {
+            windowAdaptiveInfo.windowSizeClass.isWidthAtLeastBreakpoint(
+                WindowSizeClass.WIDTH_DP_EXPANDED_LOWER_BOUND
+            )
+        }
+
+    val actions =
+        remember(viewModel, onDeviceClick, onClose) {
+            CastPlayerActions(
+                onPlay = { viewModel.playerController.play() },
+                onPause = { viewModel.playerController.pause() },
+                onSeek = { viewModel.playerController.seekTo(it) },
+                onPlayPreviousItem = {
+                    val playerState = viewModel.uiState.value.playerState
+                    if (!playerState.hasPreviousItem || playerState.currentPosition > 5000) {
+                        viewModel.playerController.seekTo(0)
+                    } else {
+                        viewModel.playPreviousItem()
+                    }
+                },
+                onPlayNextItem = { viewModel.playNextItem() },
+                onSkipSegment = { viewModel.skipSegment(it) },
+                onVolumeChange = { viewModel.playerController.setVolume(it) },
+                onAudioTrackSelected = { viewModel.onAudioTrackSelected(it) },
+                onSubtitleTrackSelected = { viewModel.onSubtitleTrackSelected(it) },
+                onDeviceClick = onDeviceClick,
+                onClose = onClose,
+            )
+        }
+
+    if (!isExpandedScreen) {
+        val currentOnDismissStarted by rememberUpdatedState(onDismissStarted)
+        val currentOnDismissCanceled by rememberUpdatedState(onDismissCanceled)
+
+        val sheetState =
+            rememberModalBottomSheetState(
+                skipPartiallyExpanded = true,
+                confirmValueChange = { targetValue ->
+                    if (targetValue == SheetValue.Hidden) {
+                        currentOnDismissStarted()
+                    } else if (targetValue == SheetValue.Expanded) {
+                        currentOnDismissCanceled()
+                    }
+                    true
+                },
+            )
+
+        LaunchedEffect(sheetState) {
+            snapshotFlow { sheetState.targetValue }
+                .distinctUntilChanged()
+                .collect { targetValue ->
+                    if (targetValue == SheetValue.Hidden) {
+                        currentOnDismissStarted()
+                    } else if (targetValue == SheetValue.Expanded) {
+                        currentOnDismissCanceled()
+                    }
+                }
+        }
+
+        ModalBottomSheet(
+            onDismissRequest = onClose,
+            modifier = modifier,
+            sheetState = sheetState,
+            dragHandle = null,
+            containerColor = MaterialTheme.colorScheme.background,
+            contentWindowInsets = { WindowInsets(0, 0, 0, 0) },
+            shape = RectangleShape,
+            sheetMaxWidth = Dp.Unspecified,
+        ) {
+            AnimatedVisibility(
+                visible = true,
+                enter = fadeIn(tween(300)),
+                exit = fadeOut(tween(300)),
+            ) {
+                CastExpandedPlayerLayout(
+                    isExpandedScreen = false,
+                    uiState = uiState,
+                    actions = actions,
+                )
+            }
+        }
+    } else {
+        Surface(
+            modifier = modifier.fillMaxHeight().width(400.dp),
+            shadowElevation = 8.dp,
+            color = MaterialTheme.colorScheme.background,
+        ) {
+            CastExpandedPlayerLayout(
+                isExpandedScreen = true,
+                uiState = uiState,
+                actions = actions,
+            )
+        }
+    }
+}
+
+@Immutable
+data class CastPlayerActions(
+    val onPlay: () -> Unit,
+    val onPause: () -> Unit,
+    val onSeek: (Long) -> Unit,
+    val onPlayPreviousItem: () -> Unit,
+    val onPlayNextItem: () -> Unit,
+    val onSkipSegment: (FindroidSegment) -> Unit,
+    val onVolumeChange: (Float) -> Unit,
+    val onAudioTrackSelected: (Track) -> Unit,
+    val onSubtitleTrackSelected: (Track?) -> Unit,
+    val onDeviceClick: () -> Unit,
+    val onClose: () -> Unit,
+)
+
+@Composable
+private fun CastExpandedPlayerLayout(
+    isExpandedScreen: Boolean,
+    uiState: CastPlayerViewModel.UiState,
+    actions: CastPlayerActions,
+    modifier: Modifier = Modifier,
+) {
+    var isScrubbing by remember { mutableStateOf(false) }
+    var scrubPosition by remember { mutableFloatStateOf(0f) }
+    var showTrackSelection by remember { mutableStateOf(false) }
+    var trackType by remember { mutableIntStateOf(C.TRACK_TYPE_AUDIO) }
+
+    val configuration = LocalConfiguration.current
+    val isLandscape =
+        remember(configuration.orientation) {
+            configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+        }
+    val safePadding = rememberSafePadding()
+
+    val onScrubStart: (Float) -> Unit = remember {
+        { position ->
+            isScrubbing = true
+            scrubPosition = position
+        }
+    }
+    val onScrubStop: () -> Unit =
+        remember(actions) {
+            {
+                isScrubbing = false
+                actions.onSeek(scrubPosition.toLong())
+            }
+        }
+    val onClickAudio: () -> Unit = remember {
+        {
+            showTrackSelection = true
+            trackType = C.TRACK_TYPE_AUDIO
+        }
+    }
+    val onClickSubtitle: () -> Unit = remember {
+        {
+            showTrackSelection = true
+            trackType = C.TRACK_TYPE_TEXT
+        }
+    }
+    val onDismissTrackSelection: () -> Unit = remember { { showTrackSelection = false } }
+    val onSetTrack: (Track?) -> Unit =
+        remember(actions) {
+            { track ->
+                if (trackType == C.TRACK_TYPE_AUDIO) {
+                    track?.let { actions.onAudioTrackSelected(it) }
+                } else {
+                    actions.onSubtitleTrackSelected(track)
+                }
+            }
+        }
+    val currentTracks =
+        remember(trackType, uiState.audioTracks, uiState.subtitleTracks) {
+            if (trackType == C.TRACK_TYPE_AUDIO) uiState.audioTracks else uiState.subtitleTracks
+        }
+
+    Box(modifier = modifier.fillMaxSize()) {
+        Column(
+            modifier =
+                Modifier.fillMaxSize()
+                    .padding(
+                        top = safePadding.top,
+                        bottom = safePadding.bottom,
+                        start = safePadding.start,
+                        end = safePadding.end,
+                    ),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            if (isLandscape && !isExpandedScreen) {
+                Row(
+                    modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
+                    horizontalArrangement = Arrangement.spacedBy(24.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    PlayerTopSection(
+                        uiState = uiState,
+                        isScrubbing = isScrubbing,
+                        scrubPosition = scrubPosition,
+                        onClose = actions.onClose,
+                        onDeviceClick = actions.onDeviceClick,
+                        modifier = Modifier.weight(1f).fillMaxHeight(),
+                    )
+
+                    PlayerBottomSection(
+                        uiState = uiState,
+                        isScrubbing = isScrubbing,
+                        scrubPosition = scrubPosition,
+                        onScrubStart = onScrubStart,
+                        onScrubStop = onScrubStop,
+                        onPlay = actions.onPlay,
+                        onPause = actions.onPause,
+                        onPlayPreviousItem = actions.onPlayPreviousItem,
+                        onPlayNextItem = actions.onPlayNextItem,
+                        onSkipSegment = actions.onSkipSegment,
+                        onVolumeChange = actions.onVolumeChange,
+                        onClickAudio = onClickAudio,
+                        onClickSubtitle = onClickSubtitle,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            } else {
+                PlayerTopSection(
+                    uiState = uiState,
+                    isScrubbing = isScrubbing,
+                    scrubPosition = scrubPosition,
+                    onClose = actions.onClose,
+                    onDeviceClick = actions.onDeviceClick,
+                    modifier = Modifier.weight(1f),
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                PlayerBottomSection(
+                    uiState = uiState,
+                    isScrubbing = isScrubbing,
+                    scrubPosition = scrubPosition,
+                    onScrubStart = onScrubStart,
+                    onScrubStop = onScrubStop,
+                    onPlay = actions.onPlay,
+                    onPause = actions.onPause,
+                    onPlayPreviousItem = actions.onPlayPreviousItem,
+                    onPlayNextItem = actions.onPlayNextItem,
+                    onSkipSegment = actions.onSkipSegment,
+                    onVolumeChange = actions.onVolumeChange,
+                    onClickAudio = onClickAudio,
+                    onClickSubtitle = onClickSubtitle,
+                )
+                Spacer(modifier = Modifier.height(48.dp))
+            }
+        }
+
+        CastTrackSelectionDialog(
+            visible = showTrackSelection,
+            type = trackType,
+            tracks = currentTracks,
+            onSetTrack = onSetTrack,
+            onDismiss = onDismissTrackSelection,
+            displayExtraInfo = uiState.displayExtraInfo,
+            modifier = Modifier.padding(bottom = safePadding.bottom),
+        )
+    }
+}
+
+@Preview(name = "Vertical", showBackground = true)
+@Composable
+private fun CastExpandedPlayerPhoneVerticalPreview() {
+    FindroidTheme {
+        CastExpandedPlayerLayout(
+            isExpandedScreen = false,
+            uiState = mockUiStateEpisode(),
+            actions = mockActions(),
+        )
+    }
+}
+
+@Preview(name = "Horizontal", showBackground = true, widthDp = 800, heightDp = 400)
+@Composable
+private fun CastExpandedPlayerPhoneHorizontalPreview() {
+    FindroidTheme {
+        CastExpandedPlayerLayout(
+            isExpandedScreen = false,
+            uiState = mockUiStateEpisode(),
+            actions = mockActions(),
+        )
+    }
+}
+
+@Preview(name = "Vertical Movie", showBackground = true)
+@Composable
+private fun CastExpandedPlayerMoviePhoneVerticalPreview() {
+    FindroidTheme {
+        CastExpandedPlayerLayout(
+            isExpandedScreen = false,
+            uiState = mockUiStateMovie(),
+            actions = mockActions(),
+        )
+    }
+}
+
+@Preview(name = "Horizontal Movie", showBackground = true, widthDp = 800, heightDp = 400)
+@Composable
+private fun CastExpandedPlayerMoviePhoneHorizontalPreview() {
+    FindroidTheme {
+        CastExpandedPlayerLayout(
+            isExpandedScreen = false,
+            uiState = mockUiStateMovie(),
+            actions = mockActions(),
+        )
+    }
+}
+
+@Preview(name = "Expanded Side Sheet", showBackground = true, widthDp = 400, heightDp = 800)
+@Composable
+private fun CastExpandedPlayerExpandedPreview() {
+    FindroidTheme {
+        CastExpandedPlayerLayout(
+            isExpandedScreen = true,
+            uiState = mockUiStateEpisode(),
+            actions = mockActions(),
+        )
+    }
+}
+
+private fun mockActions() =
+    CastPlayerActions(
+        onPlay = {},
+        onPause = {},
+        onSeek = {},
+        onPlayPreviousItem = {},
+        onPlayNextItem = {},
+        onSkipSegment = {},
+        onVolumeChange = {},
+        onAudioTrackSelected = {},
+        onSubtitleTrackSelected = {},
+        onDeviceClick = {},
+        onClose = {},
+    )
+
+private fun mockUiStateEpisode() =
+    CastPlayerViewModel.UiState(
+        currentItemTitle =
+            CastPlayerViewModel.CurrentItemTitle(
+                seriesName = "Series Name",
+                episodeInfo = "S01E01",
+                title = "Episode Title",
+            ),
+        currentItemPoster = null,
+        isMovie = false,
+        defaultAspectRatio = 16f / 9f,
+        trickplayAspectRatio = null,
+        currentSegment = null,
+        currentSkipButtonStringRes = PlayerCoreR.string.player_controls_skip_intro,
+        currentTrickplay = null,
+        currentChapters = emptyList(),
+        fileLoaded = true,
+    )
+
+private fun mockUiStateMovie() =
+    CastPlayerViewModel.UiState(
+        currentItemTitle = CastPlayerViewModel.CurrentItemTitle(title = "Title"),
+        currentItemPoster = null,
+        isMovie = true,
+        defaultAspectRatio = 2f / 3f,
+        trickplayAspectRatio = null,
+        currentSegment = null,
+        currentSkipButtonStringRes = PlayerCoreR.string.player_controls_skip_intro,
+        currentTrickplay = null,
+        currentChapters = emptyList(),
+        fileLoaded = true,
+    )

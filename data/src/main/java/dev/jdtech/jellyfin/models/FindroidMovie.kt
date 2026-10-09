@@ -32,6 +32,7 @@ data class FindroidMovie(
     override val images: FindroidImages,
     override val chapters: List<FindroidChapter>,
     override val trickplayInfo: Map<String, FindroidTrickplayInfo>?,
+    override val additionalParts: List<FindroidPart> = emptyList(),
 ) : FindroidItem, FindroidSources
 
 suspend fun BaseItemDto.toFindroidMovie(
@@ -41,7 +42,17 @@ suspend fun BaseItemDto.toFindroidMovie(
     val sources = mutableListOf<FindroidSource>()
     sources.addAll(mediaSources?.map { it.toFindroidSource(jellyfinRepository, id) } ?: emptyList())
     if (serverDatabase != null) {
-        sources.addAll(serverDatabase.getSources(id).map { it.toFindroidSource(serverDatabase) })
+        val currentUserId =
+            try {
+                jellyfinRepository.getUserId()
+            } catch (_: Exception) {
+                null
+            }
+        if (currentUserId != null && serverDatabase.isItemDownloadedForUser(currentUserId, id)) {
+            sources.addAll(
+                serverDatabase.getSources(id).map { it.toFindroidSource(serverDatabase) }
+            )
+        }
     }
     return FindroidMovie(
         id = id,
@@ -67,7 +78,32 @@ suspend fun BaseItemDto.toFindroidMovie(
         images = toFindroidImages(jellyfinRepository),
         chapters = toFindroidChapters(),
         trickplayInfo =
-            trickplay?.mapValues { it.value[it.value.keys.max()]!!.toFindroidTrickplayInfo() },
+            trickplay
+                ?.mapNotNull { (key, value) ->
+                    val maxKey = value?.keys?.maxOrNull() ?: return@mapNotNull null
+                    val info = value[maxKey] ?: return@mapNotNull null
+                    key to info.toFindroidTrickplayInfo()
+                }
+                ?.toMap(),
+        additionalParts =
+            if ((partCount ?: 0) > 1) {
+                val movieImages = toFindroidImages(jellyfinRepository)
+                jellyfinRepository.getAdditionalParts(id).map { part ->
+                    part.copy(
+                        parentName = name.orEmpty(),
+                        images =
+                            if (part.images.primary == null) {
+                                part.images.copy(
+                                    primary = movieImages.primary,
+                                    backdrop = part.images.backdrop ?: movieImages.backdrop,
+                                    logo = part.images.logo ?: movieImages.logo,
+                                )
+                            } else part.images,
+                    )
+                }
+            } else {
+                emptyList()
+            },
     )
 }
 
@@ -76,7 +112,10 @@ suspend fun FindroidMovieDto.toFindroidMovie(
     userId: UUID,
 ): FindroidMovie {
     val userData = database.getUserDataOrCreateNew(id, userId)
-    val sources = database.getSources(id).map { it.toFindroidSource(database) }
+    val isDownloaded = database.isItemDownloadedForUser(userId, id)
+    val sources =
+        if (isDownloaded) database.getSources(id).map { it.toFindroidSource(database) }
+        else emptyList()
     val trickplayInfos = mutableMapOf<String, FindroidTrickplayInfo>()
     for (source in sources) {
         database.getTrickplayInfo(source.id)?.toFindroidTrickplayInfo()?.let {
@@ -101,11 +140,29 @@ suspend fun FindroidMovieDto.toFindroidMovie(
         productionYear = productionYear,
         endDate = endDate,
         canDownload = false,
-        canPlay = true,
-        sources = database.getSources(id).map { it.toFindroidSource(database) },
+        canPlay = isDownloaded,
+        sources = sources,
         trailer = null,
         images = toLocalFindroidImages(itemId = id),
         chapters = chapters ?: emptyList(),
         trickplayInfo = trickplayInfos,
+        additionalParts =
+            additionalPartIds
+                ?.takeIf { it.isNotEmpty() }
+                ?.let { database.getParts(it) }
+                ?.map {
+                    val part = it.toFindroidPart(database, userId).copy(parentName = name)
+                    val movieImages = toLocalFindroidImages(itemId = id)
+                    part.copy(
+                        images =
+                            if (part.images.primary == null) {
+                                part.images.copy(
+                                    primary = movieImages.primary,
+                                    backdrop = part.images.backdrop ?: movieImages.backdrop,
+                                    logo = part.images.logo ?: movieImages.logo,
+                                )
+                            } else part.images
+                    )
+                } ?: emptyList(),
     )
 }

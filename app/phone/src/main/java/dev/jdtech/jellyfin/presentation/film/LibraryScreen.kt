@@ -39,6 +39,7 @@ import androidx.paging.LoadState
 import androidx.paging.PagingData
 import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemKey
+import dev.jdtech.jellyfin.LocalCastPlayerHeight
 import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.core.presentation.dummy.dummyMovies
 import dev.jdtech.jellyfin.film.presentation.library.LibraryAction
@@ -101,7 +102,14 @@ private fun LibraryScreenLayout(
     state: LibraryState,
     onAction: (LibraryAction) -> Unit,
 ) {
-    val contentPadding = PaddingValues(all = MaterialTheme.spacings.default)
+    val castPadding = LocalCastPlayerHeight.current
+    val contentPadding =
+        PaddingValues(
+            start = MaterialTheme.spacings.default,
+            top = MaterialTheme.spacings.default,
+            end = MaterialTheme.spacings.default,
+            bottom = castPadding,
+        )
 
     val items = state.items.collectAsLazyPagingItems()
 
@@ -126,6 +134,20 @@ private fun LibraryScreenLayout(
                     }
                 },
                 actions = {
+                    IconButton(
+                        onClick = {
+                            onAction(LibraryAction.ToggleWatchedFilter(!state.filterWatched))
+                        }
+                    ) {
+                        Icon(
+                            painter =
+                                painterResource(
+                                    if (state.filterWatched) CoreR.drawable.ic_eye_off
+                                    else CoreR.drawable.ic_eye
+                                ),
+                            contentDescription = null,
+                        )
+                    }
                     IconButton(onClick = { showSortByDialog = true }) {
                         Icon(
                             painter = painterResource(CoreR.drawable.ic_arrow_down_up),

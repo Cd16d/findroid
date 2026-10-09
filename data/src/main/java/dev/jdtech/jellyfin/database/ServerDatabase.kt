@@ -12,6 +12,7 @@ import androidx.sqlite.execSQL
 import dev.jdtech.jellyfin.models.FindroidEpisodeDto
 import dev.jdtech.jellyfin.models.FindroidMediaStreamDto
 import dev.jdtech.jellyfin.models.FindroidMovieDto
+import dev.jdtech.jellyfin.models.FindroidPartDto
 import dev.jdtech.jellyfin.models.FindroidSeasonDto
 import dev.jdtech.jellyfin.models.FindroidSegmentDto
 import dev.jdtech.jellyfin.models.FindroidShowDto
@@ -21,6 +22,7 @@ import dev.jdtech.jellyfin.models.FindroidUserDataDto
 import dev.jdtech.jellyfin.models.Server
 import dev.jdtech.jellyfin.models.ServerAddress
 import dev.jdtech.jellyfin.models.User
+import dev.jdtech.jellyfin.models.UserDownloadDto
 
 @Database(
     entities =
@@ -37,8 +39,10 @@ import dev.jdtech.jellyfin.models.User
             FindroidUserDataDto::class,
             FindroidTrickplayInfoDto::class,
             FindroidSegmentDto::class,
+            FindroidPartDto::class,
+            UserDownloadDto::class,
         ],
-    version = 8,
+    version = 10,
     autoMigrations =
         [
             AutoMigration(from = 2, to = 3),
@@ -46,6 +50,7 @@ import dev.jdtech.jellyfin.models.User
             AutoMigration(from = 4, to = 5, spec = ServerDatabase.TrickplayMigration::class),
             AutoMigration(from = 5, to = 6, spec = ServerDatabase.IntrosMigration::class),
             AutoMigration(from = 7, to = 8),
+            AutoMigration(from = 8, to = 9),
         ],
 )
 @ColumnTypeConverters(Converters::class)
@@ -63,6 +68,46 @@ val MIGRATION_6_7 =
             connection.execSQL("DROP TABLE segments")
             connection.execSQL(
                 "CREATE TABLE segments (`itemId` TEXT NOT NULL, `type` TEXT NOT NULL, `startTicks` INTEGER NOT NULL, `endTicks` INTEGER NOT NULL, PRIMARY KEY(`itemId`, `type`), FOREIGN KEY(`itemId`) REFERENCES `episodes`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )"
+            )
+        }
+    }
+
+val MIGRATION_9_10 =
+    object : Migration(startVersion = 9, endVersion = 10) {
+        override suspend fun migrate(connection: SQLiteConnection) {
+            connection.execSQL(
+                "CREATE TABLE IF NOT EXISTS `user_downloads` (`userId` TEXT NOT NULL, `itemId` TEXT NOT NULL, `downloadedAt` INTEGER NOT NULL, PRIMARY KEY(`userId`, `itemId`))"
+            )
+            connection.execSQL(
+                """
+                INSERT OR IGNORE INTO user_downloads (userId, itemId, downloadedAt)
+                SELECT u.id, s.itemId, 0
+                FROM sources s
+                JOIN movies m ON s.itemId = m.id
+                JOIN servers srv ON m.serverId = srv.id
+                JOIN users u ON u.id = srv.currentUserId
+                """
+                    .trimIndent()
+            )
+            connection.execSQL(
+                """
+                INSERT OR IGNORE INTO user_downloads (userId, itemId, downloadedAt)
+                SELECT u.id, s.itemId, 0
+                FROM sources s
+                JOIN episodes ep ON s.itemId = ep.id
+                JOIN servers srv ON ep.serverId = srv.id
+                JOIN users u ON u.id = srv.currentUserId
+                """
+                    .trimIndent()
+            )
+            connection.execSQL(
+                """
+                INSERT OR IGNORE INTO user_downloads (userId, itemId, downloadedAt)
+                SELECT ud.userId, s.itemId, 0
+                FROM sources s
+                JOIN userdata ud ON s.itemId = ud.itemId
+                """
+                    .trimIndent()
             )
         }
     }

@@ -1,14 +1,17 @@
 package dev.jdtech.jellyfin.film.presentation.home
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.jdtech.jellyfin.database.ServerDatabaseDao
 import dev.jdtech.jellyfin.film.R as FilmR
 import dev.jdtech.jellyfin.models.CollectionType
 import dev.jdtech.jellyfin.models.HomeItem
 import dev.jdtech.jellyfin.models.HomeSection
 import dev.jdtech.jellyfin.models.UiText
+import dev.jdtech.jellyfin.models.getProfileImageModel
 import dev.jdtech.jellyfin.repository.JellyfinRepository
 import dev.jdtech.jellyfin.settings.domain.AppPreferences
 import dev.jdtech.jellyfin.utils.toView
@@ -17,6 +20,7 @@ import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
@@ -24,6 +28,7 @@ import timber.log.Timber
 class HomeViewModel
 @Inject
 constructor(
+    @ApplicationContext private val context: Context,
     val repository: JellyfinRepository,
     val appPreferences: AppPreferences,
     val database: ServerDatabaseDao,
@@ -40,13 +45,29 @@ constructor(
     private val uiTextContinueWatching = UiText.StringResource(FilmR.string.continue_watching)
     private val uiTextNextUp = UiText.StringResource(FilmR.string.next_up)
 
+    init {
+        viewModelScope.launch {
+            appPreferences.observe(appPreferences.hideEpisodeSpoilers).collect { hideSpoilers ->
+                _state.update { it.copy(hideEpisodeSpoilers = hideSpoilers) }
+            }
+        }
+    }
+
     fun loadData() {
         Timber.i("Loading data")
         viewModelScope.launch(Dispatchers.Default) {
-            _state.emit(_state.value.copy(isLoading = true, error = null))
+            val hideEpisodeSpoilers = appPreferences.getValue(appPreferences.hideEpisodeSpoilers)
+            _state.emit(
+                _state.value.copy(
+                    isLoading = true,
+                    error = null,
+                    hideEpisodeSpoilers = hideEpisodeSpoilers,
+                )
+            )
             try {
                 appPreferences.getValue(appPreferences.currentServer)?.let { serverId ->
                     loadServerName(serverId)
+                    loadUserImage(serverId)
                 }
 
                 val showLogos = appPreferences.getValue(appPreferences.tvShowLogos)
@@ -68,6 +89,13 @@ constructor(
         if (server != null) {
             _state.emit(_state.value.copy(server = server))
         }
+    }
+
+    private suspend fun loadUserImage(serverId: String) {
+        val user = database.getServerCurrentUser(serverId)
+        val baseUrl = repository.getBaseUrl()
+        val imageUrl = user?.getProfileImageModel(context, baseUrl)
+        _state.emit(_state.value.copy(userImageUrl = imageUrl))
     }
 
     private suspend fun loadSuggestions() {

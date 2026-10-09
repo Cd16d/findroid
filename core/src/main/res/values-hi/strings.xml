@@ -41,7 +41,7 @@
     <string name="app_description">थर्ड-पार्टी नेटिव जेलीफिन ऐप</string>
     <string name="episode_name_extended_with_end">स%1$d:ए%2$d-%3$d - %4$s</string>
     <string name="series_poster">श्रृंखला पोस्टर</string>
-    <string name="no_downloads">आपने कुछ भी डाउनलोड नहीं किया है</string>
+
     <string name="error_preparing_player_items">प्लेयर आइटम्स तैयार करते समय त्रुटि हुई।</string>
     <string name="title_favorite">पसंदीदा</string>
     <string name="error_loading_data">डेटा लोड करने में त्रुटि</string>

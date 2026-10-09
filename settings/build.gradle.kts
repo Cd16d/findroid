@@ -14,8 +14,19 @@ android {
 
     buildTypes {
         named("release") { isMinifyEnabled = false }
-        register("staging") { initWith(getByName("release")) }
+        register("beta") { initWith(getByName("release")) }
     }
+
+    flavorDimensions += "variant"
+    productFlavors {
+        register("libre") { dimension = "variant" }
+        register("proprietary") {
+            dimension = "variant"
+            isDefault = true
+            matchingFallbacks += listOf("libre")
+        }
+    }
+    buildFeatures { buildConfig = true }
 }
 
 dependencies {

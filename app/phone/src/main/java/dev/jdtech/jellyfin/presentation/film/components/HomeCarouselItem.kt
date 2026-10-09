@@ -3,7 +3,7 @@ package dev.jdtech.jellyfin.presentation.film.components
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -30,6 +31,8 @@ import dev.jdtech.jellyfin.models.FindroidMovie
 import dev.jdtech.jellyfin.models.FindroidShow
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
+import dev.jdtech.jellyfin.utils.toBlurHashPainter
+import dev.jdtech.jellyfin.utils.toOptimizedImageUri
 
 @Composable
 fun HomeCarouselItem(item: FindroidItem, onAction: (HomeAction) -> Unit) {
@@ -40,17 +43,24 @@ fun HomeCarouselItem(item: FindroidItem, onAction: (HomeAction) -> Unit) {
             1f to Color.Black.copy(alpha = 0.6f),
         )
 
-    Box(
+    BoxWithConstraints(
         modifier =
-            Modifier.aspectRatio(1.77f).clip(MaterialTheme.shapes.large).clickable {
+            Modifier.aspectRatio(16f / 9f).clip(MaterialTheme.shapes.large).clickable {
                 onAction(HomeAction.OnItemClick(item))
             }
     ) {
+        val image = item.images.backdrop
+
+        val imageUri = image?.uri.toOptimizedImageUri(widthDp = maxWidth, heightDp = maxHeight)
+
+        val blurPlaceholder = remember(image?.blurHash) { image?.blurHash.toBlurHashPainter() }
+
         AsyncImage(
-            model = item.images.backdrop,
-            placeholder = ColorPainter(MaterialTheme.colorScheme.surfaceContainer),
+            model = imageUri,
             contentDescription = null,
             contentScale = ContentScale.Crop,
+            placeholder =
+                blurPlaceholder ?: ColorPainter(MaterialTheme.colorScheme.surfaceContainer),
             modifier = Modifier.fillMaxWidth(),
         )
         Canvas(modifier = Modifier.fillMaxSize()) {

@@ -41,6 +41,13 @@ data class FindroidEpisodeDto(
     val premiereDate: LocalDateTime?,
     val communityRating: Float?,
     val chapters: List<FindroidChapter>?,
+    val additionalPartIds: List<UUID>? = emptyList(),
+    val primaryBlurHash: String?,
+    val backdropBlurHash: String?,
+    val logoBlurHash: String?,
+    val showPrimaryBlurHash: String?,
+    val showBackdropBlurHash: String?,
+    val showLogoBlurHash: String?,
 )
 
 fun FindroidEpisode.toFindroidEpisodeDto(serverId: String? = null): FindroidEpisodeDto {
@@ -59,5 +66,12 @@ fun FindroidEpisode.toFindroidEpisodeDto(serverId: String? = null): FindroidEpis
         premiereDate = premiereDate,
         communityRating = communityRating,
         chapters = chapters,
+        additionalPartIds = additionalParts.map { it.id },
+        primaryBlurHash = images.primary?.blurHash,
+        backdropBlurHash = images.backdrop?.blurHash,
+        logoBlurHash = images.logo?.blurHash,
+        showPrimaryBlurHash = images.showPrimary?.blurHash,
+        showBackdropBlurHash = images.showBackdrop?.blurHash,
+        showLogoBlurHash = images.showLogo?.blurHash,
     )
 }

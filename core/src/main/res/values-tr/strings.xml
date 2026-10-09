@@ -70,7 +70,7 @@
     <string name="favorite_button_description">Favori</string>
     <string name="episode_watched_indicator">İzlenmiş bölüm göstericisi</string>
     <string name="downloaded_indicator">İndirilen göstergesi</string>
-    <string name="no_downloads">İndirilmiş hiçbir şeyiniz yok</string>
+
     <string name="error_preparing_player_items">Oyuncu öğeleri hazırlanırken hata oluştu</string>
     <string name="image_description_poster">%1$sposter</string>
     <string name="image_description_backdrop">%1$sarka plan</string>

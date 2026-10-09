@@ -3,6 +3,7 @@ package dev.jdtech.jellyfin.setup.data
 import dev.jdtech.jellyfin.api.JellyfinApi
 import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.database.ServerDatabaseDao
+import dev.jdtech.jellyfin.models.BrandingInfo
 import dev.jdtech.jellyfin.models.ExceptionUiText
 import dev.jdtech.jellyfin.models.ExceptionUiTexts
 import dev.jdtech.jellyfin.models.Server
@@ -51,14 +52,16 @@ class SetupRepositoryImpl(
     }
 
     override suspend fun getIsQuickConnectEnabled(): Boolean =
-        withContext(Dispatchers.IO) { jellyfinApi.quickConnectApi.getQuickConnectEnabled().content }
+        withContext(Dispatchers.IO) {
+            jellyfinApi.authenticationApi.getQuickConnectEnabled().content
+        }
 
     override suspend fun initiateQuickConnect(): QuickConnectResult =
-        withContext(Dispatchers.IO) { jellyfinApi.quickConnectApi.initiateQuickConnect().content }
+        withContext(Dispatchers.IO) { jellyfinApi.authenticationApi.initiateQuickConnect().content }
 
     override suspend fun getQuickConnectState(secret: String): QuickConnectResult =
         withContext(Dispatchers.IO) {
-            jellyfinApi.quickConnectApi.getQuickConnectState(secret).content
+            jellyfinApi.authenticationApi.getQuickConnectState(secret).content
         }
 
     override suspend fun setCurrentServer(serverId: String) {
@@ -208,10 +211,16 @@ class SetupRepositoryImpl(
             jellyfinApi.brandingApi.getBrandingOptions().content.loginDisclaimer
         }
 
+    override suspend fun loadBrandingInfo(): BrandingInfo =
+        withContext(Dispatchers.IO) {
+            val baseUrl = getBaseUrl()
+            BrandingInfo(splashscreenUrl = "$baseUrl/Branding/Splashscreen")
+        }
+
     override suspend fun login(username: String, password: String) {
         withContext(Dispatchers.IO) {
             val authenticationResult by
-                jellyfinApi.userApi.authenticateUserByName(
+                jellyfinApi.authenticationApi.authenticateUserByName(
                     data = AuthenticateUserByName(username = username, pw = password)
                 )
 
@@ -222,7 +231,7 @@ class SetupRepositoryImpl(
     override suspend fun loginWithSecret(secret: String) {
         withContext(Dispatchers.IO) {
             val authenticationResult by
-                jellyfinApi.userApi.authenticateWithQuickConnect(
+                jellyfinApi.authenticationApi.authenticateWithQuickConnect(
                     data = QuickConnectDto(secret = secret)
                 )
 
@@ -237,6 +246,7 @@ class SetupRepositoryImpl(
                 name = authenticationResult.user!!.name!!,
                 serverId = authenticationResult.serverId!!,
                 accessToken = authenticationResult.accessToken!!,
+                primaryImageTag = authenticationResult.user?.primaryImageTag,
             )
 
         database.insertUser(user)
@@ -255,7 +265,12 @@ class SetupRepositoryImpl(
     override suspend fun getPublicUsers(serverId: String): List<User> =
         withContext(Dispatchers.IO) {
             jellyfinApi.userApi.getPublicUsers().content.mapNotNull {
-                User(id = it.id, name = it.name ?: return@mapNotNull null, serverId = serverId)
+                User(
+                    id = it.id,
+                    name = it.name ?: return@mapNotNull null,
+                    serverId = serverId,
+                    primaryImageTag = it.primaryImageTag,
+                )
             }
         }
 
@@ -296,4 +311,6 @@ class SetupRepositoryImpl(
         database.updateServer(server)
         jellyfinApi.apply { api.update(baseUrl = address.address) }
     }
+
+    override fun getBaseUrl(): String = jellyfinApi.api.baseUrl.orEmpty()
 }

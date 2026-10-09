@@ -33,7 +33,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
@@ -47,6 +46,7 @@ import dev.jdtech.jellyfin.presentation.setup.components.DiscoveredServerItem
 import dev.jdtech.jellyfin.presentation.setup.components.LoadingButton
 import dev.jdtech.jellyfin.presentation.setup.components.RootLayout
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
+import dev.jdtech.jellyfin.presentation.theme.spacings
 import dev.jdtech.jellyfin.setup.R as SetupR
 import dev.jdtech.jellyfin.setup.presentation.addserver.AddServerAction
 import dev.jdtech.jellyfin.setup.presentation.addserver.AddServerEvent
@@ -84,7 +84,6 @@ fun AddServerScreen(
 
 @Composable
 private fun AddServerScreenLayout(state: AddServerState, onAction: (AddServerAction) -> Unit) {
-    val context = LocalContext.current
     val focusRequester = remember { FocusRequester() }
     val scrollState = rememberScrollState()
 
@@ -152,16 +151,24 @@ private fun AddServerScreenLayout(state: AddServerState, onAction: (AddServerAct
                 keyboardActions = KeyboardActions(onGo = { doConnect() }),
                 isError = state.error != null,
                 enabled = !state.isLoading,
-                supportingText = {
-                    if (state.error != null) {
-                        Text(
-                            text = state.error!!.joinToString { it.asString(context.resources) },
-                            color = MaterialTheme.colorScheme.error,
-                        )
-                    }
-                },
+                supportingText =
+                    state.error?.let { errors ->
+                        {
+                            val errorText = buildString {
+                                errors.forEachIndexed { index, uiText ->
+                                    if (index > 0) append(", ")
+                                    append(uiText.asString())
+                                }
+                            }
+                            Text(
+                                text = errorText,
+                                color = MaterialTheme.colorScheme.error,
+                            )
+                        }
+                    },
                 modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
             )
+            Spacer(modifier = Modifier.height(MaterialTheme.spacings.medium))
             LoadingButton(
                 text = stringResource(SetupR.string.add_server_btn_connect),
                 onClick = { doConnect() },

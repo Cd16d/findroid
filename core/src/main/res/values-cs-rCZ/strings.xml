@@ -62,7 +62,7 @@
     <string name="add">Přidat</string>
     <string name="offline_mode_icon">Ikona Režimu Offline</string>
     <string name="not_enough_storage">Tato položka vyžaduje %1$s volného místa, ale k dispozici je pouze %2$s</string>
-    <string name="no_downloads">Nemáte nic staženého</string>
+
     <string name="download_button_description">Stáhnout</string>
     <string name="person_detail_title">Podrobnosti</string>
     <string name="share">Sdílet</string>

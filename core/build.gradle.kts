@@ -17,7 +17,7 @@ android {
 
     buildTypes {
         named("release") { isMinifyEnabled = false }
-        register("staging") { initWith(getByName("release")) }
+        register("beta") { initWith(getByName("release")) }
     }
 
     flavorDimensions += "variant"
@@ -28,7 +28,6 @@ android {
 
 dependencies {
     implementation(projects.data)
-    implementation(projects.player.core)
     implementation(projects.settings)
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.compose.ui)
@@ -47,4 +46,5 @@ dependencies {
     implementation(libs.timber)
     implementation(libs.slf4j.api)
     implementation(libs.slf4j.android)
+    implementation(libs.blurhash)
 }

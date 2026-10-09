@@ -13,6 +13,7 @@ import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jellyfin.sdk.model.api.PersonKind
@@ -30,6 +31,14 @@ constructor(
 
     lateinit var episodeId: UUID
 
+    init {
+        viewModelScope.launch {
+            appPreferences.observe(appPreferences.hideEpisodeSpoilers).collect { hideSpoilers ->
+                _state.update { it.copy(hideEpisodeSpoilers = hideSpoilers) }
+            }
+        }
+    }
+
     fun loadEpisode(episodeId: UUID) {
         this.episodeId = episodeId
         viewModelScope.launch {
@@ -38,12 +47,15 @@ constructor(
                 val videoMetadata = videoMetadataParser.parse(episode.sources.first())
                 val actors = getActors(episode)
                 val displayExtraInfo = appPreferences.getValue(appPreferences.displayExtraInfo)
+                val hideEpisodeSpoilers =
+                    appPreferences.getValue(appPreferences.hideEpisodeSpoilers)
                 _state.emit(
                     _state.value.copy(
                         episode = episode,
                         videoMetadata = videoMetadata,
                         actors = actors,
                         displayExtraInfo = displayExtraInfo,
+                        hideEpisodeSpoilers = hideEpisodeSpoilers,
                     )
                 )
             } catch (e: Exception) {

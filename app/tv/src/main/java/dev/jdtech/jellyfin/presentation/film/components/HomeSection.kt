@@ -57,7 +57,8 @@ fun HomeSection(
                     bottom = 16.dp,
                 ),
         ) {
-            itemsIndexed(section.items, key = { _, it -> it.id }) { index, item ->
+            itemsIndexed(section.items.distinctBy { it.id }, key = { _, it -> it.id }) { index, item
+                ->
                 ItemCard(
                     item = item,
                     direction = Direction.HORIZONTAL,

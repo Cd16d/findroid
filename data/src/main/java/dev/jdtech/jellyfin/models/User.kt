@@ -1,9 +1,11 @@
 package dev.jdtech.jellyfin.models
 
+import android.content.Context
 import androidx.room3.ColumnInfo
 import androidx.room3.Entity
 import androidx.room3.ForeignKey
 import androidx.room3.PrimaryKey
+import java.io.File
 import java.util.UUID
 
 @Entity(
@@ -23,4 +25,16 @@ data class User(
     val name: String,
     @ColumnInfo(index = true) val serverId: String,
     val accessToken: String? = null,
+    val primaryImageTag: String? = null,
 )
+
+fun User.getProfileImageModel(context: Context, baseUrl: String): Any? {
+    val fileName = if (primaryImageTag != null) "primary_$primaryImageTag" else "primary"
+    val localFile = File(context.filesDir, "images/users/$id/$fileName")
+    return if (localFile.exists()) {
+        localFile
+    } else if (baseUrl.isNotEmpty()) {
+        "$baseUrl/Users/$id/Images/Primary" +
+            (if (primaryImageTag != null) "?tag=$primaryImageTag" else "")
+    } else null
+}

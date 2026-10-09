@@ -35,7 +35,7 @@
     <string name="series_poster">シリーズポスター</string>
     <string name="collection_no_media">このコレクションにはメディアが含まれていません</string>
     <string name="no_favorites">お気に入りはありません</string>
-    <string name="no_downloads">ダウンロードされたものはありません</string>
+
     <string name="search">検索</string>
     <string name="no_search_results">検索結果はありません</string>
     <string name="device_name">デバイス名</string>

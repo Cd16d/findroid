@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -29,6 +30,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImage
 import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
@@ -37,6 +39,7 @@ import dev.jdtech.jellyfin.presentation.utils.LocalOfflineMode
 @Composable
 fun HomeHeader(
     serverName: String,
+    userImageUrl: Any?,
     isLoading: Boolean,
     isError: Boolean,
     onServerClick: () -> Unit,
@@ -153,14 +156,22 @@ fun HomeHeader(
                 shape = CircleShape,
                 color = MaterialTheme.colorScheme.surfaceContainerHigh,
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically,
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center,
                 ) {
-                    Icon(
-                        painter = painterResource(CoreR.drawable.ic_user),
+                    if (userImageUrl == null) {
+                        Icon(
+                            painter = painterResource(CoreR.drawable.ic_user),
+                            contentDescription = null,
+                            modifier = Modifier.align(Alignment.Center).padding(12.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    AsyncImage(
+                        model = userImageUrl,
                         contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
                     )
                 }
             }
@@ -174,6 +185,7 @@ private fun HomeHeaderLoadingPreview() {
     FindroidTheme {
         HomeHeader(
             serverName = "Jellyfin",
+            userImageUrl = null,
             isLoading = true,
             isError = false,
             onServerClick = {},
@@ -191,6 +203,7 @@ private fun HomeHeaderErrorPreview() {
     FindroidTheme {
         HomeHeader(
             serverName = "Jellyfin",
+            userImageUrl = null,
             isLoading = false,
             isError = true,
             onServerClick = {},

@@ -27,6 +27,7 @@ import dev.jdtech.jellyfin.work.MpvCleanupWorker
 import dev.jdtech.jellyfin.work.SyncWorker
 import javax.inject.Inject
 import kotlin.time.ExperimentalTime
+import okhttp3.OkHttpClient
 import okio.Path.Companion.toOkioPath
 import timber.log.Timber
 
@@ -35,6 +36,8 @@ class BaseApplication : Application(), Configuration.Provider, SingletonImageLoa
     @Inject lateinit var appPreferences: AppPreferences
 
     @Inject lateinit var workerFactory: HiltWorkerFactory
+
+    @Inject lateinit var okHttpClient: OkHttpClient
 
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder().setWorkerFactory(workerFactory).build()
@@ -74,7 +77,12 @@ class BaseApplication : Application(), Configuration.Provider, SingletonImageLoa
     override fun newImageLoader(context: PlatformContext): ImageLoader {
         return ImageLoader.Builder(context)
             .components {
-                add(OkHttpNetworkFetcherFactory(cacheStrategy = { CacheControlCacheStrategy() }))
+                add(
+                    OkHttpNetworkFetcherFactory(
+                        callFactory = { okHttpClient },
+                        cacheStrategy = { CacheControlCacheStrategy() },
+                    )
+                )
                 add(SvgDecoder.Factory())
             }
             .diskCachePolicy(

@@ -23,6 +23,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -36,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.graphics.toColorInt
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.jdtech.jellyfin.LocalCastPlayerHeight
 import dev.jdtech.jellyfin.PlayerActivity
 import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.core.presentation.downloader.DownloaderAction
@@ -47,8 +51,11 @@ import dev.jdtech.jellyfin.core.presentation.dummy.dummyVideoMetadata
 import dev.jdtech.jellyfin.film.presentation.episode.EpisodeAction
 import dev.jdtech.jellyfin.film.presentation.episode.EpisodeState
 import dev.jdtech.jellyfin.film.presentation.episode.EpisodeViewModel
+import dev.jdtech.jellyfin.player.cast.models.CastConnectionState
+import dev.jdtech.jellyfin.player.cast.presentation.CastSessionViewModel
+import dev.jdtech.jellyfin.presentation.components.SpoilerMask
 import dev.jdtech.jellyfin.presentation.film.components.ActorsRow
-import dev.jdtech.jellyfin.presentation.film.components.ExtraInfoText
+import dev.jdtech.jellyfin.presentation.film.components.ExtraInfoCard
 import dev.jdtech.jellyfin.presentation.film.components.ItemButtonsBar
 import dev.jdtech.jellyfin.presentation.film.components.ItemHeader
 import dev.jdtech.jellyfin.presentation.film.components.ItemTopBar
@@ -70,6 +77,7 @@ fun EpisodeScreen(
     navigateHome: () -> Unit,
     navigateToPerson: (personId: UUID) -> Unit,
     navigateToSeason: (seasonId: UUID) -> Unit,
+    navigateToDownloadPresets: () -> Unit = {},
     viewModel: EpisodeViewModel = hiltViewModel(),
     downloaderViewModel: DownloaderViewModel = hiltViewModel(),
 ) {
@@ -78,6 +86,9 @@ fun EpisodeScreen(
 
     val state by viewModel.state.collectAsStateWithLifecycle()
     val downloaderState by downloaderViewModel.state.collectAsStateWithLifecycle()
+
+    val castSessionViewModel: CastSessionViewModel = hiltViewModel()
+    val castConnectionState by castSessionViewModel.connectionState.collectAsStateWithLifecycle()
 
     LaunchedEffect(true) { viewModel.loadEpisode(episodeId = episodeId) }
 
@@ -106,11 +117,19 @@ fun EpisodeScreen(
         onAction = { action ->
             when (action) {
                 is EpisodeAction.Play -> {
-                    val intent = Intent(context, PlayerActivity::class.java)
-                    intent.putExtra("itemId", episodeId.toString())
-                    intent.putExtra("itemKind", BaseItemKind.EPISODE.serialName)
-                    intent.putExtra("startFromBeginning", action.startFromBeginning)
-                    context.startActivity(intent)
+                    if (castConnectionState == CastConnectionState.CONNECTED) {
+                        castSessionViewModel.playItem(
+                            episodeId,
+                            BaseItemKind.EPISODE.serialName,
+                            action.startFromBeginning,
+                        )
+                    } else {
+                        val intent = Intent(context, PlayerActivity::class.java)
+                        intent.putExtra("itemId", episodeId.toString())
+                        intent.putExtra("itemKind", BaseItemKind.EPISODE.serialName)
+                        intent.putExtra("startFromBeginning", action.startFromBeginning)
+                        context.startActivity(intent)
+                    }
                 }
                 is EpisodeAction.OnBackClick -> navigateBack()
                 is EpisodeAction.OnHomeClick -> navigateHome()
@@ -121,6 +140,16 @@ fun EpisodeScreen(
             viewModel.onAction(action)
         },
         onDownloaderAction = { action -> downloaderViewModel.onAction(action) },
+        askPresetBeforeDownload = downloaderViewModel.askPresetBeforeDownload,
+        defaultPresetId = downloaderViewModel.defaultTranscodePresetId,
+        defaultDownloadExternalAudio = downloaderViewModel.downloadExternalAudio,
+        onRememberSettings = { presetId, downloadExternalAudio ->
+            downloaderViewModel.saveDownloadSettings(presetId, downloadExternalAudio, true)
+        },
+        defaultStorageIndex = downloaderViewModel.defaultDownloadStorageIndex,
+        userCanTranscode = downloaderViewModel.userCanTranscode,
+        presets = downloaderViewModel.presets,
+        navigateToDownloadPresets = navigateToDownloadPresets,
     )
 }
 
@@ -130,14 +159,24 @@ private fun EpisodeScreenLayout(
     downloaderState: DownloaderState,
     onAction: (EpisodeAction) -> Unit,
     onDownloaderAction: (DownloaderAction) -> Unit,
+    askPresetBeforeDownload: Boolean = true,
+    defaultPresetId: String = "1080p_balanced",
+    defaultDownloadExternalAudio: Boolean = false,
+    onRememberSettings: (presetId: String, downloadExternalAudio: Boolean) -> Unit = { _, _ -> },
+    defaultStorageIndex: Int = -1,
+    userCanTranscode: Boolean = true,
+    presets: List<dev.jdtech.jellyfin.models.DownloadQualityPreset> = emptyList(),
+    navigateToDownloadPresets: () -> Unit = {},
 ) {
     val safePadding = rememberSafePadding()
+    val castPadding = LocalCastPlayerHeight.current
 
     val paddingStart = safePadding.start + MaterialTheme.spacings.default
     val paddingEnd = safePadding.end + MaterialTheme.spacings.default
-    val paddingBottom = safePadding.bottom + MaterialTheme.spacings.default
+    val paddingBottom = safePadding.bottom + castPadding
 
     val scrollState = rememberScrollState()
+    var isRevealed by rememberSaveable(state.episode?.id) { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         state.episode?.let { episode ->
@@ -145,6 +184,9 @@ private fun EpisodeScreenLayout(
                 ItemHeader(
                     item = episode,
                     scrollState = scrollState,
+                    hideEpisodeSpoilers = state.hideEpisodeSpoilers,
+                    isRevealed = isRevealed,
+                    onRevealChange = { isRevealed = it },
                     content = {
                         Column(
                             modifier =
@@ -159,13 +201,31 @@ private fun EpisodeScreenLayout(
                                             episode.parentIndexNumber,
                                         )
                                     }
-                            Text(
-                                text =
-                                    "$seasonName - " +
+                            val indexEnd = episode.indexNumberEnd
+                            val episodeNumberText =
+                                if (episode.indexNumber > 0) {
+                                    if (indexEnd != null && indexEnd > episode.indexNumber) {
                                         stringResource(
-                                            id = CoreR.string.episode_number,
+                                            CoreR.string.episode_number,
                                             episode.indexNumber,
-                                        ),
+                                        ) + "-$indexEnd"
+                                    } else {
+                                        stringResource(
+                                            CoreR.string.episode_number,
+                                            episode.indexNumber,
+                                        )
+                                    }
+                                } else {
+                                    null
+                                }
+                            val headerText =
+                                if (episodeNumberText != null) {
+                                    "$seasonName - $episodeNumberText"
+                                } else {
+                                    seasonName
+                                }
+                            Text(
+                                text = headerText,
                                 maxLines = 1,
                                 style = MaterialTheme.typography.labelLarge,
                             )
@@ -222,6 +282,7 @@ private fun EpisodeScreenLayout(
                     ItemButtonsBar(
                         item = episode,
                         downloaderState = downloaderState,
+                        defaultStorageIndex = defaultStorageIndex,
                         onPlayClick = { startFromBeginning ->
                             onAction(EpisodeAction.Play(startFromBeginning = startFromBeginning))
                         },
@@ -238,8 +299,20 @@ private fun EpisodeScreenLayout(
                             }
                         },
                         onTrailerClick = {},
-                        onDownloadClick = { storageIndex ->
-                            onDownloaderAction(DownloaderAction.Download(episode, storageIndex))
+                        onDownloadClick = {
+                            storageIndex,
+                            presetId,
+                            downloadExternalAudio,
+                            audioStreamIndex ->
+                            onDownloaderAction(
+                                DownloaderAction.Download(
+                                    item = episode,
+                                    storageIndex = storageIndex,
+                                    presetId = presetId,
+                                    downloadExternalAudio = downloadExternalAudio,
+                                    audioStreamIndex = audioStreamIndex,
+                                )
+                            )
                         },
                         onDownloadCancelClick = {
                             onDownloaderAction(DownloaderAction.CancelDownload(episode))
@@ -247,14 +320,33 @@ private fun EpisodeScreenLayout(
                         onDownloadDeleteClick = {
                             onDownloaderAction(DownloaderAction.DeleteDownload(episode))
                         },
+                        askPresetBeforeDownload = askPresetBeforeDownload,
+                        userCanTranscode = userCanTranscode,
+                        presets = presets,
+                        defaultPresetId = defaultPresetId,
+                        defaultDownloadExternalAudio = defaultDownloadExternalAudio,
+                        onRememberSettings = onRememberSettings,
+                        onNavigateToPresets = navigateToDownloadPresets,
                         modifier = Modifier.fillMaxWidth(),
                     )
                     Spacer(Modifier.height(MaterialTheme.spacings.small))
                     if (state.displayExtraInfo && state.videoMetadata != null) {
-                        ExtraInfoText(videoMetadata = state.videoMetadata!!)
+                        ExtraInfoCard(
+                            videoMetadata = state.videoMetadata!!,
+                            additionalParts = episode.additionalParts,
+                        )
                         Spacer(Modifier.height(MaterialTheme.spacings.medium))
                     }
-                    OverviewText(text = episode.overview)
+                    SpoilerMask(
+                        enabled = state.hideEpisodeSpoilers && !episode.played,
+                        isRevealed = isRevealed,
+                        onRevealChange = { isRevealed = it },
+                        consumeClickOnMask = true,
+                        revealOnLongPress = true,
+                        contentAlphaWhenMasked = 0f,
+                    ) {
+                        OverviewText(text = episode.overview)
+                    }
                     Spacer(Modifier.height(MaterialTheme.spacings.medium))
                 }
                 if (state.actors.isNotEmpty()) {

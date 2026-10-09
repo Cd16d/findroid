@@ -59,7 +59,9 @@ fun HomeView(
                     bottom = 16.dp,
                 ),
         ) {
-            itemsIndexed(view.view.items, key = { _, it -> it.id }) { index, item ->
+            itemsIndexed(view.view.items.distinctBy { it.id }, key = { _, it -> it.id }) {
+                index,
+                item ->
                 ItemCard(
                     item = item,
                     direction = Direction.VERTICAL,

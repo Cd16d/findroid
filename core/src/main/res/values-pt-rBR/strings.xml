@@ -41,7 +41,7 @@
     <string name="image_description_poster">%1$s pôster</string>
     <string name="image_description_backdrop">%1$s imagem de fundo</string>
     <string name="check_button_description">Marcar como assistido ou não assistido</string>
-    <string name="no_downloads">Você não tem nada baixado</string>
+
     <string name="search_hint">Busca filmes, shows, episódios…</string>
     <string name="libraries">Biblioteca</string>
     <string name="sort_by_options_5">Data de Lançamento</string>

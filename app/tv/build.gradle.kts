@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose.compiler)
@@ -9,33 +11,55 @@ plugins {
 
 java { toolchain { languageVersion = Versions.JAVA } }
 
+val keystorePropertiesFile = rootProject.file("keystore.properties")
+val envKeystoreFile: String? = System.getenv("KEYSTORE_FILE")
+val keystoreProps: Properties? =
+    if (envKeystoreFile == null && keystorePropertiesFile.exists()) {
+        Properties().apply { load(keystorePropertiesFile.inputStream()) }
+    } else null
+
 android {
     namespace = "dev.jdtech.jellyfin"
     compileSdk = Versions.COMPILE_SDK
     buildToolsVersion = Versions.BUILD_TOOLS
 
+    if (envKeystoreFile != null || keystoreProps != null) {
+        signingConfigs {
+            create("release") {
+                if (envKeystoreFile != null) {
+                    storeFile = file(envKeystoreFile)
+                    storePassword = System.getenv("KEYSTORE_PASSWORD")
+                    keyAlias = System.getenv("KEY_ALIAS")
+                    keyPassword = System.getenv("KEY_PASSWORD")
+                } else {
+                    storeFile = rootProject.file(keystoreProps!!.getProperty("storeFile"))
+                    storePassword = keystoreProps.getProperty("storePassword")
+                    keyAlias = keystoreProps.getProperty("keyAlias")
+                    keyPassword = keystoreProps.getProperty("keyPassword")
+                }
+            }
+        }
+    }
+
     defaultConfig {
-        applicationId = "dev.jdtech.jellyfin"
+        applicationId = "dev.cd16d.jellyfin"
         minSdk = Versions.MIN_SDK
         targetSdk = Versions.TARGET_SDK
 
         versionCode = Versions.APP_CODE
-        versionName = Versions.APP_NAME
+        versionName = Versions.APP_NAME + (System.getenv("GITHUB_RUN_NUMBER")?.let { "-$it" } ?: "")
     }
 
     buildTypes {
         named("debug") { applicationIdSuffix = ".debug" }
         named("release") {
+            signingConfigs.findByName("release")?.let { signingConfig = it }
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
-        }
-        register("staging") {
-            initWith(getByName("release"))
-            applicationIdSuffix = ".staging"
         }
     }
 
@@ -58,7 +82,7 @@ android {
             isEnable = !isBuildingBundle
 
             reset()
-            include("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
+            include("armeabi-v7a", "arm64-v8a")
         }
     }
 

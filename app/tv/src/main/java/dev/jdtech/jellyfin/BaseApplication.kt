@@ -15,17 +15,25 @@ import dagger.hilt.android.HiltAndroidApp
 import dev.jdtech.jellyfin.settings.domain.AppPreferences
 import javax.inject.Inject
 import kotlin.time.ExperimentalTime
+import okhttp3.OkHttpClient
 import okio.Path.Companion.toOkioPath
 
 @HiltAndroidApp
 class BaseApplication : Application(), SingletonImageLoader.Factory {
     @Inject lateinit var appPreferences: AppPreferences
 
+    @Inject lateinit var okHttpClient: OkHttpClient
+
     @OptIn(ExperimentalCoilApi::class, ExperimentalTime::class)
     override fun newImageLoader(context: PlatformContext): ImageLoader {
         return ImageLoader.Builder(this)
             .components {
-                add(OkHttpNetworkFetcherFactory(cacheStrategy = { CacheControlCacheStrategy() }))
+                add(
+                    OkHttpNetworkFetcherFactory(
+                        callFactory = { okHttpClient },
+                        cacheStrategy = { CacheControlCacheStrategy() },
+                    )
+                )
                 add(SvgDecoder.Factory())
             }
             .diskCachePolicy(

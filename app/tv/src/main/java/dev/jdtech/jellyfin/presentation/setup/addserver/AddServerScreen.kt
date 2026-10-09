@@ -29,7 +29,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
@@ -70,7 +69,6 @@ fun AddServerScreen(onSuccess: () -> Unit, viewModel: AddServerViewModel = hiltV
 
 @Composable
 private fun AddServerScreenLayout(state: AddServerState, onAction: (AddServerAction) -> Unit) {
-    val context = LocalContext.current
     val focusRequester = remember { FocusRequester() }
 
     var serverAddress by rememberSaveable { mutableStateOf("") }
@@ -130,14 +128,21 @@ private fun AddServerScreenLayout(state: AddServerState, onAction: (AddServerAct
                 keyboardActions = KeyboardActions(onGo = { doConnect() }),
                 isError = state.error != null,
                 enabled = !state.isLoading,
-                supportingText = {
-                    if (state.error != null) {
-                        Text(
-                            text = state.error!!.joinToString { it.asString(context.resources) },
-                            color = MaterialTheme.colorScheme.error,
-                        )
-                    }
-                },
+                supportingText =
+                    state.error?.let { errors ->
+                        {
+                            val errorText = buildString {
+                                errors.forEachIndexed { index, uiText ->
+                                    if (index > 0) append(", ")
+                                    append(uiText.asString())
+                                }
+                            }
+                            Text(
+                                text = errorText,
+                                color = MaterialTheme.colorScheme.error,
+                            )
+                        }
+                    },
                 modifier = Modifier.width(360.dp).focusRequester(focusRequester),
             )
             Spacer(modifier = Modifier.height(MaterialTheme.spacings.medium))

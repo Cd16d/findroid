@@ -72,7 +72,7 @@ private fun LibrariesScreenLayout(state: MediaState, onAction: (MediaAction) -> 
             ),
         modifier = Modifier.focusRequester(focusRequester),
     ) {
-        items(state.libraries, key = { it.id }) { library ->
+        items(state.libraries.distinctBy { it.id }, key = { it.id }) { library ->
             ItemCard(
                 item = library,
                 direction = Direction.HORIZONTAL,

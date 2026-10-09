@@ -20,6 +20,13 @@ data class FindroidMovieDto(
     val productionYear: Int?,
     val endDate: LocalDateTime?,
     val chapters: List<FindroidChapter>?,
+    val additionalPartIds: List<UUID>? = emptyList(),
+    val primaryBlurHash: String?,
+    val backdropBlurHash: String?,
+    val logoBlurHash: String?,
+    val showPrimaryBlurHash: String?,
+    val showBackdropBlurHash: String?,
+    val showLogoBlurHash: String?,
 )
 
 fun FindroidMovie.toFindroidMovieDto(serverId: String? = null): FindroidMovieDto {
@@ -37,5 +44,12 @@ fun FindroidMovie.toFindroidMovieDto(serverId: String? = null): FindroidMovieDto
         productionYear = productionYear,
         endDate = endDate,
         chapters = chapters,
+        additionalPartIds = additionalParts.map { it.id },
+        primaryBlurHash = images.primary?.blurHash,
+        backdropBlurHash = images.backdrop?.blurHash,
+        logoBlurHash = images.logo?.blurHash,
+        showPrimaryBlurHash = images.showPrimary?.blurHash,
+        showBackdropBlurHash = images.showBackdrop?.blurHash,
+        showLogoBlurHash = images.showLogo?.blurHash,
     )
 }

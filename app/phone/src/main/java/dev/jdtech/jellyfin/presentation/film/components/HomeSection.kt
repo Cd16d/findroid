@@ -26,6 +26,7 @@ fun HomeSection(
     itemsPadding: PaddingValues,
     onAction: (HomeAction) -> Unit,
     modifier: Modifier = Modifier,
+    hideEpisodeSpoilers: Boolean = false,
 ) {
     Column(modifier = modifier) {
         Box(modifier = Modifier.fillMaxWidth().height(42.dp).padding(itemsPadding)) {
@@ -40,11 +41,12 @@ fun HomeSection(
             contentPadding = itemsPadding,
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacings.default),
         ) {
-            items(section.items, key = { it.id }) { item ->
+            items(section.items.distinctBy { it.id }, key = { it.id }) { item ->
                 ItemCard(
                     item = item,
                     direction = Direction.HORIZONTAL,
                     onClick = { onAction(HomeAction.OnItemClick(item)) },
+                    hideEpisodeSpoilers = hideEpisodeSpoilers,
                 )
             }
         }

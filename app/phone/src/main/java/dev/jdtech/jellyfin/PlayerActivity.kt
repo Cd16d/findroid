@@ -44,6 +44,7 @@ import dev.jdtech.jellyfin.utils.PlayerGestureHelper
 import dev.jdtech.jellyfin.utils.PreviewScrubListener
 import java.util.UUID
 import javax.inject.Inject
+import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -240,7 +241,7 @@ class PlayerActivity : BasePlayerActivity() {
                 launch {
                     while (true) {
                         viewModel.updatePlaybackProgress()
-                        delay(5000L)
+                        delay(5000L.milliseconds)
                     }
                 }
 
@@ -251,7 +252,7 @@ class PlayerActivity : BasePlayerActivity() {
                     launch {
                         while (true) {
                             viewModel.updateCurrentSegment()
-                            delay(1000L)
+                            delay(1000L.milliseconds)
                         }
                     }
                 }

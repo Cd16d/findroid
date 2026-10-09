@@ -41,7 +41,7 @@
     <string name="no_server_connection">Ingen forbindelse til Jellyfin-server, slå Offline Mode til for at se offline</string>
     <string name="cancel_download_message">Er du sikker på, at du vil annullere downloadningen?</string>
     <string name="no_favorites">Du har ingen favoritter</string>
-    <string name="no_downloads">Du har ikke noget downloadet</string>
+
     <string name="search">Søg</string>
     <string name="no_search_results">Ingen søgeresultater</string>
     <string name="device_name">Enhedsnavn</string>

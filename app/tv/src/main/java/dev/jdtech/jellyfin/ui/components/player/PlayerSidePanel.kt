@@ -42,7 +42,7 @@ import androidx.tv.material3.RadioButton
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import dev.jdtech.jellyfin.core.R as CoreR
-import dev.jdtech.jellyfin.player.local.R as PlayerLocalR
+import dev.jdtech.jellyfin.player.core.R as PlayerCoreR
 import dev.jdtech.jellyfin.player.local.domain.getTrackNames
 import dev.jdtech.jellyfin.player.local.presentation.PlayerViewModel
 import dev.jdtech.jellyfin.presentation.theme.spacings
@@ -146,8 +146,8 @@ private fun PanelHeader(
 ) {
     val titleRes =
         when (panelType) {
-            PlayerSidePanelType.AUDIO -> PlayerLocalR.string.select_audio_track
-            PlayerSidePanelType.SUBTITLES -> PlayerLocalR.string.select_subtitle_track
+            PlayerSidePanelType.AUDIO -> PlayerCoreR.string.select_audio_track
+            PlayerSidePanelType.SUBTITLES -> PlayerCoreR.string.select_subtitle_track
             PlayerSidePanelType.SETTINGS -> CoreR.string.title_settings
             PlayerSidePanelType.NONE -> CoreR.string.title_settings
         }
@@ -262,7 +262,7 @@ private fun SubtitleTrackList(
         // "None" option
         item {
             SelectableItem(
-                title = stringResource(id = PlayerLocalR.string.none),
+                title = stringResource(id = PlayerCoreR.string.none),
                 isSelected = isNoneSelected,
                 onClick = { viewModel.switchToTrack(C.TRACK_TYPE_TEXT, -1) },
                 modifier = Modifier.focusRequester(initialFocusRequester),
@@ -321,7 +321,7 @@ private fun SettingsList(
         item {
             Column {
                 Text(
-                    text = stringResource(id = PlayerLocalR.string.select_playback_speed),
+                    text = stringResource(id = PlayerCoreR.string.select_playback_speed),
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(bottom = 8.dp),

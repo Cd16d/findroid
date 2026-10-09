@@ -37,4 +37,14 @@ class Converters {
     fun fromStringToFindroidChapters(value: String?): List<FindroidChapter>? {
         return value?.let { Json.decodeFromString(value) }
     }
+
+    @ColumnTypeConverter
+    fun fromUUIDListToString(value: List<UUID>?): String? {
+        return value?.joinToString(",") { it.toString() }
+    }
+
+    @ColumnTypeConverter
+    fun fromStringToUUIDList(value: String?): List<UUID>? {
+        return value?.split(",")?.filter { it.isNotEmpty() }?.map { UUID.fromString(it) }
+    }
 }

@@ -34,6 +34,7 @@ fun HomeView(
     itemsPadding: PaddingValues,
     onAction: (HomeAction) -> Unit,
     modifier: Modifier = Modifier,
+    hideEpisodeSpoilers: Boolean = false,
 ) {
     Column(modifier = modifier) {
         Box(modifier = Modifier.fillMaxWidth().height(42.dp).padding(itemsPadding)) {
@@ -68,11 +69,12 @@ fun HomeView(
             contentPadding = itemsPadding,
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacings.default),
         ) {
-            items(view.view.items, key = { it.id }) { item ->
+            items(view.view.items.distinctBy { it.id }, key = { it.id }) { item ->
                 ItemCard(
                     item = item,
                     direction = Direction.VERTICAL,
                     onClick = { onAction(HomeAction.OnItemClick(item)) },
+                    hideEpisodeSpoilers = hideEpisodeSpoilers,
                 )
             }
         }

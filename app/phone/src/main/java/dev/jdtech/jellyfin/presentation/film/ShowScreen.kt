@@ -2,7 +2,6 @@ package dev.jdtech.jellyfin.presentation.film
 
 import android.content.Intent
 import android.widget.Toast
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,6 +25,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -40,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.graphics.toColorInt
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.jdtech.jellyfin.LocalCastPlayerHeight
 import dev.jdtech.jellyfin.PlayerActivity
 import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.core.presentation.dummy.dummyShow
@@ -47,6 +50,11 @@ import dev.jdtech.jellyfin.film.presentation.show.ShowAction
 import dev.jdtech.jellyfin.film.presentation.show.ShowState
 import dev.jdtech.jellyfin.film.presentation.show.ShowViewModel
 import dev.jdtech.jellyfin.models.FindroidItem
+import dev.jdtech.jellyfin.player.cast.models.CastConnectionState
+import dev.jdtech.jellyfin.player.cast.presentation.CastSessionViewModel
+import dev.jdtech.jellyfin.presentation.components.SpoilerMask
+import dev.jdtech.jellyfin.presentation.components.rememberSpoilerState
+import dev.jdtech.jellyfin.presentation.components.spoilerCardGesture
 import dev.jdtech.jellyfin.presentation.film.components.ActorsRow
 import dev.jdtech.jellyfin.presentation.film.components.Direction
 import dev.jdtech.jellyfin.presentation.film.components.InfoText
@@ -77,6 +85,9 @@ fun ShowScreen(
 
     val state by viewModel.state.collectAsStateWithLifecycle()
 
+    val castSessionViewModel: CastSessionViewModel = hiltViewModel()
+    val castConnectionState by castSessionViewModel.connectionState.collectAsStateWithLifecycle()
+
     LaunchedEffect(true) { viewModel.loadShow(showId = showId) }
 
     ShowScreenLayout(
@@ -84,10 +95,19 @@ fun ShowScreen(
         onAction = { action ->
             when (action) {
                 is ShowAction.Play -> {
-                    val intent = Intent(context, PlayerActivity::class.java)
-                    intent.putExtra("itemId", showId.toString())
-                    intent.putExtra("itemKind", BaseItemKind.SERIES.serialName)
-                    context.startActivity(intent)
+                    if (castConnectionState == CastConnectionState.CONNECTED) {
+                        castSessionViewModel.playItem(
+                            showId,
+                            BaseItemKind.SERIES.serialName,
+                            action.startFromBeginning,
+                        )
+                    } else {
+                        val intent = Intent(context, PlayerActivity::class.java)
+                        intent.putExtra("itemId", showId.toString())
+                        intent.putExtra("itemKind", BaseItemKind.SERIES.serialName)
+                        intent.putExtra("startFromBeginning", action.startFromBeginning)
+                        context.startActivity(intent)
+                    }
                 }
                 is ShowAction.PlayTrailer -> {
                     try {
@@ -110,10 +130,11 @@ fun ShowScreen(
 @Composable
 private fun ShowScreenLayout(state: ShowState, onAction: (ShowAction) -> Unit) {
     val safePadding = rememberSafePadding()
+    val castPadding = LocalCastPlayerHeight.current
 
     val paddingStart = safePadding.start + MaterialTheme.spacings.default
     val paddingEnd = safePadding.end + MaterialTheme.spacings.default
-    val paddingBottom = safePadding.bottom + MaterialTheme.spacings.default
+    val paddingBottom = safePadding.bottom + castPadding
 
     val scrollState = rememberScrollState()
 
@@ -204,7 +225,7 @@ private fun ShowScreenLayout(state: ShowState, onAction: (ShowAction) -> Unit) {
                             }
                         },
                         onTrailerClick = { uri -> onAction(ShowAction.PlayTrailer(uri)) },
-                        onDownloadClick = {},
+                        onDownloadClick = { _, _, _, _ -> },
                         onDownloadCancelClick = {},
                         onDownloadDeleteClick = {},
                         modifier = Modifier.fillMaxWidth(),
@@ -225,17 +246,39 @@ private fun ShowScreenLayout(state: ShowState, onAction: (ShowAction) -> Unit) {
                             style = MaterialTheme.typography.titleMedium,
                         )
                         Spacer(Modifier.height(MaterialTheme.spacings.small))
+                        val isEpisodeSpoiler = state.hideEpisodeSpoilers && !nextUp.played
+                        val hasBlurHash =
+                            nextUp.images.backdrop?.blurHash != null ||
+                                nextUp.images.primary?.blurHash != null
+                        var isNextUpRevealed by
+                            rememberSaveable(nextUp.id) { mutableStateOf(false) }
+                        val nextUpSpoilerState =
+                            rememberSpoilerState(
+                                enabled = isEpisodeSpoiler,
+                                isRevealed = isNextUpRevealed,
+                                onRevealChange = { isNextUpRevealed = it },
+                            )
                         Column(
                             modifier =
                                 Modifier.widthIn(max = 420.dp)
                                     .clip(MaterialTheme.shapes.small)
-                                    .clickable { onAction(ShowAction.NavigateToItem(nextUp)) }
+                                    .spoilerCardGesture(
+                                        state = nextUpSpoilerState,
+                                        onClick = { onAction(ShowAction.NavigateToItem(nextUp)) },
+                                    )
                         ) {
-                            ItemPoster(
-                                item = nextUp,
-                                direction = Direction.HORIZONTAL,
-                                modifier = Modifier.clip(MaterialTheme.shapes.medium),
-                            )
+                            SpoilerMask(
+                                state = nextUpSpoilerState,
+                                shape = MaterialTheme.shapes.medium,
+                                blurRadius = if (hasBlurHash) 4.dp else 16.dp,
+                            ) {
+                                ItemPoster(
+                                    item = nextUp,
+                                    direction = Direction.HORIZONTAL,
+                                    modifier = Modifier.clip(MaterialTheme.shapes.medium),
+                                    blurOnly = isEpisodeSpoiler && !isNextUpRevealed,
+                                )
+                            }
                             Spacer(Modifier.height(MaterialTheme.spacings.extraSmall))
                             Text(
                                 text =
@@ -265,7 +308,10 @@ private fun ShowScreenLayout(state: ShowState, onAction: (ShowAction) -> Unit) {
                         horizontalArrangement =
                             Arrangement.spacedBy(MaterialTheme.spacings.default),
                     ) {
-                        items(items = state.seasons, key = { item -> item.id }) { season ->
+                        items(
+                            items = state.seasons.distinctBy { it.id },
+                            key = { item -> item.id },
+                        ) { season ->
                             ItemCard(
                                 item = season,
                                 direction = Direction.VERTICAL,

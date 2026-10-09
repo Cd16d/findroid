@@ -34,7 +34,7 @@
     <string name="series_poster">ملصق السلسلة</string>
     <string name="collection_no_media">هذه المجموعة لا تحتوي على أي وسائط</string>
     <string name="no_favorites">لا يوجد أية مفضلات</string>
-    <string name="no_downloads">لا يوجد شيئ تم تحميله</string>
+
     <string name="search">بحث</string>
     <string name="no_search_results">لا يوجد نتائج بحث</string>
     <string name="device_name">اسم الجهاز</string>

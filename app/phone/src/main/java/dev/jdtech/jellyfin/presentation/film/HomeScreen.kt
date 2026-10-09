@@ -27,6 +27,7 @@ import androidx.compose.ui.tooling.preview.PreviewScreenSizes
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.jdtech.jellyfin.LocalCastPlayerHeight
 import dev.jdtech.jellyfin.core.presentation.dummy.dummyHomeSection
 import dev.jdtech.jellyfin.core.presentation.dummy.dummyHomeSuggestions
 import dev.jdtech.jellyfin.core.presentation.dummy.dummyHomeView
@@ -51,7 +52,7 @@ import kotlinx.coroutines.launch
 fun HomeScreen(
     onLibraryClick: (library: FindroidCollection) -> Unit,
     onSearchClick: () -> Unit,
-    onSettingsClick: () -> Unit,
+    onUserClick: () -> Unit,
     onManageServers: () -> Unit,
     onItemClick: (item: FindroidItem) -> Unit,
     viewModel: HomeViewModel = hiltViewModel(),
@@ -67,7 +68,7 @@ fun HomeScreen(
                 is HomeAction.OnItemClick -> onItemClick(action.item)
                 is HomeAction.OnLibraryClick -> onLibraryClick(action.library)
                 is HomeAction.OnSearchClick -> onSearchClick()
-                is HomeAction.OnSettingsClick -> onSettingsClick()
+                is HomeAction.OnUserClick -> onUserClick()
                 is HomeAction.OnManageServers -> onManageServers()
                 else -> Unit
             }
@@ -78,14 +79,18 @@ fun HomeScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun HomeScreenLayout(state: HomeState, onAction: (HomeAction) -> Unit) {
+private fun HomeScreenLayout(
+    state: HomeState,
+    onAction: (HomeAction) -> Unit,
+) {
     val scope = rememberCoroutineScope()
-    val safePadding = rememberSafePadding(handleStartInsets = false)
+    val safePadding = rememberSafePadding(handleStartInsets = false, handleBottomInsets = false)
+    val castPadding = LocalCastPlayerHeight.current
 
     val paddingStart = safePadding.start + MaterialTheme.spacings.default
     val paddingTop = safePadding.top + MaterialTheme.spacings.small
     val paddingEnd = safePadding.end + MaterialTheme.spacings.default
-    val paddingBottom = safePadding.bottom + MaterialTheme.spacings.default
+    val paddingBottom = safePadding.bottom + castPadding
 
     val itemsPadding = PaddingValues(start = paddingStart, end = paddingEnd)
 
@@ -118,6 +123,7 @@ private fun HomeScreenLayout(state: HomeState, onAction: (HomeAction) -> Unit) {
                             itemsPadding = itemsPadding,
                             onAction = onAction,
                             modifier = Modifier.animateItem(),
+                            hideEpisodeSpoilers = state.hideEpisodeSpoilers,
                         )
                     }
                 }
@@ -128,15 +134,17 @@ private fun HomeScreenLayout(state: HomeState, onAction: (HomeAction) -> Unit) {
                             itemsPadding = itemsPadding,
                             onAction = onAction,
                             modifier = Modifier.animateItem(),
+                            hideEpisodeSpoilers = state.hideEpisodeSpoilers,
                         )
                     }
                 }
-                items(state.views, key = { it.id }) { view ->
+                items(state.views.distinctBy { it.id }, key = { it.id }) { view ->
                     HomeView(
                         view = view,
                         itemsPadding = itemsPadding,
                         onAction = onAction,
                         modifier = Modifier.animateItem(),
+                        hideEpisodeSpoilers = state.hideEpisodeSpoilers,
                     )
                 }
             }
@@ -149,13 +157,14 @@ private fun HomeScreenLayout(state: HomeState, onAction: (HomeAction) -> Unit) {
 
     HomeHeader(
         serverName = state.server?.name ?: "",
+        userImageUrl = state.userImageUrl,
         isLoading = state.isLoading,
         isError = state.error != null,
         onServerClick = { showServerSelectionBottomSheet = true },
         onErrorClick = { showErrorDialog = true },
         onRetryClick = { onAction(HomeAction.OnRetryClick) },
         onSearchClick = { onAction(HomeAction.OnSearchClick) },
-        onUserClick = { onAction(HomeAction.OnSettingsClick) },
+        onUserClick = { onAction(HomeAction.OnUserClick) },
         modifier = Modifier.padding(start = paddingStart, top = paddingTop, end = paddingEnd),
     )
 
