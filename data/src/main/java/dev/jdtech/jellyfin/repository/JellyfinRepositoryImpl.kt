@@ -64,6 +64,9 @@ class JellyfinRepositoryImpl(
     private val database: ServerDatabaseDao,
     private val appPreferences: AppPreferences,
 ) : JellyfinRepository {
+    private var cachedSuggestions: List<FindroidItem>? = null
+    private var cachedSuggestionsUserId: UUID? = null
+
     override suspend fun getAdditionalParts(itemId: UUID): List<FindroidPart> =
         withContext(Dispatchers.IO) {
             try {
@@ -260,19 +263,34 @@ class JellyfinRepositoryImpl(
                 .distinctBy { it.id }
         }
 
-    override suspend fun getSuggestions(): List<FindroidItem> =
-        withContext(Dispatchers.IO) {
-            jellyfinApi.suggestionApi
-                .getSuggestions(
-                    jellyfinApi.userId!!,
-                    limit = 6,
-                    type = listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES),
-                )
-                .content
-                .items
-                .mapNotNull { it.toFindroidItem(this@JellyfinRepositoryImpl, database) }
-                .distinctBy { it.id }
+    override suspend fun getSuggestions(forceRefresh: Boolean): List<FindroidItem> {
+        val currentUserId = jellyfinApi.userId
+        if (
+            !forceRefresh && cachedSuggestions != null && cachedSuggestionsUserId == currentUserId
+        ) {
+            return cachedSuggestions!!
         }
+
+        return withContext(Dispatchers.IO) {
+            val suggestions =
+                jellyfinApi.suggestionApi
+                    .getSuggestions(
+                        currentUserId!!,
+                        limit = 6,
+                        type = listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES),
+                    )
+                    .content
+                    .items
+                    .mapNotNull { it.toFindroidItem(this@JellyfinRepositoryImpl, database) }
+                    .distinctBy { it.id }
+
+            if (suggestions.isNotEmpty()) {
+                cachedSuggestions = suggestions
+                cachedSuggestionsUserId = currentUserId
+            }
+            suggestions
+        }
+    }
 
     override suspend fun getResumeItems(): List<FindroidItem> =
         withContext(Dispatchers.IO) {
@@ -281,6 +299,7 @@ class JellyfinRepositoryImpl(
                     jellyfinApi.userId!!,
                     limit = 12,
                     includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.EPISODE),
+                    fields = listOf(ItemFields.OVERVIEW, ItemFields.GENRES),
                 )
                 .content
                 .items
@@ -291,7 +310,12 @@ class JellyfinRepositoryImpl(
     override suspend fun getLatestMedia(parentId: UUID): List<FindroidItem> =
         withContext(Dispatchers.IO) {
             jellyfinApi.libraryApi
-                .getLatestMedia(jellyfinApi.userId!!, parentId = parentId, limit = 16)
+                .getLatestMedia(
+                    jellyfinApi.userId!!,
+                    parentId = parentId,
+                    fields = listOf(ItemFields.OVERVIEW, ItemFields.GENRES),
+                    limit = 16,
+                )
                 .content
                 .mapNotNull { it.toFindroidItem(this@JellyfinRepositoryImpl, database) }
                 .distinctBy { it.id }
@@ -322,6 +346,7 @@ class JellyfinRepositoryImpl(
                     limit = 24,
                     seriesId = seriesId,
                     enableResumable = false,
+                    fields = listOf(ItemFields.OVERVIEW, ItemFields.GENRES),
                 )
                 .content
                 .items

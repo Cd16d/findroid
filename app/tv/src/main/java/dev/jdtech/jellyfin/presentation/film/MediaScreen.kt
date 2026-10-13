@@ -4,7 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -13,6 +13,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.tv.material3.MaterialTheme
@@ -31,8 +32,20 @@ import java.util.UUID
 fun MediaScreen(
     navigateToLibrary: (libraryId: UUID, libraryName: String, libraryType: CollectionType) -> Unit,
     isLoading: (Boolean) -> Unit,
-    viewModel: MediaViewModel = hiltViewModel(),
+    contentFocusRequester: FocusRequester? = null,
+    upFocusRequester: FocusRequester? = null,
+    viewModel: MediaViewModel? = if (LocalInspectionMode.current) null else hiltViewModel(),
 ) {
+    if (LocalInspectionMode.current || viewModel == null) {
+        LibrariesScreenLayout(
+            state = MediaState(libraries = dummyCollections),
+            contentFocusRequester = contentFocusRequester,
+            upFocusRequester = upFocusRequester,
+            onAction = {},
+        )
+        return
+    }
+
     val state by viewModel.state.collectAsState()
 
     LaunchedEffect(true) { viewModel.loadData() }
@@ -41,6 +54,8 @@ fun MediaScreen(
 
     LibrariesScreenLayout(
         state = state,
+        contentFocusRequester = contentFocusRequester,
+        upFocusRequester = upFocusRequester,
         onAction = { action ->
             when (action) {
                 is MediaAction.OnItemClick -> {
@@ -54,10 +69,14 @@ fun MediaScreen(
 }
 
 @Composable
-private fun LibrariesScreenLayout(state: MediaState, onAction: (MediaAction) -> Unit) {
-    val focusRequester = remember { FocusRequester() }
-
-    LaunchedEffect(state.libraries) { focusRequester.requestFocus() }
+private fun LibrariesScreenLayout(
+    state: MediaState,
+    contentFocusRequester: FocusRequester? = null,
+    upFocusRequester: FocusRequester? = null,
+    onAction: (MediaAction) -> Unit,
+) {
+    val localFocusRequester = remember { FocusRequester() }
+    val effectiveFocusRequester = contentFocusRequester ?: localFocusRequester
 
     LazyVerticalGrid(
         columns = GridCells.Fixed(3),
@@ -70,12 +89,16 @@ private fun LibrariesScreenLayout(state: MediaState, onAction: (MediaAction) -> 
                 end = MaterialTheme.spacings.large,
                 bottom = MaterialTheme.spacings.large,
             ),
-        modifier = Modifier.focusRequester(focusRequester),
+        modifier = Modifier.focusRequester(effectiveFocusRequester),
     ) {
-        items(state.libraries.distinctBy { it.id }, key = { it.id }) { library ->
+        itemsIndexed(state.libraries.distinctBy { it.id }, key = { _, it -> it.id }) {
+            index,
+            library ->
             ItemCard(
                 item = library,
                 direction = Direction.HORIZONTAL,
+                focusRequester = if (index == 0) effectiveFocusRequester else null,
+                upFocusRequester = if (index < 3) upFocusRequester else null,
                 onClick = { onAction(MediaAction.OnItemClick(library)) },
             )
         }

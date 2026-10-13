@@ -1,6 +1,8 @@
 package dev.jdtech.jellyfin
 
+import android.app.Activity
 import android.app.Application
+import android.os.Bundle
 import coil3.ImageLoader
 import coil3.PlatformContext
 import coil3.SingletonImageLoader
@@ -19,10 +21,43 @@ import okhttp3.OkHttpClient
 import okio.Path.Companion.toOkioPath
 
 @HiltAndroidApp
-class BaseApplication : Application(), SingletonImageLoader.Factory {
+class BaseApplication :
+    Application(), SingletonImageLoader.Factory, Application.ActivityLifecycleCallbacks {
     @Inject lateinit var appPreferences: AppPreferences
 
     @Inject lateinit var okHttpClient: OkHttpClient
+
+    private var activeActivityCount = 0
+
+    companion object {
+        var isAppInForeground: Boolean = false
+            private set
+    }
+
+    override fun onCreate() {
+        super.onCreate()
+        registerActivityLifecycleCallbacks(this)
+    }
+
+    override fun onActivityStarted(activity: Activity) {
+        activeActivityCount++
+        isAppInForeground = activeActivityCount > 0
+    }
+
+    override fun onActivityStopped(activity: Activity) {
+        activeActivityCount--
+        isAppInForeground = activeActivityCount > 0
+    }
+
+    override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {}
+
+    override fun onActivityResumed(activity: Activity) {}
+
+    override fun onActivityPaused(activity: Activity) {}
+
+    override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) {}
+
+    override fun onActivityDestroyed(activity: Activity) {}
 
     @OptIn(ExperimentalCoilApi::class, ExperimentalTime::class)
     override fun newImageLoader(context: PlatformContext): ImageLoader {

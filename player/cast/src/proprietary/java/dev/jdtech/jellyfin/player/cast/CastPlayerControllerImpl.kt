@@ -997,6 +997,7 @@ constructor(
                         isExternal = stream.isExternal,
                         isForced = stream.isForced,
                         isHearingImpaired = stream.isHearingImpaired,
+                        channelLayout = stream.channelLayout,
                     )
 
                 audio.add(track)

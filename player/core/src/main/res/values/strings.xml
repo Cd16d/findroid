@@ -27,4 +27,24 @@
     <string name="forced">Forced</string>
     <string name="hearing_impaired">SDH</string>
     <string name="track_index">Track %1$d</string>
+    <string name="playback_speed">Playback speed</string>
+    <string name="normal_speed">Normal</string>
+    <string name="aspect_ratio">Aspect ratio</string>
+    <string name="aspect_ratio_fit">Fit</string>
+    <string name="aspect_ratio_zoom">Zoom</string>
+    <string name="aspect_ratio_fill">Stretch</string>
+    <string name="audio">Audio</string>
+    <string name="subtitles">Subtitles</string>
+    <string name="season_episodes">Seasons &amp; episodes</string>
+    <string name="now_playing">Now playing</string>
+    <string name="go_to_series">Go to series</string>
+    <string name="segment_intro">Intro</string>
+    <string name="segment_outro">Outro</string>
+    <string name="segment_recap">Recap</string>
+    <string name="segment_preview">Preview</string>
+    <string name="segment_commercial">Commercial</string>
+    <string name="chapter_title">Chapter %1$d</string>
+    <string name="chapters">Chapters</string>
+    <string name="no_chapters">No chapters available</string>
+    <string name="ends_at">Ends at %1$s</string>
 </resources>

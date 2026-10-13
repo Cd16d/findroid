@@ -63,6 +63,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.changedToUp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.painterResource
@@ -74,9 +75,9 @@ import androidx.compose.ui.unit.dp
 import androidx.media3.common.C
 import dev.jdtech.jellyfin.player.core.R
 import dev.jdtech.jellyfin.player.core.domain.models.Track
+import dev.jdtech.jellyfin.player.core.domain.utils.TrackFormatter
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
-import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -427,24 +428,18 @@ private fun TrackRow(
     displayExtraInfo: Boolean,
     onClick: (Track) -> Unit,
 ) {
+    val context = LocalContext.current
     val configuration = LocalConfiguration.current
     val currentLocale = configuration.locales[0]
 
-    val trackIndexName = stringResource(R.string.track_index, track.id)
-
-    val displayName =
-        remember(track, currentLocale) {
-            val locale =
-                track.language
-                    ?.takeIf { it.isNotBlank() && it != "und" }
-                    ?.let { lang -> Locale.forLanguageTag(lang.replace("_", "-")) }
-
-            val localizedLanguage =
-                locale?.getDisplayLanguage(currentLocale)?.replaceFirstChar {
-                    if (it.isLowerCase()) it.titlecase(currentLocale) else it.toString()
-                }
-
-            localizedLanguage ?: track.label ?: trackIndexName
+    val displayInfo =
+        remember(track, currentLocale, displayExtraInfo) {
+            TrackFormatter.getTrackDisplayInfo(
+                track = track,
+                context = context,
+                displayExtraInfo = displayExtraInfo,
+                currentLocale = currentLocale,
+            )
         }
 
     Row(
@@ -460,7 +455,7 @@ private fun TrackRow(
         Spacer(modifier = Modifier.width(8.dp))
 
         Text(
-            text = displayName,
+            text = displayInfo.name,
             style = MaterialTheme.typography.bodyMedium,
             maxLines = 1,
         )
@@ -504,18 +499,7 @@ private fun TrackRow(
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacings.small),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (track.isForced == true) {
-                TrackMetadataBarItem(stringResource(R.string.forced))
-            }
-            if (track.isHearingImpaired == true) {
-                TrackMetadataBarItem(stringResource(R.string.hearing_impaired))
-            }
-            if (displayExtraInfo) {
-                if (track.isExternal == true) {
-                    TrackMetadataBarItem(stringResource(R.string.external))
-                }
-                track.codec?.takeIf { it.isNotBlank() }?.let { TrackMetadataBarItem(it) }
-            }
+            displayInfo.chips.forEach { chipText -> TrackMetadataBarItem(chipText) }
         }
     }
 }

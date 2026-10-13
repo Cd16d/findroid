@@ -51,29 +51,33 @@ constructor(
                 _state.update { it.copy(hideEpisodeSpoilers = hideSpoilers) }
             }
         }
+        viewModelScope.launch {
+            appPreferences.observe(appPreferences.tvShowLogos).collect { showLogos ->
+                _state.update { it.copy(showLogos = showLogos) }
+            }
+        }
     }
 
-    fun loadData() {
+    fun loadData(forceRefreshSuggestions: Boolean = false) {
         Timber.i("Loading data")
         viewModelScope.launch(Dispatchers.Default) {
             val hideEpisodeSpoilers = appPreferences.getValue(appPreferences.hideEpisodeSpoilers)
-            _state.emit(
-                _state.value.copy(
+            val showLogos = appPreferences.getValue(appPreferences.tvShowLogos)
+            _state.update {
+                it.copy(
                     isLoading = true,
                     error = null,
                     hideEpisodeSpoilers = hideEpisodeSpoilers,
+                    showLogos = showLogos,
                 )
-            )
+            }
             try {
                 appPreferences.getValue(appPreferences.currentServer)?.let { serverId ->
                     loadServerName(serverId)
                     loadUserImage(serverId)
                 }
 
-                val showLogos = appPreferences.getValue(appPreferences.tvShowLogos)
-                _state.emit(_state.value.copy(showLogos = showLogos))
-
-                loadSuggestions()
+                loadSuggestions(forceRefreshSuggestions)
                 loadResumeItems()
                 loadNextUpItems()
                 loadViews()
@@ -98,14 +102,14 @@ constructor(
         _state.emit(_state.value.copy(userImageUrl = imageUrl))
     }
 
-    private suspend fun loadSuggestions() {
+    private suspend fun loadSuggestions(forceRefresh: Boolean = false) {
         Timber.i("Loading suggestions")
         if (!appPreferences.getValue(appPreferences.homeSuggestions)) {
             _state.emit(_state.value.copy(suggestionsSection = null))
             return
         }
 
-        val items = repository.getSuggestions()
+        val items = repository.getSuggestions(forceRefresh)
 
         val section =
             if (items.isEmpty()) {

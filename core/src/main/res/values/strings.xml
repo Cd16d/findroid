@@ -42,6 +42,13 @@
     <string name="device_name">Device name</string>
     <string name="error_preparing_player_items">Error preparing player items.</string>
     <string name="view_details">View details</string>
+    <string name="info_action">Info</string>
+    <string name="season_episodes">Season episodes</string>
+    <string name="go_to_season">Go to season %1$d</string>
+    <string name="go_to_series">Series details</string>
+    <string name="normal_speed">Normal</string>
+    <string name="now_playing">Now playing</string>
+    <string name="back">Back</string>
     <string name="view_details_underlined"><u>View details</u></string>
     <string name="unknown_error">Unknown error</string>
     <string name="info">Extra info</string>

@@ -82,6 +82,7 @@ import dev.jdtech.jellyfin.models.FindroidItem
 import dev.jdtech.jellyfin.models.FindroidMediaStream
 import dev.jdtech.jellyfin.models.FindroidSeason
 import dev.jdtech.jellyfin.models.FindroidSourceType
+import dev.jdtech.jellyfin.player.core.domain.utils.TrackFormatter
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.utils.DeviceCodecCapabilities
 import java.util.Locale
@@ -248,22 +249,15 @@ private fun formatAudioTrackName(
     stream: FindroidMediaStream,
     currentLocale: Locale,
 ): String {
-    val locale =
-        stream.language
-            .takeIf { it.isNotBlank() && it != "und" }
-            ?.let { lang -> Locale.forLanguageTag(lang.replace("_", "-")) }
-    val localizedLanguage =
-        locale?.getDisplayLanguage(currentLocale)?.replaceFirstChar {
-            if (it.isLowerCase()) it.titlecase(currentLocale) else it.toString()
-        }
+    val track = TrackFormatter.toTrack(stream)
     val langOrTitle =
-        localizedLanguage
-            ?: stream.displayTitle?.takeIf { it.isNotBlank() }
+        TrackFormatter.formatLanguageName(track.language, currentLocale)
+            ?: track.label
             ?: "Audio #${stream.index ?: 0}"
     val details =
         listOfNotNull(
-            stream.codec.uppercase(Locale.US).takeIf { it.isNotBlank() },
-            stream.channelLayout?.takeIf { it.isNotBlank() },
+            TrackFormatter.formatCodec(track.codec),
+            TrackFormatter.formatChannelLayout(track.channelLayout),
         )
     return if (details.isNotEmpty()) {
         "$langOrTitle • ${details.joinToString(" • ")}"

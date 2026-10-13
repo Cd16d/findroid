@@ -2,6 +2,12 @@ package dev.jdtech.jellyfin.ui
 
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,6 +19,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -24,19 +31,25 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Icon
+import androidx.tv.material3.IconButton
+import androidx.tv.material3.IconButtonDefaults
 import androidx.tv.material3.MaterialTheme
-import androidx.tv.material3.Tab
-import androidx.tv.material3.TabDefaults
-import androidx.tv.material3.TabRow
-import androidx.tv.material3.TabRowDefaults
+import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.core.presentation.dummy.dummyServer
@@ -47,8 +60,8 @@ import dev.jdtech.jellyfin.presentation.film.HomeScreen
 import dev.jdtech.jellyfin.presentation.film.MediaScreen
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
+import dev.jdtech.jellyfin.ui.components.ClockText
 import dev.jdtech.jellyfin.ui.components.LoadingIndicator
-import dev.jdtech.jellyfin.ui.components.PillBorderIndicator
 import dev.jdtech.jellyfin.ui.components.ProfileButton
 import dev.jdtech.jellyfin.viewmodels.MainViewModel
 import java.util.UUID
@@ -61,8 +74,20 @@ fun MainScreen(
     navigateToMovie: (itemId: UUID) -> Unit,
     navigateToShow: (itemId: UUID) -> Unit,
     navigateToPlayer: (itemId: UUID, itemKind: BaseItemKind) -> Unit,
-    mainViewModel: MainViewModel = hiltViewModel(),
+    mainViewModel: MainViewModel? = if (LocalInspectionMode.current) null else hiltViewModel(),
 ) {
+    if (LocalInspectionMode.current || mainViewModel == null) {
+        MainScreenLayout(
+            uiState = MainViewModel.UiState.Normal(server = dummyServer, user = dummyUser),
+            navigateToSettings = navigateToSettings,
+            navigateToLibrary = navigateToLibrary,
+            navigateToMovie = navigateToMovie,
+            navigateToShow = navigateToShow,
+            navigateToPlayer = navigateToPlayer,
+        )
+        return
+    }
+
     val delegatedUiState by mainViewModel.uiState.collectAsState()
 
     LaunchedEffect(true) { mainViewModel.loadServerAndUser() }
@@ -78,10 +103,8 @@ fun MainScreen(
 }
 
 enum class TabDestination(@param:DrawableRes val icon: Int, @param:StringRes val label: Int) {
-    Search(CoreR.drawable.ic_search, CoreR.string.search),
     Home(CoreR.drawable.ic_home, CoreR.string.title_home),
     Libraries(CoreR.drawable.ic_library, CoreR.string.libraries),
-    // LiveTV(CoreR.drawable.ic_tv, CoreR.string.live_tv)
 }
 
 @Composable
@@ -93,8 +116,20 @@ private fun MainScreenLayout(
     navigateToShow: (itemId: UUID) -> Unit,
     navigateToPlayer: (itemId: UUID, itemKind: BaseItemKind) -> Unit,
 ) {
-    var focusedTabIndex by rememberSaveable { mutableIntStateOf(1) }
+    var focusedTabIndex by rememberSaveable { mutableIntStateOf(0) }
     var activeTabIndex by rememberSaveable { mutableIntStateOf(focusedTabIndex) }
+    var isHomeScrolled by rememberSaveable { mutableStateOf(false) }
+
+    val homeTabFocusRequester = remember { FocusRequester() }
+    val librariesTabFocusRequester = remember { FocusRequester() }
+    val homeContentFocusRequester = remember { FocusRequester() }
+    val librariesContentFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) {
+        try {
+            homeTabFocusRequester.requestFocus()
+        } catch (_: Exception) {}
+    }
 
     var isLoading by remember { mutableStateOf(false) }
 
@@ -106,119 +141,174 @@ private fun MainScreenLayout(
         else -> Unit
     }
 
+    val isHeaderVisible = activeTabIndex != 0 || !isHomeScrolled
+
     Box(modifier = Modifier.fillMaxSize()) {
         when (activeTabIndex) {
             1 -> {
+                Box(modifier = Modifier.fillMaxSize().padding(top = 64.dp)) {
+                    MediaScreen(
+                        navigateToLibrary = navigateToLibrary,
+                        isLoading = { isLoading = it },
+                        contentFocusRequester = librariesContentFocusRequester,
+                        upFocusRequester = librariesTabFocusRequester,
+                    )
+                }
+            }
+            else -> {
                 HomeScreen(
                     navigateToMovie = navigateToMovie,
                     navigateToShow = navigateToShow,
                     navigateToPlayer = navigateToPlayer,
+                    navigateToLibrary = navigateToLibrary,
                     isLoading = { isLoading = it },
+                    onScrollOffsetChanged = { isHomeScrolled = it },
+                    contentFocusRequester = homeContentFocusRequester,
+                    upFocusRequester = homeTabFocusRequester,
                 )
             }
-            2 -> {
-                Box(modifier = Modifier.fillMaxSize().padding(top = 84.dp)) {
-                    MediaScreen(
-                        navigateToLibrary = navigateToLibrary,
-                        isLoading = { isLoading = it },
-                    )
-                }
-            }
         }
-        Box(
-            modifier =
-                Modifier.fillMaxWidth()
-                    .height(84.dp)
-                    .background(
-                        Brush.verticalGradient(
-                            colors =
-                                listOf(
-                                    Color.Black.copy(alpha = 0.85f),
-                                    Color.Black.copy(alpha = 0.4f),
-                                    Color.Transparent,
-                                )
-                        )
-                    )
-                    .padding(horizontal = MaterialTheme.spacings.large)
+        AnimatedVisibility(
+            visible = isHeaderVisible,
+            enter =
+                slideInVertically(animationSpec = tween(300)) { -it } +
+                    fadeIn(animationSpec = tween(300)),
+            exit =
+                slideOutVertically(animationSpec = tween(300)) { -it } +
+                    fadeOut(animationSpec = tween(300)),
+            modifier = Modifier.align(Alignment.TopCenter).zIndex(10f),
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacings.medium),
-                modifier = Modifier.align(Alignment.CenterStart),
+            Box(
+                modifier =
+                    Modifier.fillMaxWidth()
+                        .height(64.dp)
+                        .background(
+                            Brush.verticalGradient(
+                                colors =
+                                    listOf(
+                                        Color.Black.copy(alpha = 0.85f),
+                                        Color.Black.copy(alpha = 0.4f),
+                                        Color.Transparent,
+                                    )
+                            )
+                        )
+                        .padding(horizontal = MaterialTheme.spacings.large)
             ) {
-                ProfileButton(user = user, onClick = { navigateToSettings() })
-                TabRow(
-                    selectedTabIndex = focusedTabIndex,
-                    indicator = { tabPositions, isActivated ->
-                        // FocusedTab's indicator
-                        PillBorderIndicator(
-                            currentTabPosition = tabPositions[focusedTabIndex],
-                            activeBorderColor = Color.White,
-                            inactiveBorderColor = Color.Transparent,
-                            doesTabRowHaveFocus = isActivated,
-                        )
-
-                        // SelectedTab's indicator
-                        TabRowDefaults.PillIndicator(
-                            currentTabPosition = tabPositions[activeTabIndex],
-                            activeColor = Color.White,
-                            inactiveColor = Color.White,
-                            doesTabRowHaveFocus = isActivated,
-                        )
-                    },
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacings.small),
+                    modifier = Modifier.align(Alignment.CenterStart),
                 ) {
+                    ProfileButton(
+                        user = user,
+                        onClick = { navigateToSettings() },
+                        modifier =
+                            Modifier.focusProperties {
+                                down =
+                                    if (activeTabIndex == 0) homeContentFocusRequester
+                                    else librariesContentFocusRequester
+                            },
+                    )
+                    IconButton(
+                        onClick = { /* Search */ },
+                        scale = IconButtonDefaults.scale(focusedScale = 1.15f),
+                        colors =
+                            IconButtonDefaults.colors(
+                                containerColor = Color.White.copy(alpha = 0.08f),
+                                focusedContainerColor = Color.White,
+                                contentColor = Color.White,
+                                focusedContentColor = Color.Black,
+                            ),
+                        modifier =
+                            Modifier.size(40.dp).focusProperties {
+                                down =
+                                    if (activeTabIndex == 0) homeContentFocusRequester
+                                    else librariesContentFocusRequester
+                            },
+                    ) {
+                        Icon(
+                            painter = painterResource(id = CoreR.drawable.ic_search),
+                            contentDescription = stringResource(id = CoreR.string.search),
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
                     TabDestination.entries.forEachIndexed { index, tab ->
-                        Tab(
-                            selected = activeTabIndex == index,
-                            onFocus = { focusedTabIndex = index },
-                            colors =
-                                TabDefaults.pillIndicatorTabColors(
-                                    contentColor =
-                                        MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f),
-                                    selectedContentColor = MaterialTheme.colorScheme.onPrimary,
-                                    focusedContentColor =
-                                        MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f),
-                                    focusedSelectedContentColor =
-                                        MaterialTheme.colorScheme.onPrimary,
-                                ),
+                        val isSelected = activeTabIndex == index
+                        Surface(
                             onClick = {
                                 focusedTabIndex = index
                                 activeTabIndex = index
                             },
-                            modifier =
-                                Modifier.padding(
-                                    horizontal = MaterialTheme.spacings.default / 2,
-                                    vertical = MaterialTheme.spacings.small,
+                            shape = ClickableSurfaceDefaults.shape(CircleShape),
+                            scale = ClickableSurfaceDefaults.scale(focusedScale = 1.05f),
+                            colors =
+                                ClickableSurfaceDefaults.colors(
+                                    containerColor =
+                                        if (isSelected) Color.White.copy(alpha = 0.18f)
+                                        else Color.Transparent,
+                                    contentColor =
+                                        if (isSelected) Color.White
+                                        else Color.White.copy(alpha = 0.7f),
+                                    focusedContainerColor = Color.White,
+                                    focusedContentColor = Color.Black,
                                 ),
+                            modifier =
+                                Modifier.focusRequester(
+                                        if (index == 0) homeTabFocusRequester
+                                        else librariesTabFocusRequester
+                                    )
+                                    .focusProperties {
+                                        down =
+                                            if (activeTabIndex == 0) homeContentFocusRequester
+                                            else librariesContentFocusRequester
+                                    }
+                                    .onFocusChanged {
+                                        if (it.isFocused) {
+                                            focusedTabIndex = index
+                                            activeTabIndex = index
+                                        }
+                                    },
                         ) {
-                            Icon(
-                                painter = painterResource(id = tab.icon),
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp),
-                            )
-                            Spacer(modifier = Modifier.width(MaterialTheme.spacings.extraSmall))
-                            Text(
-                                text = stringResource(id = tab.label),
-                                style = MaterialTheme.typography.titleSmall,
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = tab.icon),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                                Spacer(modifier = Modifier.width(MaterialTheme.spacings.extraSmall))
+                                Text(
+                                    text = stringResource(id = tab.label),
+                                    style = MaterialTheme.typography.titleSmall,
+                                )
+                            }
                         }
                     }
                 }
-            }
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacings.medium),
-                modifier = Modifier.align(Alignment.CenterEnd),
-            ) {
-                if (isLoading) {
-                    LoadingIndicator()
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacings.medium),
+                    modifier = Modifier.align(Alignment.CenterEnd),
+                ) {
+                    if (isLoading) {
+                        LoadingIndicator()
+                    }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacings.medium),
+                        modifier = Modifier.padding(end = 8.dp),
+                    ) {
+                        ClockText()
+                        Icon(
+                            painter = painterResource(id = CoreR.drawable.ic_logo),
+                            contentDescription = null,
+                            tint = Color.Unspecified,
+                            modifier = Modifier.size(28.dp),
+                        )
+                    }
                 }
-                Icon(
-                    painter = painterResource(id = CoreR.drawable.ic_logo),
-                    contentDescription = null,
-                    tint = Color.Unspecified,
-                    modifier = Modifier.size(32.dp),
-                )
             }
         }
     }

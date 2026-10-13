@@ -24,6 +24,10 @@ internal constructor(@param:IntRange(from = 0) private val hideSeconds: Int) {
         channel.trySend(seconds)
     }
 
+    fun hideControls() {
+        _controlsVisible = false
+    }
+
     private val channel = Channel<Int>(CONFLATED)
 
     @OptIn(FlowPreview::class)
@@ -33,7 +37,7 @@ internal constructor(@param:IntRange(from = 0) private val hideSeconds: Int) {
 }
 
 @Composable
-fun rememberVideoPlayerState(@IntRange(from = 0) hideSeconds: Int = 2) = remember {
+fun rememberVideoPlayerState(@IntRange(from = 0) hideSeconds: Int = 4) = remember {
     VideoPlayerState(hideSeconds = hideSeconds)
 }
     .also { LaunchedEffect(it) { it.observe() } }

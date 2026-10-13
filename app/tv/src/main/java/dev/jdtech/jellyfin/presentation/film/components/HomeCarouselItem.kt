@@ -1,20 +1,14 @@
 package dev.jdtech.jellyfin.presentation.film.components
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -22,125 +16,198 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.painter.ColorPainter
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.tv.material3.Border
-import androidx.tv.material3.ClickableSurfaceDefaults
-import androidx.tv.material3.ClickableSurfaceScale
-import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
-import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
-import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.core.presentation.dummy.dummyMovie
-import dev.jdtech.jellyfin.film.presentation.home.HomeAction
 import dev.jdtech.jellyfin.models.FindroidEpisode
 import dev.jdtech.jellyfin.models.FindroidItem
 import dev.jdtech.jellyfin.models.FindroidMovie
+import dev.jdtech.jellyfin.models.FindroidSeason
 import dev.jdtech.jellyfin.models.FindroidShow
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
-import dev.jdtech.jellyfin.presentation.theme.spacings
 import dev.jdtech.jellyfin.utils.toBlurHashPainter
 import dev.jdtech.jellyfin.utils.toOptimizedImageUri
+import org.jellyfin.sdk.model.api.ImageType
 
 @Composable
 fun HomeCarouselItem(
     item: FindroidItem,
-    onAction: (HomeAction) -> Unit,
-    showLogos: Boolean = false,
+    modifier: Modifier = Modifier,
+    showLogo: Boolean = false,
 ) {
-    var isFocused by remember { mutableStateOf(false) }
+    Box(modifier = modifier.fillMaxSize()) {
+        val configuration = LocalConfiguration.current
+        val screenWidth = configuration.screenWidthDp.dp
+        val screenHeight = configuration.screenHeightDp.dp
 
-    Surface(
-        onClick = { onAction(HomeAction.OnItemClick(item)) },
-        shape = ClickableSurfaceDefaults.shape(shape = RectangleShape),
-        border = ClickableSurfaceDefaults.border(focusedBorder = Border.None),
-        scale = ClickableSurfaceScale.None,
-        modifier = Modifier.fillMaxSize().onFocusChanged { isFocused = it.isFocused },
-    ) {
-        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-            val image = item.images.backdrop
-            val imageUri = image?.uri.toOptimizedImageUri(widthDp = maxWidth, heightDp = maxHeight)
+        val backdropImage =
+            item.images.backdrop
+                ?: item.images.showBackdrop
+                ?: item.images.primary
+                ?: item.images.showPrimary
+        val imageUri =
+            backdropImage
+                ?.uri
+                .toOptimizedImageUri(
+                    widthDp = screenWidth,
+                    heightDp = screenHeight,
+                )
+        val blurPlaceholder =
+            remember(backdropImage?.blurHash) { backdropImage?.blurHash?.toBlurHashPainter() }
 
-            val blurPlaceholder = remember(image?.blurHash) { image?.blurHash.toBlurHashPainter() }
+        if (imageUri != null) {
             AsyncImage(
                 model = imageUri,
-                placeholder = blurPlaceholder ?: ColorPainter(MaterialTheme.colorScheme.surface),
+                placeholder = blurPlaceholder ?: ColorPainter(Color(0xFF141414)),
                 error = blurPlaceholder,
-                contentDescription = null,
+                contentDescription = item.name,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
             )
+        }
 
-            // Top scrim for top bar legibility
-            Box(
-                modifier =
-                    Modifier.fillMaxWidth()
-                        .height(160.dp)
-                        .background(
-                            Brush.verticalGradient(
-                                colors =
-                                    listOf(
-                                        Color.Black.copy(alpha = 0.85f),
-                                        Color.Black.copy(alpha = 0.4f),
-                                        Color.Transparent,
-                                    )
-                            )
+        // Dark elliptical scrim radiating from bottom-left corner to contrast text without
+        // obscuring top
+        Box(
+            modifier =
+                Modifier.fillMaxSize().drawBehind {
+                    val pivot = Offset(0f, size.height)
+                    scale(
+                        scaleX = (size.width / size.height) * 1.5f,
+                        scaleY = 1.0f,
+                        pivot = pivot,
+                    ) {
+                        drawRect(
+                            brush =
+                                Brush.radialGradient(
+                                    colors =
+                                        listOf(
+                                            Color.Black.copy(alpha = 0.9f),
+                                            Color.Black.copy(alpha = 0.7f),
+                                            Color.Transparent,
+                                        ),
+                                    center = pivot,
+                                    radius = size.height * 0.95f,
+                                )
                         )
-            )
+                    }
+                }
+        )
 
-            // Left horizontal scrim for text legibility
-            Box(
-                modifier =
-                    Modifier.fillMaxSize()
-                        .background(
-                            Brush.horizontalGradient(
-                                colors =
-                                    listOf(
-                                        Color.Black.copy(alpha = 0.9f),
-                                        Color.Black.copy(alpha = 0.6f),
-                                        Color.Transparent,
-                                    ),
-                                endX = 1400f,
-                            )
+        // Left side: Title, metadata badges and synopsis (aligned bottom-left, without Home label)
+        Column(
+            modifier =
+                Modifier.align(Alignment.BottomStart)
+                    .fillMaxWidth(0.6f)
+                    .padding(start = 36.dp, bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            val logo = item.images.logo ?: item.images.showLogo
+            val logoUri =
+                if (showLogo) {
+                    logo
+                        ?.uri
+                        .toOptimizedImageUri(
+                            widthDp = 400.dp,
+                            heightDp = 120.dp,
+                            imageType = ImageType.LOGO,
                         )
-            )
+                } else null
 
-            // Bottom gradient fading into app background
-            Box(
-                modifier =
-                    Modifier.fillMaxWidth()
-                        .height(200.dp)
-                        .align(Alignment.BottomCenter)
-                        .background(
-                            Brush.verticalGradient(
-                                colors =
-                                    listOf(
-                                        Color.Transparent,
-                                        MaterialTheme.colorScheme.background.copy(alpha = 0.7f),
-                                        MaterialTheme.colorScheme.background,
-                                    )
+            var isLogoFailed by remember(logoUri) { mutableStateOf(false) }
+            var logoAspectRatio by remember(logoUri) { mutableStateOf<Float?>(null) }
+
+            val (maxLogoWidth, maxLogoHeight) =
+                when {
+                    logoAspectRatio == null -> 260.dp to 90.dp
+                    (logoAspectRatio ?: 1f) < 1.6f -> 140.dp to 110.dp
+                    (logoAspectRatio ?: 1f) > 2.5f -> 280.dp to 75.dp
+                    else -> 240.dp to 90.dp
+                }
+
+            if (logoUri != null && !isLogoFailed) {
+                AsyncImage(
+                    model = logoUri,
+                    contentDescription = item.name,
+                    contentScale = ContentScale.Fit,
+                    alignment = Alignment.CenterStart,
+                    onSuccess = { state ->
+                        val w = state.painter.intrinsicSize.width
+                        val h = state.painter.intrinsicSize.height
+                        if (w > 0 && h > 0) {
+                            logoAspectRatio = w / h
+                        }
+                    },
+                    onError = { isLogoFailed = true },
+                    modifier =
+                        Modifier.sizeIn(
+                                maxWidth = maxLogoWidth,
+                                maxHeight = maxLogoHeight,
                             )
-                        )
-            )
+                            .padding(bottom = 8.dp),
+                )
+            } else {
+                val title =
+                    when (item) {
+                        is FindroidEpisode -> item.seriesName
+                        is FindroidSeason -> item.seriesName
+                        else -> item.name
+                    }
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.headlineLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
 
-            Column(
-                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacings.small),
-                modifier =
-                    Modifier.padding(horizontal = MaterialTheme.spacings.large)
-                        .padding(bottom = MaterialTheme.spacings.large)
-                        .align(Alignment.BottomStart),
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
+                val rating =
+                    when (item) {
+                        is FindroidMovie -> item.communityRating
+                        is FindroidShow -> item.communityRating
+                        is FindroidEpisode -> item.communityRating
+                        else -> null
+                    }
+                if (rating != null && rating > 0f) {
+                    Text(
+                        text = "★ %.1f".format(rating),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFFFFD700),
+                    )
+                }
+                val year =
+                    when (item) {
+                        is FindroidMovie -> item.productionYear
+                        is FindroidShow -> item.productionYear
+                        else -> null
+                    }
+                if (year != null && year > 0) {
+                    Text(
+                        text = year.toString(),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color.White.copy(alpha = 0.75f),
+                    )
+                }
                 val genres =
                     when (item) {
                         is FindroidMovie -> item.genres
@@ -149,91 +216,28 @@ fun HomeCarouselItem(
                     }
                 if (genres.isNotEmpty()) {
                     Text(
-                        text = genres.take(3).joinToString(" • "),
+                        text = genres.take(2).joinToString(" • "),
+                        style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.primary,
-                        style = MaterialTheme.typography.labelLarge,
                     )
                 }
+            }
 
-                val logoUri =
-                    if (showLogos) {
-                        item.images.logo
-                            ?: (if (item is FindroidEpisode) item.images.showLogo else null)
-                    } else {
-                        null
-                    }
-
-                if (logoUri != null) {
-                    AsyncImage(
-                        model = logoUri,
-                        contentDescription = item.name,
-                        contentScale = ContentScale.Fit,
-                        modifier = Modifier.height(72.dp).widthIn(max = 360.dp),
-                    )
-                } else {
-                    Text(
-                        text = item.name,
-                        color = Color.White,
-                        overflow = TextOverflow.Ellipsis,
-                        maxLines = 2,
-                        style = MaterialTheme.typography.displaySmall,
-                    )
-                }
-
-                if (item.overview.isNotBlank()) {
-                    Text(
-                        text = item.overview,
-                        modifier = Modifier.widthIn(max = 680.dp),
-                        color = Color.LightGray,
-                        overflow = TextOverflow.Ellipsis,
-                        maxLines = 3,
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(MaterialTheme.spacings.extraSmall))
-
-                // Action play pill
-                Surface(
-                    onClick = { onAction(HomeAction.OnItemClick(item)) },
-                    shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(8.dp)),
-                    colors =
-                        ClickableSurfaceDefaults.colors(
-                            containerColor =
-                                if (isFocused) Color.White else Color.White.copy(alpha = 0.2f),
-                            focusedContainerColor = Color.White,
-                        ),
-                    scale =
-                        ClickableSurfaceDefaults.scale(
-                            focusedScale = 1.05f,
-                            pressedScale = 1.0f,
-                        ),
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp),
-                    ) {
-                        Icon(
-                            painter = painterResource(id = CoreR.drawable.ic_play),
-                            contentDescription = null,
-                            tint = if (isFocused) Color.Black else Color.White,
-                            modifier = Modifier.size(18.dp),
-                        )
-                        Spacer(modifier = Modifier.width(MaterialTheme.spacings.small))
-                        Text(
-                            text = stringResource(id = CoreR.string.play),
-                            style = MaterialTheme.typography.titleSmall,
-                            color = if (isFocused) Color.Black else Color.White,
-                        )
-                    }
-                }
+            if (item.overview.isNotBlank()) {
+                Text(
+                    text = item.overview,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.LightGray.copy(alpha = 0.85f),
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
         }
     }
 }
 
 @Composable
-@Preview(showBackground = true)
+@Preview(showBackground = true, device = "id:tv_1080p")
 private fun HomeCarouselItemPreview() {
-    FindroidTheme { HomeCarouselItem(item = dummyMovie, onAction = {}) }
+    FindroidTheme { HomeCarouselItem(item = dummyMovie) }
 }

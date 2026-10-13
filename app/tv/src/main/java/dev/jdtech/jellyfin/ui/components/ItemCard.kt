@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -18,10 +17,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -33,7 +33,6 @@ import androidx.tv.material3.Glow
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
-import coil3.compose.AsyncImage
 import dev.jdtech.jellyfin.core.R
 import dev.jdtech.jellyfin.core.presentation.dummy.dummyEpisode
 import dev.jdtech.jellyfin.core.presentation.dummy.dummyMovie
@@ -49,21 +48,16 @@ fun ItemCard(
     onClick: (FindroidItem) -> Unit,
     modifier: Modifier = Modifier,
     showLogos: Boolean = false,
+    focusRequester: FocusRequester? = null,
+    upFocusRequester: FocusRequester? = null,
     onFocus: ((Boolean) -> Unit)? = null,
 ) {
     val width =
         when (direction) {
-            Direction.HORIZONTAL -> 260
-            Direction.VERTICAL -> 150
+            Direction.HORIZONTAL -> 160
+            Direction.VERTICAL -> 110
         }
     var isFocused by remember { mutableStateOf(false) }
-
-    val logoUri =
-        if (showLogos) {
-            item.images.logo ?: (if (item is FindroidEpisode) item.images.showLogo else null)
-        } else {
-            null
-        }
 
     Column(modifier = modifier.width(width.dp).zIndex(if (isFocused) 1f else 0f)) {
         Surface(
@@ -72,24 +66,31 @@ fun ItemCard(
             border =
                 ClickableSurfaceDefaults.border(
                     focusedBorder =
-                        Border(BorderStroke(3.dp, Color.White), shape = RoundedCornerShape(10.dp))
+                        Border(BorderStroke(2.5.dp, Color.White), shape = RoundedCornerShape(10.dp))
                 ),
-            scale = ClickableSurfaceDefaults.scale(focusedScale = 1.08f, pressedScale = 1.02f),
+            scale = ClickableSurfaceDefaults.scale(focusedScale = 1.08f),
             glow =
                 ClickableSurfaceDefaults.glow(
                     focusedGlow =
                         Glow(
-                            elevationColor = Color.White.copy(alpha = 0.25f),
-                            elevation = 12.dp,
+                            elevationColor = Color.White.copy(alpha = 0.3f),
+                            elevation = 10.dp,
                         )
                 ),
             modifier =
-                Modifier.onFocusChanged {
-                    if (isFocused != it.isFocused) {
-                        isFocused = it.isFocused
-                        onFocus?.invoke(it.isFocused)
+                Modifier.let { mod: Modifier ->
+                        var m = mod
+                        if (focusRequester != null) m = m.focusRequester(focusRequester)
+                        if (upFocusRequester != null)
+                            m = m.focusProperties { up = upFocusRequester }
+                        m
                     }
-                },
+                    .onFocusChanged {
+                        if (isFocused != it.isFocused) {
+                            isFocused = it.isFocused
+                            onFocus?.invoke(it.isFocused)
+                        }
+                    },
         ) {
             Box {
                 ItemPoster(item = item, direction = direction)
@@ -99,32 +100,6 @@ fun ItemCard(
                         Modifier.align(Alignment.TopEnd).padding(MaterialTheme.spacings.small),
                 )
                 if (direction == Direction.HORIZONTAL) {
-                    if (showLogos && logoUri != null) {
-                        Box(
-                            modifier =
-                                Modifier.matchParentSize()
-                                    .background(
-                                        Brush.verticalGradient(
-                                            colors =
-                                                listOf(
-                                                    Color.Transparent,
-                                                    Color.Black.copy(alpha = 0.65f),
-                                                ),
-                                            startY = 50f,
-                                        )
-                                    )
-                        )
-                        AsyncImage(
-                            model = logoUri,
-                            contentDescription = item.name,
-                            contentScale = ContentScale.Fit,
-                            modifier =
-                                Modifier.align(Alignment.BottomStart)
-                                    .padding(MaterialTheme.spacings.small)
-                                    .height(34.dp)
-                                    .widthIn(max = 160.dp),
-                        )
-                    }
                     Column(
                         modifier =
                             Modifier.align(Alignment.BottomStart)
@@ -146,36 +121,22 @@ fun ItemCard(
                 }
             }
         }
-        Spacer(modifier = Modifier.height(MaterialTheme.spacings.small))
-        if (direction == Direction.VERTICAL && showLogos && logoUri != null) {
-            AsyncImage(
-                model = logoUri,
-                contentDescription = item.name,
-                contentScale = ContentScale.Fit,
-                modifier =
-                    Modifier.height(28.dp)
-                        .widthIn(max = width.dp)
-                        .padding(top = MaterialTheme.spacings.extraSmall),
-            )
-        } else {
-            Text(
-                text = if (item is FindroidEpisode) item.seriesName else item.name,
-                style = MaterialTheme.typography.titleMedium,
-                maxLines = if (direction == Direction.HORIZONTAL) 1 else 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
         if (item is FindroidEpisode) {
+            Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text =
-                    stringResource(
-                        id = R.string.episode_name_extended,
-                        item.parentIndexNumber,
-                        item.indexNumber,
-                        item.name,
-                    ),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                    if (item.parentIndexNumber > 0 && item.indexNumber > 0) {
+                        stringResource(
+                            id = R.string.episode_name_extended,
+                            item.parentIndexNumber,
+                            item.indexNumber,
+                            item.name,
+                        )
+                    } else {
+                        item.name
+                    },
+                style = MaterialTheme.typography.bodySmall,
+                color = if (isFocused) Color.White else Color.White.copy(alpha = 0.75f),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )

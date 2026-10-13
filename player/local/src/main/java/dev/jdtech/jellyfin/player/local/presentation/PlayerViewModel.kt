@@ -18,11 +18,18 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.jdtech.jellyfin.di.ApplicationScope
+import dev.jdtech.jellyfin.models.FindroidEpisode
+import dev.jdtech.jellyfin.models.FindroidItem
+import dev.jdtech.jellyfin.models.FindroidMediaStream
+import dev.jdtech.jellyfin.models.FindroidMovie
+import dev.jdtech.jellyfin.models.FindroidSeason
 import dev.jdtech.jellyfin.models.FindroidSegment
+import dev.jdtech.jellyfin.models.FindroidShow
 import dev.jdtech.jellyfin.player.core.R as CoreR
 import dev.jdtech.jellyfin.player.core.domain.PlaybackManager
 import dev.jdtech.jellyfin.player.core.domain.PlaylistManager
 import dev.jdtech.jellyfin.player.core.domain.models.PlayerChapter
+import dev.jdtech.jellyfin.player.core.domain.models.PlayerImages
 import dev.jdtech.jellyfin.player.core.domain.models.PlayerItem
 import dev.jdtech.jellyfin.player.core.domain.models.Trickplay
 import dev.jdtech.jellyfin.player.core.domain.utils.ChapterUtils
@@ -87,6 +94,15 @@ constructor(
         val currentTrickplay: Trickplay?,
         val currentChapters: List<PlayerChapter>,
         val fileLoaded: Boolean,
+        val isFavorite: Boolean = false,
+        val seasonEpisodes: List<FindroidEpisode> = emptyList(),
+        val currentEpisodeId: UUID? = null,
+        val seriesId: UUID? = null,
+        val nextSeason: FindroidSeason? = null,
+        val segments: List<FindroidSegment> = emptyList(),
+        val currentImages: PlayerImages? = null,
+        val mediaStreams: List<FindroidMediaStream> = emptyList(),
+        val suggestions: List<FindroidItem> = emptyList(),
     )
 
     private var items: MutableList<PlayerItem> = mutableListOf()
@@ -108,6 +124,9 @@ constructor(
     var playbackSpeed: Float = 1f
 
     var isInPictureInPictureMode: Boolean = false
+
+    val displayExtraInfo: Boolean
+        get() = appPreferences.getValue(appPreferences.displayExtraInfo)
 
     private var hasReportedStart = false
 
@@ -132,7 +151,6 @@ constructor(
         trackSelector.setParameters(
             trackSelector
                 .buildUponParameters()
-                .setTunnelingEnabled(true)
                 .setPreferredAudioLanguage(
                     appPreferences.getValue(appPreferences.preferredAudioLanguage)
                 )
@@ -189,9 +207,26 @@ constructor(
         viewModelScope.launch {
             val startItem =
                 try {
+                    val resolvedKind =
+                        BaseItemKind.fromNameOrNull(itemKind)
+                            ?: BaseItemKind.entries.firstOrNull {
+                                it.name.equals(itemKind, ignoreCase = true) ||
+                                    it.serialName.equals(itemKind, ignoreCase = true)
+                            }
+                            ?: repository.getItem(itemId)?.let { item ->
+                                when (item) {
+                                    is FindroidMovie -> BaseItemKind.MOVIE
+                                    is FindroidEpisode -> BaseItemKind.EPISODE
+                                    is FindroidShow -> BaseItemKind.SERIES
+                                    is FindroidSeason -> BaseItemKind.SEASON
+                                    else -> null
+                                }
+                            }
+                            ?: BaseItemKind.fromName(itemKind)
+
                     playlistManager.getInitialItem(
                         itemId = itemId,
-                        itemKind = BaseItemKind.fromName(itemKind),
+                        itemKind = resolvedKind,
                         mediaSourceIndex = null,
                         startFromBeginning = startFromBeginning,
                     )
@@ -229,17 +264,131 @@ constructor(
             player.prepare()
             player.play()
         }
+        loadItemMetadata(itemId)
+    }
+
+    fun getBaseUrl(): String = repository.getBaseUrl()
+
+    fun loadItemMetadata(itemId: UUID) {
+        viewModelScope.launch {
+            try {
+                val item = repository.getItem(itemId)
+                if (item != null) {
+                    val isFav = item.favorite
+                    val episodes: List<FindroidEpisode>
+                    val nextSeason: FindroidSeason?
+                    if (item is FindroidEpisode) {
+                        episodes =
+                            repository.getEpisodes(
+                                seriesId = item.seriesId,
+                                seasonId = item.seasonId,
+                            )
+                        val seasons = repository.getSeasons(seriesId = item.seriesId)
+                        nextSeason =
+                            seasons
+                                .filter { it.indexNumber > item.parentIndexNumber }
+                                .minByOrNull { it.indexNumber }
+                    } else {
+                        episodes = emptyList()
+                        nextSeason = null
+                    }
+                    val mediaSources =
+                        try {
+                            repository.getMediaSources(itemId, includePath = true)
+                        } catch (_: Exception) {
+                            emptyList()
+                        }
+                    val streams = mediaSources.firstOrNull()?.mediaStreams ?: emptyList()
+                    val suggestions =
+                        try {
+                            repository.getSuggestions(forceRefresh = false)
+                        } catch (_: Exception) {
+                            emptyList()
+                        }
+                    _uiState.update {
+                        it.copy(
+                            isFavorite = isFav,
+                            seasonEpisodes = episodes,
+                            currentEpisodeId = if (item is FindroidEpisode) item.id else null,
+                            seriesId = if (item is FindroidEpisode) item.seriesId else null,
+                            nextSeason = nextSeason,
+                            mediaStreams = streams,
+                            suggestions = suggestions,
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error loading item metadata for player")
+            }
+        }
+    }
+
+    fun toggleFavorite() {
+        val currentMediaId = player.currentMediaItem?.mediaId ?: return
+        val itemId = UUID.fromString(currentMediaId)
+        val currentlyFavorite = _uiState.value.isFavorite
+        viewModelScope.launch {
+            try {
+                if (currentlyFavorite) {
+                    repository.unmarkAsFavorite(itemId)
+                } else {
+                    repository.markAsFavorite(itemId)
+                }
+                _uiState.update { it.copy(isFavorite = !currentlyFavorite) }
+            } catch (e: Exception) {
+                Timber.e(e, "Error toggling favorite")
+            }
+        }
+    }
+
+    fun playEpisode(episode: FindroidEpisode) {
+        initializePlayer(
+            itemId = episode.id,
+            itemKind = BaseItemKind.EPISODE.serialName,
+            startFromBeginning = false,
+        )
+    }
+
+    fun playSeason(season: FindroidSeason) {
+        viewModelScope.launch {
+            try {
+                val episodes =
+                    repository.getEpisodes(seriesId = season.seriesId, seasonId = season.id)
+                val firstEp = episodes.minByOrNull { it.indexNumber } ?: return@launch
+                playEpisode(firstEp)
+            } catch (e: Exception) {
+                Timber.e(e, "Error playing next season")
+            }
+        }
     }
 
     private fun PlayerItem.toMediaItem(): MediaItem {
         val streamUrl = mediaSourceUri
-        val mediaSubtitles = externalSubtitles.map { externalSubtitle ->
+        val mediaSubtitles = externalSubtitles.mapIndexed { idx, externalSubtitle ->
+            var selectionFlags = 0
+            if (externalSubtitle.isForced) {
+                selectionFlags = selectionFlags or C.SELECTION_FLAG_FORCED
+            }
+            if (externalSubtitle.isDefault) {
+                selectionFlags = selectionFlags or C.SELECTION_FLAG_DEFAULT
+            }
+            var roleFlags = 0
+            if (externalSubtitle.isHearingImpaired) {
+                roleFlags =
+                    roleFlags or C.ROLE_FLAG_DESCRIBES_MUSIC_AND_SOUND or C.ROLE_FLAG_CAPTION
+            }
             MediaItem.SubtitleConfiguration.Builder(externalSubtitle.uri)
+                .setId("external_${externalSubtitle.index ?: idx}")
                 .setLabel(
-                    externalSubtitle.title.ifBlank { application.getString(CoreR.string.external) }
+                    externalSubtitle.title.ifBlank {
+                        externalSubtitle.displayTitle?.ifBlank { null }
+                            ?: application.getString(CoreR.string.external)
+                    }
                 )
                 .setMimeType(externalSubtitle.mimeType)
                 .setLanguage(externalSubtitle.language)
+                .setSelectionFlags(selectionFlags)
+                .setRoleFlags(roleFlags)
                 .build()
         }
 
@@ -380,24 +529,27 @@ constructor(
                                     item.name
                                 }
                             }
+                        val loadedSegments = getSegments(item.itemId, repository)
+                        currentMediaItemSegments = loadedSegments
+
                         _uiState.update {
                             it.copy(
                                 currentItemTitle = itemTitle,
                                 currentSegment = null,
                                 currentChapters = item.chapters,
+                                segments = loadedSegments,
+                                currentImages = item.images,
                                 fileLoaded = false,
                             )
                         }
 
                         hasReportedStart = false
 
-                        if (segmentsSkipButton || segmentsAutoSkip) {
-                            currentMediaItemSegments = getSegments(item.itemId, repository)
-                        }
-
                         if (appPreferences.getValue(appPreferences.playerTrickplay)) {
                             getTrickplay(item)
                         }
+
+                        loadItemMetadata(item.itemId)
 
                         playlistManager.setCurrentMediaItemIndex(item.itemId)
 
@@ -491,6 +643,7 @@ constructor(
             player.trackSelectionParameters =
                 player.trackSelectionParameters
                     .buildUpon()
+                    .clearOverridesOfType(trackType)
                     .setOverrideForType(
                         TrackSelectionOverride(
                             player.currentTracks.groups

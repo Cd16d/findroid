@@ -19,6 +19,7 @@ import android.view.animation.AccelerateInterpolator
 import android.view.animation.DecelerateInterpolator
 import android.widget.ImageView
 import androidx.core.view.isVisible
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import coil3.load
@@ -453,6 +454,7 @@ class PlayerGestureHelper(
             )
             .apply { isQuickScaleEnabled = false }
 
+    @androidx.annotation.OptIn(UnstableApi::class)
     fun updateZoomMode(enabled: Boolean) {
         if (playerView.player is MPVPlayer) {
             (playerView.player as MPVPlayer).updateZoomMode(enabled)

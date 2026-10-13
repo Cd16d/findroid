@@ -77,7 +77,7 @@ interface JellyfinRepository {
 
     suspend fun getSearchItems(query: String): List<FindroidItem>
 
-    suspend fun getSuggestions(): List<FindroidItem>
+    suspend fun getSuggestions(forceRefresh: Boolean = false): List<FindroidItem>
 
     suspend fun getResumeItems(): List<FindroidItem>
 

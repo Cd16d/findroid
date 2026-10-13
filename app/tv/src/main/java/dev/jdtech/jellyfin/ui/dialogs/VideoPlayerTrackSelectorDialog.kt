@@ -14,9 +14,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -31,6 +33,7 @@ import androidx.tv.material3.Text
 import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.player.core.R
 import dev.jdtech.jellyfin.player.core.domain.models.Track
+import dev.jdtech.jellyfin.player.core.domain.utils.TrackFormatter
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
 import kotlinx.parcelize.Parcelize
@@ -95,12 +98,18 @@ fun VideoPlayerTrackSelectorDialog(
                         ) {
                             RadioButton(selected = track.selected, onClick = null, enabled = true)
                             Spacer(modifier = Modifier.width(MaterialTheme.spacings.medium))
+                            val context = LocalContext.current
+                            val displayName =
+                                remember(track) {
+                                    TrackFormatter.getTrackDisplayInfo(
+                                            track = track,
+                                            context = context,
+                                            displayExtraInfo = true,
+                                        )
+                                        .fullTitle
+                                }
                             Text(
-                                text =
-                                    listOf(track.label, track.language, track.codec)
-                                        .mapNotNull { it }
-                                        .joinToString(" - ")
-                                        .ifEmpty { stringResource(id = R.string.none) },
+                                text = displayName.ifEmpty { stringResource(id = R.string.none) },
                                 style = MaterialTheme.typography.bodyLarge,
                             )
                         }

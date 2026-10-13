@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -30,7 +31,8 @@ import org.jellyfin.sdk.model.api.ImageType
 @Composable
 fun ProfileButton(user: User?, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val context = LocalContext.current
-    val baseUrl = JellyfinApi.getInstance(context).api.baseUrl
+    val baseUrl =
+        if (LocalInspectionMode.current) "" else JellyfinApi.getInstance(context).api.baseUrl
     Surface(
         onClick = { onClick() },
         colors =
@@ -54,7 +56,8 @@ fun ProfileButton(user: User?, onClick: () -> Unit, modifier: Modifier = Modifie
         )
         user?.let {
             AsyncImage(
-                model = "$baseUrl/users/${user.id}/Images/${ImageType.PRIMARY}",
+                model =
+                    "$baseUrl/users/${user.id}/Images/${ImageType.PRIMARY}?maxWidth=64&maxHeight=64&quality=80",
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),

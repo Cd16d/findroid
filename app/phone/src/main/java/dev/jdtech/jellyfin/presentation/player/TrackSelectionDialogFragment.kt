@@ -30,7 +30,7 @@ class TrackSelectionDialogFragment(
             val builder = MaterialAlertDialogBuilder(activity)
             builder.setTitle(getString(titleResource)).setSingleChoiceItems(
                 arrayOf(getString(R.string.none)) +
-                    tracksGroups.getTrackNames(), // Add "None" at the top of the list
+                    tracksGroups.getTrackNames(activity), // Add "None" at the top of the list
                 tracksGroups.indexOfFirst { it.isSelected } +
                     1, // Add 1 to the index to account for the "None" item
             ) { dialog, which ->

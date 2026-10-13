@@ -208,15 +208,23 @@ class PlaylistManager @Inject internal constructor(private val repository: Jelly
                 }
                 .map { mediaStream ->
                     ExternalSubtitle(
-                        mediaStream.title,
-                        mediaStream.language,
-                        mediaStream.path!!.toUri(),
-                        when (mediaStream.codec) {
-                            "subrip" -> MimeTypes.APPLICATION_SUBRIP
-                            "webvtt" -> MimeTypes.TEXT_VTT
-                            "ass" -> MimeTypes.TEXT_SSA
-                            else -> MimeTypes.TEXT_UNKNOWN
-                        },
+                        title = mediaStream.title,
+                        language = mediaStream.language,
+                        uri = mediaStream.path!!.toUri(),
+                        mimeType =
+                            when (mediaStream.codec.lowercase()) {
+                                "subrip" -> MimeTypes.APPLICATION_SUBRIP
+                                "webvtt" -> MimeTypes.TEXT_VTT
+                                "ass",
+                                "ssa" -> MimeTypes.TEXT_SSA
+                                else -> MimeTypes.TEXT_UNKNOWN
+                            },
+                        isForced = mediaStream.isForced ?: false,
+                        isHearingImpaired = mediaStream.isHearingImpaired ?: false,
+                        isDefault = mediaStream.isDefault ?: false,
+                        codec = mediaStream.codec,
+                        displayTitle = mediaStream.displayTitle,
+                        index = mediaStream.index,
                     )
                 }
         val trickplayInfo =
