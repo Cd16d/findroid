@@ -179,6 +179,19 @@ class AppPreferences @Inject constructor(val sharedPreferences: SharedPreference
         }
     }
 
+    /** Emits the current value of [preference] and then emits a new value every time it changes. */
+    inline fun <reified T> observe(preference: Preference<T>): Flow<T> = callbackFlow {
+        trySend(getValue(preference))
+
+        val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, changedKey ->
+            if (changedKey == preference.backendName) {
+                trySend(getValue(preference))
+            }
+        }
+        sharedPreferences.registerOnSharedPreferenceChangeListener(listener)
+        awaitClose { sharedPreferences.unregisterOnSharedPreferenceChangeListener(listener) }
+    }
+
     inline fun <reified T> setValue(preference: Preference<T>, value: T) {
         sharedPreferences.edit {
             @Suppress("UNCHECKED_CAST")
@@ -192,16 +205,5 @@ class AppPreferences @Inject constructor(val sharedPreferences: SharedPreference
                 else -> throw Exception()
             }
         }
-    }
-
-    inline fun <reified T> observe(preference: Preference<T>): Flow<T> = callbackFlow {
-        val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-            if (key == preference.backendName || key == null) {
-                trySend(getValue(preference))
-            }
-        }
-        trySend(getValue(preference))
-        sharedPreferences.registerOnSharedPreferenceChangeListener(listener)
-        awaitClose { sharedPreferences.unregisterOnSharedPreferenceChangeListener(listener) }
     }
 }

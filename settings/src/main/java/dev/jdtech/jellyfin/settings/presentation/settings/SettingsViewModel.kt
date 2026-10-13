@@ -141,7 +141,7 @@ constructor(
                                 viewModelScope.launch {
                                     eventsChannel.send(
                                         SettingsEvent.NavigateToSettings(
-                                            intArrayOf(it.nameStringResource)
+                                            listOf(it.nameStringResource)
                                         )
                                     )
                                 }
@@ -247,7 +247,7 @@ constructor(
                                 viewModelScope.launch {
                                     eventsChannel.send(
                                         SettingsEvent.NavigateToSettings(
-                                            intArrayOf(it.nameStringResource)
+                                            listOf(it.nameStringResource)
                                         )
                                     )
                                 }
@@ -306,7 +306,7 @@ constructor(
                                 viewModelScope.launch {
                                     eventsChannel.send(
                                         SettingsEvent.NavigateToSettings(
-                                            intArrayOf(it.nameStringResource)
+                                            listOf(it.nameStringResource)
                                         )
                                     )
                                 }
@@ -379,7 +379,7 @@ constructor(
                                                         viewModelScope.launch {
                                                             eventsChannel.send(
                                                                 SettingsEvent.NavigateToSettings(
-                                                                    intArrayOf(
+                                                                    listOf(
                                                                         R.string
                                                                             .settings_category_player,
                                                                         it.nameStringResource,
@@ -748,7 +748,7 @@ constructor(
                                 viewModelScope.launch {
                                     eventsChannel.send(
                                         SettingsEvent.NavigateToSettings(
-                                            intArrayOf(it.nameStringResource)
+                                            listOf(it.nameStringResource)
                                         )
                                     )
                                 }
@@ -932,7 +932,7 @@ constructor(
                                 viewModelScope.launch {
                                     eventsChannel.send(
                                         SettingsEvent.NavigateToSettings(
-                                            intArrayOf(it.nameStringResource)
+                                            listOf(it.nameStringResource)
                                         )
                                     )
                                 }
@@ -979,7 +979,7 @@ constructor(
                                 viewModelScope.launch {
                                     eventsChannel.send(
                                         SettingsEvent.NavigateToSettings(
-                                            intArrayOf(it.nameStringResource)
+                                            listOf(it.nameStringResource)
                                         )
                                     )
                                 }
@@ -1045,7 +1045,7 @@ constructor(
             ),
         )
 
-    fun loadPreferences(indexes: IntArray = intArrayOf(), deviceType: DeviceType) {
+    fun loadPreferences(indexes: List<Int> = emptyList(), deviceType: DeviceType) {
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true) }
             var preferences = topLevelPreferences

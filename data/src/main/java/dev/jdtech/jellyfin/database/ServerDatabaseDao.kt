@@ -68,6 +68,13 @@ interface ServerDatabaseDao {
 
     @Query("SELECT COUNT(*) FROM servers") suspend fun getServersCount(): Int
 
+    @Query("SELECT COUNT(*) FROM servers") fun observeServersCount(): Flow<Int>
+
+    @Query("SELECT * FROM servers WHERE id = :id") fun observeServer(id: String): Flow<Server?>
+
+    @Query("SELECT currentUserId FROM servers WHERE id = :id")
+    fun observeServerCurrentUserId(id: String): Flow<UUID?>
+
     @Query("DELETE FROM servers WHERE id = :id") suspend fun deleteServer(id: String)
 
     @Query("DELETE FROM users WHERE id = :id") suspend fun deleteUser(id: UUID)

@@ -17,7 +17,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.compose.rememberNavController
 import dagger.hilt.android.AndroidEntryPoint
 import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
@@ -36,10 +35,8 @@ class MainActivity : ComponentActivity() {
             val state by viewModel.state.collectAsStateWithLifecycle()
 
             FindroidTheme {
-                val navController = rememberNavController()
                 if (!state.isLoading) {
                     NavigationRoot(
-                        navController = navController,
                         hasServers = state.hasServers,
                         hasCurrentServer = state.hasCurrentServer,
                         hasCurrentUser = state.hasCurrentUser,

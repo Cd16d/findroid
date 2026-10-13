@@ -13,7 +13,7 @@ sealed interface SettingsEvent {
 
     data object NavigateToDownloadPresets : SettingsEvent
 
-    data class NavigateToSettings(val indexes: IntArray) : SettingsEvent
+    data class NavigateToSettings(val indexes: List<Int>) : SettingsEvent
 
     data class NavigateToSettingsFileEdit(val filePath: String) : SettingsEvent
 
