@@ -386,18 +386,15 @@ constructor(
         if (item !is FindroidSources) return
         val trickplayInfo = item.trickplayInfo?.get(sourceId) ?: return
         try {
-            val maxIndex =
-                ceil(
-                        trickplayInfo.thumbnailCount
-                            .toDouble()
-                            .div(trickplayInfo.tileWidth * trickplayInfo.tileHeight)
-                    )
-                    .toInt()
+            val tilesPerSheet = trickplayInfo.tileWidth * trickplayInfo.tileHeight
+            if (tilesPerSheet <= 0) return
+            val sheetCount =
+                ceil(trickplayInfo.thumbnailCount.toDouble().div(tilesPerSheet)).toInt()
             val basePath = "trickplay/${item.id}/$sourceId"
             val dir = File(appContext.filesDir, basePath)
             dir.mkdirs()
             var tileCount = 0
-            for (i in 0..maxIndex) {
+            for (i in 0 until sheetCount) {
                 currentCoroutineContext().ensureActive()
                 if (isStopped) break
 

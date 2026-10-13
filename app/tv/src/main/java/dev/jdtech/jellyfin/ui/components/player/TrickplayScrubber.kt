@@ -47,7 +47,13 @@ fun TrickplayScrubber(
         val intervalMs =
             if (trickplay.interval > 1000) trickplay.interval.toLong()
             else trickplay.interval.toLong() * 1000L
-        val totalImages = trickplay.images.size
+        val maxDurationCount =
+            if (durationMs > 0L && intervalMs > 0L) {
+                ((durationMs / intervalMs).toInt() + 1).coerceAtLeast(1)
+            } else {
+                trickplay.images.size
+            }
+        val totalImages = minOf(trickplay.images.size, maxDurationCount)
         val targetCenterIndex =
             if (intervalMs > 0) {
                 (currentPositionMs / intervalMs).toInt().coerceIn(0, totalImages - 1)
@@ -135,13 +141,15 @@ fun TrickplayScrubber(
                             ),
                     contentAlignment = Alignment.Center,
                 ) {
-                    val bitmap = trickplay.images[i]
-                    Image(
-                        bitmap = bitmap.asImageBitmap(),
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop,
-                    )
+                    val bitmap = trickplay.images.getOrNull(i)
+                    if (bitmap != null) {
+                        Image(
+                            bitmap = bitmap.asImageBitmap(),
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop,
+                        )
+                    }
                 }
             }
         }

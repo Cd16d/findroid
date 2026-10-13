@@ -389,7 +389,8 @@ fun PlayerScreen(
 
     fun seekRelativeWithTrickplay(deltaMs: Long) {
         val currentPos = viewModel.player.currentPosition
-        val newPos = (currentPos + deltaMs).coerceIn(0L, viewModel.player.duration)
+        val safeDuration = viewModel.player.duration.coerceAtLeast(0L)
+        val newPos = (currentPos + deltaMs).coerceIn(0L, safeDuration)
         viewModel.player.seekTo(newPos)
         currentPosition = newPos
         scrubPositionMs = newPos

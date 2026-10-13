@@ -667,34 +667,42 @@ constructor(
         Timber.d("Trickplay Resolution: ${trickplayInfo.width}")
 
         withContext(Dispatchers.Default) {
-            val maxIndex =
-                ceil(
-                        trickplayInfo.thumbnailCount
-                            .toDouble()
-                            .div(trickplayInfo.tileWidth * trickplayInfo.tileHeight)
-                    )
-                    .toInt()
+            val tilesPerSheet = trickplayInfo.tileWidth * trickplayInfo.tileHeight
+            if (tilesPerSheet <= 0) return@withContext
+            val sheetCount =
+                ceil(trickplayInfo.thumbnailCount.toDouble().div(tilesPerSheet)).toInt()
             val bitmaps = mutableListOf<Bitmap>()
 
-            for (i in 0..maxIndex) {
+            for (i in 0 until sheetCount) {
+                if (bitmaps.size >= trickplayInfo.thumbnailCount) break
                 repository.getTrickplayData(item.itemId, trickplayInfo.width, i)?.let { byteArray ->
-                    val fullBitmap = BitmapFactory.decodeByteArray(byteArray, 0, byteArray.size)
-                    for (offsetY in
-                        0..<trickplayInfo.height * trickplayInfo.tileHeight step
-                            trickplayInfo.height) {
-                        for (offsetX in
-                            0..<trickplayInfo.width * trickplayInfo.tileWidth step
-                                trickplayInfo.width) {
-                            val bitmap =
-                                Bitmap.createBitmap(
-                                    fullBitmap,
-                                    offsetX,
-                                    offsetY,
-                                    trickplayInfo.width,
-                                    trickplayInfo.height,
-                                )
-                            bitmaps.add(bitmap)
+                    val fullBitmap =
+                        BitmapFactory.decodeByteArray(byteArray, 0, byteArray.size) ?: return@let
+                    try {
+                        for (offsetY in
+                            0..<trickplayInfo.height * trickplayInfo.tileHeight step
+                                trickplayInfo.height) {
+                            for (offsetX in
+                                0..<trickplayInfo.width * trickplayInfo.tileWidth step
+                                    trickplayInfo.width) {
+                                if (bitmaps.size < trickplayInfo.thumbnailCount) {
+                                    val bitmap =
+                                        Bitmap.createBitmap(
+                                            fullBitmap,
+                                            offsetX,
+                                            offsetY,
+                                            trickplayInfo.width,
+                                            trickplayInfo.height,
+                                        )
+                                    bitmaps.add(bitmap)
+                                } else {
+                                    break
+                                }
+                            }
+                            if (bitmaps.size >= trickplayInfo.thumbnailCount) break
                         }
+                    } finally {
+                        fullBitmap.recycle()
                     }
                 }
             }

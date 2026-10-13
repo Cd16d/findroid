@@ -469,18 +469,16 @@ constructor(
     private suspend fun getTrickplay(item: PlayerItem) {
         val trickplayInfo = item.trickplayInfo ?: return
         withContext(defaultDispatcher) {
-            val maxIndex =
-                ceil(
-                        trickplayInfo.thumbnailCount
-                            .toDouble()
-                            .div(trickplayInfo.tileWidth * trickplayInfo.tileHeight)
-                    )
-                    .toInt()
+            val tilesPerSheet = trickplayInfo.tileWidth * trickplayInfo.tileHeight
+            if (tilesPerSheet <= 0) return@withContext
+            val sheetCount =
+                ceil(trickplayInfo.thumbnailCount.toDouble().div(tilesPerSheet)).toInt()
             val bitmaps = mutableListOf<Bitmap>()
             var success = false
 
             try {
-                for (i in 0..maxIndex) {
+                for (i in 0 until sheetCount) {
+                    if (bitmaps.size >= trickplayInfo.thumbnailCount) break
                     coroutineContext.ensureActive()
                     val byteArray =
                         repository.getTrickplayData(item.itemId, trickplayInfo.width, i) ?: continue
@@ -505,8 +503,11 @@ constructor(
                                             trickplayInfo.height,
                                         )
                                     bitmaps.add(bitmap)
+                                } else {
+                                    break
                                 }
                             }
+                            if (bitmaps.size >= trickplayInfo.thumbnailCount) break
                         }
                     } finally {
                         fullBitmap.recycle()
