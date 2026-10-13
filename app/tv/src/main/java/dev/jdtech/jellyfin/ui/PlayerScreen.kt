@@ -1191,25 +1191,13 @@ fun VideoPlayerControls(
                                                                         it.index == index
                                                                     }
                                                             if (visibleItem != null) {
-                                                                val itemSize =
-                                                                    visibleItem.size.toFloat()
-                                                                val spacing =
-                                                                    lazyListState.layoutInfo
-                                                                        .mainAxisItemSpacing
-                                                                        .toFloat()
                                                                 val beforePadding =
                                                                     lazyListState.layoutInfo
                                                                         .beforeContentPadding
                                                                         .toFloat()
-                                                                val targetOffset =
-                                                                    if (index == 0) {
-                                                                        beforePadding
-                                                                    } else {
-                                                                        (itemSize * 0.5f) + spacing
-                                                                    }
                                                                 val delta =
                                                                     visibleItem.offset -
-                                                                        targetOffset
+                                                                        beforePadding
                                                                 if (kotlin.math.abs(delta) > 2f) {
                                                                     lazyListState.animateScrollBy(
                                                                         value = delta,
@@ -1227,19 +1215,10 @@ fun VideoPlayerControls(
                                                                     )
                                                                 }
                                                             } else {
-                                                                if (index == 0) {
-                                                                    lazyListState
-                                                                        .animateScrollToItem(0)
-                                                                } else {
-                                                                    lazyListState
-                                                                        .animateScrollToItem(
-                                                                            index = index - 1,
-                                                                            scrollOffset =
-                                                                                (180.dp.value *
-                                                                                        0.5f)
-                                                                                    .toInt(),
-                                                                        )
-                                                                }
+                                                                lazyListState.animateScrollToItem(
+                                                                    index = index,
+                                                                    scrollOffset = 0,
+                                                                )
                                                             }
                                                         }
                                                     }
@@ -1387,17 +1366,13 @@ fun VideoPlayerControls(
                                                                                 seasonEpisodes.size
                                                                         }
                                                                 if (visibleItem != null) {
-                                                                    val itemSize =
-                                                                        visibleItem.size.toFloat()
-                                                                    val spacing =
+                                                                    val beforePadding =
                                                                         lazyListState.layoutInfo
-                                                                            .mainAxisItemSpacing
+                                                                            .beforeContentPadding
                                                                             .toFloat()
-                                                                    val targetOffset =
-                                                                        (itemSize * 0.5f) + spacing
                                                                     val delta =
                                                                         visibleItem.offset -
-                                                                            targetOffset
+                                                                            beforePadding
                                                                     if (
                                                                         kotlin.math.abs(delta) > 2f
                                                                     ) {
@@ -1418,6 +1393,13 @@ fun VideoPlayerControls(
                                                                                     ),
                                                                             )
                                                                     }
+                                                                } else {
+                                                                    lazyListState
+                                                                        .animateScrollToItem(
+                                                                            index =
+                                                                                seasonEpisodes.size,
+                                                                            scrollOffset = 0,
+                                                                        )
                                                                 }
                                                             }
                                                         }

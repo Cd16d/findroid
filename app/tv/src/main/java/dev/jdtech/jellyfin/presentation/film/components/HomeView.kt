@@ -129,18 +129,9 @@ fun HomeView(
                                         it.index == index
                                     }
                                 if (visibleItem != null) {
-                                    val itemSize = visibleItem.size.toFloat()
-                                    val spacing =
-                                        lazyListState.layoutInfo.mainAxisItemSpacing.toFloat()
                                     val beforePadding =
                                         lazyListState.layoutInfo.beforeContentPadding.toFloat()
-                                    val targetOffset =
-                                        if (index == 0) {
-                                            beforePadding
-                                        } else {
-                                            (itemSize * 0.5f) + spacing
-                                        }
-                                    val delta = visibleItem.offset - targetOffset
+                                    val delta = visibleItem.offset - beforePadding
                                     if (kotlin.math.abs(delta) > 2f) {
                                         lazyListState.animateScrollBy(
                                             value = delta,
@@ -152,14 +143,10 @@ fun HomeView(
                                         )
                                     }
                                 } else {
-                                    if (index == 0) {
-                                        lazyListState.animateScrollToItem(0)
-                                    } else {
-                                        lazyListState.animateScrollToItem(
-                                            index = index - 1,
-                                            scrollOffset = (itemWidth.value * 0.5f).toInt(),
-                                        )
-                                    }
+                                    lazyListState.animateScrollToItem(
+                                        index = index,
+                                        scrollOffset = 0,
+                                    )
                                 }
                             }
                         }
@@ -187,11 +174,9 @@ fun HomeView(
                                             it.index == view.view.items.size
                                         }
                                     if (visibleItem != null) {
-                                        val itemSize = visibleItem.size.toFloat()
-                                        val spacing =
-                                            lazyListState.layoutInfo.mainAxisItemSpacing.toFloat()
-                                        val targetOffset = (itemSize * 0.5f) + spacing
-                                        val delta = visibleItem.offset - targetOffset
+                                        val beforePadding =
+                                            lazyListState.layoutInfo.beforeContentPadding.toFloat()
+                                        val delta = visibleItem.offset - beforePadding
                                         if (kotlin.math.abs(delta) > 2f) {
                                             lazyListState.animateScrollBy(
                                                 value = delta,
@@ -203,6 +188,11 @@ fun HomeView(
                                                     ),
                                             )
                                         }
+                                    } else {
+                                        lazyListState.animateScrollToItem(
+                                            index = view.view.items.size,
+                                            scrollOffset = 0,
+                                        )
                                     }
                                 }
                             }
