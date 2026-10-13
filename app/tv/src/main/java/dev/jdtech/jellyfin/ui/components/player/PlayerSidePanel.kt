@@ -370,12 +370,43 @@ private fun SubtitleTrackList(
                     val track =
                         TrackFormatter.toTrack(group, index + 1).let { t ->
                             if (matchedStream != null) {
+                                val isForced =
+                                    matchedStream.isForced == true ||
+                                        t.isForced == true ||
+                                        matchedStream.title.contains("forced", ignoreCase = true) ||
+                                        matchedStream.title.contains("forzat", ignoreCase = true) ||
+                                        matchedStream.displayTitle?.contains(
+                                            "forced",
+                                            ignoreCase = true,
+                                        ) == true ||
+                                        matchedStream.displayTitle?.contains(
+                                            "forzat",
+                                            ignoreCase = true,
+                                        ) == true
+                                val isHearingImpaired =
+                                    matchedStream.isHearingImpaired == true ||
+                                        t.isHearingImpaired == true ||
+                                        matchedStream.title.contains("sdh", ignoreCase = true) ||
+                                        matchedStream.title.contains("cc", ignoreCase = true) ||
+                                        matchedStream.displayTitle?.contains(
+                                            "sdh",
+                                            ignoreCase = true,
+                                        ) == true
+                                val isExternal =
+                                    matchedStream.isExternal ||
+                                        t.isExternal == true ||
+                                        matchedStream.title.contains(
+                                            "external",
+                                            ignoreCase = true,
+                                        ) ||
+                                        matchedStream.displayTitle?.contains(
+                                            "external",
+                                            ignoreCase = true,
+                                        ) == true
                                 t.copy(
-                                    isForced = matchedStream.isForced == true || t.isForced == true,
-                                    isHearingImpaired =
-                                        matchedStream.isHearingImpaired == true ||
-                                            t.isHearingImpaired == true,
-                                    isExternal = matchedStream.isExternal || t.isExternal == true,
+                                    isForced = isForced,
+                                    isHearingImpaired = isHearingImpaired,
+                                    isExternal = isExternal,
                                     codec =
                                         matchedStream.codec.takeIf { it.isNotBlank() } ?: t.codec,
                                     label =
