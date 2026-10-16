@@ -31,20 +31,6 @@
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
         </activity>
-
-        <service
-            android:name=".services.FindroidDreamService"
-            android:exported="true"
-            android:label="@string/app_name"
-            android:permission="android.permission.BIND_DREAM_SERVICE">
-            <intent-filter>
-                <action android:name="android.service.dreams.DreamService" />
-                <category android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
-            <meta-data
-                android:name="android.service.dream"
-                android:resource="@xml/dream_info" />
-        </service>
     </application>
 
 </manifest>

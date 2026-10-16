@@ -14,6 +14,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,8 +22,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteItem
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
-import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffoldDefaults
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
 import androidx.compose.material3.adaptive.navigationsuite.rememberNavigationSuiteScaffoldState
 import androidx.compose.runtime.Composable
@@ -274,15 +275,23 @@ private fun MainNavigation(
             WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND
         )
     val customNavSuiteType =
-        with(windowAdaptiveInfo) {
-            if (
-                windowSizeClass.isWidthAtLeastBreakpoint(
-                    WindowSizeClass.WIDTH_DP_EXPANDED_LOWER_BOUND
-                )
-            ) {
-                NavigationSuiteType.NavigationRail
-            } else {
-                NavigationSuiteScaffoldDefaults.calculateFromAdaptiveInfo(this)
+        with(windowAdaptiveInfo.windowSizeClass) {
+            when {
+                // Compact Width (Phone Portrait) -> Always Compact Bar
+                !isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND) -> {
+                    NavigationSuiteType.ShortNavigationBarCompact
+                }
+
+                // Expanded Width (Tablet Landscape/PC) OR Compact Height (Phone Landscape) -> Rail
+                isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_EXPANDED_LOWER_BOUND) ||
+                    !isHeightAtLeastBreakpoint(WindowSizeClass.HEIGHT_DP_MEDIUM_LOWER_BOUND) -> {
+                    NavigationSuiteType.WideNavigationRailCollapsed
+                }
+
+                // Medium Width + Medium Height (Tablet Portrait) -> Medium Bar
+                else -> {
+                    NavigationSuiteType.ShortNavigationBarMedium
+                }
             }
         }
 
@@ -374,9 +383,9 @@ private fun MainNavigation(
             },
         ) {
             NavigationSuiteScaffold(
-                navigationSuiteItems = {
+                navigationItems = {
                     navigationItems.forEach { item ->
-                        item(
+                        NavigationSuiteItem(
                             selected = topLevelRoute == item.route,
                             onClick = {
                                 if (item.route == MediaRoute && topLevelRoute == MediaRoute) {
@@ -393,10 +402,12 @@ private fun MainNavigation(
                             },
                             enabled = item.enabled,
                             label = { Text(text = stringResource(item.title)) },
+                            navigationSuiteType = customNavSuiteType,
                         )
                     }
                 },
-                layoutType = customNavSuiteType,
+                navigationItemVerticalArrangement = Arrangement.Center,
+                navigationSuiteType = customNavSuiteType,
                 state = navigationSuiteScaffoldState,
             ) {
                 Row(modifier = Modifier.fillMaxSize()) {

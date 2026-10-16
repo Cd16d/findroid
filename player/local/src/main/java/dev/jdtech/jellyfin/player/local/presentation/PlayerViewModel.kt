@@ -80,6 +80,8 @@ constructor(
                 currentTrickplay = null,
                 currentChapters = emptyList(),
                 fileLoaded = false,
+                isScreensaverEnabled = appPreferences.getValue(appPreferences.tvScreensaver),
+                hideEpisodeSpoilers = appPreferences.getValue(appPreferences.hideEpisodeSpoilers),
             )
         )
     val uiState = _uiState.asStateFlow()
@@ -89,6 +91,7 @@ constructor(
 
     data class UiState(
         val currentItemTitle: String,
+        val currentItemSubtitle: String? = null,
         val currentSegment: FindroidSegment?,
         val currentSkipButtonStringRes: Int,
         val currentTrickplay: Trickplay?,
@@ -103,6 +106,8 @@ constructor(
         val currentImages: PlayerImages? = null,
         val mediaStreams: List<FindroidMediaStream> = emptyList(),
         val suggestions: List<FindroidItem> = emptyList(),
+        val isScreensaverEnabled: Boolean = true,
+        val hideEpisodeSpoilers: Boolean = false,
     )
 
     private var items: MutableList<PlayerItem> = mutableListOf()
@@ -131,6 +136,16 @@ constructor(
     private var hasReportedStart = false
 
     init {
+        viewModelScope.launch {
+            appPreferences.observe(appPreferences.tvScreensaver).collect { enabled ->
+                _uiState.update { it.copy(isScreensaverEnabled = enabled) }
+            }
+        }
+        viewModelScope.launch {
+            appPreferences.observe(appPreferences.hideEpisodeSpoilers).collect { hideSpoilers ->
+                _uiState.update { it.copy(hideEpisodeSpoilers = hideSpoilers) }
+            }
+        }
         segmentsSkipButton = appPreferences.getValue(appPreferences.playerMediaSegmentsSkipButton)
         segmentsSkipButtonTypes =
             appPreferences.getValue(appPreferences.playerMediaSegmentsSkipButtonType)
@@ -507,27 +522,41 @@ constructor(
                 items
                     .first { it.itemId.toString() == player.currentMediaItem?.mediaId }
                     .let { item ->
-                        val itemTitle =
-                            if (item.parentIndexNumber != null && item.indexNumber != null) {
-                                val baseStr =
-                                    if (item.indexNumberEnd == null) {
-                                        "S${item.parentIndexNumber}:E${item.indexNumber}"
+                        val parentIndexNumber = item.parentIndexNumber
+                        val indexNumber = item.indexNumber
+                        val indexNumberEnd = item.indexNumberEnd
+                        val (itemTitle, itemSubtitle) =
+                            if (parentIndexNumber != null && indexNumber != null) {
+                                val epNumberStr =
+                                    if (indexNumberEnd == null || indexNumberEnd <= indexNumber) {
+                                        "$indexNumber"
                                     } else {
-                                        "S${item.parentIndexNumber}:E${item.indexNumber}-${item.indexNumberEnd}"
+                                        "$indexNumber-$indexNumberEnd"
                                     }
+                                val baseStr = "S$parentIndexNumber:E$epNumberStr"
                                 val partName = item.partName
-                                if (partName != null) {
-                                    "$baseStr - ${partName.getTranslatablePartName(application)} - ${item.name}"
+                                val partSuffix =
+                                    if (partName != null) {
+                                        " - ${partName.getTranslatablePartName(application)}"
+                                    } else {
+                                        ""
+                                    }
+                                val epTitle = "$baseStr$partSuffix • ${item.name}"
+                                val seriesName = item.seriesName?.takeIf { it.isNotBlank() }
+                                if (seriesName != null) {
+                                    seriesName to epTitle
                                 } else {
-                                    "$baseStr - ${item.name}"
+                                    item.name to "$baseStr$partSuffix"
                                 }
                             } else {
                                 val partName = item.partName
-                                if (partName != null) {
-                                    "${item.name} - ${partName.getTranslatablePartName(application)}"
-                                } else {
-                                    item.name
-                                }
+                                val title =
+                                    if (partName != null) {
+                                        "${item.name} - ${partName.getTranslatablePartName(application)}"
+                                    } else {
+                                        item.name
+                                    }
+                                title to null
                             }
                         val loadedSegments = getSegments(item.itemId, repository)
                         currentMediaItemSegments = loadedSegments
@@ -535,6 +564,7 @@ constructor(
                         _uiState.update {
                             it.copy(
                                 currentItemTitle = itemTitle,
+                                currentItemSubtitle = itemSubtitle,
                                 currentSegment = null,
                                 currentChapters = item.chapters,
                                 segments = loadedSegments,

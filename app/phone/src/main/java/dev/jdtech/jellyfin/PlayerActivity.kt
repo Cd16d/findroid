@@ -147,7 +147,10 @@ class PlayerActivity : BasePlayerActivity() {
                         Timber.d("$uiState")
                         uiState.apply {
                             // Title
-                            videoNameTextView.text = currentItemTitle
+                            videoNameTextView.text =
+                                if (currentItemSubtitle != null)
+                                    "$currentItemTitle - $currentItemSubtitle"
+                                else currentItemTitle
 
                             // Media segment
                             currentSegment?.let { segment ->

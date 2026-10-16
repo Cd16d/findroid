@@ -128,46 +128,27 @@ object TrackFormatter {
             chips.add(sdhLabel)
         }
 
-        val isExternal =
-            track.isExternal == true ||
-                track.label?.contains("external", ignoreCase = true) == true ||
-                track.label?.contains("estern", ignoreCase = true) == true
-        if (isExternal) {
-            val externalLabel =
-                if (currentLocale.language == "it") "Esterno"
-                else context.getString(R.string.external)
-            chips.add(externalLabel)
-        }
+        if (displayExtraInfo) {
+            val isExternal =
+                track.isExternal == true ||
+                    track.label?.contains("external", ignoreCase = true) == true ||
+                    track.label?.contains("estern", ignoreCase = true) == true
+            if (isExternal) {
+                val externalLabel =
+                    if (currentLocale.language == "it") "Esterno"
+                    else context.getString(R.string.external)
+                chips.add(externalLabel)
+            }
 
-        val channelLayout = formatChannelLayout(track.channelLayout, track.channelCount)
-        if (channelLayout != null) {
-            chips.add(channelLayout)
-        }
+            val channelLayout = formatChannelLayout(track.channelLayout, track.channelCount)
+            if (channelLayout != null) {
+                chips.add(channelLayout)
+            }
 
-        val formattedCodec = formatCodec(track.codec)
-        if (!formattedCodec.isNullOrBlank()) {
-            chips.add(formattedCodec)
-        }
-
-        val label = track.label?.trim()
-        val isLabelRedundant =
-            label.isNullOrBlank() ||
-                (localizedLanguage != null && label.equals(localizedLanguage, ignoreCase = true)) ||
-                (track.language != null && label.equals(track.language, ignoreCase = true)) ||
-                label.equals("forced", ignoreCase = true) ||
-                label.equals("forzati", ignoreCase = true) ||
-                label.equals("forzato", ignoreCase = true) ||
-                label.equals("sdh", ignoreCase = true) ||
-                label.equals("cc", ignoreCase = true) ||
-                label.equals("external", ignoreCase = true) ||
-                label.equals("esterno", ignoreCase = true) ||
-                label.equals("default", ignoreCase = true) ||
-                label.equals("predefinito", ignoreCase = true) ||
-                (formattedCodec != null && label.equals(formattedCodec, ignoreCase = true)) ||
-                (channelLayout != null && label.equals(channelLayout, ignoreCase = true))
-
-        if (!isLabelRedundant && !label.isNullOrBlank()) {
-            chips.add(label)
+            val formattedCodec = formatCodec(track.codec)
+            if (!formattedCodec.isNullOrBlank()) {
+                chips.add(formattedCodec)
+            }
         }
 
         return TrackDisplayInfo(name = name, chips = chips)

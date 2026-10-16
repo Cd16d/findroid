@@ -211,6 +211,14 @@ constructor(
                                                     supportedDeviceTypes = listOf(DeviceType.TV),
                                                     backendPreference = appPreferences.tvShowLogos,
                                                 ),
+                                                PreferenceSwitch(
+                                                    nameStringResource = R.string.tv_screensaver,
+                                                    descriptionStringRes =
+                                                        R.string.tv_screensaver_summary,
+                                                    supportedDeviceTypes = listOf(DeviceType.TV),
+                                                    backendPreference =
+                                                        appPreferences.tvScreensaver,
+                                                ),
                                             ),
                                     ),
                                     PreferenceGroup(

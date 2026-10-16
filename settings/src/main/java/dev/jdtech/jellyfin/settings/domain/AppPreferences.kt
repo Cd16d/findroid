@@ -36,6 +36,7 @@ class AppPreferences @Inject constructor(val sharedPreferences: SharedPreference
     val homeLatest = Preference<Boolean>("home_latest", true)
     val displayExtraInfo = Preference("pref_display_extra_info", false)
     val tvShowLogos = Preference("pref_tv_show_logos", false)
+    val tvScreensaver = Preference("pref_tv_screensaver", true)
     val hideEpisodeSpoilers = Preference("hide_episode_spoilers", false)
 
     // Player

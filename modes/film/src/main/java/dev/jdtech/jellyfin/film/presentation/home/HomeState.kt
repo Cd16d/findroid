@@ -12,6 +12,6 @@ data class HomeState(
     val views: List<HomeItem.ViewItem> = emptyList(),
     val showLogos: Boolean = false,
     val hideEpisodeSpoilers: Boolean = false,
-    val isLoading: Boolean = false,
+    val isLoading: Boolean = true,
     val error: Exception? = null,
 )

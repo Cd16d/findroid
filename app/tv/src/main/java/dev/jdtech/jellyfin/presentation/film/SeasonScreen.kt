@@ -25,9 +25,9 @@ import dev.jdtech.jellyfin.core.presentation.dummy.dummySeason
 import dev.jdtech.jellyfin.film.presentation.season.SeasonAction
 import dev.jdtech.jellyfin.film.presentation.season.SeasonState
 import dev.jdtech.jellyfin.film.presentation.season.SeasonViewModel
+import dev.jdtech.jellyfin.presentation.components.EpisodeCard
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
-import dev.jdtech.jellyfin.ui.components.EpisodeCard
 import java.util.UUID
 
 @Composable
@@ -81,6 +81,7 @@ private fun SeasonScreenLayout(state: SeasonState, onAction: (SeasonAction) -> U
                         EpisodeCard(
                             episode = episode,
                             onClick = { onAction(SeasonAction.NavigateToItem(episode)) },
+                            hideEpisodeSpoilers = state.hideEpisodeSpoilers,
                         )
                     }
                 }
