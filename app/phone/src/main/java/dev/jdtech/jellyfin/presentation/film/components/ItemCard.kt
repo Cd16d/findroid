@@ -31,6 +31,7 @@ import dev.jdtech.jellyfin.core.presentation.dummy.dummyShow
 import dev.jdtech.jellyfin.models.FindroidEpisode
 import dev.jdtech.jellyfin.models.FindroidItem
 import dev.jdtech.jellyfin.models.FindroidMovie
+import dev.jdtech.jellyfin.models.FindroidSeason
 import dev.jdtech.jellyfin.models.FindroidShow
 import dev.jdtech.jellyfin.models.isDownloaded
 import dev.jdtech.jellyfin.presentation.components.SpoilerMask
@@ -48,6 +49,7 @@ fun ItemCard(
     onClick: (FindroidItem) -> Unit,
     modifier: Modifier = Modifier,
     hideEpisodeSpoilers: Boolean = false,
+    showParentTitle: Boolean = true,
 ) {
     val width =
         when (direction) {
@@ -106,37 +108,56 @@ fun ItemCard(
             }
         }
         Spacer(modifier = Modifier.height(MaterialTheme.spacings.extraSmall))
+        val titleText =
+            when {
+                showParentTitle && item is FindroidEpisode -> item.seriesName
+                showParentTitle && item is FindroidSeason -> item.seriesName.ifBlank { item.name }
+                else -> item.name
+            }
+        val subtitleText =
+            when (item) {
+                is FindroidMovie -> {
+                    item.premiereDate?.year.toString()
+                }
+
+                is FindroidShow -> {
+                    getShowDateString(item)
+                }
+
+                is FindroidSeason -> {
+                    if (
+                        showParentTitle &&
+                            item.seriesName.isNotBlank() &&
+                            !item.name.equals(item.seriesName, ignoreCase = true)
+                    ) {
+                        item.name
+                    } else {
+                        ""
+                    }
+                }
+
+                is FindroidEpisode -> {
+                    stringResource(
+                        id = R.string.episode_name_extended,
+                        item.parentIndexNumber,
+                        item.indexNumber,
+                        item.name,
+                    )
+                }
+
+                else -> {
+                    ""
+                }
+            }
         Text(
-            text = if (item is FindroidEpisode) item.seriesName else item.name,
+            text = titleText,
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.SemiBold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
         Text(
-            text =
-                when (item) {
-                    is FindroidMovie -> {
-                        item.premiereDate?.year.toString()
-                    }
-
-                    is FindroidShow -> {
-                        getShowDateString(item)
-                    }
-
-                    is FindroidEpisode -> {
-                        stringResource(
-                            id = R.string.episode_name_extended,
-                            item.parentIndexNumber,
-                            item.indexNumber,
-                            item.name,
-                        )
-                    }
-
-                    else -> {
-                        ""
-                    }
-                },
+            text = subtitleText,
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f),
             maxLines = 1,

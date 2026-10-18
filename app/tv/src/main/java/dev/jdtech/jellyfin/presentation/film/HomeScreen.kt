@@ -527,21 +527,29 @@ private fun HeroPreviewHeader(
         stringResource(id = if (view != null) CoreR.string.libraries else CoreR.string.title_home)
 
     val episodeSubtitle =
-        if (item is FindroidEpisode && item.parentIndexNumber > 0 && item.indexNumber > 0) {
-            val indexEnd = item.indexNumberEnd
-            val epNumberStr =
-                if (indexEnd != null && indexEnd > item.indexNumber) {
-                    "${item.indexNumber}-$indexEnd"
+        when {
+            item is FindroidEpisode && item.parentIndexNumber > 0 && item.indexNumber > 0 -> {
+                val indexEnd = item.indexNumberEnd
+                val epNumberStr =
+                    if (indexEnd != null && indexEnd > item.indexNumber) {
+                        "${item.indexNumber}-$indexEnd"
+                    } else {
+                        "${item.indexNumber}"
+                    }
+                if (item.name.isNotBlank() && item.name != item.seriesName) {
+                    "S${item.parentIndexNumber}:E$epNumberStr • ${item.name}"
                 } else {
-                    "${item.indexNumber}"
+                    "S${item.parentIndexNumber}:E$epNumberStr"
                 }
-            if (item.name.isNotBlank() && item.name != item.seriesName) {
-                "S${item.parentIndexNumber}:E$epNumberStr • ${item.name}"
-            } else {
-                "S${item.parentIndexNumber}:E$epNumberStr"
             }
-        } else {
-            null
+
+            item is FindroidSeason &&
+                item.name.isNotBlank() &&
+                !item.name.equals(item.seriesName, ignoreCase = true) -> {
+                item.name
+            }
+
+            else -> null
         }
 
     val rating =

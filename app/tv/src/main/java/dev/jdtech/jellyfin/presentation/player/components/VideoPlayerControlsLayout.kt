@@ -31,8 +31,8 @@ fun VideoPlayerControlsLayout(
     mediaTitle: @Composable () -> Unit,
     seeker: @Composable () -> Unit,
     mediaActions: @Composable () -> Unit,
-    episodesShelf: (@Composable () -> Unit)? = null,
     modifier: Modifier = Modifier,
+    episodesShelf: (@Composable () -> Unit)? = null,
     shelfOffset: Dp = 0.dp,
 ) {
     Box(modifier = modifier.fillMaxSize()) {

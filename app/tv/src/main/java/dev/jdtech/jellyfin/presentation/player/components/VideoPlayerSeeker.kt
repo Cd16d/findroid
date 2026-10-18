@@ -1,6 +1,5 @@
 package dev.jdtech.jellyfin.presentation.player.components
 
-import android.content.Context
 import android.text.format.DateFormat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -32,6 +31,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -45,14 +45,14 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.models.FindroidSegment
-import dev.jdtech.jellyfin.models.FindroidSegmentType
 import dev.jdtech.jellyfin.player.core.R as PlayerCoreR
 import dev.jdtech.jellyfin.player.core.domain.models.PlayerChapter
+import dev.jdtech.jellyfin.player.core.presentation.formatDuration
+import dev.jdtech.jellyfin.player.core.presentation.getSectionTitle
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
 import java.util.Date
 import kotlin.time.Duration
-import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun VideoPlayerSeeker(
@@ -61,6 +61,7 @@ fun VideoPlayerSeeker(
     onSeek: (Float) -> Unit,
     contentProgress: Duration,
     contentDuration: Duration,
+    modifier: Modifier = Modifier,
     chapters: List<PlayerChapter> = emptyList(),
     segments: List<FindroidSegment> = emptyList(),
     isScrubbing: Boolean = false,
@@ -69,7 +70,6 @@ fun VideoPlayerSeeker(
     onDown: (() -> Unit)? = null,
     onOpenChapters: (() -> Unit)? = null,
     playPauseFocusRequester: FocusRequester? = null,
-    modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
     val rawDurationMs = contentDuration.inWholeMilliseconds
@@ -87,17 +87,17 @@ fun VideoPlayerSeeker(
             getSectionTitle(activePositionMs, chapters, segments, context)
         }
 
-    val endsAtText =
-        remember(durationMs, activePositionMs, context) {
+    val remainingMs = if (durationMs > 0L) (durationMs - activePositionMs).coerceAtLeast(0L) else 0L
+    val formattedEndTime =
+        remember(remainingMs, context) {
             if (durationMs > 0L) {
-                val remainingMs = (durationMs - activePositionMs).coerceAtLeast(0L)
                 val endTimeMillis = System.currentTimeMillis() + remainingMs
-                val formattedTime = DateFormat.getTimeFormat(context).format(Date(endTimeMillis))
-                context.getString(PlayerCoreR.string.ends_at, formattedTime)
+                DateFormat.getTimeFormat(context).format(Date(endTimeMillis))
             } else {
                 null
             }
         }
+    val endsAtText = formattedEndTime?.let { stringResource(PlayerCoreR.string.ends_at, it) }
 
     val chapterFocusRequester = remember { FocusRequester() }
 
@@ -287,62 +287,12 @@ fun VideoPlayerSeeker(
     }
 }
 
-internal fun formatDuration(millis: Long): String {
-    val duration = millis.coerceAtLeast(0L).milliseconds
-    return duration.toComponents { h, m, s, _ ->
-        if (h > 0) {
-            "$h:${m.padStartWith0()}:${s.padStartWith0()}"
-        } else {
-            "${m.padStartWith0()}:${s.padStartWith0()}"
-        }
-    }
-}
-
-internal fun getSectionTitle(
-    posMs: Long,
-    chapters: List<PlayerChapter>,
-    segments: List<FindroidSegment>,
-    context: Context,
-): String? {
-    val segment = segments.firstOrNull { posMs in it.startTicks..it.endTicks }
-    val segmentLabel =
-        when (segment?.type) {
-            FindroidSegmentType.INTRO -> context.getString(PlayerCoreR.string.segment_intro)
-            FindroidSegmentType.OUTRO -> context.getString(PlayerCoreR.string.segment_outro)
-            FindroidSegmentType.RECAP -> context.getString(PlayerCoreR.string.segment_recap)
-            FindroidSegmentType.PREVIEW -> context.getString(PlayerCoreR.string.segment_preview)
-            FindroidSegmentType.COMMERCIAL ->
-                context.getString(PlayerCoreR.string.segment_commercial)
-            else -> null
-        }
-
-    val chapterIndex = chapters.indexOfLast { posMs >= it.startPosition }
-    val chapter = if (chapterIndex >= 0) chapters[chapterIndex] else null
-    val chapterLabel =
-        if (chapter != null) {
-            if (!chapter.name.isNullOrBlank()) {
-                chapter.name
-            } else {
-                context.getString(PlayerCoreR.string.chapter_title, chapterIndex + 1)
-            }
-        } else {
-            null
-        }
-
-    return when {
-        chapterLabel != null && segmentLabel != null -> "$chapterLabel • $segmentLabel"
-        chapterLabel != null -> chapterLabel
-        segmentLabel != null -> segmentLabel
-        else -> null
-    }
-}
-
 @Preview
 @Composable
 private fun VideoPlayerSeekerPreview() {
     FindroidTheme {
         VideoPlayerSeeker(
-            focusRequester = FocusRequester(),
+            focusRequester = remember { FocusRequester() },
             state = rememberVideoPlayerState(),
             onSeek = {},
             contentProgress = Duration.parse("7m 51s"),
@@ -350,5 +300,3 @@ private fun VideoPlayerSeekerPreview() {
         )
     }
 }
-
-private fun Number.padStartWith0() = this.toString().padStart(2, '0')

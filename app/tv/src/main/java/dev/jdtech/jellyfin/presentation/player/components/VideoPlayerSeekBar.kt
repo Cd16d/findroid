@@ -33,103 +33,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
 import dev.jdtech.jellyfin.models.FindroidSegment
-import dev.jdtech.jellyfin.models.FindroidSegmentType
 import dev.jdtech.jellyfin.player.core.domain.models.PlayerChapter
+import dev.jdtech.jellyfin.player.core.presentation.calculateBarSlices
+import dev.jdtech.jellyfin.player.core.presentation.getSegmentColor
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
-
-data class BarSlice(
-    val startMs: Long,
-    val endMs: Long,
-    val segmentType: FindroidSegmentType? = null,
-    val title: String? = null,
-)
-
-fun calculateBarSlices(
-    durationMs: Long,
-    chapters: List<PlayerChapter> = emptyList(),
-    segments: List<FindroidSegment> = emptyList(),
-): List<BarSlice> {
-    if (durationMs <= 0L) return emptyList()
-
-    val validChapters =
-        chapters.filter { it.startPosition in 0..durationMs }.sortedBy { it.startPosition }
-    val validSegments =
-        segments
-            .filter { it.startTicks < durationMs && it.endTicks > 0L }
-            .sortedBy { it.startTicks }
-
-    val chapterCuts = validChapters.map { it.startPosition.coerceIn(0L, durationMs) }
-    // Snap segment cuts within 2 seconds of a chapter cut to eliminate micro-slices/double gaps
-    val segmentCuts =
-        validSegments
-            .flatMap {
-                listOf(
-                    it.startTicks.coerceIn(0L, durationMs),
-                    it.endTicks.coerceIn(0L, durationMs),
-                )
-            }
-            .map { segCut ->
-                val nearestChapter = chapterCuts.minByOrNull { kotlin.math.abs(it - segCut) }
-                if (nearestChapter != null && kotlin.math.abs(nearestChapter - segCut) <= 2000L) {
-                    nearestChapter
-                } else {
-                    segCut
-                }
-            }
-
-    val rawCuts = (listOf(0L, durationMs) + chapterCuts + segmentCuts).distinct().sorted()
-    if (rawCuts.size <= 1) return listOf(BarSlice(startMs = 0L, endMs = durationMs))
-
-    // Eliminate micro-slices smaller than 1.5 seconds between adjacent cuts
-    val cuts = mutableListOf<Long>()
-    for (cut in rawCuts) {
-        if (cuts.isEmpty()) {
-            cuts.add(cut)
-        } else {
-            val prev = cuts.last()
-            if (cut - prev >= 1500L || cut == durationMs) {
-                if (cut == durationMs && cut - prev < 1500L && cuts.size > 1) {
-                    cuts[cuts.size - 1] = durationMs
-                } else {
-                    cuts.add(cut)
-                }
-            }
-        }
-    }
-    if (cuts.size <= 1) return listOf(BarSlice(startMs = 0L, endMs = durationMs))
-
-    val slices = mutableListOf<BarSlice>()
-    for (i in 0 until cuts.size - 1) {
-        val start = cuts[i]
-        val end = cuts[i + 1]
-        if (end > start) {
-            val matchingSegment = validSegments.firstOrNull { seg ->
-                start >= seg.startTicks && end <= seg.endTicks
-            }
-            val matchingChapter = validChapters.lastOrNull { it.startPosition <= start }
-            slices.add(
-                BarSlice(
-                    startMs = start,
-                    endMs = end,
-                    segmentType = matchingSegment?.type,
-                    title = matchingChapter?.name,
-                )
-            )
-        }
-    }
-    return slices
-}
-
-fun getSegmentColor(type: FindroidSegmentType?): Color? {
-    return when (type) {
-        FindroidSegmentType.INTRO -> Color(0xFF4CAF50) // Green
-        FindroidSegmentType.OUTRO -> Color(0xFFFF9800) // Orange / Yellow
-        FindroidSegmentType.RECAP -> Color(0xFF2196F3) // Blue
-        FindroidSegmentType.PREVIEW -> Color(0xFF9C27B0) // Purple
-        FindroidSegmentType.COMMERCIAL -> Color(0xFF795548) // Brown
-        else -> null
-    }
-}
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
@@ -137,6 +44,7 @@ fun VideoPlayerSeekBar(
     progress: Float,
     onSeek: (seekProgress: Float) -> Unit,
     state: VideoPlayerState,
+    modifier: Modifier = Modifier,
     durationMs: Long = 0L,
     chapters: List<PlayerChapter> = emptyList(),
     segments: List<FindroidSegment> = emptyList(),
@@ -144,16 +52,27 @@ fun VideoPlayerSeekBar(
     onScrubbingChanged: (isScrubbing: Boolean, scrubPositionMs: Long) -> Unit = { _, _ -> },
     onDown: (() -> Unit)? = null,
     onUp: (() -> Unit)? = null,
-    modifier: Modifier = Modifier,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     var isSelected by remember { mutableStateOf(false) }
     val isFocused by interactionSource.collectIsFocusedAsState()
     val color by rememberUpdatedState(newValue = MaterialTheme.colorScheme.primary)
     val isHighlight = isFocused || isSelected
-    val animatedTrackHeight by animateDpAsState(targetValue = if (isHighlight) 10.dp else 6.dp)
-    val animatedThumbHeight by animateDpAsState(targetValue = if (isHighlight) 24.dp else 14.dp)
-    val animatedThumbGap by animateDpAsState(targetValue = if (isHighlight) 6.dp else 4.dp)
+    val animatedTrackHeight by
+        animateDpAsState(
+            targetValue = if (isHighlight) 10.dp else 6.dp,
+            label = "trackHeight",
+        )
+    val animatedThumbHeight by
+        animateDpAsState(
+            targetValue = if (isHighlight) 24.dp else 14.dp,
+            label = "thumbHeight",
+        )
+    val animatedThumbGap by
+        animateDpAsState(
+            targetValue = if (isHighlight) 6.dp else 4.dp,
+            label = "thumbGap",
+        )
     var seekProgress by remember { mutableFloatStateOf(0f) }
     val focusManager = LocalFocusManager.current
 
@@ -406,9 +325,15 @@ fun VideoPlayerSeekBar(
         }
 
         // Draw Material 3 Expressive vertical bar thumb
+        val activeSegmentColor =
+            slices
+                .firstOrNull { currentPlayMs in it.startMs..it.endMs }
+                ?.segmentType
+                ?.let { getSegmentColor(it) }
+        val thumbColor = activeSegmentColor ?: color
         val thumbCornerRadius = CornerRadius(thumbWidth / 2f, thumbWidth / 2f)
         drawRoundRect(
-            color = Color.White,
+            color = thumbColor,
             topLeft = Offset(clampedThumbX - thumbWidth / 2f, yOffset - thumbHeight / 2f),
             size = Size(thumbWidth, thumbHeight),
             cornerRadius = thumbCornerRadius,
@@ -418,7 +343,7 @@ fun VideoPlayerSeekBar(
 
 @Preview
 @Composable
-fun VideoPlayerSeekBarPreview() {
+private fun VideoPlayerSeekBarPreview() {
     FindroidTheme {
         VideoPlayerSeekBar(progress = 0.4f, onSeek = {}, state = rememberVideoPlayerState())
     }

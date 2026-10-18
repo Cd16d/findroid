@@ -72,6 +72,7 @@ import dev.jdtech.jellyfin.player.core.domain.models.Trickplay
 import dev.jdtech.jellyfin.player.core.domain.models.intervalMs
 import dev.jdtech.jellyfin.player.core.domain.utils.ChapterUtils
 import dev.jdtech.jellyfin.player.core.domain.utils.TrackFormatter
+import dev.jdtech.jellyfin.player.core.presentation.getSegmentColor
 import dev.jdtech.jellyfin.player.local.presentation.PlayerViewModel
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import kotlin.time.Duration.Companion.milliseconds
@@ -260,6 +261,7 @@ private fun PanelHeader(panelType: PlayerSidePanelType) {
     )
 }
 
+@androidx.annotation.OptIn(UnstableApi::class)
 @Composable
 private fun AudioTrackList(
     viewModel: PlayerViewModel,
@@ -346,6 +348,7 @@ private fun AudioTrackList(
     }
 }
 
+@androidx.annotation.OptIn(UnstableApi::class)
 @Composable
 private fun SubtitleTrackList(
     viewModel: PlayerViewModel,
@@ -849,21 +852,6 @@ private fun ChapterList(
                                     seg.startTicks < nextChapterStart)
                         }
                         ?.type
-                        ?: when {
-                            chapter.name?.contains("intro", ignoreCase = true) == true ->
-                                FindroidSegmentType.INTRO
-                            chapter.name?.contains("outro", ignoreCase = true) == true ||
-                                chapter.name?.contains("credits", ignoreCase = true) == true ||
-                                chapter.name?.contains("titoli di coda", ignoreCase = true) ==
-                                    true -> FindroidSegmentType.OUTRO
-                            chapter.name?.contains("recap", ignoreCase = true) == true ||
-                                chapter.name?.contains("riassunto", ignoreCase = true) == true ->
-                                FindroidSegmentType.RECAP
-                            chapter.name?.contains("preview", ignoreCase = true) == true ||
-                                chapter.name?.contains("anticipazioni", ignoreCase = true) ==
-                                    true -> FindroidSegmentType.PREVIEW
-                            else -> null
-                        }
 
                 ChapterItem(
                     chapter = chapter,
@@ -896,8 +884,8 @@ private fun ChapterItem(
     onClick: () -> Unit,
     trickplay: Trickplay?,
     chapterImageUrl: String?,
-    segmentType: FindroidSegmentType? = null,
     modifier: Modifier = Modifier,
+    segmentType: FindroidSegmentType? = null,
 ) {
     val chapterName =
         chapter.name?.takeIf { it.isNotBlank() }

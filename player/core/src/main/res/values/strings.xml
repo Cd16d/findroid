@@ -47,4 +47,10 @@
     <string name="chapters">Chapters</string>
     <string name="no_chapters">No chapters available</string>
     <string name="ends_at">Ends at %1$s</string>
+    <string name="video_quality">Video Quality</string>
+    <string name="quality_original_direct_play">Original (Direct Play)</string>
+    <string name="coming_soon">Coming soon</string>
+    <string name="player_controls_toggle_orientation">Toggle screen orientation</string>
+    <string name="lock_screen">Lock screen</string>
+    <string name="unlock">Unlock</string>
 </resources>

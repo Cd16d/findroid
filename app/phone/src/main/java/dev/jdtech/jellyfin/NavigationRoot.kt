@@ -305,8 +305,22 @@ private fun MainNavigation(
     var castExpanded by remember { mutableStateOf(true) }
 
     val connectionState by castSessionViewModel.connectionState.collectAsStateWithLifecycle()
+    val currentRoute = navigationState.currentBackStack().lastOrNull()
+    val isCastRoute =
+        when (currentRoute) {
+            is HomeRoute,
+            is ShowRoute,
+            is MovieRoute,
+            is MediaRoute,
+            is LibraryRoute,
+            is EpisodeRoute,
+            is SeasonRoute,
+            is FavoritesRoute,
+            is CollectionRoute -> true
+            else -> false
+        }
     val showCastButton =
-        topLevelRoute in tabRoutes &&
+        isCastRoute &&
             !searchExpanded.value &&
             !isOfflineMode &&
             castSessionViewModel.sessionManager.isSupported

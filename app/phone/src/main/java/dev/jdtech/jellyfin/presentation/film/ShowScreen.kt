@@ -316,6 +316,7 @@ private fun ShowScreenLayout(state: ShowState, onAction: (ShowAction) -> Unit) {
                                 item = season,
                                 direction = Direction.VERTICAL,
                                 onClick = { onAction(ShowAction.NavigateToItem(season)) },
+                                showParentTitle = false,
                             )
                         }
                     }

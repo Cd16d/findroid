@@ -33,6 +33,9 @@ import dev.jdtech.jellyfin.models.FindroidSegment
 import dev.jdtech.jellyfin.player.core.domain.models.PlayerChapter
 import dev.jdtech.jellyfin.player.core.domain.models.Trickplay
 import dev.jdtech.jellyfin.player.core.domain.models.intervalMs
+import dev.jdtech.jellyfin.player.core.presentation.formatDuration
+import dev.jdtech.jellyfin.player.core.presentation.getSectionTitle
+import dev.jdtech.jellyfin.player.core.presentation.getSegmentColor
 import kotlin.math.roundToInt
 
 private val ScrubberCardShape = RoundedCornerShape(16.dp)

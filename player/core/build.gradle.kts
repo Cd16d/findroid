@@ -30,5 +30,6 @@ dependencies {
     implementation(libs.timber)
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
+    implementation(libs.androidx.compose.ui)
     implementation(libs.jellyfin.core)
 }

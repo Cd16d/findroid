@@ -29,13 +29,19 @@ fun ItemPoster(
     blurOnly: Boolean = false,
 ) {
     val image =
-        when (direction) {
-            Direction.HORIZONTAL -> {
-                item.images.backdrop ?: item.images.primary
-            }
-            Direction.VERTICAL -> {
-                if (item is FindroidEpisode) item.images.showPrimary ?: item.images.primary
-                else item.images.primary ?: item.images.backdrop
+        remember(item, direction) {
+            when (direction) {
+                Direction.HORIZONTAL -> {
+                    if (item is FindroidEpisode) {
+                        item.images.primary ?: item.images.backdrop ?: item.images.showBackdrop
+                    } else {
+                        item.images.backdrop ?: item.images.showBackdrop ?: item.images.primary
+                    }
+                }
+                Direction.VERTICAL -> {
+                    if (item is FindroidEpisode) item.images.showPrimary ?: item.images.primary
+                    else item.images.primary ?: item.images.showPrimary ?: item.images.backdrop
+                }
             }
         }
 
