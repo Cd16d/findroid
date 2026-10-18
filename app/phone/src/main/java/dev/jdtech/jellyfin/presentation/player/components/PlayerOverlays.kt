@@ -40,11 +40,21 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.player.core.R as PlayerR
+import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import kotlin.math.roundToInt
 
+/**
+ * Vertical liquid-fill HUD overlay displaying real-time volume or screen brightness levels.
+ *
+ * @param value Current level normalized between 0.0f and 1.0f.
+ * @param isVolume True if representing media volume, false for screen brightness.
+ * @param visible Whether the overlay is currently animated into view.
+ * @param modifier Optional [Modifier] applied to the animated HUD container.
+ */
 @Composable
 fun VolumeBrightnessOverlay(
     value: Float,
@@ -108,6 +118,13 @@ fun VolumeBrightnessOverlay(
     }
 }
 
+/**
+ * Ripple feedback overlay indicating a +/- 10-second double-tap seek gesture.
+ *
+ * @param isForward True for fast-forward (+10s), false for rewind (-10s).
+ * @param visible Whether the seek animation ripple is visible.
+ * @param modifier Optional [Modifier] applied to the ripple container.
+ */
 @Composable
 fun DoubleTapSeekOverlay(
     isForward: Boolean,
@@ -153,6 +170,14 @@ fun DoubleTapSeekOverlay(
     }
 }
 
+/**
+ * Floating skip button for skipping segments like intros, credits, or recaps.
+ *
+ * @param stringRes String resource ID for the skip action label (e.g. Skip Intro).
+ * @param onClick Callback triggered when the button is clicked.
+ * @param visible Whether the skip button is displayed.
+ * @param modifier Optional [Modifier] applied to the skip button container.
+ */
 @Composable
 fun FloatingSkipButton(
     stringRes: Int,
@@ -199,6 +224,14 @@ fun FloatingSkipButton(
     }
 }
 
+/**
+ * Screen lock indicator and temporary unlock button shown when the screen controls are locked.
+ *
+ * @param isLocked Whether touch controls are currently locked.
+ * @param showUnlockButton Whether the temporary unlock button should be shown.
+ * @param onUnlock Callback triggered when tapping the unlock button.
+ * @param modifier Optional [Modifier] applied to the lock overlay root.
+ */
 @Composable
 fun ScreenLockOverlay(
     isLocked: Boolean,
@@ -260,5 +293,75 @@ fun ScreenLockOverlay(
                 }
             }
         }
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF000000)
+@Composable
+private fun VolumeOverlayPreview() {
+    FindroidTheme {
+        VolumeBrightnessOverlay(
+            value = 0.65f,
+            isVolume = true,
+            visible = true,
+        )
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF000000)
+@Composable
+private fun BrightnessOverlayPreview() {
+    FindroidTheme {
+        VolumeBrightnessOverlay(
+            value = 0.45f,
+            isVolume = false,
+            visible = true,
+        )
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF000000)
+@Composable
+private fun DoubleTapSeekForwardPreview() {
+    FindroidTheme {
+        DoubleTapSeekOverlay(
+            isForward = true,
+            visible = true,
+        )
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF000000)
+@Composable
+private fun DoubleTapSeekRewindPreview() {
+    FindroidTheme {
+        DoubleTapSeekOverlay(
+            isForward = false,
+            visible = true,
+        )
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF000000)
+@Composable
+private fun FloatingSkipButtonPreview() {
+    FindroidTheme {
+        FloatingSkipButton(
+            stringRes = PlayerR.string.player_controls_skip_intro,
+            onClick = {},
+            visible = true,
+        )
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF000000)
+@Composable
+private fun ScreenLockOverlayPreview() {
+    FindroidTheme {
+        ScreenLockOverlay(
+            isLocked = true,
+            showUnlockButton = true,
+            onUnlock = {},
+        )
     }
 }

@@ -5,6 +5,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,6 +22,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
@@ -40,7 +42,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
@@ -50,6 +57,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.media3.common.C
 import androidx.media3.common.Player
@@ -63,11 +71,42 @@ import dev.jdtech.jellyfin.player.core.domain.utils.TrackFormatter
 import dev.jdtech.jellyfin.player.core.presentation.formatDuration
 import dev.jdtech.jellyfin.player.core.presentation.getSegmentColor
 import dev.jdtech.jellyfin.player.local.presentation.PlayerViewModel
+import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 
-private val PanelItemShape = RoundedCornerShape(12.dp)
+private val MenuTopShape =
+    RoundedCornerShape(
+        topStart = 24.dp,
+        topEnd = 24.dp,
+        bottomStart = 4.dp,
+        bottomEnd = 4.dp,
+    )
+private val MenuBottomShape =
+    RoundedCornerShape(
+        topStart = 4.dp,
+        topEnd = 4.dp,
+        bottomStart = 24.dp,
+        bottomEnd = 24.dp,
+    )
+private val MenuMiddleShape = RoundedCornerShape(4.dp)
+private val MenuSingleShape = RoundedCornerShape(24.dp)
 private val ChipShape = RoundedCornerShape(4.dp)
 private val ChapterThumbShape = RoundedCornerShape(8.dp)
 
+private fun getItemShape(index: Int, totalCount: Int): Shape {
+    return when {
+        totalCount <= 1 -> MenuSingleShape
+        index == 0 -> MenuTopShape
+        index == totalCount - 1 -> MenuBottomShape
+        else -> MenuMiddleShape
+    }
+}
+
+/**
+ * Returns a short human-readable label for a [FindroidSegmentType] (e.g. "Intro", "Ad").
+ *
+ * @param type The segment category.
+ * @return Short display string, or null if the segment type does not have a designated label.
+ */
 internal fun getSegmentLabel(type: FindroidSegmentType?): String? {
     return when (type) {
         FindroidSegmentType.INTRO -> "Intro"
@@ -79,6 +118,20 @@ internal fun getSegmentLabel(type: FindroidSegmentType?): String? {
     }
 }
 
+/**
+ * Sliding side panel for large screen / tablet devices hosting settings, tracks, speed, and
+ * chapters.
+ *
+ * @param panelType The currently active [PlayerSidePanelType] page.
+ * @param onPanelTypeChange Callback to switch between pages.
+ * @param viewModel Active [PlayerViewModel].
+ * @param currentResizeMode Currently active video resize mode.
+ * @param onResizeModeChange Callback when a new resize mode is selected.
+ * @param onClose Callback to close the side panel.
+ * @param onLock Callback to lock the player controls.
+ * @param modifier Optional [Modifier] applied to the side panel container.
+ * @param openedDirectly Whether the panel was opened directly to a sub-page.
+ */
 @Composable
 fun PlayerSidePanel(
     panelType: PlayerSidePanelType,
@@ -104,66 +157,69 @@ fun PlayerSidePanel(
         onDispose { viewModel.player.removeListener(listener) }
     }
 
-    Surface(
-        modifier = modifier.width(400.dp).fillMaxHeight(),
-        color = Color(0xFF141414).copy(alpha = 0.95f),
-        shape = RoundedCornerShape(topStart = 24.dp, bottomStart = 24.dp),
-        shadowElevation = 16.dp,
-    ) {
+    Box(modifier = modifier.width(400.dp).fillMaxHeight()) {
         Column(
             modifier =
                 Modifier.fillMaxSize()
                     .padding(horizontal = 24.dp)
                     .padding(top = 28.dp, bottom = 24.dp)
         ) {
-            // Header: Back navigation & Title
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                if (panelType != PlayerSidePanelType.SETTINGS && !openedDirectly) {
-                    Box(
-                        modifier =
-                            Modifier.size(36.dp)
-                                .clip(CircleShape)
-                                .background(Color.White.copy(alpha = 0.1f))
-                                .clickable(
-                                    interactionSource = remember { MutableInteractionSource() },
-                                    indication = ripple(bounded = true, radius = 18.dp),
-                                    onClick = { onPanelTypeChange(PlayerSidePanelType.SETTINGS) },
-                                ),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            painter = painterResource(id = CoreR.drawable.ic_arrow_left),
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp),
-                            tint = Color.White,
-                        )
+            // Header with Back navigation & Title (only for submenus, like TV and Phone)
+            if (panelType != PlayerSidePanelType.SETTINGS) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    if (!openedDirectly) {
+                        Box(
+                            modifier =
+                                Modifier.size(36.dp)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                                    .clickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = ripple(bounded = true, radius = 18.dp),
+                                        onClick = {
+                                            onPanelTypeChange(PlayerSidePanelType.SETTINGS)
+                                        },
+                                    ),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                painter = painterResource(id = CoreR.drawable.ic_arrow_left),
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp),
+                                tint = MaterialTheme.colorScheme.onSurface,
+                            )
+                        }
                     }
-                }
 
-                Text(
-                    text =
-                        stringResource(
-                            id =
-                                when (panelType) {
-                                    PlayerSidePanelType.AUDIO -> PlayerR.string.audio
-                                    PlayerSidePanelType.SUBTITLES -> PlayerR.string.subtitles
-                                    PlayerSidePanelType.SPEED -> PlayerR.string.playback_speed
-                                    PlayerSidePanelType.ASPECT_RATIO -> PlayerR.string.aspect_ratio
-                                    PlayerSidePanelType.CHAPTERS -> PlayerR.string.chapters
-                                    else -> CoreR.string.title_settings
-                                }
-                        ),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
-                    modifier = Modifier.weight(1f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                    Text(
+                        text =
+                            stringResource(
+                                id =
+                                    when (panelType) {
+                                        PlayerSidePanelType.AUDIO ->
+                                            PlayerR.string.select_audio_track
+                                        PlayerSidePanelType.SUBTITLES ->
+                                            PlayerR.string.select_subtitle_track
+                                        PlayerSidePanelType.SPEED ->
+                                            PlayerR.string.select_playback_speed
+                                        PlayerSidePanelType.ASPECT_RATIO ->
+                                            PlayerR.string.aspect_ratio
+                                        PlayerSidePanelType.CHAPTERS -> PlayerR.string.chapters
+                                        else -> CoreR.string.title_settings
+                                    }
+                            ),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.weight(1f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
 
             when (panelType) {
@@ -206,6 +262,15 @@ fun PlayerSidePanel(
     }
 }
 
+/**
+ * Main quick settings menu displayed in the tablet side panel.
+ *
+ * @param viewModel Active [PlayerViewModel].
+ * @param tracks Current media [Tracks].
+ * @param currentResizeMode Video resize mode.
+ * @param onNavigate Callback to navigate to a sub-page.
+ * @param onLock Callback to lock the player controls.
+ */
 @Composable
 private fun TabletSettingsMenu(
     viewModel: PlayerViewModel,
@@ -253,12 +318,13 @@ private fun TabletSettingsMenu(
             else -> stringResource(id = PlayerR.string.aspect_ratio_fit)
         }
 
-    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    LazyColumn(verticalArrangement = Arrangement.spacedBy(2.dp)) {
         item {
             TabletNavigationItem(
                 title = stringResource(id = PlayerR.string.video_quality),
                 subtitle = stringResource(id = PlayerR.string.quality_original_direct_play),
                 iconRes = CoreR.drawable.ic_film,
+                shape = MenuTopShape,
                 badge = stringResource(id = PlayerR.string.coming_soon),
                 enabled = false,
                 onClick = {},
@@ -269,6 +335,7 @@ private fun TabletSettingsMenu(
                 title = stringResource(id = PlayerR.string.audio),
                 subtitle = audioTitle,
                 iconRes = CoreR.drawable.ic_speaker,
+                shape = MenuMiddleShape,
                 onClick = { onNavigate(PlayerSidePanelType.AUDIO) },
             )
         }
@@ -277,6 +344,7 @@ private fun TabletSettingsMenu(
                 title = stringResource(id = PlayerR.string.subtitles),
                 subtitle = subTitle,
                 iconRes = CoreR.drawable.ic_closed_caption,
+                shape = MenuMiddleShape,
                 onClick = { onNavigate(PlayerSidePanelType.SUBTITLES) },
             )
         }
@@ -285,6 +353,7 @@ private fun TabletSettingsMenu(
                 title = stringResource(id = PlayerR.string.playback_speed),
                 subtitle = currentSpeedText,
                 iconRes = CoreR.drawable.ic_gauge,
+                shape = MenuMiddleShape,
                 onClick = { onNavigate(PlayerSidePanelType.SPEED) },
             )
         }
@@ -293,6 +362,7 @@ private fun TabletSettingsMenu(
                 title = stringResource(id = PlayerR.string.aspect_ratio),
                 subtitle = currentAspectText,
                 iconRes = CoreR.drawable.ic_monitor,
+                shape = MenuMiddleShape,
                 onClick = { onNavigate(PlayerSidePanelType.ASPECT_RATIO) },
             )
         }
@@ -301,6 +371,7 @@ private fun TabletSettingsMenu(
                 title = stringResource(id = PlayerR.string.lock_screen),
                 subtitle = "",
                 iconRes = CoreR.drawable.ic_lock,
+                shape = MenuBottomShape,
                 showChevron = false,
                 onClick = onLock,
             )
@@ -308,94 +379,98 @@ private fun TabletSettingsMenu(
     }
 }
 
+/**
+ * Single navigation item row in the tablet side panel menu.
+ *
+ * @param title Primary item label.
+ * @param subtitle Secondary or currently selected value label.
+ * @param iconRes Drawable resource ID for the row icon.
+ * @param onClick Callback when the row is pressed.
+ * @param shape Corner shape defining the visual card appearance in the grouped list.
+ * @param badge Optional text badge (e.g. "Coming Soon").
+ * @param enabled Whether this menu row is interactable.
+ * @param showChevron Whether to show the chevron right indicator.
+ */
 @Composable
 private fun TabletNavigationItem(
     title: String,
     subtitle: String,
     iconRes: Int,
     onClick: () -> Unit,
+    shape: Shape,
     badge: String? = null,
     enabled: Boolean = true,
     showChevron: Boolean = true,
 ) {
     val alpha = if (enabled) 1f else 0.38f
-    Box(
-        modifier =
-            Modifier.fillMaxWidth()
-                .clip(PanelItemShape)
-                .background(Color.White.copy(alpha = 0.06f))
-                .then(
-                    if (enabled) {
-                        Modifier.clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = ripple(bounded = true),
-                            onClick = onClick,
-                        )
-                    } else Modifier
-                )
-                .padding(horizontal = 16.dp, vertical = 14.dp)
-                .graphicsLayer { this.alpha = alpha }
+    Surface(
+        modifier = Modifier.fillMaxWidth().graphicsLayer { this.alpha = alpha },
+        shape = shape,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)),
+        onClick = onClick,
+        enabled = enabled,
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Icon(
                 painter = painterResource(id = iconRes),
                 contentDescription = null,
-                modifier = Modifier.size(24.dp),
-                tint = Color.White.copy(alpha = 0.85f),
+                modifier = Modifier.size(22.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Column(modifier = Modifier.weight(1f)) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            if (badge != null) {
+                Box(
+                    modifier =
+                        Modifier.clip(RoundedCornerShape(4.dp))
+                            .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
                 ) {
                     Text(
-                        text = title,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color.White,
-                    )
-                    if (badge != null) {
-                        Box(
-                            modifier =
-                                Modifier.clip(RoundedCornerShape(4.dp))
-                                    .background(Color.White.copy(alpha = 0.15f))
-                                    .padding(horizontal = 6.dp, vertical = 2.dp)
-                        ) {
-                            Text(
-                                text = badge,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = Color.White.copy(alpha = 0.85f),
-                                fontWeight = FontWeight.Medium,
-                            )
-                        }
-                    }
-                }
-                if (subtitle.isNotBlank()) {
-                    Text(
-                        text = subtitle,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.White.copy(alpha = 0.65f),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
+                        text = badge,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.Medium,
                     )
                 }
+            }
+            Spacer(modifier = Modifier.weight(1f))
+            if (subtitle.isNotBlank()) {
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
             if (showChevron && enabled) {
                 Icon(
                     painter = painterResource(id = CoreR.drawable.ic_chevron_right),
                     contentDescription = null,
                     modifier = Modifier.size(16.dp),
-                    tint = Color.White.copy(alpha = 0.4f),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                 )
             }
         }
     }
 }
 
+/**
+ * Audio track selection list for tablet side panel.
+ *
+ * @param viewModel Active [PlayerViewModel].
+ * @param tracks Current media [Tracks].
+ */
 @Composable
 private fun TabletAudioTrackList(viewModel: PlayerViewModel, tracks: Tracks) {
     val context = LocalContext.current
@@ -412,7 +487,7 @@ private fun TabletAudioTrackList(viewModel: PlayerViewModel, tracks: Tracks) {
 
     var optimisticSelectedIndex by remember(tracks) { mutableStateOf(selectedTrackIndex) }
 
-    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    LazyColumn(verticalArrangement = Arrangement.spacedBy(2.dp)) {
         itemsIndexed(items = audioGroups) { index, group ->
             val isSelected = optimisticSelectedIndex == index
             val displayInfo =
@@ -430,6 +505,7 @@ private fun TabletAudioTrackList(viewModel: PlayerViewModel, tracks: Tracks) {
                 title = displayInfo.name,
                 chips = displayInfo.chips,
                 isSelected = isSelected,
+                shape = getItemShape(index, audioGroups.size),
                 onClick = {
                     optimisticSelectedIndex = index
                     viewModel.switchToTrack(C.TRACK_TYPE_AUDIO, index)
@@ -439,6 +515,12 @@ private fun TabletAudioTrackList(viewModel: PlayerViewModel, tracks: Tracks) {
     }
 }
 
+/**
+ * Subtitle track selection list for tablet side panel.
+ *
+ * @param viewModel Active [PlayerViewModel].
+ * @param tracks Current media [Tracks].
+ */
 @Composable
 private fun TabletSubtitleTrackList(viewModel: PlayerViewModel, tracks: Tracks) {
     val context = LocalContext.current
@@ -451,13 +533,15 @@ private fun TabletSubtitleTrackList(viewModel: PlayerViewModel, tracks: Tracks) 
     val selectedTrackIndex = remember(tracks) { subtitleGroups.indexOfFirst { it.isSelected } }
 
     var optimisticSelectedIndex by remember(tracks) { mutableIntStateOf(selectedTrackIndex) }
+    val totalCount = subtitleGroups.size + 1
 
-    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    LazyColumn(verticalArrangement = Arrangement.spacedBy(2.dp)) {
         item {
             TabletSelectableItem(
                 title = stringResource(id = PlayerR.string.none),
                 chips = emptyList(),
                 isSelected = optimisticSelectedIndex == -1,
+                shape = getItemShape(0, totalCount),
                 onClick = {
                     optimisticSelectedIndex = -1
                     viewModel.switchToTrack(C.TRACK_TYPE_TEXT, -1)
@@ -481,6 +565,7 @@ private fun TabletSubtitleTrackList(viewModel: PlayerViewModel, tracks: Tracks) 
                 title = displayInfo.name,
                 chips = displayInfo.chips,
                 isSelected = isSelected,
+                shape = getItemShape(index + 1, totalCount),
                 onClick = {
                     optimisticSelectedIndex = index
                     viewModel.switchToTrack(C.TRACK_TYPE_TEXT, index)
@@ -490,11 +575,17 @@ private fun TabletSubtitleTrackList(viewModel: PlayerViewModel, tracks: Tracks) 
     }
 }
 
+/**
+ * Playback speed picker list for tablet side panel.
+ *
+ * @param currentSpeed Currently selected speed factor.
+ * @param onSpeedSelected Callback when a speed factor is picked.
+ */
 @Composable
 private fun TabletSpeedList(currentSpeed: Float, onSpeedSelected: (Float) -> Unit) {
     val speeds = listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f)
-    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        itemsIndexed(speeds) { _, speed ->
+    LazyColumn(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        itemsIndexed(speeds) { index, speed ->
             val isSelected = kotlin.math.abs(currentSpeed - speed) < 0.01f
             TabletSelectableItem(
                 title =
@@ -502,12 +593,19 @@ private fun TabletSpeedList(currentSpeed: Float, onSpeedSelected: (Float) -> Uni
                     else "${speed}x",
                 chips = emptyList(),
                 isSelected = isSelected,
+                shape = getItemShape(index, speeds.size),
                 onClick = { onSpeedSelected(speed) },
             )
         }
     }
 }
 
+/**
+ * Aspect ratio / zoom mode picker list for tablet side panel.
+ *
+ * @param currentResizeMode Currently selected [AspectRatioFrameLayout] resize mode.
+ * @param onResizeModeSelected Callback when a resize mode is picked.
+ */
 @Composable
 private fun TabletAspectRatioList(currentResizeMode: Int, onResizeModeSelected: (Int) -> Unit) {
     val modes =
@@ -519,19 +617,25 @@ private fun TabletAspectRatioList(currentResizeMode: Int, onResizeModeSelected: 
             AspectRatioFrameLayout.RESIZE_MODE_FILL to
                 stringResource(id = PlayerR.string.aspect_ratio_fill),
         )
-    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        itemsIndexed(modes) { _, (mode, label) ->
+    LazyColumn(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        itemsIndexed(modes) { index, (mode, label) ->
             val isSelected = currentResizeMode == mode
             TabletSelectableItem(
                 title = label,
                 chips = emptyList(),
                 isSelected = isSelected,
+                shape = getItemShape(index, modes.size),
                 onClick = { onResizeModeSelected(mode) },
             )
         }
     }
 }
 
+/**
+ * Chapters navigation list with thumbnail previews and segment badges for tablet side panel.
+ *
+ * @param viewModel Active [PlayerViewModel].
+ */
 @Composable
 private fun TabletChaptersList(viewModel: PlayerViewModel) {
     val uiState by viewModel.uiState.collectAsState()
@@ -551,7 +655,7 @@ private fun TabletChaptersList(viewModel: PlayerViewModel) {
         }
     }
 
-    LazyColumn(state = listState, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    LazyColumn(state = listState, verticalArrangement = Arrangement.spacedBy(2.dp)) {
         itemsIndexed(chapters) { index, chapter ->
             val isCurrent = index == currentChapterIndex
             val startTimeMs = chapter.startPosition
@@ -606,26 +710,28 @@ private fun TabletChaptersList(viewModel: PlayerViewModel) {
                 if (segmentColor != null) {
                     BorderStroke(1.5.dp, segmentColor)
                 } else {
-                    BorderStroke(1.dp, Color.White.copy(alpha = 0.12f))
+                    BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
                 }
 
-            Box(
-                modifier =
-                    Modifier.fillMaxWidth()
-                        .clip(PanelItemShape)
-                        .background(
-                            if (isCurrent) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
-                            else Color.White.copy(alpha = 0.06f)
-                        )
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = ripple(bounded = true),
-                            onClick = { viewModel.player.seekTo(startTimeMs) },
-                        )
-                        .padding(10.dp)
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = getItemShape(index, chapters.size),
+                color =
+                    if (isCurrent) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                    else MaterialTheme.colorScheme.surfaceContainerHigh,
+                border =
+                    if (isCurrent)
+                        BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f))
+                    else
+                        BorderStroke(
+                            1.dp,
+                            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f),
+                        ),
+                onClick = { viewModel.player.seekTo(startTimeMs) },
             ) {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier =
+                        Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
@@ -649,7 +755,8 @@ private fun TabletChaptersList(viewModel: PlayerViewModel) {
                             Text(
                                 text = "${index + 1}",
                                 style = MaterialTheme.typography.labelMedium,
-                                color = Color.White.copy(alpha = 0.5f),
+                                color =
+                                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                             )
                         }
                     }
@@ -660,7 +767,8 @@ private fun TabletChaptersList(viewModel: PlayerViewModel) {
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Medium,
                             color =
-                                if (isCurrent) MaterialTheme.colorScheme.primary else Color.White,
+                                if (isCurrent) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.onSurface,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
@@ -695,7 +803,7 @@ private fun TabletChaptersList(viewModel: PlayerViewModel) {
                             Text(
                                 text = formattedTime,
                                 style = MaterialTheme.typography.labelSmall,
-                                color = Color.White.copy(alpha = 0.6f),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
                     }
@@ -705,62 +813,106 @@ private fun TabletChaptersList(viewModel: PlayerViewModel) {
     }
 }
 
+/**
+ * Selectable list row displaying track name, characteristic badges, checkmark, and dynamic shapes
+ * for tablet panel.
+ *
+ * @param title Primary text description of the selection item.
+ * @param chips List of badge labels (e.g. language or codec chips).
+ * @param isSelected Whether this row is currently chosen.
+ * @param onClick Callback when the row is tapped.
+ * @param shape Corner [Shape] defining rounded edges according to list position.
+ */
 @Composable
 private fun TabletSelectableItem(
     title: String,
     chips: List<String>,
     isSelected: Boolean,
     onClick: () -> Unit,
+    shape: Shape = MenuSingleShape,
 ) {
-    Box(
-        modifier =
-            Modifier.fillMaxWidth()
-                .clip(PanelItemShape)
-                .background(
-                    if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
-                    else Color.White.copy(alpha = 0.06f)
-                )
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = ripple(bounded = true),
-                    onClick = onClick,
-                )
-                .padding(horizontal = 16.dp, vertical = 12.dp)
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = shape,
+        color =
+            if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+            else MaterialTheme.colorScheme.surfaceContainerHigh,
+        border =
+            if (isSelected) BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f))
+            else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)),
+        onClick = onClick,
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                    color = if (isSelected) MaterialTheme.colorScheme.primary else Color.White,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                color =
+                    if (isSelected) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false),
+            )
 
-                if (chips.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        for (chip in chips) {
-                            Box(
-                                modifier =
-                                    Modifier.clip(ChipShape)
-                                        .background(Color.White.copy(alpha = 0.12f))
-                                        .padding(horizontal = 6.dp, vertical = 2.dp)
-                            ) {
-                                Text(
-                                    text = chip,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = Color.White.copy(alpha = 0.85f),
-                                )
+            if (chips.isNotEmpty()) {
+                val scrollState = rememberScrollState()
+                Row(
+                    modifier =
+                        Modifier.weight(1f)
+                            .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
+                            .drawWithContent {
+                                drawContent()
+                                val edgeWidth = 14.dp.toPx()
+                                if (scrollState.value > 0) {
+                                    drawRect(
+                                        brush =
+                                            Brush.horizontalGradient(
+                                                colors = listOf(Color.Transparent, Color.Black),
+                                                startX = 0f,
+                                                endX = edgeWidth,
+                                            ),
+                                        blendMode = BlendMode.DstIn,
+                                    )
+                                }
+                                if (scrollState.value < scrollState.maxValue) {
+                                    drawRect(
+                                        brush =
+                                            Brush.horizontalGradient(
+                                                colors = listOf(Color.Black, Color.Transparent),
+                                                startX = size.width - edgeWidth,
+                                                endX = size.width,
+                                            ),
+                                        blendMode = BlendMode.DstIn,
+                                    )
+                                }
                             }
+                            .horizontalScroll(scrollState),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    for (chip in chips) {
+                        Box(
+                            modifier =
+                                Modifier.clip(ChipShape)
+                                    .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                                    .padding(horizontal = 5.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = chip,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                            )
                         }
                     }
                 }
+            } else {
+                Spacer(modifier = Modifier.weight(1f))
             }
 
             if (isSelected) {
@@ -772,5 +924,54 @@ private fun TabletSelectableItem(
                 )
             }
         }
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF141414)
+@Composable
+private fun TabletNavigationItemPreview() {
+    FindroidTheme {
+        TabletNavigationItem(
+            title = "Subtitles",
+            subtitle = "English",
+            iconRes = CoreR.drawable.ic_closed_caption,
+            onClick = {},
+            shape = MenuMiddleShape,
+        )
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF141414)
+@Composable
+private fun TabletSelectableItemPreview() {
+    FindroidTheme {
+        TabletSelectableItem(
+            title = "English - Stereo",
+            chips = listOf("Default"),
+            isSelected = true,
+            onClick = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF141414)
+@Composable
+private fun TabletSpeedListPreview() {
+    FindroidTheme {
+        TabletSpeedList(
+            currentSpeed = 1.25f,
+            onSpeedSelected = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF141414)
+@Composable
+private fun TabletAspectRatioListPreview() {
+    FindroidTheme {
+        TabletAspectRatioList(
+            currentResizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM,
+            onResizeModeSelected = {},
+        )
     }
 }

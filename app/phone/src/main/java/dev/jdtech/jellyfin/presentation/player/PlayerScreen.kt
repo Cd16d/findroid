@@ -105,6 +105,23 @@ private fun VideoSize.toAspectRatio(): Float =
         16f / 9f
     }
 
+/**
+ * Fullscreen video player screen providing gesture-based scrubbing, volume/brightness swipe HUDs,
+ * double-tap seeking, chapter navigation, track selection, and PiP on phone and tablet devices.
+ *
+ * @param itemId Unique [UUID] identifier of the media item being played.
+ * @param itemKind The media type (e.g. "Movie", "Episode").
+ * @param startFromBeginning Whether playback should start from 0 rather than resuming.
+ * @param onBack Callback when pressing back or navigating away.
+ * @param onEnterPip Callback to request Picture-in-Picture mode.
+ * @param isPipSupported Whether the current device and OS version support PiP.
+ * @param isInPictureInPictureMode Whether the host activity is currently in PiP mode.
+ * @param resizeMode Active [AspectRatioFrameLayout] scaling mode (Fit, Zoom, Fill).
+ * @param onResizeModeChange Callback invoked when the user selects a new resize mode.
+ * @param onToggleOrientation Callback to lock or toggle display orientation.
+ * @param isOrientationLocked Whether orientation lock is currently active.
+ * @param viewModel Injected [PlayerViewModel] managing media playback state.
+ */
 @androidx.annotation.OptIn(UnstableApi::class)
 @Composable
 fun PlayerScreen(

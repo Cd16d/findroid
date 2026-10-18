@@ -8,6 +8,15 @@ import dev.jdtech.jellyfin.player.core.R
 import dev.jdtech.jellyfin.player.core.domain.models.PlayerChapter
 import java.util.Locale
 
+/**
+ * Represents a segmented section of the media progress bar.
+ *
+ * @property startMs The start time of the slice in milliseconds.
+ * @property endMs The end time of the slice in milliseconds.
+ * @property segmentType The [FindroidSegmentType] associated with this slice, if any (e.g. intro,
+ *   outro).
+ * @property title The optional chapter or section title spanning this slice.
+ */
 data class BarSlice(
     val startMs: Long,
     val endMs: Long,
@@ -15,6 +24,15 @@ data class BarSlice(
     val title: String? = null,
 )
 
+/**
+ * Splits the media duration into contiguous [BarSlice] sections based on chapter boundaries and
+ * media segments.
+ *
+ * @param durationMs Total media duration in milliseconds.
+ * @param chapters List of [PlayerChapter] markers for the media item.
+ * @param segments List of [FindroidSegment] intervals (intro, outro, recap, etc.).
+ * @return A list of contiguous [BarSlice] objects covering the full duration without gaps.
+ */
 fun calculateBarSlices(
     durationMs: Long,
     chapters: List<PlayerChapter> = emptyList(),
@@ -133,6 +151,13 @@ fun calculateBarSlices(
     return mergedSlices
 }
 
+/**
+ * Returns the distinctive UI accent [Color] assigned to each [FindroidSegmentType], or null if
+ * unstyled.
+ *
+ * @param type The segment category, or null.
+ * @return The corresponding [Color], or null for unknown / default segments.
+ */
 fun getSegmentColor(type: FindroidSegmentType?): Color? {
     return when (type) {
         FindroidSegmentType.INTRO -> Color(0xFF4CAF50) // Green
@@ -144,6 +169,16 @@ fun getSegmentColor(type: FindroidSegmentType?): Color? {
     }
 }
 
+/**
+ * Computes a user-facing label for the media position, combining chapter name and segment label if
+ * present.
+ *
+ * @param posMs The current playback timestamp in milliseconds.
+ * @param chapters List of [PlayerChapter] objects.
+ * @param segments List of [FindroidSegment] objects.
+ * @param context Android [Context] for resolving localized string resources.
+ * @return A formatted section title string, or null if neither chapter nor segment applies.
+ */
 fun getSectionTitle(
     posMs: Long,
     chapters: List<PlayerChapter>,
@@ -193,6 +228,12 @@ fun getSectionTitle(
     }
 }
 
+/**
+ * Formats a duration in milliseconds to standard digital clock format (e.g. "04:15" or "1:22:45").
+ *
+ * @param millis Duration in milliseconds.
+ * @return Formatted time string.
+ */
 fun formatDuration(millis: Long): String {
     val durationSeconds = (millis.coerceAtLeast(0L) / 1000)
     val hours = durationSeconds / 3600

@@ -62,6 +62,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.media3.common.C
 import androidx.media3.common.Player
@@ -74,6 +75,7 @@ import dev.jdtech.jellyfin.player.core.domain.utils.TrackFormatter
 import dev.jdtech.jellyfin.player.core.presentation.formatDuration
 import dev.jdtech.jellyfin.player.core.presentation.getSegmentColor
 import dev.jdtech.jellyfin.player.local.presentation.PlayerViewModel
+import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 
 private val DialogShape = RoundedCornerShape(24.dp)
 private val ChipShape = RoundedCornerShape(4.dp)
@@ -105,6 +107,20 @@ private fun getItemShape(index: Int, totalCount: Int): Shape {
     }
 }
 
+/**
+ * Modal bottom sheet presenting player settings, track pickers, playback speed, aspect ratio, and
+ * chapters on phone devices.
+ *
+ * @param panelType The currently active [PlayerSidePanelType] page.
+ * @param onPanelTypeChange Callback to navigate between settings and sub-menus.
+ * @param viewModel Active [PlayerViewModel] supplying media state and controls.
+ * @param currentResizeMode Currently active [AspectRatioFrameLayout] resize mode.
+ * @param onResizeModeChange Callback when a resize mode is selected.
+ * @param onDismiss Callback to close and dismiss the bottom sheet.
+ * @param onLock Callback to lock the player screen.
+ * @param modifier Optional [Modifier] applied to the bottom sheet.
+ * @param openedDirectly Whether the sheet was launched directly to a specific sub-panel.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlayerBottomSheet(
@@ -141,10 +157,14 @@ fun PlayerBottomSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        containerColor = Color(0xFF1E1E1E),
-        contentColor = Color.White,
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        contentColor = MaterialTheme.colorScheme.onSurface,
         shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-        dragHandle = { BottomSheetDefaults.DragHandle(color = Color.White.copy(alpha = 0.35f)) },
+        dragHandle = {
+            BottomSheetDefaults.DragHandle(
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+            )
+        },
         modifier = modifier,
     ) {
         Column(
@@ -168,7 +188,7 @@ fun PlayerBottomSheet(
                             modifier =
                                 Modifier.size(36.dp)
                                     .clip(CircleShape)
-                                    .background(Color.White.copy(alpha = 0.1f))
+                                    .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                                     .clickable(
                                         interactionSource = remember { MutableInteractionSource() },
                                         indication = ripple(bounded = true, radius = 18.dp),
@@ -182,7 +202,7 @@ fun PlayerBottomSheet(
                                 painter = painterResource(id = CoreR.drawable.ic_arrow_left),
                                 contentDescription = null,
                                 modifier = Modifier.size(20.dp),
-                                tint = Color.White,
+                                tint = MaterialTheme.colorScheme.onSurface,
                             )
                         }
                     }
@@ -207,7 +227,7 @@ fun PlayerBottomSheet(
                             ),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.weight(1f),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -266,6 +286,15 @@ fun PlayerBottomSheet(
     }
 }
 
+/**
+ * Main quick settings menu displayed in the phone bottom sheet.
+ *
+ * @param viewModel Active [PlayerViewModel].
+ * @param tracks Current media [Tracks].
+ * @param currentResizeMode Video resize mode.
+ * @param onNavigate Callback to navigate to a sub-menu page.
+ * @param onLock Callback to lock the player controls.
+ */
 @Composable
 private fun PhoneSettingsMenu(
     viewModel: PlayerViewModel,
@@ -376,6 +405,18 @@ private fun PhoneSettingsMenu(
     }
 }
 
+/**
+ * Single navigation item row in the phone settings bottom sheet.
+ *
+ * @param title Primary item label.
+ * @param subtitle Secondary or currently selected value label.
+ * @param iconRes Drawable resource ID for the row icon.
+ * @param onClick Callback when the row is pressed.
+ * @param shape Corner shape defining the visual card appearance in the grouped list.
+ * @param badge Optional text badge (e.g. "Coming Soon").
+ * @param enabled Whether this menu row is interactable.
+ * @param showChevron Whether to show the chevron right indicator.
+ */
 @Composable
 private fun PhoneNavigationRow(
     title: String,
@@ -391,8 +432,8 @@ private fun PhoneNavigationRow(
     Surface(
         modifier = Modifier.fillMaxWidth().graphicsLayer { this.alpha = alpha },
         shape = shape,
-        color = Color(0xFF242424),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.06f)),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)),
         onClick = onClick,
         enabled = enabled,
     ) {
@@ -405,25 +446,25 @@ private fun PhoneNavigationRow(
                 painter = painterResource(id = iconRes),
                 contentDescription = null,
                 modifier = Modifier.size(20.dp),
-                tint = Color.White.copy(alpha = 0.9f),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Bold,
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onSurface,
             )
             if (badge != null) {
                 Box(
                     modifier =
                         Modifier.clip(RoundedCornerShape(4.dp))
-                            .background(Color.White.copy(alpha = 0.15f))
+                            .background(MaterialTheme.colorScheme.surfaceContainerHighest)
                             .padding(horizontal = 6.dp, vertical = 2.dp)
                 ) {
                     Text(
                         text = badge,
                         style = MaterialTheme.typography.labelSmall,
-                        color = Color.White.copy(alpha = 0.85f),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = FontWeight.Medium,
                     )
                 }
@@ -433,7 +474,7 @@ private fun PhoneNavigationRow(
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White.copy(alpha = 0.65f),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -443,13 +484,19 @@ private fun PhoneNavigationRow(
                     painter = painterResource(id = CoreR.drawable.ic_chevron_right),
                     contentDescription = null,
                     modifier = Modifier.size(16.dp),
-                    tint = Color.White.copy(alpha = 0.4f),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                 )
             }
         }
     }
 }
 
+/**
+ * Audio track selection list for phone bottom sheet.
+ *
+ * @param viewModel Active [PlayerViewModel].
+ * @param tracks Current media [Tracks].
+ */
 @Composable
 private fun PhoneAudioTrackList(viewModel: PlayerViewModel, tracks: Tracks) {
     val context = LocalContext.current
@@ -494,6 +541,12 @@ private fun PhoneAudioTrackList(viewModel: PlayerViewModel, tracks: Tracks) {
     }
 }
 
+/**
+ * Subtitle track selection list for phone bottom sheet.
+ *
+ * @param viewModel Active [PlayerViewModel].
+ * @param tracks Current media [Tracks].
+ */
 @Composable
 private fun PhoneSubtitleTrackList(viewModel: PlayerViewModel, tracks: Tracks) {
     val context = LocalContext.current
@@ -548,6 +601,12 @@ private fun PhoneSubtitleTrackList(viewModel: PlayerViewModel, tracks: Tracks) {
     }
 }
 
+/**
+ * Playback speed picker list for phone bottom sheet.
+ *
+ * @param currentSpeed Currently selected speed factor.
+ * @param onSpeedSelected Callback when a speed factor is picked.
+ */
 @Composable
 private fun PhoneSpeedList(currentSpeed: Float, onSpeedSelected: (Float) -> Unit) {
     val speeds = listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f)
@@ -567,6 +626,12 @@ private fun PhoneSpeedList(currentSpeed: Float, onSpeedSelected: (Float) -> Unit
     }
 }
 
+/**
+ * Aspect ratio / zoom mode picker list for phone bottom sheet.
+ *
+ * @param currentResizeMode Currently selected [AspectRatioFrameLayout] resize mode.
+ * @param onResizeModeSelected Callback when a resize mode is picked.
+ */
 @Composable
 private fun PhoneAspectRatioList(currentResizeMode: Int, onResizeModeSelected: (Int) -> Unit) {
     val modes =
@@ -592,6 +657,12 @@ private fun PhoneAspectRatioList(currentResizeMode: Int, onResizeModeSelected: (
     }
 }
 
+/**
+ * Chapters navigation list with thumbnail previews and segment badges for phone bottom sheet.
+ *
+ * @param viewModel Active [PlayerViewModel].
+ * @param onChapterSelected Callback triggered after seeking to the selected chapter.
+ */
 @Composable
 private fun PhoneChaptersList(viewModel: PlayerViewModel, onChapterSelected: () -> Unit) {
     val uiState by viewModel.uiState.collectAsState()
@@ -666,7 +737,7 @@ private fun PhoneChaptersList(viewModel: PlayerViewModel, onChapterSelected: () 
                 if (segmentColor != null) {
                     BorderStroke(1.5.dp, segmentColor)
                 } else {
-                    BorderStroke(1.dp, Color.White.copy(alpha = 0.12f))
+                    BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
                 }
 
             Surface(
@@ -674,11 +745,15 @@ private fun PhoneChaptersList(viewModel: PlayerViewModel, onChapterSelected: () 
                 shape = getItemShape(index, chapters.size),
                 color =
                     if (isCurrent) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
-                    else Color(0xFF242424),
+                    else MaterialTheme.colorScheme.surfaceContainerHigh,
                 border =
                     if (isCurrent)
-                        BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
-                    else BorderStroke(1.dp, Color.White.copy(alpha = 0.06f)),
+                        BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f))
+                    else
+                        BorderStroke(
+                            1.dp,
+                            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f),
+                        ),
                 onClick = {
                     viewModel.player.seekTo(startTimeMs)
                     onChapterSelected()
@@ -710,7 +785,8 @@ private fun PhoneChaptersList(viewModel: PlayerViewModel, onChapterSelected: () 
                             Text(
                                 text = "${index + 1}",
                                 style = MaterialTheme.typography.labelMedium,
-                                color = Color.White.copy(alpha = 0.5f),
+                                color =
+                                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                             )
                         }
                     }
@@ -721,7 +797,8 @@ private fun PhoneChaptersList(viewModel: PlayerViewModel, onChapterSelected: () 
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Medium,
                             color =
-                                if (isCurrent) MaterialTheme.colorScheme.primary else Color.White,
+                                if (isCurrent) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.onSurface,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
@@ -756,7 +833,7 @@ private fun PhoneChaptersList(viewModel: PlayerViewModel, onChapterSelected: () 
                             Text(
                                 text = formattedTime,
                                 style = MaterialTheme.typography.labelSmall,
-                                color = Color.White.copy(alpha = 0.6f),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
                     }
@@ -766,6 +843,15 @@ private fun PhoneChaptersList(viewModel: PlayerViewModel, onChapterSelected: () 
     }
 }
 
+/**
+ * Selectable list row displaying track name, characteristic badges, checkmark, and dynamic shapes.
+ *
+ * @param title Primary text description of the selection item.
+ * @param chips List of badge labels (e.g. language or codec chips).
+ * @param isSelected Whether this row is currently chosen.
+ * @param onClick Callback when the row is tapped.
+ * @param shape Corner [Shape] defining rounded edges according to list position.
+ */
 @Composable
 private fun PhoneSelectableItem(
     title: String,
@@ -779,10 +865,10 @@ private fun PhoneSelectableItem(
         shape = shape,
         color =
             if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
-            else Color(0xFF242424),
+            else MaterialTheme.colorScheme.surfaceContainerHigh,
         border =
-            if (isSelected) BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
-            else BorderStroke(1.dp, Color.White.copy(alpha = 0.06f)),
+            if (isSelected) BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f))
+            else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)),
         onClick = onClick,
     ) {
         Row(
@@ -794,7 +880,9 @@ private fun PhoneSelectableItem(
                 text = title,
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                color = if (isSelected) MaterialTheme.colorScheme.primary else Color.White,
+                color =
+                    if (isSelected) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f, fill = false),
@@ -840,13 +928,13 @@ private fun PhoneSelectableItem(
                         Box(
                             modifier =
                                 Modifier.clip(ChipShape)
-                                    .background(Color.White.copy(alpha = 0.12f))
+                                    .background(MaterialTheme.colorScheme.surfaceContainerHighest)
                                     .padding(horizontal = 5.dp, vertical = 2.dp)
                         ) {
                             Text(
-                                text = chip,
+                                chip,
                                 style = MaterialTheme.typography.labelSmall,
-                                color = Color.White.copy(alpha = 0.85f),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 1,
                             )
                         }
@@ -865,5 +953,54 @@ private fun PhoneSelectableItem(
                 )
             }
         }
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF1E1E1E)
+@Composable
+private fun PhoneNavigationRowPreview() {
+    FindroidTheme {
+        PhoneNavigationRow(
+            title = "Audio",
+            subtitle = "English - Stereo",
+            iconRes = CoreR.drawable.ic_speaker,
+            onClick = {},
+            shape = MenuTopShape,
+        )
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF1E1E1E)
+@Composable
+private fun PhoneSelectableItemPreview() {
+    FindroidTheme {
+        PhoneSelectableItem(
+            title = "English [CC]",
+            chips = listOf("SDH", "Default"),
+            isSelected = true,
+            onClick = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF1E1E1E)
+@Composable
+private fun PhoneSpeedListPreview() {
+    FindroidTheme {
+        PhoneSpeedList(
+            currentSpeed = 1f,
+            onSpeedSelected = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF1E1E1E)
+@Composable
+private fun PhoneAspectRatioListPreview() {
+    FindroidTheme {
+        PhoneAspectRatioList(
+            currentResizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT,
+            onResizeModeSelected = {},
+        )
     }
 }

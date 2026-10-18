@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import dev.jdtech.jellyfin.core.R
 import dev.jdtech.jellyfin.core.presentation.dummy.dummyEpisode
 import dev.jdtech.jellyfin.core.presentation.dummy.dummyMovie
+import dev.jdtech.jellyfin.core.presentation.dummy.dummySeason
 import dev.jdtech.jellyfin.core.presentation.dummy.dummyShow
 import dev.jdtech.jellyfin.models.FindroidEpisode
 import dev.jdtech.jellyfin.models.FindroidItem
@@ -42,6 +43,18 @@ import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
 import dev.jdtech.jellyfin.utils.getShowDateString
 
+/**
+ * Standard media card component presenting item artwork, title, subtitle, and badges.
+ *
+ * @param item The [FindroidItem] to display (movie, show, season, episode).
+ * @param direction Layout orientation: [Direction.HORIZONTAL] for backdrop cards or
+ *   [Direction.VERTICAL] for poster cards.
+ * @param onClick Callback triggered when tapping the card.
+ * @param modifier Optional [Modifier] applied to the card column.
+ * @param hideEpisodeSpoilers When enabled, blurs unwatched episode artwork and obscures
+ *   descriptions.
+ * @param showParentTitle When true, displays series parent titles for season and episode items.
+ */
 @Composable
 fun ItemCard(
     item: FindroidItem,
@@ -200,4 +213,17 @@ private fun ItemCardPreviewEpisode() {
 @Composable
 private fun ItemCardPreviewEpisodeVertical() {
     FindroidTheme { ItemCard(item = dummyEpisode, direction = Direction.VERTICAL, onClick = {}) }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun ItemCardPreviewSeason() {
+    FindroidTheme {
+        ItemCard(
+            item = dummySeason,
+            direction = Direction.VERTICAL,
+            onClick = {},
+            showParentTitle = false,
+        )
+    }
 }

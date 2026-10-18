@@ -22,17 +22,37 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import dev.jdtech.jellyfin.models.FindroidSegment
+import dev.jdtech.jellyfin.models.FindroidSegmentType
 import dev.jdtech.jellyfin.player.core.domain.models.PlayerChapter
 import dev.jdtech.jellyfin.player.core.presentation.calculateBarSlices
 import dev.jdtech.jellyfin.player.core.presentation.getSegmentColor
+import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 
 private fun calculateProgressFromX(x: Float, width: Float): Float {
     if (width <= 0f) return 0f
     return (x / width).coerceIn(0f, 1f)
 }
 
+/**
+ * Interactive timeline progress bar with chapter slicing, segment color accents, dynamic touch
+ * expansion, and scrub position tracking.
+ *
+ * @param progress Current playback completion ratio between 0.0f and 1.0f.
+ * @param onSeek Callback invoked when the user commits a seek gesture, passing target progress
+ *   fraction.
+ * @param state Active [VideoPlayerState] instance.
+ * @param modifier Optional [Modifier] applied to the canvas.
+ * @param durationMs Total media duration in milliseconds.
+ * @param chapters List of [PlayerChapter] markers used to split the bar into visual chapter slices.
+ * @param segments List of [FindroidSegment] intervals used to tint segment slices (intro, outro,
+ *   recap, etc.).
+ * @param isScrubbing Whether external scrubbing interaction is active.
+ * @param onScrubbingChanged Callback reporting scrub status, scrub timestamp in ms, and touch X
+ *   offset.
+ */
 @Composable
 fun VideoPlayerSeekBar(
     progress: Float,
@@ -254,6 +274,54 @@ fun VideoPlayerSeekBar(
             topLeft = Offset(thumbLeft, yOffset - thumbHeight / 2f),
             size = Size(thumbWidth, thumbHeight),
             cornerRadius = CornerRadius(thumbWidth / 2f, thumbWidth / 2f),
+        )
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF000000)
+@Composable
+private fun VideoPlayerSeekBarPreview() {
+    FindroidTheme {
+        val state = rememberVideoPlayerState()
+        VideoPlayerSeekBar(
+            progress = 0.35f,
+            onSeek = {},
+            state = state,
+            durationMs = 600_000L,
+        )
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF000000)
+@Composable
+private fun VideoPlayerSeekBarWithSegmentsPreview() {
+    FindroidTheme {
+        val state = rememberVideoPlayerState()
+        VideoPlayerSeekBar(
+            progress = 0.20f,
+            onSeek = {},
+            state = state,
+            durationMs = 1_800_000L,
+            chapters =
+                listOf(
+                    PlayerChapter(name = "Intro", startPosition = 0L),
+                    PlayerChapter(name = "Act I", startPosition = 180_000L),
+                    PlayerChapter(name = "Act II", startPosition = 700_000L),
+                    PlayerChapter(name = "Credits", startPosition = 1_650_000L),
+                ),
+            segments =
+                listOf(
+                    FindroidSegment(
+                        type = FindroidSegmentType.INTRO,
+                        startTicks = 60_000L,
+                        endTicks = 180_000L,
+                    ),
+                    FindroidSegment(
+                        type = FindroidSegmentType.OUTRO,
+                        startTicks = 1_650_000L,
+                        endTicks = 1_800_000L,
+                    ),
+                ),
         )
     }
 }

@@ -27,11 +27,30 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import dev.jdtech.jellyfin.core.R as CoreR
+import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 
 private val GlassPillShape = RoundedCornerShape(24.dp)
 
+/**
+ * Top control bar for the player screen containing title, subtitle, back navigation, and
+ * quick-action icons (orientation lock, PiP, subtitles, audio, settings).
+ *
+ * @param title Primary title of the media item (e.g. episode or movie name).
+ * @param subtitle Optional secondary title (e.g. series or season info).
+ * @param onBack Callback triggered when tapping the back arrow.
+ * @param onOpenSubtitles Callback to open the subtitles selection sheet/panel.
+ * @param onOpenAudio Callback to open the audio track selection sheet/panel.
+ * @param onEnterPip Callback to request entering Picture-in-Picture mode.
+ * @param onOpenSettings Callback to open the player quick settings menu.
+ * @param onToggleOrientation Callback to toggle or lock orientation.
+ * @param modifier Optional [Modifier] applied to the top bar row.
+ * @param isOrientationLocked Whether screen rotation is currently locked.
+ * @param isPipSupported Whether picture-in-picture is supported on the current device.
+ * @param isPortrait Whether the display layout is currently in portrait orientation.
+ */
 @Composable
 fun PlayerTopBar(
     title: String,
@@ -230,5 +249,42 @@ fun PlayerTopBar(
                 )
             }
         }
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF000000)
+@Composable
+private fun PlayerTopBarLandscapePreview() {
+    FindroidTheme {
+        PlayerTopBar(
+            title = "S01E01 - Pilot",
+            subtitle = "Breaking Bad",
+            onBack = {},
+            onOpenSubtitles = {},
+            onOpenAudio = {},
+            onEnterPip = {},
+            onOpenSettings = {},
+            onToggleOrientation = {},
+            isPortrait = false,
+        )
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF000000)
+@Composable
+private fun PlayerTopBarPortraitPreview() {
+    FindroidTheme {
+        PlayerTopBar(
+            title = "Inception (2010)",
+            subtitle = null,
+            onBack = {},
+            onOpenSubtitles = {},
+            onOpenAudio = {},
+            onEnterPip = {},
+            onOpenSettings = {},
+            onToggleOrientation = {},
+            isOrientationLocked = true,
+            isPortrait = true,
+        )
     }
 }

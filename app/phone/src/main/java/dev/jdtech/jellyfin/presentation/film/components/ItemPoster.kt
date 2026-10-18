@@ -10,17 +10,33 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.tooling.preview.Preview
 import coil3.compose.AsyncImage
+import dev.jdtech.jellyfin.core.presentation.dummy.dummyMovie
 import dev.jdtech.jellyfin.models.FindroidEpisode
 import dev.jdtech.jellyfin.models.FindroidItem
+import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.utils.toBlurHashPainter
 import dev.jdtech.jellyfin.utils.toOptimizedImageUri
 
+/** Orientation format for artwork displays. */
 enum class Direction {
+    /** Horizontal aspect ratio (16:9), typical for backdrops and episode thumbnails. */
     HORIZONTAL,
+
+    /** Vertical aspect ratio (2:3), typical for movie and show posters. */
     VERTICAL,
 }
 
+/**
+ * Artwork image container rendering poster or backdrop images with blurhash placeholders.
+ *
+ * @param item The [FindroidItem] whose imagery to display.
+ * @param direction The layout aspect ratio: [Direction.HORIZONTAL] for 16:9 or [Direction.VERTICAL]
+ *   for 2:3.
+ * @param modifier Optional [Modifier] applied to the container box.
+ * @param blurOnly If true, only renders the blurred placeholder instead of loading the full image.
+ */
 @Composable
 fun ItemPoster(
     item: FindroidItem,
@@ -76,5 +92,27 @@ fun ItemPoster(
                 modifier = Modifier.fillMaxSize(),
             )
         }
+    }
+}
+
+@Preview
+@Composable
+private fun ItemPosterVerticalPreview() {
+    FindroidTheme {
+        ItemPoster(
+            item = dummyMovie,
+            direction = Direction.VERTICAL,
+        )
+    }
+}
+
+@Preview
+@Composable
+private fun ItemPosterHorizontalPreview() {
+    FindroidTheme {
+        ItemPoster(
+            item = dummyMovie,
+            direction = Direction.HORIZONTAL,
+        )
     }
 }

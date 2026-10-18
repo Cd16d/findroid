@@ -32,6 +32,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.models.FindroidSegment
@@ -39,9 +40,28 @@ import dev.jdtech.jellyfin.player.core.R as PlayerR
 import dev.jdtech.jellyfin.player.core.domain.models.PlayerChapter
 import dev.jdtech.jellyfin.player.core.presentation.formatDuration
 import dev.jdtech.jellyfin.player.core.presentation.getSectionTitle
+import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import java.util.Date
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.minutes
 
+/**
+ * Bottom player control section comprising metadata badges (timestamps, chapter title, end time)
+ * and the [VideoPlayerSeekBar].
+ *
+ * @param state Active [VideoPlayerState] controlling player interactions.
+ * @param onSeek Callback invoked when committing a seek action, passing target progress fraction.
+ * @param contentProgress Current played [Duration].
+ * @param contentDuration Total media [Duration].
+ * @param modifier Optional [Modifier] applied to the seeker container.
+ * @param chapters List of [PlayerChapter] markers.
+ * @param segments List of [FindroidSegment] intervals.
+ * @param isScrubbing Whether seeking is actively in progress.
+ * @param scrubPositionMs Scrub target position in milliseconds.
+ * @param onScrubbingChanged Callback reporting scrub status, scrub timestamp in ms, and touch X
+ *   offset.
+ * @param onOpenChapters Optional callback to navigate to the chapters sheet/panel.
+ */
 @Composable
 fun VideoPlayerSeeker(
     state: VideoPlayerState,
@@ -238,6 +258,40 @@ fun VideoPlayerSeeker(
             isScrubbing = isScrubbing,
             onScrubbingChanged = onScrubbingChanged,
             modifier = Modifier.fillMaxWidth(),
+        )
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF000000)
+@Composable
+private fun VideoPlayerSeekerPreview() {
+    FindroidTheme {
+        val state = rememberVideoPlayerState()
+        VideoPlayerSeeker(
+            state = state,
+            onSeek = {},
+            contentProgress = 14.minutes,
+            contentDuration = 45.minutes,
+        )
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF000000)
+@Composable
+private fun VideoPlayerSeekerWithChaptersPreview() {
+    FindroidTheme {
+        val state = rememberVideoPlayerState()
+        VideoPlayerSeeker(
+            state = state,
+            onSeek = {},
+            contentProgress = 2.minutes,
+            contentDuration = 24.minutes,
+            chapters =
+                listOf(
+                    PlayerChapter(name = "Prologue", startPosition = 0L),
+                    PlayerChapter(name = "Main Story", startPosition = 180_000L),
+                ),
+            onOpenChapters = {},
         )
     }
 }

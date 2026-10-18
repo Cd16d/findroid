@@ -26,6 +26,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
@@ -36,10 +37,28 @@ import dev.jdtech.jellyfin.player.core.domain.models.intervalMs
 import dev.jdtech.jellyfin.player.core.presentation.formatDuration
 import dev.jdtech.jellyfin.player.core.presentation.getSectionTitle
 import dev.jdtech.jellyfin.player.core.presentation.getSegmentColor
+import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import kotlin.math.roundToInt
 
 private val ScrubberCardShape = RoundedCornerShape(16.dp)
 
+/**
+ * Trickplay scrubber overlay for Android TV player interface.
+ *
+ * Renders a centered thumbnail preview of the video frame at [currentPositionMs] along with
+ * chapter/segment title badge and formatted timestamp pills during seek gestures.
+ *
+ * @param trickplay The [Trickplay] image metadata and thumbnails, or null if trickplay is not
+ *   available.
+ * @param currentPositionMs Current playback or scrubbing position in milliseconds.
+ * @param durationMs Total media duration in milliseconds.
+ * @param modifier Optional [Modifier] applied to the scrubber container.
+ * @param segments Optional list of [FindroidSegment] (intro, outro, recap, etc.) for indicator
+ *   display.
+ * @param chapters Optional list of [PlayerChapter] markers for chapter title display.
+ * @param seekDeltaMs Offset in milliseconds from original position when scrubbing (+/- seconds).
+ * @param videoAspectRatio Optional video aspect ratio used for fallback preview sizing.
+ */
 @Composable
 fun TrickplayScrubber(
     trickplay: Trickplay?,
@@ -184,5 +203,18 @@ fun TrickplayScrubber(
                 }
             }
         }
+    }
+}
+
+@Preview(device = "id:tv_1080p")
+@Composable
+private fun TrickplayScrubberPreview() {
+    FindroidTheme {
+        TrickplayScrubber(
+            trickplay = null,
+            currentPositionMs = 150000L,
+            durationMs = 1420000L,
+            seekDeltaMs = 10000L,
+        )
     }
 }

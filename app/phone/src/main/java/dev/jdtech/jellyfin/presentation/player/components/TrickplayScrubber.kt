@@ -28,19 +28,30 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.jdtech.jellyfin.models.FindroidSegment
+import dev.jdtech.jellyfin.models.FindroidSegmentType
 import dev.jdtech.jellyfin.player.core.domain.models.PlayerChapter
 import dev.jdtech.jellyfin.player.core.domain.models.Trickplay
 import dev.jdtech.jellyfin.player.core.domain.models.intervalMs
 import dev.jdtech.jellyfin.player.core.presentation.formatDuration
 import dev.jdtech.jellyfin.player.core.presentation.getSectionTitle
 import dev.jdtech.jellyfin.player.core.presentation.getSegmentColor
+import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import kotlin.math.roundToInt
 
 private val ScrubberCardShape = RoundedCornerShape(16.dp)
 
+/**
+ * Calculates the dynamic width of the trickplay preview card based on media/trickplay aspect ratio.
+ *
+ * @param trickplay Available [Trickplay] metadata containing thumbnail bitmaps.
+ * @param videoAspectRatio Native aspect ratio of the playing video.
+ * @param baseHeight Fixed height of the preview card container.
+ * @return Computed [Dp] width coerced within reasonable aspect ratio bounds.
+ */
 fun calculateTrickplayCardWidth(
     trickplay: Trickplay?,
     videoAspectRatio: Float?,
@@ -58,6 +69,20 @@ fun calculateTrickplayCardWidth(
     return (baseHeight.value * aspect.coerceIn(0.75f, 2.75f)).dp
 }
 
+/**
+ * Floating or centered scrubbing card showing trickplay thumbnail, chapter title, segment pill, and
+ * time indicators during seek gestures.
+ *
+ * @param trickplay Active [Trickplay] image frames.
+ * @param currentPositionMs Current playback or scrubbed position in milliseconds.
+ * @param durationMs Total media duration in milliseconds.
+ * @param modifier Optional [Modifier] applied to the card column.
+ * @param segments Media [FindroidSegment] intervals (intro, outro, etc.).
+ * @param chapters Media [PlayerChapter] markers.
+ * @param seekDeltaMs Relative seek difference in milliseconds (e.g. +10000 for +10s), or 0L.
+ * @param videoAspectRatio Video aspect ratio used to calculate thumbnail dimensions.
+ * @param cardHeight Fixed height of the thumbnail card container.
+ */
 @Composable
 fun TrickplayScrubber(
     trickplay: Trickplay?,
@@ -193,5 +218,39 @@ fun TrickplayScrubber(
                 }
             }
         }
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF000000)
+@Composable
+private fun TrickplayScrubberPreview() {
+    FindroidTheme {
+        TrickplayScrubber(
+            trickplay = null,
+            currentPositionMs = 125_000L,
+            durationMs = 600_000L,
+            chapters = listOf(PlayerChapter(name = "Chapter 1", startPosition = 0L)),
+            segments =
+                listOf(
+                    FindroidSegment(
+                        type = FindroidSegmentType.INTRO,
+                        startTicks = 60_000L,
+                        endTicks = 150_000L,
+                    )
+                ),
+        )
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF000000)
+@Composable
+private fun TrickplayScrubberWithDeltaPreview() {
+    FindroidTheme {
+        TrickplayScrubber(
+            trickplay = null,
+            currentPositionMs = 320_000L,
+            durationMs = 1_200_000L,
+            seekDeltaMs = 30_000L,
+        )
     }
 }
