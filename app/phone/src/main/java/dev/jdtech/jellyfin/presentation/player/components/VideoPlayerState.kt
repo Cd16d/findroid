@@ -36,6 +36,9 @@ enum class PlayerSidePanelType {
 
     /** Chapters list panel. */
     CHAPTERS,
+
+    /** Sleep timer configuration panel. */
+    SLEEP_TIMER,
 }
 
 /**
@@ -44,7 +47,10 @@ enum class PlayerSidePanelType {
  * @param coroutineScope [CoroutineScope] used for managing auto-hide delays.
  */
 @Stable
-class VideoPlayerState(val coroutineScope: CoroutineScope) {
+class VideoPlayerState(
+    val coroutineScope: CoroutineScope,
+    var controlsTimeoutSeconds: Long = 4L,
+) {
     /**
      * Whether the on-screen playback controls (top bar, center buttons, seeker) are currently
      * visible.
@@ -95,7 +101,7 @@ class VideoPlayerState(val coroutineScope: CoroutineScope) {
     }
 
     /**
-     * Resets or restarts the 5-second controls auto-hide timer.
+     * Resets or restarts the controls auto-hide timer.
      *
      * @param autoHide Whether auto-hiding should be enabled.
      */
@@ -103,7 +109,7 @@ class VideoPlayerState(val coroutineScope: CoroutineScope) {
         hideJob?.cancel()
         if (autoHide && !isPanelOpen && !isControlsLocked) {
             hideJob = coroutineScope.launch {
-                delay(5.seconds)
+                delay(controlsTimeoutSeconds.seconds)
                 controlsVisible = false
             }
         }
@@ -129,14 +135,18 @@ class VideoPlayerState(val coroutineScope: CoroutineScope) {
 /**
  * Creates and remembers a [VideoPlayerState] instance across recompositions.
  *
+ * @param controlsTimeoutSeconds Duration in seconds before player controls auto-hide.
  * @param coroutineScope [CoroutineScope] used by the state holder for auto-hide timeouts.
  * @return A remembered [VideoPlayerState] instance.
  */
 @Composable
 fun rememberVideoPlayerState(
-    coroutineScope: CoroutineScope = rememberCoroutineScope()
+    controlsTimeoutSeconds: Long = 4L,
+    coroutineScope: CoroutineScope = rememberCoroutineScope(),
 ): VideoPlayerState {
-    val state = remember { VideoPlayerState(coroutineScope) }
+    val state =
+        remember(coroutineScope) { VideoPlayerState(coroutineScope, controlsTimeoutSeconds) }
+    state.controlsTimeoutSeconds = controlsTimeoutSeconds
     LaunchedEffect(state.isPanelOpen, state.isControlsLocked) {
         if (state.isPanelOpen || state.isControlsLocked) {
             state.resetTimeout(autoHide = false)

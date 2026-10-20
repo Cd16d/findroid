@@ -53,4 +53,14 @@
     <string name="player_controls_toggle_orientation">Toggle screen orientation</string>
     <string name="lock_screen">Lock screen</string>
     <string name="unlock">Unlock</string>
+    <string name="slide_to_unlock">Slide to unlock</string>
+    <string name="sleep_timer">Sleep timer</string>
+    <string name="sleep_timer_off">Off</string>
+    <string name="sleep_timer_end_of_episode">End of episode</string>
+    <string name="sleep_timer_end_of_video">End of video</string>
+    <string name="sleep_timer_minutes">%1$d minutes</string>
+    <string name="sleep_timer_min_short">min</string>
+    <string name="sleep_timer_start">Start timer</string>
+    <string name="sleep_timer_turn_off">Turn off timer</string>
+    <string name="sleep_timer_remaining">%1$d min remaining</string>
 </resources>

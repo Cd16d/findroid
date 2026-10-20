@@ -101,6 +101,7 @@ constructor(
         val currentSkipButtonStringRes: Int = R.string.player_controls_skip_intro,
         val currentTrickplay: Trickplay? = null,
         val currentChapters: List<PlayerChapter> = emptyList(),
+        val segments: List<FindroidSegment> = emptyList(),
         val fileLoaded: Boolean = false,
         val audioTracks: List<Track> = emptyList(),
         val subtitleTracks: List<Track> = emptyList(),
@@ -144,6 +145,7 @@ constructor(
         private set
 
     private var trickplayJob: Job? = null
+    private var activeSegment: FindroidSegment? = null
 
     // Segments preferences
     private val segmentsSkipButton: Boolean
@@ -200,6 +202,7 @@ constructor(
     /** Handles the transition when a new media item starts playing. */
     private suspend fun onMediaItemTransition(item: PlayerItem) {
         Timber.d("Cast MediaItem transition: ${item.itemId}")
+        resetSkipButtonTimer()
         currentItemId = item.itemId
         savedStateHandle[KEY_CURRENT_ITEM_ID] = item.itemId.toString()
         val isMovie = item.mediaType == PlayerMediaType.MOVIE
@@ -267,7 +270,9 @@ constructor(
             )
         }
 
-        currentMediaItemSegments = getSegments(item.itemId, repository)
+        currentMediaItemSegments =
+            getSegments(item.itemId, repository) { appPreferences.getSegmentColor(it.name) }
+        _uiState.update { it.copy(segments = currentMediaItemSegments) }
 
         trickplayJob?.cancel()
         if (appPreferences.getValue(appPreferences.playerTrickplay)) {
@@ -281,22 +286,28 @@ constructor(
      * the UI state to show a "Skip" button if the segment type matches the user's preferences.
      */
     private fun updateCurrentSegment(positionMs: Long) {
-        if (currentMediaItemSegments.isEmpty()) return
+        if (currentMediaItemSegments.isEmpty()) {
+            resetSkipButtonTimer()
+            return
+        }
 
         val currentSegment = currentMediaItemSegments.find { segment ->
             positionMs in segment.startTicks..<(segment.endTicks - 100L)
         }
 
         if (currentSegment == null) {
+            activeSegment = null
             if (_uiState.value.currentSegment != null) {
                 _uiState.update { it.copy(currentSegment = null) }
             }
             return
         }
 
-        if (_uiState.value.currentSegment == currentSegment) {
+        if (currentSegment == activeSegment) {
             return
         }
+
+        activeSegment = currentSegment
 
         Timber.tag("SegmentInfo").d("currentSegment: %s", currentSegment)
 
@@ -308,13 +319,18 @@ constructor(
         val segmentsSkipButtonTypes =
             appPreferences.getValue(appPreferences.playerMediaSegmentsSkipButtonType)
 
-        if (
-            segmentsAutoSkip &&
-                segmentsAutoSkipTypes.contains(currentSegment.type.toString()) &&
-                segmentsAutoSkipMode == Constants.PlayerMediaSegmentsAutoSkip.ALWAYS
-        ) {
+        val isAutoSkipConfigured =
+            segmentsAutoSkip && segmentsAutoSkipTypes.contains(currentSegment.type.toString())
+        val isSkipButtonConfigured =
+            segmentsSkipButton && segmentsSkipButtonTypes.contains(currentSegment.type.toString())
+
+        val autoSkipMode = Constants.PlayerMediaSegmentsAutoSkip.fromValue(segmentsAutoSkipMode)
+        if (isAutoSkipConfigured && autoSkipMode == Constants.PlayerMediaSegmentsAutoSkip.ALWAYS) {
             skipSegment(currentSegment)
-        } else if (segmentsSkipButtonTypes.contains(currentSegment.type.toString())) {
+        } else if (
+            isSkipButtonConfigured ||
+                (isAutoSkipConfigured && autoSkipMode == Constants.PlayerMediaSegmentsAutoSkip.PIP)
+        ) {
             _uiState.update {
                 it.copy(
                     currentSegment = currentSegment,
@@ -330,6 +346,10 @@ constructor(
         }
 
         Timber.d("Updated current segment: ${_uiState.value.currentSegment?.type}")
+    }
+
+    private fun resetSkipButtonTimer() {
+        activeSegment = null
     }
 
     fun play() {
@@ -371,6 +391,7 @@ constructor(
      * segment's end boundary.
      */
     fun skipSegment(segment: FindroidSegment) {
+        resetSkipButtonTimer()
         if (shouldSkipToNextEpisode(segment)) {
             playNextItem()
         } else {
@@ -422,6 +443,7 @@ constructor(
      * disconnects.
      */
     private fun onMediaItemCleared() {
+        resetSkipButtonTimer()
         trickplayJob?.cancel()
         trickplayJob = null
         currentItemId = null
@@ -440,6 +462,7 @@ constructor(
                 currentSkipButtonStringRes = R.string.player_controls_skip_intro,
                 currentTrickplay = null,
                 currentChapters = emptyList(),
+                segments = emptyList(),
                 fileLoaded = false,
                 audioTracks = emptyList(),
                 subtitleTracks = emptyList(),
@@ -537,10 +560,10 @@ constructor(
     }
 
     override fun onCleared() {
+        resetSkipButtonTimer()
         trickplayJob?.cancel()
         val oldTrickplay = _uiState.value.currentTrickplay
         oldTrickplay?.images?.forEach { it.recycle() }
-        super.onCleared()
     }
 
     companion object {

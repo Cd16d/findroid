@@ -32,6 +32,7 @@ android {
 dependencies {
     implementation(libs.timber)
 
+    implementation(libs.androidx.core)
     implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.compose.runtime)
     implementation(libs.androidx.compose.ui)

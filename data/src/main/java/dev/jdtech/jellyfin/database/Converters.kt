@@ -2,6 +2,7 @@ package dev.jdtech.jellyfin.database
 
 import androidx.room3.ColumnTypeConverter
 import dev.jdtech.jellyfin.models.FindroidChapter
+import dev.jdtech.jellyfin.models.deduplicate
 import java.time.ZoneOffset
 import java.util.UUID
 import kotlinx.serialization.json.Json
@@ -35,7 +36,7 @@ class Converters {
 
     @ColumnTypeConverter
     fun fromStringToFindroidChapters(value: String?): List<FindroidChapter>? {
-        return value?.let { Json.decodeFromString(value) }
+        return value?.let { Json.decodeFromString<List<FindroidChapter>>(value).deduplicate() }
     }
 
     @ColumnTypeConverter

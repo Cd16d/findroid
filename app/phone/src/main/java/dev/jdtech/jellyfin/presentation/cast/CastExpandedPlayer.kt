@@ -49,6 +49,7 @@ import dev.jdtech.jellyfin.models.FindroidSegment
 import dev.jdtech.jellyfin.player.cast.presentation.CastPlayerViewModel
 import dev.jdtech.jellyfin.player.core.R as PlayerCoreR
 import dev.jdtech.jellyfin.player.core.domain.models.Track
+import dev.jdtech.jellyfin.presentation.cast.components.CastChaptersDialog
 import dev.jdtech.jellyfin.presentation.cast.components.CastTrackSelectionDialog
 import dev.jdtech.jellyfin.presentation.cast.components.PlayerBottomSection
 import dev.jdtech.jellyfin.presentation.cast.components.PlayerTopSection
@@ -190,6 +191,7 @@ private fun CastExpandedPlayerLayout(
     var isScrubbing by remember { mutableStateOf(false) }
     var scrubPosition by remember { mutableFloatStateOf(0f) }
     var showTrackSelection by remember { mutableStateOf(false) }
+    var showChaptersSelection by remember { mutableStateOf(false) }
     var trackType by remember { mutableIntStateOf(C.TRACK_TYPE_AUDIO) }
 
     val configuration = LocalConfiguration.current
@@ -224,7 +226,9 @@ private fun CastExpandedPlayerLayout(
             trackType = C.TRACK_TYPE_TEXT
         }
     }
+    val onOpenChapters: () -> Unit = remember { { showChaptersSelection = true } }
     val onDismissTrackSelection: () -> Unit = remember { { showTrackSelection = false } }
+    val onDismissChaptersSelection: () -> Unit = remember { { showChaptersSelection = false } }
     val onSetTrack: (Track?) -> Unit =
         remember(actions) {
             { track ->
@@ -282,6 +286,7 @@ private fun CastExpandedPlayerLayout(
                         onClickAudio = onClickAudio,
                         onClickSubtitle = onClickSubtitle,
                         modifier = Modifier.weight(1f),
+                        onOpenChapters = onOpenChapters,
                     )
                 }
             } else {
@@ -310,6 +315,7 @@ private fun CastExpandedPlayerLayout(
                     onVolumeChange = actions.onVolumeChange,
                     onClickAudio = onClickAudio,
                     onClickSubtitle = onClickSubtitle,
+                    onOpenChapters = onOpenChapters,
                 )
                 Spacer(modifier = Modifier.height(48.dp))
             }
@@ -322,6 +328,18 @@ private fun CastExpandedPlayerLayout(
             onSetTrack = onSetTrack,
             onDismiss = onDismissTrackSelection,
             displayExtraInfo = uiState.displayExtraInfo,
+            modifier = Modifier.padding(bottom = safePadding.bottom),
+        )
+
+        CastChaptersDialog(
+            visible = showChaptersSelection,
+            chapters = uiState.currentChapters,
+            currentPositionMs = uiState.playerState.currentPosition,
+            durationMs = uiState.playerState.duration,
+            segments = uiState.segments,
+            trickplay = uiState.currentTrickplay,
+            onChapterSelected = { startTimeMs -> actions.onSeek(startTimeMs) },
+            onDismiss = onDismissChaptersSelection,
             modifier = Modifier.padding(bottom = safePadding.bottom),
         )
     }

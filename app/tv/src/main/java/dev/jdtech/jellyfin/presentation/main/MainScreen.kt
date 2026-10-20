@@ -2,11 +2,9 @@ package dev.jdtech.jellyfin.presentation.main
 
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
-import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -67,8 +65,6 @@ import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
 import dev.jdtech.jellyfin.viewmodels.MainViewModel
 import java.util.UUID
-import kotlin.time.Duration.Companion.milliseconds
-import kotlinx.coroutines.delay
 import org.jellyfin.sdk.model.api.BaseItemKind
 
 @Composable
@@ -123,18 +119,7 @@ private fun MainScreenLayout(
     var activeTabIndex by rememberSaveable { mutableIntStateOf(0) }
     var isHomeScrolled by rememberSaveable { mutableStateOf(false) }
     var hasRequestedAppInitialFocus by rememberSaveable { mutableStateOf(false) }
-    var isInitialSplashVisible by rememberSaveable { mutableStateOf(!hasRequestedAppInitialFocus) }
-
-    LaunchedEffect(isInitialSplashVisible, hasRequestedAppInitialFocus) {
-        if (isInitialSplashVisible) {
-            if (hasRequestedAppInitialFocus) {
-                isInitialSplashVisible = false
-            } else {
-                delay(2500.milliseconds)
-                isInitialSplashVisible = false
-            }
-        }
-    }
+    val isHeaderVisible = activeTabIndex != 0 || !isHomeScrolled
 
     val homeTabFocusRequester = remember { FocusRequester() }
     val librariesTabFocusRequester = remember { FocusRequester() }
@@ -150,15 +135,6 @@ private fun MainScreenLayout(
         }
         else -> Unit
     }
-
-    val isHeaderVisible = !isInitialSplashVisible && (activeTabIndex != 0 || !isHomeScrolled)
-
-    val splashAlpha by
-        animateFloatAsState(
-            targetValue = if (isInitialSplashVisible) 1f else 0f,
-            animationSpec = tween(durationMillis = 350, easing = FastOutSlowInEasing),
-            label = "splashAlpha",
-        )
 
     val headerAlpha by
         animateFloatAsState(
@@ -353,23 +329,6 @@ private fun MainScreenLayout(
                         modifier = Modifier.size(28.dp),
                     )
                 }
-            }
-        }
-
-        if (splashAlpha > 0.001f) {
-            Box(
-                modifier =
-                    Modifier.fillMaxSize()
-                        .zIndex(100f)
-                        .graphicsLayer { alpha = splashAlpha }
-                        .background(Color.Black),
-                contentAlignment = Alignment.Center,
-            ) {
-                Image(
-                    painter = painterResource(id = CoreR.drawable.ic_logo),
-                    contentDescription = null,
-                    modifier = Modifier.size(128.dp),
-                )
             }
         }
     }

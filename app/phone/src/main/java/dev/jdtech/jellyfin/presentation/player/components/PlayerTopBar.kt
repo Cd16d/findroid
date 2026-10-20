@@ -9,11 +9,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -30,9 +31,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import dev.jdtech.jellyfin.core.R as CoreR
+import dev.jdtech.jellyfin.player.core.domain.models.SleepTimerStatus
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 
-private val GlassPillShape = RoundedCornerShape(24.dp)
+private val GlassPillShape = CircleShape
+private val GlassBackgroundColor = Color(0xFF262626).copy(alpha = 0.6f)
+private val GlassBorderStroke = BorderStroke(1.dp, Color.White.copy(alpha = 0.15f))
 
 /**
  * Top control bar for the player screen containing title, subtitle, back navigation, and
@@ -49,7 +53,9 @@ private val GlassPillShape = RoundedCornerShape(24.dp)
  * @param modifier Optional [Modifier] applied to the top bar row.
  * @param isOrientationLocked Whether screen rotation is currently locked.
  * @param isPipSupported Whether picture-in-picture is supported on the current device.
- * @param isPortrait Whether the display layout is currently in portrait orientation.
+ * @param isCompactWidth Whether the layout width is compact (< 600dp).
+ * @param sleepTimerStatus Current status of the sleep timer.
+ * @param onOpenSleepTimer Callback to open the sleep timer sheet/panel.
  */
 @Composable
 fun PlayerTopBar(
@@ -64,111 +70,82 @@ fun PlayerTopBar(
     modifier: Modifier = Modifier,
     isOrientationLocked: Boolean = false,
     isPipSupported: Boolean = true,
-    isPortrait: Boolean = false,
+    isCompactWidth: Boolean = false,
+    sleepTimerStatus: SleepTimerStatus = SleepTimerStatus(),
+    onOpenSleepTimer: (() -> Unit)? = null,
 ) {
-    val buttonSize = if (isPortrait) 36.dp else 40.dp
-    val iconSize = if (isPortrait) 20.dp else 22.dp
-    val backButtonSize = if (isPortrait) 40.dp else 44.dp
-    val backIconSize = if (isPortrait) 22.dp else 24.dp
-    val spacing = if (isPortrait) 8.dp else 12.dp
+    val buttonSize = 44.dp
+    val iconSize = 24.dp
+    val spacing = if (isCompactWidth) 8.dp else 12.dp
 
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-        // Left: Back button + Title & Subtitle
+    Column(modifier = modifier.fillMaxWidth()) {
         Row(
-            modifier = Modifier.weight(1f, fill = false),
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(spacing),
+            horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Box(
-                modifier =
-                    Modifier.size(backButtonSize)
-                        .clip(CircleShape)
-                        .background(Color(0xFF262626).copy(alpha = 0.6f))
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = ripple(bounded = true, radius = backButtonSize / 2),
-                            onClick = onBack,
-                        ),
-                contentAlignment = Alignment.Center,
+            // Left: Back button + Title & Subtitle (inline on non-compact width)
+            Row(
+                modifier = Modifier.weight(1f, fill = false),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(spacing),
             ) {
-                Icon(
-                    painter = painterResource(id = CoreR.drawable.ic_arrow_left),
-                    contentDescription = null,
-                    modifier = Modifier.size(backIconSize),
-                    tint = Color.White,
-                )
-            }
-
-            Column(verticalArrangement = Arrangement.Center) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                if (!subtitle.isNullOrBlank()) {
-                    Text(
-                        text = subtitle,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.White.copy(alpha = 0.75f),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
+                Box(
+                    modifier =
+                        Modifier.size(buttonSize)
+                            .clip(CircleShape)
+                            .background(GlassBackgroundColor)
+                            .border(GlassBorderStroke, CircleShape)
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = ripple(bounded = true, radius = buttonSize / 2),
+                                onClick = onBack,
+                            ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        painter = painterResource(id = CoreR.drawable.ic_arrow_left),
+                        contentDescription = null,
+                        modifier = Modifier.size(iconSize),
+                        tint = Color.White,
                     )
                 }
-            }
-        }
 
-        // Right Actions: Unified translucent glass pill containing:
-        // Subtitles, Audio, Screen Lock, PiP (if supported), Settings
-        Row(
-            modifier =
-                Modifier.clip(GlassPillShape)
-                    .background(Color.Black.copy(alpha = 0.5f))
-                    .border(
-                        BorderStroke(1.dp, Color.White.copy(alpha = 0.15f)),
-                        GlassPillShape,
-                    )
-                    .padding(horizontal = 4.dp, vertical = 2.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(2.dp),
-        ) {
-            // Screen Orientation Lock / Unlock Button
-            Box(
+                if (!isCompactWidth) {
+                    Column(verticalArrangement = Arrangement.Center) {
+                        Text(
+                            text = title,
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        if (!subtitle.isNullOrBlank()) {
+                            Text(
+                                text = subtitle,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color.White.copy(alpha = 0.75f),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Right Actions: Unified translucent glass pill containing:
+            // Subtitles, Audio, Screen Lock, PiP (if supported), Settings
+            Row(
                 modifier =
-                    Modifier.size(buttonSize)
-                        .clip(CircleShape)
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = ripple(bounded = true, radius = buttonSize / 2),
-                            onClick = onToggleOrientation,
-                        ),
-                contentAlignment = Alignment.Center,
+                    Modifier.clip(GlassPillShape)
+                        .background(GlassBackgroundColor)
+                        .border(GlassBorderStroke, GlassPillShape)
+                        .padding(horizontal = 4.dp, vertical = 2.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
             ) {
-                Icon(
-                    painter =
-                        painterResource(
-                            id =
-                                if (isOrientationLocked) {
-                                    CoreR.drawable.ic_screen_rotation_lock
-                                } else {
-                                    CoreR.drawable.ic_screen_rotation
-                                }
-                        ),
-                    contentDescription = null,
-                    modifier = Modifier.size(iconSize),
-                    tint =
-                        if (isOrientationLocked) MaterialTheme.colorScheme.primary else Color.White,
-                )
-            }
-
-            // PiP Button (if supported)
-            if (isPipSupported) {
+                // Screen Orientation Lock / Unlock Button
                 Box(
                     modifier =
                         Modifier.size(buttonSize)
@@ -176,77 +153,173 @@ fun PlayerTopBar(
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = ripple(bounded = true, radius = buttonSize / 2),
-                                onClick = onEnterPip,
+                                onClick = onToggleOrientation,
                             ),
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
-                        painter = painterResource(id = CoreR.drawable.ic_picture_in_picture),
+                        painter =
+                            painterResource(
+                                id =
+                                    if (isOrientationLocked) {
+                                        CoreR.drawable.ic_rotate_off
+                                    } else {
+                                        CoreR.drawable.ic_rotate
+                                    }
+                            ),
+                        contentDescription = null,
+                        modifier = Modifier.size(iconSize),
+                        tint = Color.White,
+                    )
+                }
+
+                // PiP Button (if supported)
+                if (isPipSupported) {
+                    Box(
+                        modifier =
+                            Modifier.size(buttonSize)
+                                .clip(CircleShape)
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = ripple(bounded = true, radius = buttonSize / 2),
+                                    onClick = onEnterPip,
+                                ),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            painter = painterResource(id = CoreR.drawable.ic_picture_in_picture),
+                            contentDescription = null,
+                            modifier = Modifier.size(iconSize),
+                            tint = Color.White,
+                        )
+                    }
+                }
+
+                // Subtitles & Audio Buttons (hidden on compact width to avoid crowding)
+                if (!isCompactWidth) {
+                    // Subtitles Button
+                    Box(
+                        modifier =
+                            Modifier.size(buttonSize)
+                                .clip(CircleShape)
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = ripple(bounded = true, radius = buttonSize / 2),
+                                    onClick = onOpenSubtitles,
+                                ),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            painter = painterResource(id = CoreR.drawable.ic_closed_caption),
+                            contentDescription = null,
+                            modifier = Modifier.size(iconSize),
+                            tint = Color.White,
+                        )
+                    }
+
+                    // Audio Button
+                    Box(
+                        modifier =
+                            Modifier.size(buttonSize)
+                                .clip(CircleShape)
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = ripple(bounded = true, radius = buttonSize / 2),
+                                    onClick = onOpenAudio,
+                                ),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            painter = painterResource(id = CoreR.drawable.ic_audio),
+                            contentDescription = null,
+                            modifier = Modifier.size(iconSize),
+                            tint = Color.White,
+                        )
+                    }
+                }
+
+                // Sleep Timer Active Chip
+                if (sleepTimerStatus.isActive) {
+                    val remainingMins =
+                        maxOf(1, ((sleepTimerStatus.remainingSeconds + 59L) / 60L).toInt())
+                    Box(
+                        modifier =
+                            Modifier.height(buttonSize)
+                                .clip(CircleShape)
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = ripple(bounded = true, radius = buttonSize / 2),
+                                    onClick = { onOpenSleepTimer?.invoke() ?: onOpenSettings() },
+                                )
+                                .padding(horizontal = 8.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
+                            Icon(
+                                painter = painterResource(id = CoreR.drawable.ic_sleep_timer),
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                                tint = MaterialTheme.colorScheme.primary,
+                            )
+                            Text(
+                                text = "${remainingMins}m",
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                    }
+                }
+
+                // Settings Button
+                Box(
+                    modifier =
+                        Modifier.size(buttonSize)
+                            .clip(CircleShape)
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = ripple(bounded = true, radius = buttonSize / 2),
+                                onClick = onOpenSettings,
+                            ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        painter = painterResource(id = CoreR.drawable.ic_settings),
                         contentDescription = null,
                         modifier = Modifier.size(iconSize),
                         tint = Color.White,
                     )
                 }
             }
+        }
 
-            // Subtitles Button
-            Box(
-                modifier =
-                    Modifier.size(buttonSize)
-                        .clip(CircleShape)
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = ripple(bounded = true, radius = buttonSize / 2),
-                            onClick = onOpenSubtitles,
-                        ),
-                contentAlignment = Alignment.Center,
+        if (isCompactWidth) {
+            Spacer(modifier = Modifier.height(10.dp))
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Icon(
-                    painter = painterResource(id = CoreR.drawable.ic_closed_caption),
-                    contentDescription = null,
-                    modifier = Modifier.size(iconSize),
-                    tint = Color.White,
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
                 )
-            }
-
-            // Audio Button
-            Box(
-                modifier =
-                    Modifier.size(buttonSize)
-                        .clip(CircleShape)
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = ripple(bounded = true, radius = buttonSize / 2),
-                            onClick = onOpenAudio,
-                        ),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    painter = painterResource(id = CoreR.drawable.ic_speaker),
-                    contentDescription = null,
-                    modifier = Modifier.size(iconSize),
-                    tint = Color.White,
-                )
-            }
-
-            // Settings Button
-            Box(
-                modifier =
-                    Modifier.size(buttonSize)
-                        .clip(CircleShape)
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = ripple(bounded = true, radius = buttonSize / 2),
-                            onClick = onOpenSettings,
-                        ),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    painter = painterResource(id = CoreR.drawable.ic_settings),
-                    contentDescription = null,
-                    modifier = Modifier.size(iconSize),
-                    tint = Color.White,
-                )
+                if (!subtitle.isNullOrBlank()) {
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.White.copy(alpha = 0.75f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
         }
     }
@@ -265,7 +338,7 @@ private fun PlayerTopBarLandscapePreview() {
             onEnterPip = {},
             onOpenSettings = {},
             onToggleOrientation = {},
-            isPortrait = false,
+            isCompactWidth = false,
         )
     }
 }
@@ -276,7 +349,7 @@ private fun PlayerTopBarPortraitPreview() {
     FindroidTheme {
         PlayerTopBar(
             title = "Inception (2010)",
-            subtitle = null,
+            subtitle = "test subtitle",
             onBack = {},
             onOpenSubtitles = {},
             onOpenAudio = {},
@@ -284,7 +357,7 @@ private fun PlayerTopBarPortraitPreview() {
             onOpenSettings = {},
             onToggleOrientation = {},
             isOrientationLocked = true,
-            isPortrait = true,
+            isCompactWidth = true,
         )
     }
 }

@@ -1,7 +1,14 @@
 package dev.jdtech.jellyfin.player.core.presentation
 
 import android.content.Context
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.RoundRect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import dev.jdtech.jellyfin.models.FindroidSegment
 import dev.jdtech.jellyfin.models.FindroidSegmentType
 import dev.jdtech.jellyfin.player.core.R
@@ -22,7 +29,66 @@ data class BarSlice(
     val endMs: Long,
     val segmentType: FindroidSegmentType? = null,
     val title: String? = null,
+    val color: Color? = null,
 )
+
+/**
+ * Determines whether a [PlayerChapter] represents a specific [FindroidSegment] based on significant
+ * time overlap.
+ *
+ * @param chapter The chapter being evaluated.
+ * @param nextChapterStart The start position of the subsequent chapter, or Long.MAX_VALUE.
+ * @param segments List of media segments for the current media item.
+ * @param durationMs Total media duration in milliseconds.
+ * @return The matched [FindroidSegment], or null if this chapter is standard content.
+ */
+fun findChapterSegment(
+    chapter: PlayerChapter,
+    nextChapterStart: Long,
+    segments: List<FindroidSegment>,
+    durationMs: Long = Long.MAX_VALUE,
+): FindroidSegment? {
+    val chStart = chapter.startPosition
+    val chEnd =
+        if (nextChapterStart != Long.MAX_VALUE && nextChapterStart > chStart) {
+            nextChapterStart
+        } else if (durationMs != Long.MAX_VALUE && durationMs > chStart) {
+            durationMs
+        } else {
+            Long.MAX_VALUE
+        }
+    val chDuration = if (chEnd != Long.MAX_VALUE) (chEnd - chStart).coerceAtLeast(1L) else 0L
+
+    for (seg in segments) {
+        val segStart = seg.startTicks
+        val segEnd = seg.endTicks
+
+        val overlapStart = maxOf(chStart, segStart)
+        val overlapEnd = if (chEnd != Long.MAX_VALUE) minOf(chEnd, segEnd) else segEnd
+        val overlap = (overlapEnd - overlapStart).coerceAtLeast(0L)
+
+        if (overlap <= 0L) continue
+
+        // Associate chapter if it is predominantly within the segment (at least 65% overlap)
+        if (chDuration > 0L) {
+            val chapterCoverage = overlap.toFloat() / chDuration.toFloat()
+            if (chapterCoverage >= 0.65f) {
+                return seg
+            }
+        }
+    }
+
+    return null
+}
+
+fun findChapterSegmentType(
+    chapter: PlayerChapter,
+    nextChapterStart: Long,
+    segments: List<FindroidSegment>,
+    durationMs: Long = Long.MAX_VALUE,
+): FindroidSegmentType? {
+    return findChapterSegment(chapter, nextChapterStart, segments, durationMs)?.type
+}
 
 /**
  * Splits the media duration into contiguous [BarSlice] sections based on chapter boundaries and
@@ -41,7 +107,10 @@ fun calculateBarSlices(
     if (durationMs <= 0L) return emptyList()
 
     val validChapters =
-        chapters.filter { it.startPosition in 0..durationMs }.sortedBy { it.startPosition }
+        chapters
+            .filter { it.startPosition in 0..durationMs }
+            .sortedBy { it.startPosition }
+            .distinctBy { it.startPosition }
     val validSegments =
         segments
             .filter { it.startTicks < durationMs && it.endTicks > 0L }
@@ -116,32 +185,46 @@ fun calculateBarSlices(
                         overlap >= sliceDuration / 2 ||
                         (segDuration > 0L && overlap >= segDuration / 2))
             }
-            val matchingChapter = validChapters.lastOrNull {
+            val matchingChapterIndex = validChapters.indexOfLast {
                 val chPos = if (it.startPosition <= 3000L) 0L else it.startPosition
                 chPos <= start
             }
+            val matchingChapter =
+                if (matchingChapterIndex >= 0) validChapters[matchingChapterIndex] else null
+
+            val effectiveSegmentType = matchingSegment?.type
+
+            val sliceColor =
+                when (val colorVal = matchingSegment?.color) {
+                    0L -> null
+                    null -> getSegmentColor(effectiveSegmentType)
+                    else -> Color(colorVal)
+                }
 
             rawSlices.add(
                 BarSlice(
                     startMs = start,
                     endMs = end,
-                    segmentType = matchingSegment?.type,
+                    segmentType = effectiveSegmentType,
                     title = matchingChapter?.name,
+                    color = sliceColor,
                 )
             )
         }
     }
 
-    // Merge adjacent slices sharing the same non-null segmentType to prevent duplicate/micro
-    // segments
+    // Merge adjacent slices sharing the same segmentType and chapter to prevent
+    // duplicate/micro slices while preserving distinct chapters (e.g. Ending and Epilogue both
+    // outro)
     val mergedSlices = mutableListOf<BarSlice>()
     for (slice in rawSlices) {
         val prev = mergedSlices.lastOrNull()
-        if (prev != null && prev.segmentType != null && prev.segmentType == slice.segmentType) {
+        if (prev != null && prev.segmentType == slice.segmentType && prev.title == slice.title) {
             mergedSlices[mergedSlices.size - 1] =
                 prev.copy(
                     endMs = slice.endMs,
-                    title = prev.title ?: slice.title,
+                    title = prev.title,
+                    color = prev.color ?: slice.color,
                 )
         } else {
             mergedSlices.add(slice)
@@ -244,4 +327,35 @@ fun formatDuration(millis: Long): String {
     } else {
         String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds)
     }
+}
+
+/** Calculates a progress fraction (0.0f ... 1.0f) given an X coordinate and component width. */
+fun calculateProgressFromX(x: Float, width: Float): Float {
+    if (width <= 0f) return 0f
+    return (x / width).coerceIn(0f, 1f)
+}
+
+/** Renders a rounded rectangle path with individual corner radii on a [DrawScope]. */
+fun DrawScope.drawCustomRoundRect(
+    color: Color,
+    topLeft: Offset,
+    size: Size,
+    topLeftRadius: CornerRadius = CornerRadius.Zero,
+    topRightRadius: CornerRadius = CornerRadius.Zero,
+    bottomRightRadius: CornerRadius = CornerRadius.Zero,
+    bottomLeftRadius: CornerRadius = CornerRadius.Zero,
+) {
+    val path =
+        Path().apply {
+            addRoundRect(
+                RoundRect(
+                    rect = Rect(offset = topLeft, size = size),
+                    topLeft = topLeftRadius,
+                    topRight = topRightRadius,
+                    bottomRight = bottomRightRadius,
+                    bottomLeft = bottomLeftRadius,
+                )
+            )
+        }
+    drawPath(path = path, color = color)
 }

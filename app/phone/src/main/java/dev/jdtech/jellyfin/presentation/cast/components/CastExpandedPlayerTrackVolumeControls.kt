@@ -45,11 +45,15 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
+import dev.jdtech.jellyfin.LocalVolumeKeyEvents
 import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.player.cast.presentation.CastPlayerViewModel
 import dev.jdtech.jellyfin.player.core.domain.models.Track
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
+import kotlin.math.ceil
+import kotlin.math.floor
+import kotlin.math.roundToInt
 
 @Composable
 fun CastTrackVolumeControls(
@@ -106,12 +110,12 @@ fun CastTrackVolumeControls(
                     ),
                 interactionSource = audioInteractionSource,
                 colors = buttonColors,
-                modifier = Modifier.size(48.dp),
+                modifier = Modifier.size(40.dp),
             ) {
                 Icon(
-                    painter = painterResource(CoreR.drawable.ic_speaker),
+                    painter = painterResource(CoreR.drawable.ic_audio),
                     contentDescription = stringResource(CoreR.string.audio),
-                    modifier = Modifier.size(24.dp),
+                    modifier = Modifier.size(20.dp),
                 )
             }
             FilledIconButton(
@@ -126,12 +130,12 @@ fun CastTrackVolumeControls(
                     ),
                 interactionSource = subtitlesInteractionSource,
                 colors = buttonColors,
-                modifier = Modifier.size(48.dp),
+                modifier = Modifier.size(40.dp),
             ) {
                 Icon(
                     painter = painterResource(CoreR.drawable.ic_closed_caption),
                     contentDescription = stringResource(CoreR.string.subtitle),
-                    modifier = Modifier.size(24.dp),
+                    modifier = Modifier.size(20.dp),
                 )
             }
         }
@@ -169,10 +173,33 @@ fun VolumeSlider(
     val isPressed by sliderInteractionSource.collectIsPressedAsState()
     val isDragged by sliderInteractionSource.collectIsDraggedAsState()
     val hapticFeedback = LocalHapticFeedback.current
+    val volumeKeyEvents = LocalVolumeKeyEvents.current
 
     LaunchedEffect(safeVolume) {
         if (!isPressed && !isDragged) {
             localVolume = safeVolume
+        }
+    }
+
+    LaunchedEffect(volumeKeyEvents) {
+        volumeKeyEvents.collect { event ->
+            val isUp = event.isUp
+            val step = 0.05f
+            val currentBase = localVolume
+            val newLevel =
+                if (isUp) {
+                    val next = (floor((currentBase + 0.001f) / step) * step) + step
+                    next.coerceIn(0f, 1f)
+                } else {
+                    val next = (ceil((currentBase - 0.001f) / step) * step) - step
+                    next.coerceIn(0f, 1f)
+                }
+            val cleanLevel = (newLevel * 100f).roundToInt() / 100f
+            localVolume = cleanLevel
+            onValueChange(cleanLevel)
+            if (cleanLevel == 0f || cleanLevel == 1f) {
+                hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+            }
         }
     }
 

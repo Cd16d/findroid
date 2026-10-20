@@ -141,6 +141,13 @@ val downloadsTab =
 
 val LocalCastPlayerHeight = compositionLocalOf { 0.dp }
 
+val LocalVolumeKeyEvents =
+    compositionLocalOf<
+        kotlinx.coroutines.flow.SharedFlow<dev.jdtech.jellyfin.models.VolumeKeyEvent>
+    > {
+        kotlinx.coroutines.flow.MutableSharedFlow()
+    }
+
 @Composable
 fun NavigationRoot(
     hasServers: Boolean,
@@ -227,6 +234,8 @@ private fun MainNavigation(
     searchExpanded: MutableState<Boolean>,
 ) {
     val context = LocalContext.current
+    val mainViewModel: dev.jdtech.jellyfin.viewmodels.MainViewModel =
+        hiltViewModel(context as ViewModelStoreOwner)
     val castSessionViewModel: CastSessionViewModel = hiltViewModel(context as ViewModelStoreOwner)
 
     val navigationItems =
@@ -303,6 +312,10 @@ private fun MainNavigation(
     var showCastExpandedPlayer by remember { mutableStateOf(false) }
     var isDismissingCastExpandedPlayer by remember { mutableStateOf(false) }
     var castExpanded by remember { mutableStateOf(true) }
+
+    LaunchedEffect(showCastExpandedPlayer, isDismissingCastExpandedPlayer) {
+        mainViewModel.setCastPlayerOpen(showCastExpandedPlayer && !isDismissingCastExpandedPlayer)
+    }
 
     val connectionState by castSessionViewModel.connectionState.collectAsStateWithLifecycle()
     val currentRoute = navigationState.currentBackStack().lastOrNull()

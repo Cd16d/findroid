@@ -1,5 +1,6 @@
 package dev.jdtech.jellyfin
 
+import android.annotation.SuppressLint
 import android.app.AppOpsManager
 import android.app.PictureInPictureParams
 import android.content.Intent
@@ -7,10 +8,13 @@ import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.graphics.Rect
+import android.media.AudioManager
 import android.os.Build
 import android.os.Bundle
 import android.os.Process
+import android.os.SystemClock
 import android.util.Rational
+import android.view.KeyEvent
 import android.view.WindowManager
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
@@ -25,6 +29,7 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaSession
 import androidx.media3.ui.AspectRatioFrameLayout
@@ -34,8 +39,10 @@ import dev.jdtech.jellyfin.player.local.presentation.PlayerViewModel
 import dev.jdtech.jellyfin.presentation.player.PlayerScreen
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.settings.domain.AppPreferences
+import dev.jdtech.jellyfin.settings.domain.Constants
 import java.util.UUID
 import javax.inject.Inject
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
 
 var isControlsLocked: Boolean = false
@@ -51,9 +58,26 @@ class PlayerActivity : AppCompatActivity() {
     private lateinit var mediaSession: MediaSession
     private var wasPip: Boolean = false
 
+    private val volumeKeyEvents =
+        MutableSharedFlow<dev.jdtech.jellyfin.models.VolumeKeyEvent>(extraBufferCapacity = 8)
+    private var lastVolumeDownTime = 0L
+
     private var isInPipMode by mutableStateOf(false)
     private var currentResizeMode by mutableIntStateOf(AspectRatioFrameLayout.RESIZE_MODE_FIT)
     private var isOrientationLockedState by mutableStateOf(false)
+    private var currentVideoBounds: Rect? = null
+
+    private val playerListener =
+        object : Player.Listener {
+            override fun onIsPlayingChanged(isPlaying: Boolean) {
+                if (isPlaying) {
+                    window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                } else {
+                    window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                }
+                updatePipParams(isPlaying)
+            }
+        }
 
     private fun toggleOrientationLock() {
         if (isOrientationLockedState) {
@@ -62,6 +86,23 @@ class PlayerActivity : AppCompatActivity() {
         } else {
             requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LOCKED
             isOrientationLockedState = true
+        }
+        val preferredOrientation =
+            Constants.PlayerOrientation.fromValue(
+                appPreferences.getValue(appPreferences.playerOrientation)
+            )
+        if (preferredOrientation == Constants.PlayerOrientation.REMEMBER) {
+            val state =
+                if (isOrientationLockedState) {
+                    if (resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT) {
+                        Constants.PlayerOrientation.SENSOR_PORTRAIT.value
+                    } else {
+                        Constants.PlayerOrientation.SENSOR_LANDSCAPE.value
+                    }
+                } else {
+                    Constants.PlayerOrientation.SENSOR.value
+                }
+            appPreferences.setValue(appPreferences.playerOrientationLast, state)
         }
     }
 
@@ -77,12 +118,83 @@ class PlayerActivity : AppCompatActivity() {
         ) == AppOpsManager.MODE_ALLOWED
     }
 
+    @SuppressLint("SourceLockedOrientationActivity")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        volumeControlStream = AudioManager.STREAM_MUSIC
+
+        val defaultResizeMode =
+            Constants.PlayerResizeMode.fromValue(
+                appPreferences.getValue(appPreferences.playerDefaultResizeMode)
+            )
+        currentResizeMode =
+            when (defaultResizeMode) {
+                Constants.PlayerResizeMode.ZOOM -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                Constants.PlayerResizeMode.STRETCH -> AspectRatioFrameLayout.RESIZE_MODE_FILL
+                Constants.PlayerResizeMode.FIT -> AspectRatioFrameLayout.RESIZE_MODE_FIT
+            }
+
+        if (appPreferences.getValue(appPreferences.playerGesturesBrightnessRemember)) {
+            val savedBrightness = appPreferences.getValue(appPreferences.playerBrightness)
+            if (savedBrightness >= 0f) {
+                val lp = window.attributes
+                lp.screenBrightness = savedBrightness.coerceIn(0.01f, 1f)
+                window.attributes = lp
+            }
+        }
+
+        val playerOrientation =
+            Constants.PlayerOrientation.fromValue(
+                appPreferences.getValue(appPreferences.playerOrientation)
+            )
+        when (playerOrientation) {
+            Constants.PlayerOrientation.SENSOR_LANDSCAPE -> {
+                requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                isOrientationLockedState = true
+            }
+            Constants.PlayerOrientation.SENSOR_PORTRAIT -> {
+                requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
+                isOrientationLockedState = true
+            }
+            Constants.PlayerOrientation.SENSOR -> {
+                requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR
+                isOrientationLockedState = false
+            }
+            Constants.PlayerOrientation.REMEMBER -> {
+                val playerOrientationLast =
+                    Constants.PlayerOrientation.fromValue(
+                        appPreferences.getValue(appPreferences.playerOrientationLast)
+                    )
+                when (playerOrientationLast) {
+                    Constants.PlayerOrientation.SENSOR_LANDSCAPE -> {
+                        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                        isOrientationLockedState = true
+                    }
+                    Constants.PlayerOrientation.SENSOR_PORTRAIT -> {
+                        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
+                        isOrientationLockedState = true
+                    }
+                    Constants.PlayerOrientation.LOCKED -> {
+                        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LOCKED
+                        isOrientationLockedState = true
+                    }
+                    Constants.PlayerOrientation.SENSOR,
+                    Constants.PlayerOrientation.REMEMBER -> {
+                        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR
+                        isOrientationLockedState = false
+                    }
+                }
+            }
+            Constants.PlayerOrientation.LOCKED -> {
+                requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LOCKED
+                isOrientationLockedState = true
+            }
+        }
 
         isControlsLocked = false
+        viewModel.player.addListener(playerListener)
 
         val itemId = UUID.fromString(intent.extras!!.getString("itemId"))
         val itemKind = intent.extras!!.getString("itemKind") ?: ""
@@ -102,11 +214,7 @@ class PlayerActivity : AppCompatActivity() {
                                         WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
                                     )
                                 }
-                                if (appPreferences.getValue(appPreferences.playerPipGesture)) {
-                                    try {
-                                        setPictureInPictureParams(pipParams(event.isPlaying))
-                                    } catch (_: IllegalArgumentException) {}
-                                }
+                                updatePipParams(event.isPlaying)
                             }
                         }
                     }
@@ -115,19 +223,25 @@ class PlayerActivity : AppCompatActivity() {
         }
 
         setContent {
-            FindroidTheme {
+            FindroidTheme(darkTheme = true) {
                 PlayerScreen(
                     itemId = itemId,
                     itemKind = itemKind,
                     startFromBeginning = startFromBeginning,
                     onBack = { finishPlayback() },
                     onEnterPip = { pictureInPicture() },
+                    onVideoBoundsChanged = { rect ->
+                        currentVideoBounds = rect
+                        updatePipParams()
+                    },
                     isPipSupported = isPipSupported,
                     isInPictureInPictureMode = isInPipMode,
                     resizeMode = currentResizeMode,
                     onResizeModeChange = { currentResizeMode = it },
                     onToggleOrientation = { toggleOrientationLock() },
                     isOrientationLocked = isOrientationLockedState,
+                    volumeKeyEvents = volumeKeyEvents,
+                    appPreferences = appPreferences,
                     viewModel = viewModel,
                 )
             }
@@ -149,6 +263,7 @@ class PlayerActivity : AppCompatActivity() {
             viewModel.player.playWhenReady = viewModel.playWhenReady
         }
         hideSystemUI()
+        updatePipParams()
     }
 
     override fun onPause() {
@@ -161,6 +276,7 @@ class PlayerActivity : AppCompatActivity() {
             viewModel.player.playWhenReady = false
             viewModel.updatePlaybackProgress()
         }
+        updatePipParams(false)
     }
 
     override fun onStop() {
@@ -171,6 +287,11 @@ class PlayerActivity : AppCompatActivity() {
         if (wasPip) {
             finish()
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        viewModel.player.removeListener(playerListener)
     }
 
     private fun hideSystemUI() {
@@ -210,19 +331,51 @@ class PlayerActivity : AppCompatActivity() {
         }
     }
 
-    private fun toggleOrientation() {
-        val isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
-        requestedOrientation =
-            if (isPortrait) {
-                ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-            } else {
-                ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
-            }
-    }
-
     private fun finishPlayback() {
         viewModel.player.pause()
         finish()
+    }
+
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (!isInPipMode) {
+            val action = event.action
+            val keyCode = event.keyCode
+            when (keyCode) {
+                KeyEvent.KEYCODE_VOLUME_UP -> {
+                    if (action == KeyEvent.ACTION_DOWN) {
+                        val isRepeat = event.repeatCount > 0
+                        val now = SystemClock.uptimeMillis()
+                        if (!isRepeat || now - lastVolumeDownTime >= 50L) {
+                            lastVolumeDownTime = now
+                            volumeKeyEvents.tryEmit(
+                                dev.jdtech.jellyfin.models.VolumeKeyEvent(
+                                    isUp = true,
+                                    isRepeat = isRepeat,
+                                )
+                            )
+                        }
+                    }
+                    return true
+                }
+                KeyEvent.KEYCODE_VOLUME_DOWN -> {
+                    if (action == KeyEvent.ACTION_DOWN) {
+                        val isRepeat = event.repeatCount > 0
+                        val now = SystemClock.uptimeMillis()
+                        if (!isRepeat || now - lastVolumeDownTime >= 50L) {
+                            lastVolumeDownTime = now
+                            volumeKeyEvents.tryEmit(
+                                dev.jdtech.jellyfin.models.VolumeKeyEvent(
+                                    isUp = false,
+                                    isRepeat = isRepeat,
+                                )
+                            )
+                        }
+                    }
+                    return true
+                }
+            }
+        }
+        return super.dispatchKeyEvent(event)
     }
 
     private fun pipParams(
@@ -250,16 +403,32 @@ class PlayerActivity : AppCompatActivity() {
         val viewWidth = decorView.width.takeIf { it > 0 } ?: resources.displayMetrics.widthPixels
         val viewHeight = decorView.height.takeIf { it > 0 } ?: resources.displayMetrics.heightPixels
 
-        val viewAspectRatio = viewWidth.toFloat() / viewHeight.toFloat()
+        val videoBounds = currentVideoBounds
         val sourceRect =
-            if (viewAspectRatio > clampedRatio) {
-                val contentWidth = (viewHeight * clampedRatio).toInt()
-                val left = (viewWidth - contentWidth) / 2
-                Rect(left, 0, left + contentWidth, viewHeight)
+            if (videoBounds != null && videoBounds.width() > 0 && videoBounds.height() > 0) {
+                val boundsWidth = videoBounds.width()
+                val boundsHeight = videoBounds.height()
+                val boundsAspectRatio = boundsWidth.toFloat() / boundsHeight.toFloat()
+                if (boundsAspectRatio > clampedRatio) {
+                    val contentWidth = (boundsHeight * clampedRatio).toInt()
+                    val left = videoBounds.left + (boundsWidth - contentWidth) / 2
+                    Rect(left, videoBounds.top, left + contentWidth, videoBounds.bottom)
+                } else {
+                    val contentHeight = (boundsWidth / clampedRatio).toInt()
+                    val top = videoBounds.top + (boundsHeight - contentHeight) / 2
+                    Rect(videoBounds.left, top, videoBounds.right, top + contentHeight)
+                }
             } else {
-                val contentHeight = (viewWidth / clampedRatio).toInt()
-                val top = (viewHeight - contentHeight) / 2
-                Rect(0, top, viewWidth, top + contentHeight)
+                val viewAspectRatio = viewWidth.toFloat() / viewHeight.toFloat()
+                if (viewAspectRatio > clampedRatio) {
+                    val contentWidth = (viewHeight * clampedRatio).toInt()
+                    val left = (viewWidth - contentWidth) / 2
+                    Rect(left, 0, left + contentWidth, viewHeight)
+                } else {
+                    val contentHeight = (viewWidth / clampedRatio).toInt()
+                    val top = (viewHeight - contentHeight) / 2
+                    Rect(0, top, viewWidth, top + contentHeight)
+                }
             }
         builder.setSourceRectHint(sourceRect)
 
@@ -270,11 +439,22 @@ class PlayerActivity : AppCompatActivity() {
         return builder.build()
     }
 
+    fun updatePipParams(isPlaying: Boolean = viewModel.player.isPlaying) {
+        if (!isPipSupported) return
+        val shouldAutoEnter =
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                appPreferences.getValue(appPreferences.playerPipGesture) &&
+                isPlaying &&
+                !isControlsLocked
+        try {
+            setPictureInPictureParams(pipParams(enableAutoEnter = shouldAutoEnter))
+        } catch (_: IllegalArgumentException) {}
+    }
+
     private fun pictureInPicture() {
         if (!isPipSupported) return
-        currentResizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
         try {
-            enterPictureInPictureMode(pipParams())
+            enterPictureInPictureMode(pipParams(enableAutoEnter = false))
         } catch (_: IllegalArgumentException) {}
     }
 
@@ -283,9 +463,6 @@ class PlayerActivity : AppCompatActivity() {
         newConfig: Configuration,
     ) {
         super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
-        if (isInPictureInPictureMode) {
-            currentResizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
-        }
         viewModel.isInPictureInPictureMode = isInPictureInPictureMode
         isInPipMode = isInPictureInPictureMode
     }

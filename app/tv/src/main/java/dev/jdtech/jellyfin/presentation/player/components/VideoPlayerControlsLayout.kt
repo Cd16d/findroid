@@ -85,7 +85,6 @@ private fun VideoPlayerControlsLayoutPreview() {
                 VideoPlayerSeekBar(
                     progress = 0.35f,
                     onSeek = {},
-                    state = rememberVideoPlayerState(),
                 )
             },
             mediaActions = {

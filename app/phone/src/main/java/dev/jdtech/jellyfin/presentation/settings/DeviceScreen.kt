@@ -14,9 +14,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DividerDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -25,6 +24,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -119,12 +119,10 @@ fun DeviceScreenContent(
             // Group 1: Device Information
             item(key = "device_info_group") {
                 Column(modifier = Modifier.widthIn(max = 640.dp)) {
-                    Card(
+                    Surface(
+                        shape = RoundedCornerShape(24.dp),
+                        color = MaterialTheme.colorScheme.surfaceContainer,
                         modifier = Modifier.fillMaxWidth(),
-                        colors =
-                            CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainer
-                            ),
                     ) {
                         Row(
                             modifier =
@@ -163,12 +161,10 @@ fun DeviceScreenContent(
             // Group 2: Supported Video Codecs (Collapsible)
             item(key = "video_codecs_group") {
                 Column(modifier = Modifier.widthIn(max = 640.dp)) {
-                    Card(
+                    Surface(
+                        shape = RoundedCornerShape(24.dp),
+                        color = MaterialTheme.colorScheme.surfaceContainer,
                         modifier = Modifier.fillMaxWidth(),
-                        colors =
-                            CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainer
-                            ),
                     ) {
                         Row(
                             modifier =
@@ -227,12 +223,10 @@ fun DeviceScreenContent(
             // Group 3: Supported Audio Codecs (Collapsible)
             item(key = "audio_codecs_group") {
                 Column(modifier = Modifier.widthIn(max = 640.dp)) {
-                    Card(
+                    Surface(
+                        shape = RoundedCornerShape(24.dp),
+                        color = MaterialTheme.colorScheme.surfaceContainer,
                         modifier = Modifier.fillMaxWidth(),
-                        colors =
-                            CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainer
-                            ),
                     ) {
                         Row(
                             modifier =

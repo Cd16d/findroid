@@ -11,6 +11,7 @@ import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.exoplayer.DefaultRenderersFactory
@@ -31,8 +32,9 @@ import dev.jdtech.jellyfin.player.core.domain.PlaylistManager
 import dev.jdtech.jellyfin.player.core.domain.models.PlayerChapter
 import dev.jdtech.jellyfin.player.core.domain.models.PlayerImages
 import dev.jdtech.jellyfin.player.core.domain.models.PlayerItem
+import dev.jdtech.jellyfin.player.core.domain.models.SleepTimerMode
+import dev.jdtech.jellyfin.player.core.domain.models.SleepTimerStatus
 import dev.jdtech.jellyfin.player.core.domain.models.Trickplay
-import dev.jdtech.jellyfin.player.core.domain.utils.ChapterUtils
 import dev.jdtech.jellyfin.player.core.domain.utils.SegmentUtils
 import dev.jdtech.jellyfin.player.core.domain.utils.SegmentUtils.getSegments
 import dev.jdtech.jellyfin.player.core.domain.utils.SegmentUtils.getSkipButtonTextStringId
@@ -44,9 +46,12 @@ import dev.jdtech.jellyfin.utils.getTranslatablePartName
 import java.util.UUID
 import javax.inject.Inject
 import kotlin.math.ceil
+import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -82,11 +87,12 @@ constructor(
                 fileLoaded = false,
                 isScreensaverEnabled = appPreferences.getValue(appPreferences.tvScreensaver),
                 hideEpisodeSpoilers = appPreferences.getValue(appPreferences.hideEpisodeSpoilers),
+                showChapterMarkers = appPreferences.getValue(appPreferences.playerChapterMarkers),
             )
         )
     val uiState = _uiState.asStateFlow()
 
-    private val eventsChannel = Channel<PlayerEvents>()
+    private val eventsChannel = Channel<PlayerEvents>(Channel.BUFFERED)
     val eventsChannelFlow = eventsChannel.receiveAsFlow()
 
     data class UiState(
@@ -101,16 +107,19 @@ constructor(
         val seasonEpisodes: List<FindroidEpisode> = emptyList(),
         val currentEpisodeId: UUID? = null,
         val seriesId: UUID? = null,
-        val nextSeason: FindroidSeason? = null,
         val segments: List<FindroidSegment> = emptyList(),
         val currentImages: PlayerImages? = null,
         val mediaStreams: List<FindroidMediaStream> = emptyList(),
         val suggestions: List<FindroidItem> = emptyList(),
         val isScreensaverEnabled: Boolean = true,
         val hideEpisodeSpoilers: Boolean = false,
+        val playbackSpeed: Float = 1f,
+        val showChapterMarkers: Boolean = true,
+        val sleepTimerStatus: SleepTimerStatus = SleepTimerStatus(),
     )
 
     private var items: MutableList<PlayerItem> = mutableListOf()
+    private var sleepTimerJob: Job? = null
 
     private val trackSelector = DefaultTrackSelector(application)
     var playWhenReady = true
@@ -124,11 +133,21 @@ constructor(
     var segmentsSkipButtonDuration: Long = 0L
     var segmentsAutoSkip: Boolean = false
     private var segmentsAutoSkipTypes: Set<String> = emptySet()
-    private var segmentsAutoSkipMode: String = "always"
+    private var segmentsAutoSkipMode: String = Constants.PlayerMediaSegmentsAutoSkip.ALWAYS.value
 
-    var playbackSpeed: Float = 1f
+    private var activeSegment: FindroidSegment? = null
+
+    val playbackSpeed: Float
+        get() = _uiState.value.playbackSpeed
 
     var isInPictureInPictureMode: Boolean = false
+        set(value) {
+            if (field != value) {
+                field = value
+                activeSegment = null
+                updateCurrentSegment()
+            }
+        }
 
     val displayExtraInfo: Boolean
         get() = appPreferences.getValue(appPreferences.displayExtraInfo)
@@ -144,6 +163,12 @@ constructor(
         viewModelScope.launch {
             appPreferences.observe(appPreferences.hideEpisodeSpoilers).collect { hideSpoilers ->
                 _uiState.update { it.copy(hideEpisodeSpoilers = hideSpoilers) }
+            }
+        }
+        viewModelScope.launch {
+            appPreferences.observe(appPreferences.playerMediaSegmentsSkipButtonDuration).collect {
+                duration ->
+                segmentsSkipButtonDuration = duration
             }
         }
         segmentsSkipButton = appPreferences.getValue(appPreferences.playerMediaSegmentsSkipButton)
@@ -174,10 +199,11 @@ constructor(
                 )
         )
 
-        val playerBackend = appPreferences.getValue(appPreferences.playerBackend)
+        val playerBackend =
+            Constants.PlayerBackend.fromValue(appPreferences.getValue(appPreferences.playerBackend))
         player =
             when (playerBackend) {
-                "exoplayer" -> {
+                Constants.PlayerBackend.EXOPLAYER -> {
                     val renderersFactory =
                         DefaultRenderersFactory(application)
                             .setExtensionRendererMode(
@@ -195,7 +221,7 @@ constructor(
                         .setPauseAtEndOfMediaItems(true)
                         .build()
                 }
-                "mpv" -> {
+                Constants.PlayerBackend.MPV -> {
                     MPVPlayer.Builder(application)
                         .setAudioAttributes(audioAttributes, true)
                         .setTrackSelectionParameters(trackSelector.parameters)
@@ -211,13 +237,17 @@ constructor(
                         .setHwDec(appPreferences.getValue(appPreferences.playerMpvHwdec))
                         .build()
                 }
-
-                else -> throw RuntimeException("$playerBackend is not a valid player backend")
             }
     }
 
     fun initializePlayer(itemId: UUID, itemKind: String, startFromBeginning: Boolean) {
         player.addListener(this)
+
+        if (appPreferences.getValue(appPreferences.playerPlaybackSpeedRemember)) {
+            val savedSpeed = appPreferences.getValue(appPreferences.playerPlaybackSpeed)
+            player.setPlaybackSpeed(savedSpeed)
+            _uiState.update { it.copy(playbackSpeed = savedSpeed) }
+        }
 
         viewModelScope.launch {
             val startItem =
@@ -290,23 +320,15 @@ constructor(
                 val item = repository.getItem(itemId)
                 if (item != null) {
                     val isFav = item.favorite
-                    val episodes: List<FindroidEpisode>
-                    val nextSeason: FindroidSeason?
-                    if (item is FindroidEpisode) {
-                        episodes =
+                    val episodes: List<FindroidEpisode> =
+                        if (item is FindroidEpisode) {
                             repository.getEpisodes(
                                 seriesId = item.seriesId,
                                 seasonId = item.seasonId,
                             )
-                        val seasons = repository.getSeasons(seriesId = item.seriesId)
-                        nextSeason =
-                            seasons
-                                .filter { it.indexNumber > item.parentIndexNumber }
-                                .minByOrNull { it.indexNumber }
-                    } else {
-                        episodes = emptyList()
-                        nextSeason = null
-                    }
+                        } else {
+                            emptyList()
+                        }
                     val mediaSources =
                         try {
                             repository.getMediaSources(itemId, includePath = true)
@@ -326,7 +348,6 @@ constructor(
                             seasonEpisodes = episodes,
                             currentEpisodeId = if (item is FindroidEpisode) item.id else null,
                             seriesId = if (item is FindroidEpisode) item.seriesId else null,
-                            nextSeason = nextSeason,
                             mediaStreams = streams,
                             suggestions = suggestions,
                         )
@@ -364,19 +385,6 @@ constructor(
         )
     }
 
-    fun playSeason(season: FindroidSeason) {
-        viewModelScope.launch {
-            try {
-                val episodes =
-                    repository.getEpisodes(seriesId = season.seriesId, seasonId = season.id)
-                val firstEp = episodes.minByOrNull { it.indexNumber } ?: return@launch
-                playEpisode(firstEp)
-            } catch (e: Exception) {
-                Timber.e(e, "Error playing next season")
-            }
-        }
-    }
-
     private fun PlayerItem.toMediaItem(): MediaItem {
         val streamUrl = mediaSourceUri
         val mediaSubtitles = externalSubtitles.mapIndexed { idx, externalSubtitle ->
@@ -389,8 +397,7 @@ constructor(
             }
             var roleFlags = 0
             if (externalSubtitle.isHearingImpaired) {
-                roleFlags =
-                    roleFlags or C.ROLE_FLAG_DESCRIBES_MUSIC_AND_SOUND or C.ROLE_FLAG_CAPTION
+                roleFlags = 0 or C.ROLE_FLAG_DESCRIBES_MUSIC_AND_SOUND or C.ROLE_FLAG_CAPTION
             }
             MediaItem.SubtitleConfiguration.Builder(externalSubtitle.uri)
                 .setId("external_${externalSubtitle.index ?: idx}")
@@ -467,6 +474,7 @@ constructor(
         Timber.d("Updating current segment")
         viewModelScope.launch(Dispatchers.Main) {
             if (currentMediaItemSegments.isEmpty()) {
+                activeSegment = null
                 return@launch
             }
 
@@ -482,21 +490,39 @@ constructor(
                 if (_uiState.value.currentSegment != null) {
                     _uiState.update { it.copy(currentSegment = null) }
                 }
+                activeSegment = null
                 return@launch
             }
 
+            if (currentSegment == activeSegment) {
+                return@launch
+            }
+
+            activeSegment = currentSegment
+
             Timber.tag("SegmentInfo").d("currentSegment: %s", currentSegment)
 
+            val isAutoSkipConfigured =
+                segmentsAutoSkip && segmentsAutoSkipTypes.contains(currentSegment.type.toString())
+            val isSkipButtonConfigured =
+                segmentsSkipButton &&
+                    segmentsSkipButtonTypes.contains(currentSegment.type.toString())
+
+            val autoSkipMode = Constants.PlayerMediaSegmentsAutoSkip.fromValue(segmentsAutoSkipMode)
             if (
-                segmentsAutoSkip &&
-                    segmentsAutoSkipTypes.contains(currentSegment.type.toString()) &&
-                    (segmentsAutoSkipMode == Constants.PlayerMediaSegmentsAutoSkip.ALWAYS ||
-                        (segmentsAutoSkipMode == Constants.PlayerMediaSegmentsAutoSkip.PIP &&
+                isAutoSkipConfigured &&
+                    (autoSkipMode == Constants.PlayerMediaSegmentsAutoSkip.ALWAYS ||
+                        (autoSkipMode == Constants.PlayerMediaSegmentsAutoSkip.PIP &&
                             isInPictureInPictureMode))
             ) {
                 // Auto Skip segment
                 skipSegment(currentSegment)
-            } else if (segmentsSkipButtonTypes.contains(currentSegment.type.toString())) {
+            } else if (
+                isSkipButtonConfigured ||
+                    (isAutoSkipConfigured &&
+                        autoSkipMode == Constants.PlayerMediaSegmentsAutoSkip.PIP &&
+                        !isInPictureInPictureMode)
+            ) {
                 // Skip Button segment
                 _uiState.update {
                     it.copy(
@@ -515,6 +541,21 @@ constructor(
     }
 
     override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+        val currentSleepMode = _uiState.value.sleepTimerStatus.mode
+        if (currentSleepMode is SleepTimerMode.EndOfMedia) {
+            player.pause()
+            setSleepTimer(SleepTimerMode.Off)
+            eventsChannel.trySend(PlayerEvents.NavigateBack)
+            return
+        }
+        if (
+            reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO &&
+                !appPreferences.getValue(appPreferences.playerAutoplayNext)
+        ) {
+            player.pause()
+            eventsChannel.trySend(PlayerEvents.NavigateBack)
+            return
+        }
         Timber.d("Playing MediaItem: ${mediaItem?.mediaId}")
         savedStateHandle["mediaItemIndex"] = player.currentMediaItemIndex
         viewModelScope.launch {
@@ -558,7 +599,11 @@ constructor(
                                     }
                                 title to null
                             }
-                        val loadedSegments = getSegments(item.itemId, repository)
+                        val loadedSegments =
+                            getSegments(item.itemId, repository) {
+                                appPreferences.getSegmentColor(it.name)
+                            }
+                        activeSegment = null
                         currentMediaItemSegments = loadedSegments
 
                         _uiState.update {
@@ -569,6 +614,8 @@ constructor(
                                 currentChapters = item.chapters,
                                 segments = loadedSegments,
                                 currentImages = item.images,
+                                showChapterMarkers =
+                                    appPreferences.getValue(appPreferences.playerChapterMarkers),
                                 fileLoaded = false,
                             )
                         }
@@ -625,8 +672,12 @@ constructor(
                     positionMs = position,
                     durationMs = duration,
                 )
-                player.seekToNextMediaItem()
-                player.play()
+                if (appPreferences.getValue(appPreferences.playerAutoplayNext)) {
+                    player.seekToNextMediaItem()
+                    player.play()
+                } else {
+                    eventsChannel.send(PlayerEvents.NavigateBack)
+                }
             }
         }
     }
@@ -649,10 +700,31 @@ constructor(
 
             ExoPlayer.STATE_ENDED -> {
                 stateString = "ExoPlayer.STATE_ENDED     -"
+                val currentSleepMode = _uiState.value.sleepTimerStatus.mode
+                if (currentSleepMode is SleepTimerMode.EndOfMedia) {
+                    setSleepTimer(SleepTimerMode.Off)
+                }
                 eventsChannel.trySend(PlayerEvents.NavigateBack)
             }
         }
         Timber.d("Changed player state to $stateString")
+    }
+
+    override fun onPositionDiscontinuity(
+        oldPosition: Player.PositionInfo,
+        newPosition: Player.PositionInfo,
+        reason: Int,
+    ) {
+        if (reason == Player.DISCONTINUITY_REASON_SEEK) {
+            updateCurrentSegment()
+        }
+    }
+
+    @Suppress("DEPRECATION", "OVERRIDE_DEPRECATION")
+    override fun onPositionDiscontinuity(reason: Int) {
+        if (reason == Player.DISCONTINUITY_REASON_SEEK) {
+            updateCurrentSegment()
+        }
     }
 
     override fun onCleared() {
@@ -689,7 +761,73 @@ constructor(
 
     fun selectSpeed(speed: Float) {
         player.setPlaybackSpeed(speed)
-        playbackSpeed = speed
+        _uiState.update { it.copy(playbackSpeed = speed) }
+        if (appPreferences.getValue(appPreferences.playerPlaybackSpeedRemember)) {
+            appPreferences.setValue(appPreferences.playerPlaybackSpeed, speed)
+        }
+    }
+
+    fun setSleepTimer(mode: SleepTimerMode) {
+        sleepTimerJob?.cancel()
+        sleepTimerJob = null
+
+        when (mode) {
+            is SleepTimerMode.Off -> {
+                _uiState.update {
+                    it.copy(sleepTimerStatus = SleepTimerStatus(SleepTimerMode.Off, 0L))
+                }
+            }
+            is SleepTimerMode.EndOfMedia -> {
+                val initialDuration = if (player.duration > 0) player.duration else 0L
+                val initialPosition = maxOf(0L, player.currentPosition)
+                val initialRemaining = maxOf(0L, initialDuration - initialPosition) / 1000L
+                _uiState.update {
+                    it.copy(
+                        sleepTimerStatus =
+                            SleepTimerStatus(SleepTimerMode.EndOfMedia, initialRemaining)
+                    )
+                }
+                sleepTimerJob = viewModelScope.launch {
+                    while (true) {
+                        delay(1000L.milliseconds)
+                        val duration = if (player.duration > 0) player.duration else 0L
+                        val position = maxOf(0L, player.currentPosition)
+                        val remaining = maxOf(0L, duration - position) / 1000L
+                        _uiState.update {
+                            it.copy(
+                                sleepTimerStatus =
+                                    SleepTimerStatus(SleepTimerMode.EndOfMedia, remaining)
+                            )
+                        }
+                    }
+                }
+            }
+            is SleepTimerMode.Duration -> {
+                val totalSeconds = mode.totalMinutes * 60L
+                _uiState.update { it.copy(sleepTimerStatus = SleepTimerStatus(mode, totalSeconds)) }
+                sleepTimerJob = viewModelScope.launch {
+                    var remaining = totalSeconds
+                    while (remaining > 0) {
+                        delay(1000L.milliseconds)
+                        remaining--
+                        _uiState.update {
+                            it.copy(sleepTimerStatus = SleepTimerStatus(mode, remaining))
+                        }
+                    }
+                    _uiState.update {
+                        it.copy(sleepTimerStatus = SleepTimerStatus(SleepTimerMode.Off, 0L))
+                    }
+                    player.pause()
+                }
+            }
+        }
+    }
+
+    override fun onPlaybackParametersChanged(playbackParameters: PlaybackParameters) {
+        _uiState.update { it.copy(playbackSpeed = playbackParameters.speed) }
+        if (appPreferences.getValue(appPreferences.playerPlaybackSpeedRemember)) {
+            appPreferences.setValue(appPreferences.playerPlaybackSpeed, playbackParameters.speed)
+        }
     }
 
     private suspend fun getTrickplay(item: PlayerItem) {
@@ -748,87 +886,19 @@ constructor(
         } else {
             player.seekTo(segment.endTicks)
         }
+        activeSegment = null
         _uiState.update { it.copy(currentSegment = null) }
     }
 
     private fun shouldSkipToNextEpisode(segment: FindroidSegment): Boolean {
-        return SegmentUtils.shouldSkipToNextEpisode(
-            segment = segment,
-            hasNextMediaItem = player.hasNextMediaItem(),
-            playerDurationMillis = player.duration,
-            nextEpisodeThreshold =
-                appPreferences.getValue(appPreferences.playerMediaSegmentsNextEpisodeThreshold),
-        )
-    }
-
-    /**
-     * Get chapters of current item
-     *
-     * @return list of [PlayerChapter]
-     */
-    private fun getChapters(): List<PlayerChapter> {
-        return uiState.value.currentChapters
-    }
-
-    /**
-     * Get the index of the current chapter
-     *
-     * @return the index of the current chapter
-     */
-    private fun getCurrentChapterIndex(): Int? {
-        return ChapterUtils.getCurrentChapterIndex(getChapters(), player.currentPosition)
-    }
-
-    /**
-     * Get the index of the next chapter
-     *
-     * @return the index of the next chapter
-     */
-    private fun getNextChapterIndex(): Int? {
-        return ChapterUtils.getNextChapterIndex(getChapters(), player.currentPosition)
-    }
-
-    /**
-     * Get the index of the previous chapter. Only use this for seeking as it will return the
-     * current chapter when player position is more than 5 seconds past the start of the chapter
-     *
-     * @return the index of the previous chapter
-     */
-    private fun getPreviousChapterIndex(): Int? {
-        return ChapterUtils.getPreviousChapterIndex(getChapters(), player.currentPosition)
-    }
-
-    fun isLastChapter(): Boolean = ChapterUtils.isLastChapter(getChapters(), player.currentPosition)
-
-    /**
-     * Seek to chapter
-     *
-     * @param [chapterIndex] the index of the chapter to seek to
-     * @return the [PlayerChapter] which has been sought to
-     */
-    private fun seekToChapter(chapterIndex: Int): PlayerChapter? {
-        return getChapters().getOrNull(chapterIndex)?.also { chapter ->
-            player.seekTo(chapter.startPosition)
-        }
-    }
-
-    /**
-     * Seek to the next chapter
-     *
-     * @return the [PlayerChapter] which has been sought to
-     */
-    fun seekToNextChapter(): PlayerChapter? {
-        return getNextChapterIndex()?.let { seekToChapter(it) }
-    }
-
-    /**
-     * Seek to the previous chapter Will seek to start of current chapter if player position is more
-     * than 5 seconds past start of chapter
-     *
-     * @return the [PlayerChapter] which has been sought to
-     */
-    fun seekToPreviousChapter(): PlayerChapter? {
-        return getPreviousChapterIndex()?.let { seekToChapter(it) }
+        return appPreferences.getValue(appPreferences.playerAutoplayNext) &&
+            SegmentUtils.shouldSkipToNextEpisode(
+                segment = segment,
+                hasNextMediaItem = player.hasNextMediaItem(),
+                playerDurationMillis = player.duration,
+                nextEpisodeThreshold =
+                    appPreferences.getValue(appPreferences.playerMediaSegmentsNextEpisodeThreshold),
+            )
     }
 
     override fun onIsPlayingChanged(isPlaying: Boolean) {

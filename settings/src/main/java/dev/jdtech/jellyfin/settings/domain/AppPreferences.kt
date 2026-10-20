@@ -28,20 +28,29 @@ class AppPreferences @Inject constructor(val sharedPreferences: SharedPreference
     val preferredSubtitleLanguage = Preference<String?>("pref_subtitle_language", null)
 
     // Interface
-    val theme = Preference("pref_theme", "system")
+    val theme = Preference("pref_theme", Constants.Theme.SYSTEM.value)
     val dynamicColors = Preference("pref_dynamic_colors", true)
-    val homeSuggestions = Preference<Boolean>("home_suggestions", true)
-    val homeContinueWatching = Preference<Boolean>("home_continue_watching", true)
-    val homeNextUp = Preference<Boolean>("home_next_up", true)
-    val homeLatest = Preference<Boolean>("home_latest", true)
+    val homeSuggestions = Preference("home_suggestions", true)
+    val homeContinueWatching = Preference("home_continue_watching", true)
+    val homeNextUp = Preference("home_next_up", true)
+    val homeLatest = Preference("home_latest", true)
     val displayExtraInfo = Preference("pref_display_extra_info", false)
     val tvShowLogos = Preference("pref_tv_show_logos", false)
     val tvScreensaver = Preference("pref_tv_screensaver", true)
     val hideEpisodeSpoilers = Preference("hide_episode_spoilers", false)
 
     // Player
-    val playerBackend = Preference("pref_player_backend", "exoplayer")
+    val playerBackend = Preference("pref_player_backend", Constants.PlayerBackend.EXOPLAYER.value)
     val playerBrightness = Preference("pref_player_brightness", -1.0f)
+    val playerOrientation =
+        Preference("pref_player_orientation", Constants.PlayerOrientation.SENSOR.value)
+    val playerOrientationLast =
+        Preference("pref_player_orientation_last", Constants.PlayerOrientation.SENSOR.value)
+    val playerAutoplayNext = Preference("pref_player_autoplay_next", true)
+    val playerHaptics = Preference("pref_player_haptics", true)
+    val playerControlsTimeout = Preference("pref_player_controls_timeout", 4L)
+    val playerPlaybackSpeedRemember = Preference("pref_player_playback_speed_remember", false)
+    val playerPlaybackSpeed = Preference("pref_player_playback_speed", 1.0f)
 
     // Chromecast
     val castEnabled = Preference("pref_cast_enabled", true)
@@ -49,9 +58,10 @@ class AppPreferences @Inject constructor(val sharedPreferences: SharedPreference
 
     // Player - mpv
     val playerMpv = Preference("pref_player_mpv", false)
-    val playerMpvHwdec = Preference("pref_player_mpv_hwdec", "mediacodec")
-    val playerMpvVo = Preference("pref_player_mpv_vo", "gpu-next")
-    val playerMpvAo = Preference("pref_player_mpv_ao", "aaudio")
+    val playerMpvHwdec =
+        Preference("pref_player_mpv_hwdec", Constants.PlayerMpvHwdec.MEDIACODEC.value)
+    val playerMpvVo = Preference("pref_player_mpv_vo", Constants.PlayerMpvVo.GPU_NEXT.value)
+    val playerMpvAo = Preference("pref_player_mpv_ao", Constants.PlayerMpvAo.AAUDIO.value)
 
     // Player - gestures
     val playerGestures = Preference("pref_player_gestures", true)
@@ -61,7 +71,8 @@ class AppPreferences @Inject constructor(val sharedPreferences: SharedPreference
     val playerGesturesSeekTrickplay = Preference("pref_player_gestures_seek_trickplay", true)
     val playerGesturesChapterSkip = Preference("pref_player_gestures_chapter_skip", true)
     val playerGesturesBrightnessRemember = Preference("pref_player_brightness_remember", false)
-    val playerGesturesStartMaximized = Preference("pref_player_start_maximized", false)
+    val playerDefaultResizeMode =
+        Preference("pref_player_default_resize_mode", Constants.PlayerResizeMode.FIT.value)
 
     // Player - seeking
     val playerSeekBackInc = Preference("pref_player_seek_back_inc", 5_000L)
@@ -69,11 +80,33 @@ class AppPreferences @Inject constructor(val sharedPreferences: SharedPreference
     val playerChapterMarkers = Preference("pref_player_chapter_markers", true)
 
     // Player - Media Segments
+    val prefSegmentColorIntro
+        get() = Preference("pref_segment_color_intro", 0xFF4CAF50L)
+
+    val prefSegmentColorOutro
+        get() = Preference("pref_segment_color_outro", 0xFFFF9800L)
+
+    val prefSegmentColorRecap
+        get() = Preference("pref_segment_color_recap", 0xFF2196F3L)
+
+    val prefSegmentColorPreview
+        get() = Preference("pref_segment_color_preview", 0xFF9C27B0L)
+
+    val prefSegmentColorCommercial
+        get() = Preference("pref_segment_color_commercial", 0xFF795548L)
+
     val playerMediaSegmentsSkipButton
         get() = Preference("pref_player_media_segments_skip_button", true)
 
     val playerMediaSegmentsSkipButtonType
-        get() = Preference("pref_player_media_segments_skip_button_type", setOf("INTRO", "OUTRO"))
+        get() =
+            Preference(
+                "pref_player_media_segments_skip_button_type",
+                setOf(
+                    Constants.MediaSegmentType.INTRO.value,
+                    Constants.MediaSegmentType.OUTRO.value,
+                ),
+            )
 
     val playerMediaSegmentsSkipButtonDuration
         get() = Preference("pref_player_media_segments_skip_button_duration", 5L)
@@ -85,20 +118,94 @@ class AppPreferences @Inject constructor(val sharedPreferences: SharedPreference
         get() =
             Preference(
                 "pref_player_media_segments_auto_skip_mode",
-                Constants.PlayerMediaSegmentsAutoSkip.ALWAYS,
+                Constants.PlayerMediaSegmentsAutoSkip.ALWAYS.value,
             )
 
     val playerMediaSegmentsAutoSkipType
-        get() = Preference("pref_player_media_segments_auto_skip_type", setOf("INTRO", "OUTRO"))
+        get() =
+            Preference(
+                "pref_player_media_segments_auto_skip_type",
+                setOf(
+                    Constants.MediaSegmentType.INTRO.value,
+                    Constants.MediaSegmentType.OUTRO.value,
+                ),
+            )
 
     val playerMediaSegmentsNextEpisodeThreshold
         get() = Preference("pref_player_media_segments_next_episode_threshold", 5_000L)
+
+    enum class SegmentAction {
+        NONE,
+        SHOW_BUTTON,
+        AUTO_SKIP,
+    }
+
+    fun getSegmentColor(type: String): Long {
+        return when (Constants.MediaSegmentType.fromValue(type)) {
+            Constants.MediaSegmentType.INTRO -> getValue(prefSegmentColorIntro)
+            Constants.MediaSegmentType.OUTRO -> getValue(prefSegmentColorOutro)
+            Constants.MediaSegmentType.RECAP -> getValue(prefSegmentColorRecap)
+            Constants.MediaSegmentType.PREVIEW -> getValue(prefSegmentColorPreview)
+            Constants.MediaSegmentType.COMMERCIAL -> getValue(prefSegmentColorCommercial)
+            Constants.MediaSegmentType.UNKNOWN -> 0xFF4CAF50L
+        }
+    }
+
+    fun setSegmentColor(type: String, color: Long) {
+        when (Constants.MediaSegmentType.fromValue(type)) {
+            Constants.MediaSegmentType.INTRO -> setValue(prefSegmentColorIntro, color)
+            Constants.MediaSegmentType.OUTRO -> setValue(prefSegmentColorOutro, color)
+            Constants.MediaSegmentType.RECAP -> setValue(prefSegmentColorRecap, color)
+            Constants.MediaSegmentType.PREVIEW -> setValue(prefSegmentColorPreview, color)
+            Constants.MediaSegmentType.COMMERCIAL -> setValue(prefSegmentColorCommercial, color)
+            Constants.MediaSegmentType.UNKNOWN -> Unit
+        }
+    }
+
+    fun getSegmentAction(type: String): SegmentAction {
+        val typeName = type.uppercase()
+        val autoSkipTypes = getValue(playerMediaSegmentsAutoSkipType)
+        if (autoSkipTypes.contains(typeName)) {
+            return SegmentAction.AUTO_SKIP
+        }
+        val skipButtonTypes = getValue(playerMediaSegmentsSkipButtonType)
+        if (skipButtonTypes.contains(typeName)) {
+            return SegmentAction.SHOW_BUTTON
+        }
+        return SegmentAction.NONE
+    }
+
+    fun setSegmentAction(type: String, action: SegmentAction) {
+        val typeName = type.uppercase()
+        val currentAutoSkip = getValue(playerMediaSegmentsAutoSkipType).toMutableSet()
+        val currentSkipButton = getValue(playerMediaSegmentsSkipButtonType).toMutableSet()
+
+        when (action) {
+            SegmentAction.AUTO_SKIP -> {
+                currentAutoSkip.add(typeName)
+                currentSkipButton.remove(typeName)
+                setValue(playerMediaSegmentsAutoSkip, true)
+            }
+            SegmentAction.SHOW_BUTTON -> {
+                currentSkipButton.add(typeName)
+                currentAutoSkip.remove(typeName)
+                setValue(playerMediaSegmentsSkipButton, true)
+            }
+            SegmentAction.NONE -> {
+                currentAutoSkip.remove(typeName)
+                currentSkipButton.remove(typeName)
+            }
+        }
+
+        setValue(playerMediaSegmentsAutoSkipType, currentAutoSkip)
+        setValue(playerMediaSegmentsSkipButtonType, currentSkipButton)
+    }
 
     // Player - trickplay
     val playerTrickplay = Preference("pref_player_trickplay", true)
 
     // Player - PiP
-    val playerPipGesture = Preference("pref_player_picture_in_picture_gesture", false)
+    val playerPipGesture = Preference("pref_player_picture_in_picture_gesture", true)
 
     // Downloads
     val downloadOverMobileData = Preference("pref_downloads_mobile_data", false)
@@ -106,17 +213,14 @@ class AppPreferences @Inject constructor(val sharedPreferences: SharedPreference
     val defaultDownloadStorageIndex = Preference("pref_downloads_default_storage_index", "0")
     val smartDownloadNextEpisode = Preference("pref_downloads_smart_download_next_episode", true)
     val smartDownloadNextEpisodesCount =
-        Preference<Int>("pref_downloads_smart_download_next_episodes_count", 3)
+        Preference("pref_downloads_smart_download_next_episodes_count", 3)
     val smartDownloadStorageLimitGb =
-        Preference<Int>("pref_downloads_smart_download_storage_limit_gb", 20)
+        Preference("pref_downloads_smart_download_storage_limit_gb", 20)
     val autoDeleteWatched = Preference("pref_downloads_auto_delete_watched", false)
     val askPresetBeforeDownload = Preference("ask_preset_before_download", true)
     val userCanTranscode = Preference("pref_user_can_transcode", true)
     val downloadExternalAudio = Preference("pref_downloads_external_audio", false)
     val defaultTranscodePresetId = Preference("default_transcode_preset_id", "1080p_balanced")
-    val defaultAudioTranscodeCodec = Preference("default_audio_transcode_codec", "aac")
-    val defaultAudioTranscodeChannels = Preference("default_audio_transcode_channels", "2")
-    val defaultAudioTranscodeBitrate = Preference("default_audio_transcode_bitrate", "0")
     val customTranscodePresetsJson = Preference("custom_transcode_presets_json", "")
     val maxConcurrentDownloads = Preference("pref_downloads_max_concurrent", 1)
 

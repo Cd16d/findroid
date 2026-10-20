@@ -34,6 +34,7 @@ import androidx.media3.common.util.Clock
 import androidx.media3.common.util.ListenerSet
 import androidx.media3.common.util.Size
 import androidx.media3.common.util.Util
+import dev.jdtech.jellyfin.settings.domain.Constants
 import dev.jdtech.mpv.MPVLib
 import dev.jdtech.mpv.MPVLib.MpvEvent
 import dev.jdtech.mpv.MPVLib.MpvFormat
@@ -54,9 +55,9 @@ class MPVPlayer(
     private val seekBackIncrement: Long = C.DEFAULT_SEEK_BACK_INCREMENT_MS,
     private val seekForwardIncrement: Long = C.DEFAULT_SEEK_FORWARD_INCREMENT_MS,
     private val pauseAtEndOfMediaItems: Boolean = false,
-    videoOutput: String = "gpu-next",
-    audioOutput: String = "aaudio",
-    hwDec: String = "mediacodec",
+    videoOutput: String = Constants.PlayerMpvVo.GPU_NEXT.value,
+    audioOutput: String = Constants.PlayerMpvAo.AAUDIO.value,
+    hwDec: String = Constants.PlayerMpvHwdec.MEDIACODEC.value,
 ) : BasePlayer(), MPVLib.EventObserver, AudioManager.OnAudioFocusChangeListener {
     private val mpvLib: MPVLib
     private val audioManager: AudioManager by lazy { context.getSystemService()!! }
@@ -98,13 +99,13 @@ class MPVPlayer(
         var pauseAtEndOfMediaItems: Boolean = false
             private set
 
-        var videoOutput: String = "gpu-next"
+        var videoOutput: String = Constants.PlayerMpvVo.GPU_NEXT.value
             private set
 
-        var audioOutput: String = "aaudio"
+        var audioOutput: String = Constants.PlayerMpvAo.AAUDIO.value
             private set
 
-        var hwDec: String = "mediacodec"
+        var hwDec: String = Constants.PlayerMpvHwdec.MEDIACODEC.value
             private set
 
         fun setAudioAttributes(audioAttributes: AudioAttributes, handleAudioFocus: Boolean) =

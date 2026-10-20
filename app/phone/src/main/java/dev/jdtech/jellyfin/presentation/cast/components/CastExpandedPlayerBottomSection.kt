@@ -34,6 +34,7 @@ fun PlayerBottomSection(
     onClickAudio: () -> Unit,
     onClickSubtitle: () -> Unit,
     modifier: Modifier = Modifier,
+    onOpenChapters: (() -> Unit)? = null,
 ) {
     val playerState = uiState.playerState
     val segment = uiState.currentSegment
@@ -59,6 +60,8 @@ fun PlayerBottomSection(
             chapters = chapters,
             onScrubStart = onScrubStart,
             onScrubStop = onScrubStop,
+            segments = if (segment != null) listOf(segment) else emptyList(),
+            onOpenChapters = onOpenChapters,
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -90,6 +93,7 @@ fun PlayerBottomSection(
 @Composable
 private fun CastPlayerTitles(uiState: CastPlayerViewModel.UiState) {
     val titleInfo = uiState.currentItemTitle
+
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         if (titleInfo.seriesName != null) {
             Text(

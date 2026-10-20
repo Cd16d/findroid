@@ -40,8 +40,14 @@ private fun MediaSegmentType.toFindroidSegmentType(): FindroidSegmentType =
  * @property type The [FindroidSegmentType] classifying this segment.
  * @property startTicks The start timestamp of the segment in playback ticks or milliseconds.
  * @property endTicks The end timestamp of the segment in playback ticks or milliseconds.
+ * @property color Optional custom color hex (Long) for this segment.
  */
-data class FindroidSegment(val type: FindroidSegmentType, val startTicks: Long, val endTicks: Long)
+data class FindroidSegment(
+    val type: FindroidSegmentType,
+    val startTicks: Long,
+    val endTicks: Long,
+    val color: Long? = null,
+)
 
 /** Converts a database [FindroidSegmentDto] to a domain [FindroidSegment]. */
 fun FindroidSegmentDto.toFindroidSegment(): FindroidSegment {

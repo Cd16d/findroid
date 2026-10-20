@@ -134,6 +134,7 @@ import dev.jdtech.jellyfin.presentation.utils.NoOpBringIntoViewSpec
 import dev.jdtech.jellyfin.presentation.utils.TvPivotItem
 import dev.jdtech.jellyfin.presentation.utils.rememberTvPivotRowController
 import dev.jdtech.jellyfin.presentation.utils.rememberTvTrailingSpace
+import dev.jdtech.jellyfin.settings.domain.AppPreferences
 import dev.jdtech.jellyfin.utils.toBlurHashPainter
 import dev.jdtech.jellyfin.utils.toOptimizedImageUri
 import java.util.UUID
@@ -204,7 +205,9 @@ fun PlayerScreen(
         }
     }
 
-    val videoPlayerState = rememberVideoPlayerState()
+    val prefs = remember(context) { AppPreferences(context) }
+    val hideSeconds = remember { prefs.getValue(prefs.playerControlsTimeout).toInt() }
+    val videoPlayerState = rememberVideoPlayerState(hideSeconds = hideSeconds)
 
     var currentPosition by remember { mutableLongStateOf(0L) }
     var isPlaying by remember { mutableStateOf(viewModel.player.isPlaying) }
@@ -710,13 +713,17 @@ fun PlayerScreen(
                         title = uiState.currentItemTitle,
                         subtitle = uiState.currentItemSubtitle,
                         isPlaying = isPlaying,
+                        isBuffering = isBuffering,
                         contentCurrentPosition = currentPosition,
                         player = viewModel.player,
                         state = videoPlayerState,
                         playPauseFocusRequester = playPauseFocusRequester,
                         seekerFocusRequester = seekerFocusRequester,
-                        chapters = uiState.currentChapters,
-                        segments = uiState.segments,
+                        chapters =
+                            if (uiState.showChapterMarkers) uiState.currentChapters
+                            else emptyList(),
+                        segments =
+                            if (uiState.showChapterMarkers) uiState.segments else emptyList(),
                         isScrubbing = isScrubbing,
                         scrubPositionMs = scrubPositionMs,
                         onScrubbingChanged = { scrubbing, pos ->
@@ -776,6 +783,7 @@ fun VideoPlayerControls(
     title: String,
     subtitle: String? = null,
     isPlaying: Boolean,
+    isBuffering: Boolean = false,
     contentCurrentPosition: Long,
     player: Player,
     state: VideoPlayerState,
@@ -863,6 +871,7 @@ fun VideoPlayerControls(
                 onDown = { playPauseFocusRequester.requestFocus() },
                 onOpenChapters = { onOpenSidePanel(PlayerSidePanelType.CHAPTERS) },
                 playPauseFocusRequester = playPauseFocusRequester,
+                isBuffering = isBuffering,
             )
         },
         shelfOffset = shelfOffset,
@@ -989,7 +998,7 @@ fun VideoPlayerControls(
                         modifier = mediaControlFocusModifier,
                     )
                     VideoPlayerMediaButton(
-                        icon = painterResource(id = CoreR.drawable.ic_speaker),
+                        icon = painterResource(id = CoreR.drawable.ic_audio),
                         onClick = { onOpenSidePanel(PlayerSidePanelType.AUDIO) },
                         modifier = mediaControlFocusModifier,
                     )
@@ -1058,7 +1067,7 @@ fun VideoPlayerControls(
                                         ?: stringResource(id = CoreR.string.seasons)
 
                                 Icon(
-                                    painter = painterResource(id = PlayerR.drawable.ic_tv),
+                                    painter = painterResource(id = CoreR.drawable.ic_tv),
                                     contentDescription = null,
                                     modifier = Modifier.size(18.dp),
                                     tint = Color.White.copy(alpha = 0.85f),
@@ -1375,7 +1384,7 @@ private fun GoToSeriesShelfCard(
             modifier = Modifier.fillMaxSize(),
         ) {
             Icon(
-                painter = painterResource(id = PlayerR.drawable.ic_tv),
+                painter = painterResource(id = CoreR.drawable.ic_tv),
                 contentDescription = null,
                 modifier = Modifier.size(32.dp),
             )

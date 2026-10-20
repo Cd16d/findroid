@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,7 +19,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -68,10 +68,13 @@ import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.models.FindroidSegmentType
 import dev.jdtech.jellyfin.player.core.R as PlayerR
 import dev.jdtech.jellyfin.player.core.domain.models.PlayerChapter
+import dev.jdtech.jellyfin.player.core.domain.models.SleepTimerMode
 import dev.jdtech.jellyfin.player.core.domain.models.Trickplay
 import dev.jdtech.jellyfin.player.core.domain.models.intervalMs
 import dev.jdtech.jellyfin.player.core.domain.utils.ChapterUtils
 import dev.jdtech.jellyfin.player.core.domain.utils.TrackFormatter
+import dev.jdtech.jellyfin.player.core.presentation.findChapterSegment
+import dev.jdtech.jellyfin.player.core.presentation.findChapterSegmentType
 import dev.jdtech.jellyfin.player.core.presentation.getSegmentColor
 import dev.jdtech.jellyfin.player.local.presentation.PlayerViewModel
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
@@ -91,6 +94,7 @@ enum class PlayerSidePanelType {
     SPEED,
     ASPECT_RATIO,
     CHAPTERS,
+    SLEEP_TIMER,
 }
 
 @androidx.annotation.OptIn(UnstableApi::class)
@@ -118,6 +122,7 @@ fun PlayerSidePanel(
     val audioFocusRequester = remember { FocusRequester() }
     val speedFocusRequester = remember { FocusRequester() }
     val aspectRatioFocusRequester = remember { FocusRequester() }
+    val sleepTimerFocusRequester = remember { FocusRequester() }
 
     var tracks by remember { mutableStateOf(viewModel.player.currentTracks) }
     DisposableEffect(viewModel.player) {
@@ -138,6 +143,7 @@ fun PlayerSidePanel(
                     PlayerSidePanelType.AUDIO -> audioFocusRequester
                     PlayerSidePanelType.SPEED -> speedFocusRequester
                     PlayerSidePanelType.ASPECT_RATIO -> aspectRatioFocusRequester
+                    PlayerSidePanelType.SLEEP_TIMER -> sleepTimerFocusRequester
                     else -> subtitlesFocusRequester
                 }
             try {
@@ -204,6 +210,7 @@ fun PlayerSidePanel(
                         audioFocusRequester = audioFocusRequester,
                         speedFocusRequester = speedFocusRequester,
                         aspectRatioFocusRequester = aspectRatioFocusRequester,
+                        sleepTimerFocusRequester = sleepTimerFocusRequester,
                     )
                 }
 
@@ -232,6 +239,14 @@ fun PlayerSidePanel(
                     )
                 }
 
+                PlayerSidePanelType.SLEEP_TIMER -> {
+                    SleepTimerList(
+                        viewModel = viewModel,
+                        initialFocusRequester = initialFocusRequester,
+                        onBack = { onPanelTypeChange(PlayerSidePanelType.SETTINGS) },
+                    )
+                }
+
                 PlayerSidePanelType.NONE -> Unit
             }
         }
@@ -248,6 +263,7 @@ private fun PanelHeader(panelType: PlayerSidePanelType) {
             PlayerSidePanelType.SPEED -> PlayerR.string.playback_speed
             PlayerSidePanelType.ASPECT_RATIO -> PlayerR.string.aspect_ratio
             PlayerSidePanelType.CHAPTERS -> PlayerR.string.chapters
+            PlayerSidePanelType.SLEEP_TIMER -> PlayerR.string.sleep_timer
             PlayerSidePanelType.NONE -> CoreR.string.title_settings
         }
 
@@ -514,10 +530,31 @@ private fun SettingsList(
     audioFocusRequester: FocusRequester,
     speedFocusRequester: FocusRequester,
     aspectRatioFocusRequester: FocusRequester,
+    sleepTimerFocusRequester: FocusRequester,
 ) {
     val context = LocalContext.current
     val currentLocale = LocalConfiguration.current.locales[0]
     val displayExtraInfo = viewModel.displayExtraInfo
+    val uiState by viewModel.uiState.collectAsState()
+    val isMovie = uiState.seriesId == null
+    val sleepTimerStatus = uiState.sleepTimerStatus
+
+    val sleepTimerSubtitle =
+        if (sleepTimerStatus.isActive) {
+            when (val mode = sleepTimerStatus.mode) {
+                is SleepTimerMode.EndOfMedia -> {
+                    if (isMovie) stringResource(id = PlayerR.string.sleep_timer_end_of_video)
+                    else stringResource(id = PlayerR.string.sleep_timer_end_of_episode)
+                }
+                is SleepTimerMode.Duration -> {
+                    val remainingMins = (sleepTimerStatus.remainingSeconds + 59L) / 60L
+                    stringResource(id = PlayerR.string.sleep_timer_remaining, remainingMins.toInt())
+                }
+                else -> stringResource(id = PlayerR.string.sleep_timer_off)
+            }
+        } else {
+            stringResource(id = PlayerR.string.sleep_timer_off)
+        }
 
     val currentSpeed = viewModel.playbackSpeed
     val speedLabel =
@@ -589,7 +626,7 @@ private fun SettingsList(
             NavigationItem(
                 title = stringResource(id = PlayerR.string.audio),
                 subtitle = currentAudio ?: stringResource(id = PlayerR.string.none),
-                iconRes = CoreR.drawable.ic_speaker,
+                iconRes = CoreR.drawable.ic_audio,
                 onClick = { onNavigate(PlayerSidePanelType.AUDIO) },
                 modifier = Modifier.focusRequester(audioFocusRequester),
             )
@@ -600,7 +637,7 @@ private fun SettingsList(
             NavigationItem(
                 title = stringResource(id = PlayerR.string.playback_speed),
                 subtitle = speedLabel,
-                iconRes = PlayerR.drawable.ic_gauge,
+                iconRes = CoreR.drawable.ic_playback_speed,
                 onClick = { onNavigate(PlayerSidePanelType.SPEED) },
                 modifier = Modifier.focusRequester(speedFocusRequester),
             )
@@ -611,9 +648,116 @@ private fun SettingsList(
             NavigationItem(
                 title = stringResource(id = PlayerR.string.aspect_ratio),
                 subtitle = resizeModeLabel,
-                iconRes = PlayerR.drawable.ic_aspect_ratio,
+                iconRes = CoreR.drawable.ic_aspect_ratio,
                 onClick = { onNavigate(PlayerSidePanelType.ASPECT_RATIO) },
                 modifier = Modifier.focusRequester(aspectRatioFocusRequester),
+            )
+        }
+
+        // Sleep Timer
+        item {
+            NavigationItem(
+                title = stringResource(id = PlayerR.string.sleep_timer),
+                subtitle = sleepTimerSubtitle,
+                iconRes = CoreR.drawable.ic_sleep_timer,
+                onClick = { onNavigate(PlayerSidePanelType.SLEEP_TIMER) },
+                modifier = Modifier.focusRequester(sleepTimerFocusRequester),
+            )
+        }
+    }
+}
+
+private sealed interface TvSleepTimerOption {
+    data object EndOfMedia : TvSleepTimerOption
+
+    data class Minutes(val count: Int) : TvSleepTimerOption
+
+    data object Off : TvSleepTimerOption
+}
+
+@Composable
+private fun SleepTimerList(
+    viewModel: PlayerViewModel,
+    initialFocusRequester: FocusRequester,
+    onBack: () -> Unit,
+) {
+    val uiState by viewModel.uiState.collectAsState()
+    val isMovie = uiState.seriesId == null
+    val sleepTimerStatus = uiState.sleepTimerStatus
+
+    val options =
+        remember(isMovie) {
+            listOf(
+                TvSleepTimerOption.EndOfMedia,
+                TvSleepTimerOption.Minutes(10),
+                TvSleepTimerOption.Minutes(15),
+                TvSleepTimerOption.Minutes(30),
+                TvSleepTimerOption.Minutes(45),
+                TvSleepTimerOption.Minutes(60),
+                TvSleepTimerOption.Minutes(90),
+                TvSleepTimerOption.Minutes(120),
+                TvSleepTimerOption.Off,
+            )
+        }
+
+    LazyColumn(
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = PaddingValues(vertical = 4.dp),
+    ) {
+        itemsIndexed(items = options) { index, option ->
+            val isFirst = index == 0
+            val (title, isSelected, chips) =
+                when (option) {
+                    is TvSleepTimerOption.EndOfMedia -> {
+                        val text =
+                            if (isMovie)
+                                stringResource(id = PlayerR.string.sleep_timer_end_of_video)
+                            else stringResource(id = PlayerR.string.sleep_timer_end_of_episode)
+                        val selected = sleepTimerStatus.mode is SleepTimerMode.EndOfMedia
+                        Triple(text, selected, emptyList<String>())
+                    }
+                    is TvSleepTimerOption.Minutes -> {
+                        val text =
+                            stringResource(id = PlayerR.string.sleep_timer_minutes, option.count)
+                        val selected =
+                            sleepTimerStatus.mode is SleepTimerMode.Duration &&
+                                (sleepTimerStatus.mode as SleepTimerMode.Duration).totalMinutes ==
+                                    option.count
+                        val chipList =
+                            if (selected) {
+                                val remainingMins = (sleepTimerStatus.remainingSeconds + 59L) / 60L
+                                listOf(
+                                    stringResource(
+                                        id = PlayerR.string.sleep_timer_remaining,
+                                        remainingMins.toInt(),
+                                    )
+                                )
+                            } else emptyList()
+                        Triple(text, selected, chipList)
+                    }
+                    is TvSleepTimerOption.Off -> {
+                        val text = stringResource(id = PlayerR.string.sleep_timer_off)
+                        val selected = !sleepTimerStatus.isActive
+                        Triple(text, selected, emptyList<String>())
+                    }
+                }
+
+            SelectableItem(
+                title = title,
+                isSelected = isSelected,
+                chips = chips,
+                onClick = {
+                    when (option) {
+                        is TvSleepTimerOption.EndOfMedia ->
+                            viewModel.setSleepTimer(SleepTimerMode.EndOfMedia)
+                        is TvSleepTimerOption.Minutes ->
+                            viewModel.setSleepTimer(SleepTimerMode.Duration(option.count))
+                        is TvSleepTimerOption.Off -> viewModel.setSleepTimer(SleepTimerMode.Off)
+                    }
+                    onBack()
+                },
+                modifier =
+                    if (isFirst) Modifier.focusRequester(initialFocusRequester) else Modifier,
             )
         }
     }
@@ -663,33 +807,32 @@ private fun SelectableItem(
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Column(
-                modifier = Modifier.weight(1f, fill = false),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.bodyLarge,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                if (chips.isNotEmpty()) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        chips.forEach { chipText -> TrackChip(text = chipText) }
-                    }
-                }
-            }
             if (isSelected) {
                 Icon(
                     painter = painterResource(id = CoreR.drawable.ic_check),
                     contentDescription = null,
                     modifier = Modifier.size(20.dp),
                 )
+            } else {
+                Spacer(modifier = Modifier.size(20.dp))
+            }
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyLarge,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false),
+            )
+            Spacer(modifier = Modifier.weight(1f))
+            if (chips.isNotEmpty()) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    chips.forEach { chipText -> TrackChip(text = chipText) }
+                }
             }
         }
     }
@@ -767,7 +910,7 @@ private fun NavigationItemPreview() {
         NavigationItem(
             title = "Audio",
             subtitle = "Italiano (5.1)",
-            iconRes = CoreR.drawable.ic_speaker,
+            iconRes = CoreR.drawable.ic_audio,
             onClick = {},
         )
     }
@@ -843,15 +986,27 @@ private fun ChapterList(
                 val isCurrent = index == currentChapterIndex
                 val nextChapterStart =
                     chapters.getOrNull(index + 1)?.startPosition ?: Long.MAX_VALUE
+                val matchedSegment =
+                    findChapterSegment(
+                        chapter = chapter,
+                        nextChapterStart = nextChapterStart,
+                        segments = uiState.segments,
+                        durationMs = viewModel.player.duration.coerceAtLeast(0L),
+                    )
                 val segmentType =
-                    uiState.segments
-                        .firstOrNull { seg ->
-                            (chapter.startPosition >= seg.startTicks &&
-                                chapter.startPosition < seg.endTicks) ||
-                                (seg.startTicks >= chapter.startPosition &&
-                                    seg.startTicks < nextChapterStart)
-                        }
-                        ?.type
+                    matchedSegment?.type
+                        ?: findChapterSegmentType(
+                            chapter = chapter,
+                            nextChapterStart = nextChapterStart,
+                            segments = uiState.segments,
+                            durationMs = viewModel.player.duration.coerceAtLeast(0L),
+                        )
+                val segmentColor =
+                    when (val matchedColor = matchedSegment?.color) {
+                        0L -> getSegmentColor(segmentType)
+                        null -> getSegmentColor(segmentType)
+                        else -> Color(matchedColor)
+                    }
 
                 ChapterItem(
                     chapter = chapter,
@@ -860,6 +1015,7 @@ private fun ChapterList(
                     trickplay = uiState.currentTrickplay,
                     chapterImageUrl = chapterImageUrl,
                     segmentType = segmentType,
+                    customSegmentColor = segmentColor,
                     onClick = {
                         viewModel.player.seekTo(chapter.startPosition)
                         onClose()
@@ -886,7 +1042,17 @@ private fun ChapterItem(
     chapterImageUrl: String?,
     modifier: Modifier = Modifier,
     segmentType: FindroidSegmentType? = null,
+    customSegmentColor: Color? = null,
 ) {
+    val segmentLabel =
+        when (segmentType) {
+            FindroidSegmentType.INTRO -> "Intro"
+            FindroidSegmentType.OUTRO -> "Outro"
+            FindroidSegmentType.RECAP -> "Recap"
+            FindroidSegmentType.PREVIEW -> "Preview"
+            FindroidSegmentType.COMMERCIAL -> "Ad"
+            else -> null
+        }
     val chapterName =
         chapter.name?.takeIf { it.isNotBlank() }
             ?: stringResource(id = PlayerR.string.chapter_title, chapterIndex + 1)
@@ -917,7 +1083,19 @@ private fun ChapterItem(
             }
         }
 
-    val segmentColor = segmentType?.let { getSegmentColor(it) }
+    val imageAspectRatio =
+        remember(trickplayBitmap) {
+            if (trickplayBitmap != null && trickplayBitmap.height > 0) {
+                (trickplayBitmap.width.toFloat() / trickplayBitmap.height.toFloat()).coerceIn(
+                    4f / 3f,
+                    2.4f,
+                )
+            } else {
+                16f / 9f
+            }
+        }
+
+    val segmentColor = customSegmentColor ?: segmentType?.let { getSegmentColor(it) }
 
     val itemColors =
         ClickableSurfaceDefaults.colors(
@@ -943,11 +1121,11 @@ private fun ChapterItem(
             modifier = Modifier.fillMaxWidth().padding(10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // Chapter thumbnail (Left, 16:9)
+            // Chapter thumbnail with Dynamic Aspect Ratio
             Box(
                 modifier =
-                    Modifier.width(112.dp)
-                        .height(63.dp)
+                    Modifier.height(63.dp)
+                        .aspectRatio(imageAspectRatio)
                         .clip(ChapterThumbShape)
                         .background(Color.Black),
                 contentAlignment = Alignment.Center,
@@ -995,37 +1173,25 @@ private fun ChapterItem(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.Center,
             ) {
-                Text(
-                    text = chapterName,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.SemiBold,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Spacer(modifier = Modifier.height(4.dp))
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    if (isCurrent) {
+                    Text(
+                        text = chapterName,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                    if (segmentColor != null && segmentLabel != null) {
                         Box(
                             modifier =
-                                Modifier.size(7.dp)
-                                    .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.primary)
-                        )
-                    }
-                    if (segmentColor != null) {
-                        val segmentLabel =
-                            when (segmentType) {
-                                FindroidSegmentType.INTRO -> "Intro"
-                                FindroidSegmentType.OUTRO -> "Outro"
-                                FindroidSegmentType.RECAP -> "Recap"
-                                FindroidSegmentType.PREVIEW -> "Preview"
-                                FindroidSegmentType.COMMERCIAL -> "Ad"
-                                else -> null
-                            }
-                        if (segmentLabel != null) {
+                                Modifier.clip(RoundedCornerShape(4.dp))
+                                    .background(segmentColor.copy(alpha = 0.2f))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
                             Text(
                                 text = segmentLabel,
                                 style = MaterialTheme.typography.labelSmall,
@@ -1034,12 +1200,13 @@ private fun ChapterItem(
                             )
                         }
                     }
-                    Text(
-                        text = timestampString,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = LocalContentColor.current.copy(alpha = 0.7f),
-                    )
                 }
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = timestampString,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = LocalContentColor.current.copy(alpha = 0.7f),
+                )
             }
         }
     }

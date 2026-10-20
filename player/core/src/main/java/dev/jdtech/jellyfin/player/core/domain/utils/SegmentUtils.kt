@@ -15,11 +15,23 @@ object SegmentUtils {
      *
      * @param itemId The UUID of the media item to fetch segments for.
      * @param repository The repository to fetch segments from.
+     * @param colorResolver Optional resolver for segment colors given a [FindroidSegmentType].
      * @return A list of [FindroidSegment] objects, or an empty list if fetching fails.
      */
-    suspend fun getSegments(itemId: UUID, repository: JellyfinRepository): List<FindroidSegment> {
+    suspend fun getSegments(
+        itemId: UUID,
+        repository: JellyfinRepository,
+        colorResolver: ((FindroidSegmentType) -> Long?)? = null,
+    ): List<FindroidSegment> {
         return try {
-            repository.getSegments(itemId)
+            val segments = repository.getSegments(itemId)
+            if (colorResolver != null) {
+                segments.map { segment ->
+                    segment.copy(color = segment.color ?: colorResolver(segment.type))
+                }
+            } else {
+                segments
+            }
         } catch (e: Exception) {
             Timber.e(e, "Failed to fetch segments for item: $itemId")
             emptyList()

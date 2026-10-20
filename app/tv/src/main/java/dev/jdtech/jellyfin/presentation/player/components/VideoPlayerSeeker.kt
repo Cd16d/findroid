@@ -70,6 +70,7 @@ fun VideoPlayerSeeker(
     onDown: (() -> Unit)? = null,
     onOpenChapters: (() -> Unit)? = null,
     playPauseFocusRequester: FocusRequester? = null,
+    isBuffering: Boolean = false,
 ) {
     val context = LocalContext.current
     val rawDurationMs = contentDuration.inWholeMilliseconds
@@ -265,7 +266,6 @@ fun VideoPlayerSeeker(
                     0f
                 },
             onSeek = onSeek,
-            state = state,
             durationMs = durationMs,
             chapters = chapters,
             segments = segments,
@@ -276,6 +276,7 @@ fun VideoPlayerSeeker(
                 if (chapters.isNotEmpty() && onOpenChapters != null) {
                     { chapterFocusRequester.requestFocus() }
                 } else null,
+            isBuffering = isBuffering,
             modifier =
                 Modifier.focusRequester(focusRequester)
                     .then(

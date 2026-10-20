@@ -8,6 +8,7 @@ import dev.jdtech.jellyfin.player.core.R
 import dev.jdtech.jellyfin.player.core.domain.models.Track
 import dev.jdtech.jellyfin.player.core.domain.models.TrackDisplayInfo
 import java.util.Locale
+import org.jellyfin.sdk.model.api.MediaStreamType
 
 object TrackFormatter {
     fun formatCodec(codec: String?): String? {
@@ -93,51 +94,90 @@ object TrackFormatter {
         displayExtraInfo: Boolean = false,
         currentLocale: Locale = Locale.getDefault(),
         fallbackIndex: Int = track.id,
+        trackType: Int = track.type,
     ): TrackDisplayInfo {
         val localizedLanguage = formatLanguageName(track.language, currentLocale)
-        val name =
+        val baseName =
             localizedLanguage
                 ?: track.language?.takeIf { it.isNotBlank() && it != "und" }
                 ?: track.label?.takeIf { it.isNotBlank() }
                 ?: context.getString(R.string.track_index, fallbackIndex)
 
+        val isSubtitle =
+            trackType == C.TRACK_TYPE_TEXT ||
+                (trackType == C.TRACK_TYPE_UNKNOWN &&
+                    track.channelCount == null &&
+                    track.channelLayout == null)
+
+        if (isSubtitle) {
+            val tags = mutableListOf<String>()
+
+            val isForced =
+                track.isForced == true ||
+                    track.label?.contains("forced", ignoreCase = true) == true ||
+                    track.label?.contains("forzat", ignoreCase = true) == true ||
+                    track.label?.contains("forcé", ignoreCase = true) == true
+            if (isForced) {
+                tags.add(
+                    if (currentLocale.language == "it") "Forzati"
+                    else context.getString(R.string.forced)
+                )
+            }
+
+            val isHearingImpaired =
+                track.isHearingImpaired == true ||
+                    track.label?.contains("sdh", ignoreCase = true) == true ||
+                    track.label?.contains("cc", ignoreCase = true) == true ||
+                    track.label?.contains("non udenti", ignoreCase = true) == true ||
+                    track.label?.contains("sordi", ignoreCase = true) == true
+            if (isHearingImpaired) {
+                tags.add(
+                    if (currentLocale.language == "it") "SDH"
+                    else context.getString(R.string.hearing_impaired)
+                )
+            }
+
+            val isOriginal =
+                track.label?.contains("original", ignoreCase = true) == true ||
+                    track.label?.contains("orig", ignoreCase = true) == true
+            if (isOriginal) {
+                tags.add(if (currentLocale.language == "it") "Originale" else "Original")
+            }
+
+            val formattedName =
+                if (tags.isNotEmpty()) {
+                    "$baseName (${tags.joinToString(", ")})"
+                } else {
+                    baseName
+                }
+
+            val chips = mutableListOf<String>()
+            if (displayExtraInfo) {
+                val isExternal =
+                    track.isExternal == true ||
+                        track.label?.contains("external", ignoreCase = true) == true ||
+                        track.label?.contains("estern", ignoreCase = true) == true
+                if (isExternal) {
+                    chips.add(context.getString(R.string.external))
+                }
+
+                val formattedCodec = formatCodec(track.codec)
+                if (!formattedCodec.isNullOrBlank()) {
+                    chips.add(formattedCodec)
+                }
+            }
+
+            return TrackDisplayInfo(name = formattedName, chips = chips)
+        }
+
         val chips = mutableListOf<String>()
-
-        val isForced =
-            track.isForced == true ||
-                track.label?.contains("forced", ignoreCase = true) == true ||
-                track.label?.contains("forzat", ignoreCase = true) == true ||
-                track.label?.contains("forcé", ignoreCase = true) == true
-        if (isForced) {
-            val forcedLabel =
-                if (currentLocale.language == "it") "Forzati"
-                else context.getString(R.string.forced)
-            chips.add(forcedLabel)
-        }
-
-        val isHearingImpaired =
-            track.isHearingImpaired == true ||
-                track.label?.contains("sdh", ignoreCase = true) == true ||
-                track.label?.contains("cc", ignoreCase = true) == true ||
-                track.label?.contains("non udenti", ignoreCase = true) == true ||
-                track.label?.contains("sordi", ignoreCase = true) == true
-        if (isHearingImpaired) {
-            val sdhLabel =
-                if (currentLocale.language == "it") "Non udenti"
-                else context.getString(R.string.hearing_impaired)
-            chips.add(sdhLabel)
-        }
-
         if (displayExtraInfo) {
             val isExternal =
                 track.isExternal == true ||
                     track.label?.contains("external", ignoreCase = true) == true ||
                     track.label?.contains("estern", ignoreCase = true) == true
             if (isExternal) {
-                val externalLabel =
-                    if (currentLocale.language == "it") "Esterno"
-                    else context.getString(R.string.external)
-                chips.add(externalLabel)
+                chips.add(context.getString(R.string.external))
             }
 
             val channelLayout = formatChannelLayout(track.channelLayout, track.channelCount)
@@ -149,9 +189,18 @@ object TrackFormatter {
             if (!formattedCodec.isNullOrBlank()) {
                 chips.add(formattedCodec)
             }
+        } else {
+            val channelLayout = formatChannelLayout(track.channelLayout, track.channelCount)
+            if (channelLayout != null) {
+                chips.add(channelLayout)
+            }
+            val formattedCodec = formatCodec(track.codec)
+            if (!formattedCodec.isNullOrBlank()) {
+                chips.add(formattedCodec)
+            }
         }
 
-        return TrackDisplayInfo(name = name, chips = chips)
+        return TrackDisplayInfo(name = baseName, chips = chips)
     }
 
     fun toTrack(group: Tracks.Group, fallbackIndex: Int = 0): Track {
@@ -189,6 +238,7 @@ object TrackFormatter {
             isForced = isForced,
             isHearingImpaired = isHearingImpaired,
             channelCount = if (group.type == C.TRACK_TYPE_AUDIO) format.channelCount else null,
+            type = group.type,
         )
     }
 
@@ -205,6 +255,7 @@ object TrackFormatter {
             displayExtraInfo = displayExtraInfo,
             currentLocale = currentLocale,
             fallbackIndex = fallbackIndex,
+            trackType = group.type,
         )
     }
 
@@ -220,6 +271,12 @@ object TrackFormatter {
             isForced = stream.isForced,
             isHearingImpaired = stream.isHearingImpaired,
             channelLayout = stream.channelLayout,
+            type =
+                when (stream.type) {
+                    MediaStreamType.AUDIO -> C.TRACK_TYPE_AUDIO
+                    MediaStreamType.SUBTITLE -> C.TRACK_TYPE_TEXT
+                    else -> C.TRACK_TYPE_UNKNOWN
+                },
         )
     }
 }

@@ -14,6 +14,28 @@
         <item>exoplayer</item>
         <item>mpv</item>
     </string-array>
+    <string-array name="player_orientation">
+        <item>@string/player_orientation_sensor</item>
+        <item>@string/player_orientation_landscape</item>
+        <item>@string/player_orientation_portrait</item>
+        <item>@string/player_orientation_remember</item>
+    </string-array>
+    <string-array name="player_orientation_values">
+        <item>sensor</item>
+        <item>sensor_landscape</item>
+        <item>sensor_portrait</item>
+        <item>remember</item>
+    </string-array>
+    <string-array name="player_resize_modes">
+        <item>@string/resize_mode_fit</item>
+        <item>@string/resize_mode_zoom</item>
+        <item>@string/resize_mode_stretch</item>
+    </string-array>
+    <string-array name="player_resize_mode_values">
+        <item>fit</item>
+        <item>zoom</item>
+        <item>stretch</item>
+    </string-array>
     <string-array name="mpv_hwdec">
         <item>no</item>
         <item>mediacodec</item>
@@ -113,5 +135,17 @@
         <item>192000</item>
         <item>256000</item>
         <item>320000</item>
+    </string-array>
+    <string-array name="controls_timeout">
+        <item>3s</item>
+        <item>4s</item>
+        <item>5s</item>
+        <item>8s</item>
+    </string-array>
+    <string-array name="controls_timeout_values">
+        <item>3</item>
+        <item>4</item>
+        <item>5</item>
+        <item>8</item>
     </string-array>
 </resources>

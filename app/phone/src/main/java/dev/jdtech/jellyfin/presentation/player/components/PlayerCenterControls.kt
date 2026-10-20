@@ -53,6 +53,8 @@ fun PlayerCenterControls(
     hasNextItem: Boolean = false,
     isPortrait: Boolean = false,
 ) {
+    val haptics = rememberPlayerHaptics()
+
     Row(
         modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
@@ -72,7 +74,10 @@ fun PlayerCenterControls(
                                 Modifier.clickable(
                                     interactionSource = remember { MutableInteractionSource() },
                                     indication = ripple(bounded = true, radius = 24.dp),
-                                    onClick = onPreviousItem,
+                                    onClick = {
+                                        haptics.confirm()
+                                        onPreviousItem()
+                                    },
                                 )
                             } else {
                                 Modifier
@@ -98,7 +103,10 @@ fun PlayerCenterControls(
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = ripple(bounded = true, radius = 26.dp),
-                        onClick = { onSeekRelative(-10_000L) },
+                        onClick = {
+                            haptics.tick()
+                            onSeekRelative(-10_000L)
+                        },
                     ),
             contentAlignment = Alignment.Center,
         ) {
@@ -119,14 +127,17 @@ fun PlayerCenterControls(
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = ripple(bounded = true, radius = 34.dp),
-                        onClick = onPlayPause,
+                        onClick = {
+                            haptics.confirm()
+                            onPlayPause()
+                        },
                     ),
             contentAlignment = Alignment.Center,
         ) {
             if (isBuffering) {
                 CircularProgressIndicator(
                     color = MaterialTheme.colorScheme.onPrimary,
-                    strokeWidth = 3.dp,
+                    strokeWidth = 5.dp,
                     modifier = Modifier.size(36.dp),
                 )
             } else {
@@ -151,7 +162,10 @@ fun PlayerCenterControls(
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = ripple(bounded = true, radius = 26.dp),
-                        onClick = { onSeekRelative(10_000L) },
+                        onClick = {
+                            haptics.tick()
+                            onSeekRelative(10_000L)
+                        },
                     ),
             contentAlignment = Alignment.Center,
         ) {
@@ -177,7 +191,10 @@ fun PlayerCenterControls(
                                 Modifier.clickable(
                                     interactionSource = remember { MutableInteractionSource() },
                                     indication = ripple(bounded = true, radius = 24.dp),
-                                    onClick = onNextItem,
+                                    onClick = {
+                                        haptics.confirm()
+                                        onNextItem()
+                                    },
                                 )
                             } else {
                                 Modifier

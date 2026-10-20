@@ -98,7 +98,7 @@ private fun SettingsSelectCardPreview() {
                 PreferenceMultiSelect(
                     nameStringResource =
                         SettingsR.string.pref_player_media_segments_skip_button_type,
-                    iconDrawableId = CoreR.drawable.ic_speaker,
+                    iconDrawableId = CoreR.drawable.ic_audio,
                     backendPreference = Preference("", setOf("INTRO", "OUTRO")),
                     options = SettingsR.array.media_segments_type,
                     optionValues = SettingsR.array.media_segments_type_values,

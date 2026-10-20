@@ -44,6 +44,11 @@
     <string name="player_brightness_remember">Remember brightness level</string>
     <string name="player_start_maximized">Start maximized</string>
     <string name="player_start_maximized_summary">Open video in maximized mode by default</string>
+    <string name="pref_player_default_resize_mode">Default resize mode</string>
+    <string name="pref_player_default_resize_mode_summary">Aspect ratio scaling mode when opening videos</string>
+    <string name="resize_mode_fit">Fit to screen</string>
+    <string name="resize_mode_zoom">Crop / Fill (Zoom)</string>
+    <string name="resize_mode_stretch">Stretch</string>
     <string name="seeking">Seeking</string>
     <string name="seek_back_increment">Seek back increment</string>
     <string name="seek_forward_increment">Seek forward increment</string>
@@ -97,7 +102,7 @@
     <string name="pref_player_media_segments_auto_skip_mode">When to auto skip</string>
     <string name="pref_player_media_segments_auto_skip_type">Segment type to auto skip</string>
     <string name="pref_player_media_segments_next_episode_threshold">Skip to next episode threshold</string>
-    <string name="media_segments_auto_skip_pip">only in pip mode</string>
+    <string name="media_segments_auto_skip_pip">Only in Picture-in-Picture (otherwise show button)</string>
     <string name="media_segments_auto_skip_always">always</string>
     <string name="media_segments_type_unknown">Others</string>
     <string name="media_segments_type_commercial">Commercial</string>
@@ -105,9 +110,20 @@
     <string name="media_segments_type_recap">Recap</string>
     <string name="media_segments_type_outro">Outro</string>
     <string name="media_segments_type_intro">Intro</string>
+    <string name="segment_action_do_nothing">Do nothing</string>
+    <string name="segment_action_show_button">Show skip button</string>
+    <string name="segment_action_auto_skip">Auto-skip</string>
+    <string name="segment_color_picker_title">Choose segment color</string>
+    <string name="choose_segment_color">Choose segment color</string>
+    <string name="segment_color_default">No color (use bar default)</string>
     <string name="none">None</string>
     <string name="edit_file_title">Edit %1$s</string>
     <string name="pref_player_backend">Player backend</string>
+    <string name="pref_player_orientation">Screen orientation</string>
+    <string name="player_orientation_sensor">Automatic</string>
+    <string name="player_orientation_landscape">Landscape</string>
+    <string name="player_orientation_portrait">Portrait</string>
+    <string name="player_orientation_remember">Remember last state</string>
     <string name="mpv_options">mpv options</string>
     <string name="advanced">Advanced</string>
     <string name="discard_changes_dialog_title">Discard changes?</string>
@@ -180,4 +196,13 @@
     <string name="pref_cast_enabled">Enable Chromecast</string>
     <string name="pref_cast_enabled_summary">Enable Google Cast device discovery and casting</string>
     <string name="pref_cast_max_bitrate">Max bitrate</string>
+    <string name="playback">Playback</string>
+    <string name="pref_player_autoplay_next">Autoplay next episode</string>
+    <string name="pref_player_autoplay_next_summary">Automatically play the next episode when the current one ends</string>
+    <string name="pref_player_haptics">Haptic feedback</string>
+    <string name="pref_player_haptics_summary">Vibrate on player controls and gesture interactions</string>
+    <string name="pref_player_controls_timeout">Controls timeout</string>
+    <string name="pref_player_controls_timeout_summary">Time before media player controls hide automatically</string>
+    <string name="pref_player_playback_speed_remember">Remember playback speed</string>
+    <string name="pref_player_playback_speed_remember_summary">Keep chosen playback speed across media playback</string>
 </resources>

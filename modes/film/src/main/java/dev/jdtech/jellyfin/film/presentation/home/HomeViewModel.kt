@@ -77,22 +77,25 @@ constructor(
                 )
             }
             try {
-                coroutineScope {
-                    val serverDeferred = async {
-                        appPreferences.getValue(appPreferences.currentServer)?.let { serverId ->
-                            val server = database.getServer(serverId)
-                            val user = database.getServerCurrentUser(serverId)
-                            val baseUrl = repository.getBaseUrl()
-                            val imageUrl = user?.getProfileImageModel(context, baseUrl)
-                            server to imageUrl
-                        }
+                appPreferences.getValue(appPreferences.currentServer)?.let { serverId ->
+                    val server = database.getServer(serverId)
+                    val user = database.getServerCurrentUser(serverId)
+                    val baseUrl = repository.getBaseUrl()
+                    val imageUrl = user?.getProfileImageModel(context, baseUrl)
+                    _state.update {
+                        it.copy(
+                            server = server ?: it.server,
+                            userImageUrl = imageUrl ?: it.userImageUrl,
+                        )
                     }
+                }
+
+                coroutineScope {
                     val suggestionsDeferred = async { fetchSuggestions(forceRefreshSuggestions) }
                     val resumeDeferred = async { fetchResumeItems() }
                     val nextUpDeferred = async { fetchNextUpItems() }
                     val viewsDeferred = async { fetchViews() }
 
-                    val (server, userImageUrl) = serverDeferred.await() ?: (null to null)
                     val suggestions = suggestionsDeferred.await()
                     val resume = resumeDeferred.await()
                     val nextUp = nextUpDeferred.await()
@@ -100,8 +103,6 @@ constructor(
 
                     _state.update {
                         it.copy(
-                            server = server ?: it.server,
-                            userImageUrl = userImageUrl ?: it.userImageUrl,
                             suggestionsSection = suggestions,
                             resumeSection = resume,
                             nextUpSection = nextUp,

@@ -111,7 +111,7 @@ private fun SettingsMultiSelectCardPreview() {
             preference =
                 PreferenceMultiSelect(
                     nameStringResource = SettingsR.string.settings_preferred_audio_language,
-                    iconDrawableId = SettingsR.drawable.ic_speaker,
+                    iconDrawableId = SettingsR.drawable.ic_audio,
                     backendPreference = Preference("", emptySet()),
                     options = SettingsR.array.languages,
                     optionValues = SettingsR.array.languages_values,

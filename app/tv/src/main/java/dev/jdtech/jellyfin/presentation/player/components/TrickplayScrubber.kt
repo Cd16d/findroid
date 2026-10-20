@@ -99,7 +99,13 @@ fun TrickplayScrubber(
             getSectionTitle(safePosMs, chapters, segments, context)
         }
 
-    val segmentColor = getSegmentColor(matchingSegment?.type)
+    val matchingColor = matchingSegment?.color
+    val segmentColor =
+        when (matchingColor) {
+            0L -> null
+            null -> getSegmentColor(matchingSegment?.type)
+            else -> Color(matchingColor)
+        }
     val cardBorderColor = segmentColor ?: MaterialTheme.colorScheme.primary
 
     val deltaSeconds = (seekDeltaMs.toFloat() / 1000f).roundToInt()

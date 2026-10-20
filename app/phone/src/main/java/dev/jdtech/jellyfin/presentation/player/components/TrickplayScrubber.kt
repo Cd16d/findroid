@@ -113,7 +113,13 @@ fun TrickplayScrubber(
             getSectionTitle(safePosMs, chapters, segments, context)
         }
 
-    val segmentColor = getSegmentColor(matchingSegment?.type)
+    val matchingColor = matchingSegment?.color
+    val segmentColor =
+        when (matchingColor) {
+            0L -> null
+            null -> getSegmentColor(matchingSegment?.type)
+            else -> Color(matchingColor)
+        }
     val cardBorderColor = segmentColor ?: MaterialTheme.colorScheme.primary
 
     val deltaSeconds = (seekDeltaMs.toFloat() / 1000f).roundToInt()
@@ -123,8 +129,10 @@ fun TrickplayScrubber(
             else if (deltaSeconds > 0) "+${deltaSeconds}s" else "${deltaSeconds}s"
         }
 
+    val showThumbnail = trickplay != null && trickplay.images.isNotEmpty()
+
     Column(
-        modifier = modifier.width(cardWidth),
+        modifier = if (showThumbnail) modifier.width(cardWidth) else modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         // Top Chapter / Segment pill (if available)
@@ -151,16 +159,16 @@ fun TrickplayScrubber(
         }
 
         // Center Trickplay Thumbnail Card
-        Box(
-            modifier =
-                Modifier.width(cardWidth)
-                    .height(cardHeight)
-                    .clip(ScrubberCardShape)
-                    .background(Color.Black)
-                    .border(width = 3.dp, color = cardBorderColor, shape = ScrubberCardShape),
-            contentAlignment = Alignment.Center,
-        ) {
-            if (trickplay != null && trickplay.images.isNotEmpty()) {
+        if (showThumbnail) {
+            Box(
+                modifier =
+                    Modifier.width(cardWidth)
+                        .height(cardHeight)
+                        .clip(ScrubberCardShape)
+                        .background(Color.Black)
+                        .border(width = 3.dp, color = cardBorderColor, shape = ScrubberCardShape),
+                contentAlignment = Alignment.Center,
+            ) {
                 val intervalMs = trickplay.intervalMs
                 val maxDurationCount =
                     if (safeDurationMs > 0L && intervalMs > 0L) {
@@ -184,9 +192,9 @@ fun TrickplayScrubber(
                     )
                 }
             }
-        }
 
-        Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(8.dp))
+        }
 
         // Bottom Pill: [ 14:30  (+10s) ]
         Box(

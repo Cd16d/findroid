@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -77,6 +76,8 @@ fun VideoPlayerSeeker(
         { _, _, _ ->
         },
     onOpenChapters: (() -> Unit)? = null,
+    isPortrait: Boolean = false,
+    isCompactWidth: Boolean = isPortrait,
 ) {
     val context = LocalContext.current
     val rawDurationMs = contentDuration.inWholeMilliseconds
@@ -117,104 +118,213 @@ fun VideoPlayerSeeker(
         )
 
     Column(modifier = modifier.fillMaxWidth()) {
-        Box(modifier = Modifier.fillMaxWidth().height(36.dp).graphicsLayer { alpha = pillsAlpha }) {
-            Row(
-                modifier =
-                    Modifier.align(Alignment.CenterStart)
-                        .fillMaxWidth()
-                        .padding(end = if (endsAtText != null) 90.dp else 0.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                // Pill 1: Current progress • Content duration
-                Box(
+        Box(modifier = Modifier.fillMaxWidth().graphicsLayer { alpha = pillsAlpha }) {
+            if (isCompactWidth) {
+                // On compact width (e.g. phone portrait or small width screens), stack chapter pill
+                // on top and timestamp pill below it directly adjacent to the seekbar
+                Column(
                     modifier =
-                        Modifier.clip(CircleShape)
-                            .background(pillBackground)
-                            .border(pillBorder, CircleShape)
-                            .padding(horizontal = 14.dp, vertical = 6.dp),
-                    contentAlignment = Alignment.Center,
+                        Modifier.align(Alignment.CenterStart)
+                            .fillMaxWidth()
+                            .padding(end = if (endsAtText != null) 90.dp else 0.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        Text(
-                            text = contentProgressString,
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = if (isScrubbing) FontWeight.Bold else FontWeight.SemiBold,
-                            color =
-                                if (isScrubbing) MaterialTheme.colorScheme.primary else Color.White,
-                        )
-                        Box(
-                            modifier =
-                                Modifier.size(4.dp)
-                                    .clip(CircleShape)
-                                    .background(Color.White.copy(alpha = 0.6f))
-                        )
-                        Text(
-                            text = contentDurationString,
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color.White.copy(alpha = 0.85f),
-                        )
-                    }
-                }
-
-                // Pill 2: Chapter Title (clickable if chapters are available)
-                if (!sectionTitle.isNullOrBlank()) {
-                    if (chapters.isNotEmpty() && onOpenChapters != null) {
-                        Box(
-                            modifier =
-                                Modifier.weight(1f, fill = false)
-                                    .clip(CircleShape)
-                                    .background(pillBackground)
-                                    .border(pillBorder, CircleShape)
-                                    .clickable {
-                                        state.resetTimeout()
-                                        onOpenChapters()
-                                    }
-                                    .padding(horizontal = 14.dp, vertical = 6.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    // Pill 1: Chapter Title (clickable if chapters are available)
+                    if (!sectionTitle.isNullOrBlank()) {
+                        if (chapters.isNotEmpty() && onOpenChapters != null) {
+                            Box(
+                                modifier =
+                                    Modifier.clip(CircleShape)
+                                        .background(pillBackground)
+                                        .border(pillBorder, CircleShape)
+                                        .clickable {
+                                            state.resetTimeout()
+                                            onOpenChapters()
+                                        }
+                                        .padding(horizontal = 14.dp, vertical = 6.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                ) {
+                                    Text(
+                                        text = sectionTitle,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                    Icon(
+                                        painter =
+                                            painterResource(id = CoreR.drawable.ic_arrow_right),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(12.dp),
+                                        tint = Color.White.copy(alpha = 0.85f),
+                                    )
+                                }
+                            }
+                        } else {
+                            Box(
+                                modifier =
+                                    Modifier.clip(CircleShape)
+                                        .background(pillBackground)
+                                        .border(pillBorder, CircleShape)
+                                        .padding(horizontal = 14.dp, vertical = 6.dp),
+                                contentAlignment = Alignment.Center,
                             ) {
                                 Text(
                                     text = sectionTitle,
                                     style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color.White.copy(alpha = 0.85f),
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
                                 )
-                                Icon(
-                                    painter = painterResource(id = CoreR.drawable.ic_arrow_right),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(12.dp),
-                                    tint = Color.White.copy(alpha = 0.85f),
-                                )
                             }
                         }
-                    } else {
-                        Box(
-                            modifier =
-                                Modifier.weight(1f, fill = false)
-                                    .clip(CircleShape)
-                                    .background(pillBackground)
-                                    .border(pillBorder, CircleShape)
-                                    .padding(horizontal = 14.dp, vertical = 6.dp),
-                            contentAlignment = Alignment.Center,
+                    }
+
+                    // Pill 2: Current progress • Content duration (right above seekbar)
+                    Box(
+                        modifier =
+                            Modifier.clip(CircleShape)
+                                .background(pillBackground)
+                                .border(pillBorder, CircleShape)
+                                .padding(horizontal = 14.dp, vertical = 6.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
                         ) {
                             Text(
-                                text = sectionTitle,
+                                text = contentProgressString,
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight =
+                                    if (isScrubbing) FontWeight.Bold else FontWeight.SemiBold,
+                                color =
+                                    if (isScrubbing) MaterialTheme.colorScheme.primary
+                                    else Color.White,
+                            )
+                            Box(
+                                modifier =
+                                    Modifier.size(4.dp)
+                                        .clip(CircleShape)
+                                        .background(Color.White.copy(alpha = 0.6f))
+                            )
+                            Text(
+                                text = contentDurationString,
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.SemiBold,
                                 color = Color.White.copy(alpha = 0.85f),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
                             )
+                        }
+                    }
+                }
+            } else {
+                Row(
+                    modifier =
+                        Modifier.align(Alignment.CenterStart)
+                            .fillMaxWidth()
+                            .padding(end = if (endsAtText != null) 90.dp else 0.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    // Pill 1: Current progress • Content duration
+                    Box(
+                        modifier =
+                            Modifier.clip(CircleShape)
+                                .background(pillBackground)
+                                .border(pillBorder, CircleShape)
+                                .padding(horizontal = 14.dp, vertical = 6.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            Text(
+                                text = contentProgressString,
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight =
+                                    if (isScrubbing) FontWeight.Bold else FontWeight.SemiBold,
+                                color =
+                                    if (isScrubbing) MaterialTheme.colorScheme.primary
+                                    else Color.White,
+                            )
+                            Box(
+                                modifier =
+                                    Modifier.size(4.dp)
+                                        .clip(CircleShape)
+                                        .background(Color.White.copy(alpha = 0.6f))
+                            )
+                            Text(
+                                text = contentDurationString,
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color.White.copy(alpha = 0.85f),
+                            )
+                        }
+                    }
+
+                    // Pill 2: Chapter Title (clickable if chapters are available)
+                    if (!sectionTitle.isNullOrBlank()) {
+                        if (chapters.isNotEmpty() && onOpenChapters != null) {
+                            Box(
+                                modifier =
+                                    Modifier.weight(1f, fill = false)
+                                        .clip(CircleShape)
+                                        .background(pillBackground)
+                                        .border(pillBorder, CircleShape)
+                                        .clickable {
+                                            state.resetTimeout()
+                                            onOpenChapters()
+                                        }
+                                        .padding(horizontal = 14.dp, vertical = 6.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                ) {
+                                    Text(
+                                        text = sectionTitle,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                    Icon(
+                                        painter =
+                                            painterResource(id = CoreR.drawable.ic_arrow_right),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(12.dp),
+                                        tint = Color.White.copy(alpha = 0.85f),
+                                    )
+                                }
+                            }
+                        } else {
+                            Box(
+                                modifier =
+                                    Modifier.weight(1f, fill = false)
+                                        .clip(CircleShape)
+                                        .background(pillBackground)
+                                        .border(pillBorder, CircleShape)
+                                        .padding(horizontal = 14.dp, vertical = 6.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    text = sectionTitle,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color.White.copy(alpha = 0.85f),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
                         }
                     }
                 }
@@ -224,7 +334,7 @@ fun VideoPlayerSeeker(
             if (endsAtText != null) {
                 Box(
                     modifier =
-                        Modifier.align(Alignment.CenterEnd)
+                        Modifier.align(Alignment.BottomEnd)
                             .clip(CircleShape)
                             .background(pillBackground)
                             .border(pillBorder, CircleShape)
