@@ -31,7 +31,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
@@ -39,13 +38,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.PreviewScreenSizes
 import androidx.compose.ui.unit.dp
-import androidx.core.graphics.toColorInt
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.jdtech.jellyfin.LocalCastPlayerHeight
 import dev.jdtech.jellyfin.PlayerActivity
 import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.core.presentation.dummy.dummyShow
+import dev.jdtech.jellyfin.core.presentation.theme.Yellow
 import dev.jdtech.jellyfin.film.presentation.show.ShowAction
 import dev.jdtech.jellyfin.film.presentation.show.ShowState
 import dev.jdtech.jellyfin.film.presentation.show.ShowViewModel
@@ -196,7 +195,7 @@ private fun ShowScreenLayout(state: ShowState, onAction: (ShowAction) -> Unit) {
                                 Icon(
                                     painter = painterResource(CoreR.drawable.ic_star),
                                     contentDescription = null,
-                                    tint = Color("#F2C94C".toColorInt()),
+                                    tint = Yellow,
                                 )
                                 Spacer(Modifier.width(MaterialTheme.spacings.extraSmall))
                                 Text(

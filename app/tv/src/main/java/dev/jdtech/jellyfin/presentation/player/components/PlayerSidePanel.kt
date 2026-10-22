@@ -65,6 +65,9 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import dev.jdtech.jellyfin.core.R as CoreR
+import dev.jdtech.jellyfin.core.presentation.theme.CentralShapes
+import dev.jdtech.jellyfin.core.presentation.theme.PlayerTvSidePanelContainer
+import dev.jdtech.jellyfin.core.presentation.theme.PlayerTvSidePanelUnselected
 import dev.jdtech.jellyfin.models.FindroidSegmentType
 import dev.jdtech.jellyfin.player.core.R as PlayerR
 import dev.jdtech.jellyfin.player.core.domain.models.PlayerChapter
@@ -83,9 +86,9 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.delay
 import org.jellyfin.sdk.model.api.MediaStreamType
 
-private val PanelItemShape = RoundedCornerShape(12.dp)
-private val ChipShape = RoundedCornerShape(4.dp)
-private val ChapterThumbShape = RoundedCornerShape(8.dp)
+private val PanelItemShape = CentralShapes.SmallCard
+private val ChipShape = CentralShapes.Tiny
+private val ChapterThumbShape = CentralShapes.ItemCard
 
 enum class PlayerSidePanelType {
     NONE,
@@ -798,7 +801,7 @@ private fun SelectableItem(
     shape: ClickableSurfaceShape = ClickableSurfaceDefaults.shape(shape = PanelItemShape),
     colors: ClickableSurfaceColors =
         ClickableSurfaceDefaults.colors(
-            containerColor = Color(0xFF242426),
+            containerColor = PlayerTvSidePanelContainer,
             focusedContainerColor = Color.White,
             contentColor = Color.White,
             focusedContentColor = Color.Black,
@@ -855,7 +858,7 @@ private fun NavigationItem(
     shape: ClickableSurfaceShape = ClickableSurfaceDefaults.shape(shape = PanelItemShape),
     colors: ClickableSurfaceColors =
         ClickableSurfaceDefaults.colors(
-            containerColor = Color(0xFF242426),
+            containerColor = PlayerTvSidePanelContainer,
             focusedContainerColor = Color.White,
             contentColor = Color.White,
             focusedContentColor = Color.Black,
@@ -967,12 +970,6 @@ private fun ChapterList(
             )
         }
     } else {
-        val baseUrl = remember { viewModel.getBaseUrl() }
-        val currentMediaId =
-            remember(viewModel.player.currentMediaItem) {
-                viewModel.player.currentMediaItem?.mediaId
-            }
-
         LazyColumn(
             state = listState,
             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -982,14 +979,6 @@ private fun ChapterList(
                 items = chapters,
                 key = { index, chapter -> "${chapter.startPosition}_$index" },
             ) { index, chapter ->
-                val chapterImageUrl =
-                    remember(baseUrl, currentMediaId, index) {
-                        if (baseUrl.isNotBlank() && !currentMediaId.isNullOrBlank()) {
-                            "$baseUrl/Items/$currentMediaId/Images/Chapter/$index"
-                        } else {
-                            null
-                        }
-                    }
                 val isCurrent = index == currentChapterIndex
                 val nextChapterStart =
                     chapters.getOrNull(index + 1)?.startPosition ?: Long.MAX_VALUE
@@ -1020,7 +1009,6 @@ private fun ChapterList(
                     chapterIndex = index,
                     isCurrent = isCurrent,
                     trickplay = uiState.currentTrickplay,
-                    chapterImageUrl = chapterImageUrl,
                     segmentType = segmentType,
                     customSegmentColor = segmentColor,
                     onClick = {
@@ -1046,7 +1034,6 @@ private fun ChapterItem(
     isCurrent: Boolean,
     onClick: () -> Unit,
     trickplay: Trickplay?,
-    chapterImageUrl: String?,
     modifier: Modifier = Modifier,
     segmentType: FindroidSegmentType? = null,
     customSegmentColor: Color? = null,
@@ -1063,6 +1050,8 @@ private fun ChapterItem(
                 "${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}"
             }
         }
+
+    var isImageError by remember(chapter.imageUri) { mutableStateOf(false) }
 
     val trickplayBitmap =
         remember(trickplay, chapter.startPosition) {
@@ -1100,9 +1089,9 @@ private fun ChapterItem(
         ClickableSurfaceDefaults.colors(
             containerColor =
                 if (isCurrent) {
-                    segmentColor?.copy(alpha = 0.25f) ?: Color(0xFF2E2E32)
+                    segmentColor?.copy(alpha = 0.25f) ?: PlayerTvSidePanelUnselected
                 } else {
-                    segmentColor?.copy(alpha = 0.12f) ?: Color(0xFF242426)
+                    segmentColor?.copy(alpha = 0.12f) ?: PlayerTvSidePanelContainer
                 },
             focusedContainerColor = Color.White,
             contentColor = Color.White,
@@ -1121,6 +1110,7 @@ private fun ChapterItem(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             // Chapter thumbnail with Dynamic Aspect Ratio
+            val hasServerImage = !chapter.imageUri.isNullOrBlank() && !isImageError
             Box(
                 modifier =
                     Modifier.height(63.dp)
@@ -1129,16 +1119,17 @@ private fun ChapterItem(
                         .background(Color.Black),
                 contentAlignment = Alignment.Center,
             ) {
-                if (trickplayBitmap != null) {
-                    Image(
-                        bitmap = trickplayBitmap.asImageBitmap(),
+                if (hasServerImage) {
+                    AsyncImage(
+                        model = chapter.imageUri,
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
+                        onError = { isImageError = true },
                         modifier = Modifier.fillMaxSize(),
                     )
-                } else if (!chapterImageUrl.isNullOrBlank()) {
-                    AsyncImage(
-                        model = chapterImageUrl,
+                } else if (trickplayBitmap != null) {
+                    Image(
+                        bitmap = trickplayBitmap.asImageBitmap(),
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize(),
@@ -1437,7 +1428,6 @@ private fun ChapterListPreview() {
                 isCurrent = true,
                 onClick = {},
                 trickplay = null,
-                chapterImageUrl = null,
             )
             ChapterItem(
                 chapter = PlayerChapter(name = "Part 1", startPosition = 120_000L),
@@ -1445,7 +1435,6 @@ private fun ChapterListPreview() {
                 isCurrent = false,
                 onClick = {},
                 trickplay = null,
-                chapterImageUrl = null,
             )
         }
     }
@@ -1462,7 +1451,6 @@ private fun ChapterItemPreview() {
                 isCurrent = true,
                 onClick = {},
                 trickplay = null,
-                chapterImageUrl = null,
             )
         }
     }

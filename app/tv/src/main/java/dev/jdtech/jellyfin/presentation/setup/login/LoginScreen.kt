@@ -45,6 +45,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.OutlinedButton
 import androidx.tv.material3.Text
 import dev.jdtech.jellyfin.core.R
+import dev.jdtech.jellyfin.core.presentation.dummy.dummyServer
 import dev.jdtech.jellyfin.models.UiText
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
@@ -265,7 +266,7 @@ private fun LoginScreenLayout(
 private fun LoginScreenLayoutPreview() {
     FindroidTheme {
         LoginScreenLayout(
-            state = LoginState(serverName = "Demo Server", quickConnectEnabled = true),
+            state = LoginState(serverName = dummyServer.name, quickConnectEnabled = true),
             onAction = {},
         )
     }
@@ -278,7 +279,7 @@ private fun LoginScreenLayoutPreviewError() {
         LoginScreenLayout(
             state =
                 LoginState(
-                    serverName = "Demo Server",
+                    serverName = dummyServer.name,
                     error = UiText.DynamicString("Invalid username or password"),
                 ),
             onAction = {},

@@ -339,8 +339,7 @@ class PlayerActivity : AppCompatActivity() {
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         if (!isInPipMode) {
             val action = event.action
-            val keyCode = event.keyCode
-            when (keyCode) {
+            when (val keyCode = event.keyCode) {
                 KeyEvent.KEYCODE_VOLUME_UP,
                 KeyEvent.KEYCODE_VOLUME_DOWN -> {
                     if (action == KeyEvent.ACTION_DOWN) {
@@ -439,6 +438,7 @@ class PlayerActivity : AppCompatActivity() {
     private fun pictureInPicture() {
         if (!isPipSupported) return
         try {
+            updatePipParams()
             enterPictureInPictureMode(pipParams(enableAutoEnter = false))
         } catch (_: IllegalArgumentException) {}
     }

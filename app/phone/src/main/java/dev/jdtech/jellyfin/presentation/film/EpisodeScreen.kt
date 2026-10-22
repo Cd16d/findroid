@@ -36,7 +36,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.PreviewScreenSizes
 import androidx.compose.ui.unit.dp
-import androidx.core.graphics.toColorInt
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.jdtech.jellyfin.LocalCastPlayerHeight
@@ -48,6 +47,7 @@ import dev.jdtech.jellyfin.core.presentation.downloader.DownloaderState
 import dev.jdtech.jellyfin.core.presentation.downloader.DownloaderViewModel
 import dev.jdtech.jellyfin.core.presentation.dummy.dummyEpisode
 import dev.jdtech.jellyfin.core.presentation.dummy.dummyVideoMetadata
+import dev.jdtech.jellyfin.core.presentation.theme.Yellow
 import dev.jdtech.jellyfin.film.presentation.episode.EpisodeAction
 import dev.jdtech.jellyfin.film.presentation.episode.EpisodeState
 import dev.jdtech.jellyfin.film.presentation.episode.EpisodeViewModel
@@ -265,7 +265,7 @@ private fun EpisodeScreenLayout(
                                 Icon(
                                     painter = painterResource(CoreR.drawable.ic_star),
                                     contentDescription = null,
-                                    tint = Color("#F2C94C".toColorInt()),
+                                    tint = Yellow,
                                 )
                                 Spacer(Modifier.width(MaterialTheme.spacings.extraSmall))
                                 Text(

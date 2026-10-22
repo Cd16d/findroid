@@ -40,6 +40,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.window.core.layout.WindowSizeClass
 import coil3.compose.AsyncImage
 import dev.jdtech.jellyfin.core.R as CoreR
+import dev.jdtech.jellyfin.core.presentation.dummy.dummyEpisode
+import dev.jdtech.jellyfin.core.presentation.dummy.dummyMovie
 import dev.jdtech.jellyfin.player.cast.models.CastPlaybackStatus
 import dev.jdtech.jellyfin.player.cast.models.CastPlayerState
 import dev.jdtech.jellyfin.player.cast.models.Device
@@ -479,8 +481,8 @@ private fun CastMiniPlayerEpisodeTabletPreview() {
 }
 
 private fun previewUiState(
-    title: String = "Title",
-    seriesName: String? = null,
+    title: String = dummyMovie.name,
+    seriesName: String? = dummyEpisode.seriesName,
     episodeInfo: String? = null,
     poster: PlayerImage? = null,
     isMovie: Boolean = true,

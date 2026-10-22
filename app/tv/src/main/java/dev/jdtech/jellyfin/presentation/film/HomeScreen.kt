@@ -29,7 +29,6 @@ import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -68,6 +67,9 @@ import dev.jdtech.jellyfin.core.presentation.dummy.dummyHomeSection
 import dev.jdtech.jellyfin.core.presentation.dummy.dummyHomeSuggestions
 import dev.jdtech.jellyfin.core.presentation.dummy.dummyHomeView
 import dev.jdtech.jellyfin.core.presentation.dummy.dummyMovie
+import dev.jdtech.jellyfin.core.presentation.theme.CentralShapes
+import dev.jdtech.jellyfin.core.presentation.theme.GoldStar
+import dev.jdtech.jellyfin.core.presentation.theme.PlayerBackground
 import dev.jdtech.jellyfin.film.R as FilmR
 import dev.jdtech.jellyfin.film.presentation.home.HomeAction
 import dev.jdtech.jellyfin.film.presentation.home.HomeState
@@ -704,7 +706,7 @@ private fun HeroPreviewHeader(
                 if (targetUri != null) {
                     AsyncImage(
                         model = targetUri,
-                        placeholder = blurPlaceholder ?: ColorPainter(Color(0xFF141414)),
+                        placeholder = blurPlaceholder ?: ColorPainter(PlayerBackground),
                         error = blurPlaceholder,
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
@@ -793,7 +795,7 @@ private fun HeroPreviewHeader(
                             text = "★ %.1f".format(rating),
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFFFFD700),
+                            color = GoldStar,
                         )
                     }
                     if (runtimeText != null) {
@@ -819,7 +821,7 @@ private fun HeroPreviewHeader(
                                 Modifier.border(
                                         1.dp,
                                         Color.White.copy(alpha = 0.4f),
-                                        RoundedCornerShape(3.dp),
+                                        CentralShapes.Tiny,
                                     )
                                     .padding(horizontal = 4.dp, vertical = 1.dp),
                         )

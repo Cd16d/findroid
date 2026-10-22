@@ -9,58 +9,23 @@ data class FindroidChapter(
     val startPosition: Long,
     /** The name. */
     val name: String? = null,
+    /** The optional chapter image URI. */
+    val imageUri: String? = null,
 )
 
 fun BaseItemDto.toFindroidChapters(): List<FindroidChapter> {
     val rawChapters = chapters ?: return emptyList()
-    val sorted = rawChapters.sortedBy { it.startPositionTicks }
-    val result = mutableListOf<FindroidChapter>()
-    var lastTicks: Long? = null
-
-    for (chapter in sorted) {
-        val ticks = chapter.startPositionTicks
-        val prev = result.lastOrNull()
-        if (prev != null && lastTicks == ticks) {
-            val prevName = prev.name?.trim().orEmpty()
-            val currName = chapter.name?.trim().orEmpty()
-            val prevIsGeneric = prevName.isBlank() || prevName.matches(Regex("(?i)chapter\\s*\\d+"))
-            val currIsGeneric = currName.isBlank() || currName.matches(Regex("(?i)chapter\\s*\\d+"))
-
-            if (prevIsGeneric && !currIsGeneric) {
-                result[result.size - 1] =
-                    FindroidChapter(startPosition = ticks / 10000, name = chapter.name)
+    return rawChapters.mapIndexed { index, chapter ->
+        val imageUri =
+            chapter.imageTag?.let { tag ->
+                if (tag.isNotBlank()) {
+                    "/Items/$id/Images/Chapter/$index?tag=$tag"
+                } else null
             }
-        } else {
-            result.add(FindroidChapter(startPosition = ticks / 10000, name = chapter.name))
-            lastTicks = ticks
-        }
+        FindroidChapter(
+            startPosition = chapter.startPositionTicks / 10000,
+            name = chapter.name,
+            imageUri = imageUri,
+        )
     }
-
-    return result
-}
-
-/** Deduplicates chapters by removing redundant entries with exactly identical start positions. */
-fun List<FindroidChapter>.deduplicate(): List<FindroidChapter> {
-    if (size <= 1) return this
-
-    val sorted = sortedBy { it.startPosition }
-    val result = mutableListOf<FindroidChapter>()
-
-    for (chapter in sorted) {
-        val prev = result.lastOrNull()
-        if (prev != null && prev.startPosition == chapter.startPosition) {
-            val prevName = prev.name?.trim().orEmpty()
-            val currName = chapter.name?.trim().orEmpty()
-            val prevIsGeneric = prevName.isBlank() || prevName.matches(Regex("(?i)chapter\\s*\\d+"))
-            val currIsGeneric = currName.isBlank() || currName.matches(Regex("(?i)chapter\\s*\\d+"))
-
-            if (prevIsGeneric && !currIsGeneric) {
-                result[result.size - 1] = chapter
-            }
-        } else {
-            result.add(chapter)
-        }
-    }
-
-    return result
 }

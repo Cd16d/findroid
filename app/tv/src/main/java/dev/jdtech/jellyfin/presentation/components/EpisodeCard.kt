@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -28,6 +27,7 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.core.presentation.dummy.dummyEpisode
+import dev.jdtech.jellyfin.core.presentation.theme.CentralShapes
 import dev.jdtech.jellyfin.models.FindroidEpisode
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
@@ -51,7 +51,7 @@ fun EpisodeCard(
 
     Surface(
         onClick = { onClick(episode) },
-        shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(10.dp)),
+        shape = ClickableSurfaceDefaults.shape(shape = CentralShapes.ItemCard),
         colors =
             ClickableSurfaceDefaults.colors(
                 containerColor = Color.Transparent,
@@ -60,7 +60,7 @@ fun EpisodeCard(
         border =
             ClickableSurfaceDefaults.border(
                 focusedBorder =
-                    Border(BorderStroke(4.dp, Color.White), shape = RoundedCornerShape(10.dp))
+                    Border(BorderStroke(4.dp, Color.White), shape = CentralShapes.ItemCard)
             ),
         scale = ClickableSurfaceScale.None,
         modifier = Modifier.fillMaxWidth(),
@@ -69,13 +69,13 @@ fun EpisodeCard(
             Box(modifier = Modifier.width(160.dp)) {
                 SpoilerMask(
                     enabled = isEpisodeSpoiler,
-                    shape = RoundedCornerShape(10.dp),
+                    shape = CentralShapes.ItemCard,
                     blurRadius = if (hasBlurHash) 4.dp else 16.dp,
                 ) {
                     ItemPoster(
                         item = episode,
                         direction = Direction.HORIZONTAL,
-                        modifier = Modifier.clip(RoundedCornerShape(10.dp)),
+                        modifier = Modifier.clip(CentralShapes.ItemCard),
                         blurOnly = isEpisodeSpoiler,
                     )
                 }

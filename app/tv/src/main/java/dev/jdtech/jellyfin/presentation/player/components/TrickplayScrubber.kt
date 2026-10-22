@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -30,6 +29,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import dev.jdtech.jellyfin.core.presentation.theme.CentralShapes
+import dev.jdtech.jellyfin.core.presentation.theme.PlayerOverlayBackground
 import dev.jdtech.jellyfin.models.FindroidSegment
 import dev.jdtech.jellyfin.player.core.domain.models.PlayerChapter
 import dev.jdtech.jellyfin.player.core.domain.models.Trickplay
@@ -40,7 +41,7 @@ import dev.jdtech.jellyfin.player.core.presentation.getSegmentColor
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import kotlin.math.roundToInt
 
-private val ScrubberCardShape = RoundedCornerShape(16.dp)
+private val ScrubberCardShape = CentralShapes.MediumCard
 
 /**
  * Trickplay scrubber overlay for Android TV player interface.
@@ -124,7 +125,7 @@ fun TrickplayScrubber(
             Box(
                 modifier =
                     Modifier.clip(CircleShape)
-                        .background(Color(0xFF262626).copy(alpha = 0.85f))
+                        .background(PlayerOverlayBackground.copy(alpha = 0.85f))
                         .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.15f)), CircleShape)
                         .padding(horizontal = 14.dp, vertical = 6.dp),
                 contentAlignment = Alignment.Center,
@@ -183,7 +184,7 @@ fun TrickplayScrubber(
         Box(
             modifier =
                 Modifier.clip(CircleShape)
-                    .background(Color(0xFF262626).copy(alpha = 0.85f))
+                    .background(PlayerOverlayBackground.copy(alpha = 0.85f))
                     .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.20f)), CircleShape)
                     .padding(horizontal = 18.dp, vertical = 8.dp),
             contentAlignment = Alignment.Center,

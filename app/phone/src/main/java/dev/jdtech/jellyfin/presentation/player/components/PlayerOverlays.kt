@@ -68,6 +68,8 @@ import androidx.compose.ui.unit.dp
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.AspectRatioFrameLayout
 import dev.jdtech.jellyfin.core.R as CoreR
+import dev.jdtech.jellyfin.core.presentation.theme.PlayerOverlayBackground
+import dev.jdtech.jellyfin.core.presentation.theme.PlayerSheetBackground
 import dev.jdtech.jellyfin.player.core.R as PlayerR
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import kotlin.math.roundToInt
@@ -126,7 +128,7 @@ fun VolumeBrightnessOverlay(
             modifier =
                 Modifier.size(width = 46.dp, height = 180.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFF262626).copy(alpha = 0.85f)),
+                    .background(PlayerOverlayBackground.copy(alpha = 0.85f)),
             contentAlignment = Alignment.BottomCenter,
         ) {
             // Liquid fill from bottom to top
@@ -206,7 +208,7 @@ fun DoubleTapSeekOverlay(
             modifier =
                 Modifier.size(80.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFF262626).copy(alpha = 0.75f)),
+                    .background(PlayerOverlayBackground.copy(alpha = 0.75f)),
             contentAlignment = Alignment.Center,
         ) {
             Column(
@@ -371,7 +373,7 @@ fun SlideToUnlock(
                 .width(trackWidthDp)
                 .height(trackHeightDp)
                 .clip(CircleShape)
-                .background(Color(0xFF1E1E1E).copy(alpha = 0.85f))
+                .background(PlayerSheetBackground.copy(alpha = 0.85f))
                 .border(
                     border = BorderStroke(1.dp, Color.White.copy(alpha = 0.25f)),
                     shape = CircleShape,
@@ -648,7 +650,7 @@ fun ZoomFeedbackOverlay(
             Box(
                 modifier =
                     Modifier.clip(CircleShape)
-                        .background(Color(0xFF1E1E1E).copy(alpha = 0.85f))
+                        .background(PlayerSheetBackground.copy(alpha = 0.85f))
                         .border(
                             border = BorderStroke(1.dp, Color.White.copy(alpha = 0.25f)),
                             shape = CircleShape,

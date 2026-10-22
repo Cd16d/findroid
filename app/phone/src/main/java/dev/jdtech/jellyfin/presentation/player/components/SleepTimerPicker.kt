@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.Icon
@@ -40,13 +39,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import dev.jdtech.jellyfin.core.R as CoreR
+import dev.jdtech.jellyfin.core.presentation.theme.CentralShapes
+import dev.jdtech.jellyfin.core.presentation.theme.PlayerCardBackground
+import dev.jdtech.jellyfin.core.presentation.theme.PlayerOverlayBackground
 import dev.jdtech.jellyfin.player.core.R as PlayerR
 import dev.jdtech.jellyfin.player.core.domain.models.SleepTimerMode
 import dev.jdtech.jellyfin.player.core.domain.models.SleepTimerStatus
 import dev.jdtech.jellyfin.presentation.components.SelectableTrackItem
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 
-private val CardShape = RoundedCornerShape(20.dp)
+private val CardShape = CentralShapes.LargeCard
 
 private val Presets = listOf(10, 15, 30, 45, 60)
 
@@ -101,7 +103,7 @@ fun SleepTimerPicker(
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = CardShape,
-                color = Color(0xFF141416),
+                color = PlayerCardBackground,
                 border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
             ) {
                 Column(
@@ -119,7 +121,7 @@ fun SleepTimerPicker(
                             modifier =
                                 Modifier.size(46.dp)
                                     .clip(CircleShape)
-                                    .background(Color(0xFF262626))
+                                    .background(PlayerOverlayBackground)
                                     .clickable(
                                         interactionSource = remember { MutableInteractionSource() },
                                         indication = ripple(bounded = true, radius = 23.dp),
@@ -192,7 +194,7 @@ fun SleepTimerPicker(
                             modifier =
                                 Modifier.size(46.dp)
                                     .clip(CircleShape)
-                                    .background(Color(0xFF262626))
+                                    .background(PlayerOverlayBackground)
                                     .clickable(
                                         interactionSource = remember { MutableInteractionSource() },
                                         indication = ripple(bounded = true, radius = 23.dp),
@@ -238,7 +240,7 @@ fun SleepTimerPicker(
                             ButtonDefaults.elevatedButtonColors(
                                 containerColor =
                                     if (isActive) MaterialTheme.colorScheme.primary
-                                    else Color(0xFF262626),
+                                    else PlayerOverlayBackground,
                                 contentColor =
                                     if (isActive) MaterialTheme.colorScheme.onPrimary
                                     else Color.White,
@@ -300,7 +302,7 @@ fun SleepTimerPicker(
 @Composable
 private fun SleepTimerPickerOffPreview() {
     FindroidTheme {
-        Surface(color = Color(0xFF141416)) {
+        Surface(color = PlayerCardBackground) {
             SleepTimerPicker(
                 sleepTimerStatus = SleepTimerStatus(mode = SleepTimerMode.Off),
                 onSelectMode = {},
@@ -314,7 +316,7 @@ private fun SleepTimerPickerOffPreview() {
 @Composable
 private fun SleepTimerPickerActivePreview() {
     FindroidTheme {
-        Surface(color = Color(0xFF141416)) {
+        Surface(color = PlayerCardBackground) {
             SleepTimerPicker(
                 sleepTimerStatus =
                     SleepTimerStatus(

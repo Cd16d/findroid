@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -20,6 +19,7 @@ import androidx.tv.material3.Text
 import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.core.presentation.dummy.dummyEpisode
 import dev.jdtech.jellyfin.core.presentation.dummy.dummyShow
+import dev.jdtech.jellyfin.core.presentation.theme.CentralShapes
 import dev.jdtech.jellyfin.models.FindroidItem
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
@@ -38,7 +38,7 @@ fun ProgressBadge(item: FindroidItem, modifier: Modifier = Modifier) {
                 modifier
                     .height(24.dp)
                     .defaultMinSize(24.dp)
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(CentralShapes.SmallCard)
                     .background(MaterialTheme.colorScheme.primary)
         ) {
             when (item.played) {

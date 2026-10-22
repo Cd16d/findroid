@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -52,6 +51,7 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.core.presentation.dummy.dummyHomeSection
+import dev.jdtech.jellyfin.core.presentation.theme.CentralShapes
 import dev.jdtech.jellyfin.film.presentation.home.HomeAction
 import dev.jdtech.jellyfin.models.FindroidItem
 import dev.jdtech.jellyfin.presentation.components.Direction
@@ -202,11 +202,11 @@ private fun ViewAllCard(
 
     Surface(
         onClick = onClick,
-        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),
+        shape = ClickableSurfaceDefaults.shape(CentralShapes.ItemCard),
         border =
             ClickableSurfaceDefaults.border(
                 focusedBorder =
-                    Border(BorderStroke(2.5.dp, Color.White), shape = RoundedCornerShape(10.dp))
+                    Border(BorderStroke(2.5.dp, Color.White), shape = CentralShapes.ItemCard)
             ),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1.04f),
         glow =

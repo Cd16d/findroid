@@ -34,6 +34,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import dev.jdtech.jellyfin.core.R as CoreR
+import dev.jdtech.jellyfin.core.presentation.theme.PlayerOverlayBackground
 import dev.jdtech.jellyfin.models.FindroidSegment
 import dev.jdtech.jellyfin.player.core.R as PlayerR
 import dev.jdtech.jellyfin.player.core.domain.models.PlayerChapter
@@ -109,7 +110,7 @@ fun VideoPlayerSeeker(
         }
     val endsAtText = formattedEndTime?.let { stringResource(PlayerR.string.ends_at, it) }
 
-    val pillBackground = Color(0xFF262626).copy(alpha = 0.75f)
+    val pillBackground = PlayerOverlayBackground.copy(alpha = 0.75f)
     val pillBorder = BorderStroke(1.dp, Color.White.copy(alpha = 0.15f))
 
     val pillsAlpha by

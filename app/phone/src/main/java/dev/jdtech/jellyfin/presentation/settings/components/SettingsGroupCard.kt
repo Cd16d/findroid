@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -15,6 +14,7 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import dev.jdtech.jellyfin.core.presentation.theme.CentralShapes
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
 import dev.jdtech.jellyfin.settings.R as SettingsR
@@ -33,20 +33,7 @@ import dev.jdtech.jellyfin.settings.presentation.models.PreferenceStorageInfo
 import dev.jdtech.jellyfin.settings.presentation.models.PreferenceSwitch
 import dev.jdtech.jellyfin.settings.presentation.settings.SettingsAction
 
-private val TopShape =
-    RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp, bottomStart = 4.dp, bottomEnd = 4.dp)
-private val BottomShape =
-    RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp, bottomStart = 24.dp, bottomEnd = 24.dp)
-private val MiddleShape = RoundedCornerShape(4.dp)
-private val SingleShape = RoundedCornerShape(24.dp)
-
-private fun getItemShape(index: Int, total: Int): Shape =
-    when {
-        total == 1 -> SingleShape
-        index == 0 -> TopShape
-        index == total - 1 -> BottomShape
-        else -> MiddleShape
-    }
+private fun getItemShape(index: Int, total: Int): Shape = CentralShapes.getGroupShape(index, total)
 
 /**
  * Container component that displays a group of settings preferences inside rounded cards.

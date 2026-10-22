@@ -21,7 +21,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -59,6 +58,10 @@ import androidx.media3.common.Player
 import androidx.media3.common.Tracks
 import androidx.media3.ui.AspectRatioFrameLayout
 import dev.jdtech.jellyfin.core.R as CoreR
+import dev.jdtech.jellyfin.core.presentation.theme.CentralShapes
+import dev.jdtech.jellyfin.core.presentation.theme.PlayerCardBackground
+import dev.jdtech.jellyfin.core.presentation.theme.PlayerSheetBackground
+import dev.jdtech.jellyfin.core.presentation.theme.PlayerSheetContainer
 import dev.jdtech.jellyfin.player.core.R as PlayerR
 import dev.jdtech.jellyfin.player.core.domain.models.SleepTimerMode
 import dev.jdtech.jellyfin.player.core.domain.utils.TrackFormatter
@@ -124,9 +127,9 @@ fun PlayerBottomSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        containerColor = Color(0xFF0E0E10),
+        containerColor = PlayerSheetContainer,
         contentColor = Color.White,
-        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+        shape = CentralShapes.SheetTop,
         dragHandle = {
             BottomSheetDefaults.DragHandle(
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
@@ -153,7 +156,7 @@ fun PlayerBottomSheet(
                         modifier =
                             Modifier.size(36.dp)
                                 .clip(CircleShape)
-                                .background(Color(0xFF1C1C1E))
+                                .background(PlayerSheetBackground)
                                 .clickable(
                                     interactionSource = remember { MutableInteractionSource() },
                                     indication = ripple(bounded = true, radius = 18.dp),
@@ -431,7 +434,7 @@ private fun PhoneNavigationRow(
     Surface(
         modifier = Modifier.fillMaxWidth().graphicsLayer { this.alpha = alpha },
         shape = shape,
-        color = Color(0xFF141416),
+        color = PlayerCardBackground,
         border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
         onClick = onClick,
         enabled = enabled,
@@ -456,7 +459,7 @@ private fun PhoneNavigationRow(
             if (badge != null) {
                 Box(
                     modifier =
-                        Modifier.clip(RoundedCornerShape(4.dp))
+                        Modifier.clip(CentralShapes.Tiny)
                             .background(Color.White.copy(alpha = 0.12f))
                             .padding(horizontal = 6.dp, vertical = 2.dp)
                 ) {

@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -31,6 +30,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import dev.jdtech.jellyfin.core.presentation.theme.CentralShapes
+import dev.jdtech.jellyfin.core.presentation.theme.PlayerOverlayBackground
 import dev.jdtech.jellyfin.models.FindroidSegment
 import dev.jdtech.jellyfin.models.FindroidSegmentType
 import dev.jdtech.jellyfin.player.core.domain.models.PlayerChapter
@@ -42,7 +43,7 @@ import dev.jdtech.jellyfin.player.core.presentation.getSegmentColor
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import kotlin.math.roundToInt
 
-private val ScrubberCardShape = RoundedCornerShape(16.dp)
+private val ScrubberCardShape = CentralShapes.MediumCard
 
 /**
  * Calculates the dynamic width of the trickplay preview card based on media/trickplay aspect ratio.
@@ -113,9 +114,8 @@ fun TrickplayScrubber(
             getSectionTitle(safePosMs, chapters, segments, context)
         }
 
-    val matchingColor = matchingSegment?.color
     val segmentColor =
-        when (matchingColor) {
+        when (val matchingColor = matchingSegment?.color) {
             0L -> null
             null -> getSegmentColor(matchingSegment?.type)
             else -> Color(matchingColor)
@@ -132,7 +132,7 @@ fun TrickplayScrubber(
     val showThumbnail = trickplay != null && trickplay.images.isNotEmpty()
 
     Column(
-        modifier = if (showThumbnail) modifier.width(cardWidth) else modifier,
+        modifier = modifier.width(cardWidth),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         // Top Chapter / Segment pill (if available)
@@ -140,7 +140,7 @@ fun TrickplayScrubber(
             Box(
                 modifier =
                     Modifier.clip(CircleShape)
-                        .background(Color(0xFF262626).copy(alpha = 0.85f))
+                        .background(PlayerOverlayBackground.copy(alpha = 0.85f))
                         .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.15f)), CircleShape)
                         .padding(horizontal = 14.dp, vertical = 6.dp),
                 contentAlignment = Alignment.Center,
@@ -200,7 +200,7 @@ fun TrickplayScrubber(
         Box(
             modifier =
                 Modifier.clip(CircleShape)
-                    .background(Color(0xFF262626).copy(alpha = 0.85f))
+                    .background(PlayerOverlayBackground.copy(alpha = 0.85f))
                     .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.20f)), CircleShape)
                     .padding(horizontal = 16.dp, vertical = 6.dp),
             contentAlignment = Alignment.Center,

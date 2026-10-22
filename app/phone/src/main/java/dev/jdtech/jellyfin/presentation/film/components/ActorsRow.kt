@@ -16,12 +16,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import dev.jdtech.jellyfin.core.R as CoreR
+import dev.jdtech.jellyfin.core.presentation.dummy.dummyPerson
 import dev.jdtech.jellyfin.models.FindroidItemPerson
-import dev.jdtech.jellyfin.models.FindroidItemPersonImage
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
 import java.util.UUID
-import org.jellyfin.sdk.model.api.PersonKind
 
 /**
  * Horizontal scrolling list row displaying cast and crew members.
@@ -58,20 +57,7 @@ fun ActorsRow(
 private fun ActorsRowPreview() {
     FindroidTheme {
         ActorsRow(
-            actors =
-                listOf(
-                    FindroidItemPerson(
-                        id = UUID.randomUUID(),
-                        name = "John Doe",
-                        type = PersonKind.ACTOR,
-                        role = "Hero",
-                        image =
-                            FindroidItemPersonImage(
-                                uri = null,
-                                blurHash = null,
-                            ),
-                    )
-                ),
+            actors = listOf(dummyPerson),
             onActorClick = {},
             contentPadding = PaddingValues(16.dp),
         )

@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -36,6 +35,7 @@ import androidx.tv.material3.Text
 import dev.jdtech.jellyfin.core.R
 import dev.jdtech.jellyfin.core.presentation.dummy.dummyEpisode
 import dev.jdtech.jellyfin.core.presentation.dummy.dummyMovie
+import dev.jdtech.jellyfin.core.presentation.theme.CentralShapes
 import dev.jdtech.jellyfin.models.FindroidEpisode
 import dev.jdtech.jellyfin.models.FindroidItem
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
@@ -77,11 +77,11 @@ fun ItemCard(
     Column(modifier = modifier.width(width.dp).zIndex(if (isFocused) 2f else 0f)) {
         Surface(
             onClick = { onClick(item) },
-            shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(10.dp)),
+            shape = ClickableSurfaceDefaults.shape(shape = CentralShapes.ItemCard),
             border =
                 ClickableSurfaceDefaults.border(
                     focusedBorder =
-                        Border(BorderStroke(2.5.dp, Color.White), shape = RoundedCornerShape(10.dp))
+                        Border(BorderStroke(2.5.dp, Color.White), shape = CentralShapes.ItemCard)
                 ),
             scale = ClickableSurfaceDefaults.scale(focusedScale = 1.14f),
             glow =
@@ -112,7 +112,7 @@ fun ItemCard(
             Box {
                 SpoilerMask(
                     enabled = isEpisodeSpoiler,
-                    shape = RoundedCornerShape(10.dp),
+                    shape = CentralShapes.ItemCard,
                     blurRadius = if (hasBlurHash) 4.dp else 16.dp,
                 ) {
                     ItemPoster(

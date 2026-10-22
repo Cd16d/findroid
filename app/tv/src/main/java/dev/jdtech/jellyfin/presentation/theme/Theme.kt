@@ -14,6 +14,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.tv.material3.LocalContentColor as LocalContentColorTv
 import androidx.tv.material3.MaterialTheme as MaterialThemeTv
 import androidx.tv.material3.contentColorFor as contentColorForTv
+import dev.jdtech.jellyfin.core.presentation.theme.DarkBackgroundGradient
 import dev.jdtech.jellyfin.core.presentation.theme.Spacings
 
 @Composable
@@ -29,7 +30,7 @@ fun FindroidTheme(content: @Composable BoxScope.() -> Unit) {
                 Box(
                     modifier =
                         Modifier.background(
-                            Brush.linearGradient(listOf(Color.Black, Color(0xFF001721)))
+                            Brush.linearGradient(listOf(Color.Black, DarkBackgroundGradient))
                         )
                 ) {
                     content()

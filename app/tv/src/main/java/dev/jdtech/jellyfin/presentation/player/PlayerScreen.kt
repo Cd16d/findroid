@@ -108,6 +108,9 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import coil3.compose.AsyncImage
 import dev.jdtech.jellyfin.core.R as CoreR
+import dev.jdtech.jellyfin.core.presentation.theme.PlayerOverlayBackground
+import dev.jdtech.jellyfin.core.presentation.theme.PlayerTvSurface
+import dev.jdtech.jellyfin.core.presentation.theme.PlayerTvSurfaceFocused
 import dev.jdtech.jellyfin.models.FindroidEpisode
 import dev.jdtech.jellyfin.models.FindroidSegment
 import dev.jdtech.jellyfin.player.core.R as PlayerR
@@ -1185,8 +1188,8 @@ private fun ShelfCardContainer(
     modifier: Modifier = Modifier,
     colors: ClickableSurfaceColors =
         ClickableSurfaceDefaults.colors(
-            containerColor = Color(0xFF202024),
-            focusedContainerColor = Color(0xFF2C2C32),
+            containerColor = PlayerTvSurface,
+            focusedContainerColor = PlayerTvSurfaceFocused,
         ),
     border: ClickableSurfaceBorder =
         ClickableSurfaceDefaults.border(
@@ -1411,7 +1414,7 @@ fun PlayerSkipButton(
         scale = ButtonDefaults.scale(scale = 1f, focusedScale = 1.06f),
         colors =
             ButtonDefaults.colors(
-                containerColor = Color(0xFF262626).copy(alpha = 0.70f),
+                containerColor = PlayerOverlayBackground.copy(alpha = 0.70f),
                 focusedContainerColor = Color.White,
             ),
         border =

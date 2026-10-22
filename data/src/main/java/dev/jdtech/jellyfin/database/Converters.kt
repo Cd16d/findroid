@@ -2,7 +2,6 @@ package dev.jdtech.jellyfin.database
 
 import androidx.room3.ColumnTypeConverter
 import dev.jdtech.jellyfin.models.FindroidChapter
-import dev.jdtech.jellyfin.models.deduplicate
 import java.time.ZoneOffset
 import java.util.UUID
 import kotlinx.serialization.json.Json
@@ -43,10 +42,10 @@ class Converters {
         return value?.let { Json.encodeToString(value) }
     }
 
-    /** Deserializes a JSON String to a list of deduplicated [FindroidChapter] objects. */
+    /** Deserializes a JSON String to a list of [FindroidChapter] objects. */
     @ColumnTypeConverter
     fun fromStringToFindroidChapters(value: String?): List<FindroidChapter>? {
-        return value?.let { Json.decodeFromString<List<FindroidChapter>>(value).deduplicate() }
+        return value?.let { Json.decodeFromString<List<FindroidChapter>>(value) }
     }
 
     /** Converts a list of [UUID] objects to a comma-separated String. */

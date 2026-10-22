@@ -1,8 +1,6 @@
 package dev.jdtech.jellyfin.player.local.presentation
 
 import android.app.Application
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.widget.Toast
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
@@ -38,6 +36,7 @@ import dev.jdtech.jellyfin.player.core.domain.models.Trickplay
 import dev.jdtech.jellyfin.player.core.domain.utils.SegmentUtils
 import dev.jdtech.jellyfin.player.core.domain.utils.SegmentUtils.getSegments
 import dev.jdtech.jellyfin.player.core.domain.utils.SegmentUtils.getSkipButtonTextStringId
+import dev.jdtech.jellyfin.player.core.domain.utils.fetchTrickplay
 import dev.jdtech.jellyfin.player.local.mpv.MPVPlayer
 import dev.jdtech.jellyfin.repository.JellyfinRepository
 import dev.jdtech.jellyfin.settings.domain.AppPreferences
@@ -45,23 +44,29 @@ import dev.jdtech.jellyfin.settings.domain.Constants
 import dev.jdtech.jellyfin.utils.getTranslatablePartName
 import java.util.UUID
 import javax.inject.Inject
-import kotlin.math.ceil
 import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.PlayMethod
 import timber.log.Timber
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class PlayerViewModel
 @Inject
@@ -153,6 +158,7 @@ constructor(
         get() = appPreferences.getValue(appPreferences.displayExtraInfo)
 
     private var hasReportedStart = false
+    private val currentItem = MutableStateFlow<PlayerItem?>(null)
 
     init {
         viewModelScope.launch {
@@ -171,16 +177,39 @@ constructor(
                 segmentsSkipButtonDuration = duration
             }
         }
-        segmentsSkipButton = appPreferences.getValue(appPreferences.playerMediaSegmentsSkipButton)
-        segmentsSkipButtonTypes =
-            appPreferences.getValue(appPreferences.playerMediaSegmentsSkipButtonType)
-        segmentsSkipButtonDuration =
-            appPreferences.getValue(appPreferences.playerMediaSegmentsSkipButtonDuration)
-        segmentsAutoSkip = appPreferences.getValue(appPreferences.playerMediaSegmentsAutoSkip)
-        segmentsAutoSkipTypes =
-            appPreferences.getValue(appPreferences.playerMediaSegmentsAutoSkipType)
-        segmentsAutoSkipMode =
-            appPreferences.getValue(appPreferences.playerMediaSegmentsAutoSkipMode)
+        viewModelScope.launch {
+            appPreferences.observe(appPreferences.playerMediaSegmentsSkipButton).collect { enabled
+                ->
+                segmentsSkipButton = enabled
+                updateCurrentSegment()
+            }
+        }
+        viewModelScope.launch {
+            appPreferences.observe(appPreferences.playerMediaSegmentsSkipButtonType).collect { types
+                ->
+                segmentsSkipButtonTypes = types
+                updateCurrentSegment()
+            }
+        }
+        viewModelScope.launch {
+            appPreferences.observe(appPreferences.playerMediaSegmentsAutoSkip).collect { enabled ->
+                segmentsAutoSkip = enabled
+                updateCurrentSegment()
+            }
+        }
+        viewModelScope.launch {
+            appPreferences.observe(appPreferences.playerMediaSegmentsAutoSkipType).collect { types
+                ->
+                segmentsAutoSkipTypes = types
+                updateCurrentSegment()
+            }
+        }
+        viewModelScope.launch {
+            appPreferences.observe(appPreferences.playerMediaSegmentsAutoSkipMode).collect { mode ->
+                segmentsAutoSkipMode = mode
+                updateCurrentSegment()
+            }
+        }
 
         val audioAttributes =
             AudioAttributes.Builder()
@@ -198,6 +227,32 @@ constructor(
                     appPreferences.getValue(appPreferences.preferredSubtitleLanguage)
                 )
         )
+
+        combine(
+                currentItem,
+                appPreferences.observe(appPreferences.playerTrickplay),
+            ) { item, isTrickplayEnabled ->
+                if (isTrickplayEnabled && item != null) item else null
+            }
+            .distinctUntilChanged()
+            .flatMapLatest { item ->
+                flow {
+                    if (item != null) {
+                        val trickplay = fetchTrickplay(repository, item)
+                        emit(trickplay)
+                    } else {
+                        emit(null)
+                    }
+                }
+            }
+            .onEach { trickplay ->
+                val oldTrickplay = _uiState.value.currentTrickplay
+                if (oldTrickplay != trickplay) {
+                    oldTrickplay?.images?.forEach { it.recycle() }
+                    _uiState.update { it.copy(currentTrickplay = trickplay) }
+                }
+            }
+            .launchIn(viewModelScope)
 
         val playerBackend =
             Constants.PlayerBackend.fromValue(appPreferences.getValue(appPreferences.playerBackend))
@@ -622,9 +677,7 @@ constructor(
 
                         hasReportedStart = false
 
-                        if (appPreferences.getValue(appPreferences.playerTrickplay)) {
-                            getTrickplay(item)
-                        }
+                        currentItem.value = item
 
                         loadItemMetadata(item.itemId)
 
@@ -807,56 +860,6 @@ constructor(
         _uiState.update { it.copy(playbackSpeed = playbackParameters.speed) }
         if (appPreferences.getValue(appPreferences.playerPlaybackSpeedRemember)) {
             appPreferences.setValue(appPreferences.playerPlaybackSpeed, playbackParameters.speed)
-        }
-    }
-
-    private suspend fun getTrickplay(item: PlayerItem) {
-        val trickplayInfo = item.trickplayInfo ?: return
-        Timber.d("Trickplay Resolution: ${trickplayInfo.width}")
-
-        withContext(Dispatchers.Default) {
-            val tilesPerSheet = trickplayInfo.tileWidth * trickplayInfo.tileHeight
-            if (tilesPerSheet <= 0) return@withContext
-            val sheetCount =
-                ceil(trickplayInfo.thumbnailCount.toDouble().div(tilesPerSheet)).toInt()
-            val bitmaps = mutableListOf<Bitmap>()
-
-            for (i in 0 until sheetCount) {
-                if (bitmaps.size >= trickplayInfo.thumbnailCount) break
-                repository.getTrickplayData(item.itemId, trickplayInfo.width, i)?.let { byteArray ->
-                    val fullBitmap =
-                        BitmapFactory.decodeByteArray(byteArray, 0, byteArray.size) ?: return@let
-                    try {
-                        for (offsetY in
-                            0..<trickplayInfo.height * trickplayInfo.tileHeight step
-                                trickplayInfo.height) {
-                            for (offsetX in
-                                0..<trickplayInfo.width * trickplayInfo.tileWidth step
-                                    trickplayInfo.width) {
-                                if (bitmaps.size < trickplayInfo.thumbnailCount) {
-                                    val bitmap =
-                                        Bitmap.createBitmap(
-                                            fullBitmap,
-                                            offsetX,
-                                            offsetY,
-                                            trickplayInfo.width,
-                                            trickplayInfo.height,
-                                        )
-                                    bitmaps.add(bitmap)
-                                } else {
-                                    break
-                                }
-                            }
-                            if (bitmaps.size >= trickplayInfo.thumbnailCount) break
-                        }
-                    } finally {
-                        fullBitmap.recycle()
-                    }
-                }
-            }
-            _uiState.update {
-                it.copy(currentTrickplay = Trickplay(trickplayInfo.interval, bitmaps))
-            }
         }
     }
 

@@ -31,11 +31,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import dev.jdtech.jellyfin.core.R as CoreR
+import dev.jdtech.jellyfin.core.presentation.theme.PlayerOverlayBackground
 import dev.jdtech.jellyfin.player.core.domain.models.SleepTimerStatus
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 
 private val GlassPillShape = CircleShape
-private val GlassBackgroundColor = Color(0xFF262626).copy(alpha = 0.6f)
+private val GlassBackgroundColor = PlayerOverlayBackground.copy(alpha = 0.6f)
 private val GlassBorderStroke = BorderStroke(1.dp, Color.White.copy(alpha = 0.15f))
 
 /**

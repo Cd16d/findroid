@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -23,6 +22,9 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import dev.jdtech.jellyfin.core.presentation.dummy.dummyDiscoveredServer
+import dev.jdtech.jellyfin.core.presentation.theme.CentralShapes
+import dev.jdtech.jellyfin.core.presentation.theme.DisabledText
+import dev.jdtech.jellyfin.core.presentation.theme.ServerContainer
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
 
@@ -38,16 +40,16 @@ fun ServerItem(
         onLongClick = onLongClick,
         colors =
             ClickableSurfaceDefaults.colors(
-                containerColor = Color(0xFF132026),
-                focusedContainerColor = Color(0xFF132026),
+                containerColor = ServerContainer,
+                focusedContainerColor = ServerContainer,
             ),
-        shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(16.dp)),
+        shape = ClickableSurfaceDefaults.shape(shape = CentralShapes.MediumCard),
         border =
             ClickableSurfaceDefaults.border(
                 focusedBorder =
                     Border(
                         BorderStroke(4.dp, Color.White),
-                        shape = RoundedCornerShape(16.dp),
+                        shape = CentralShapes.MediumCard,
                     )
             ),
         modifier = Modifier.width(270.dp).height(115.dp),
@@ -72,7 +74,7 @@ fun ServerItem(
                 Text(
                     text = address,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color(0xFFBDBDBD),
+                    color = DisabledText,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.align(Alignment.CenterHorizontally),
                 )

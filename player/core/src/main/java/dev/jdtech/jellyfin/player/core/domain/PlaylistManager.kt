@@ -11,7 +11,6 @@ import dev.jdtech.jellyfin.models.FindroidMovie
 import dev.jdtech.jellyfin.models.FindroidPart
 import dev.jdtech.jellyfin.models.FindroidSourceType
 import dev.jdtech.jellyfin.models.FindroidSources
-import dev.jdtech.jellyfin.models.deduplicate
 import dev.jdtech.jellyfin.player.core.domain.models.ExternalSubtitle
 import dev.jdtech.jellyfin.player.core.domain.models.PlayerChapter
 import dev.jdtech.jellyfin.player.core.domain.models.PlayerImage
@@ -329,8 +328,19 @@ class PlaylistManager @Inject internal constructor(private val repository: Jelly
     }
 
     private fun List<FindroidChapter>.toPlayerChapters(): List<PlayerChapter> {
-        return this.deduplicate().map { chapter ->
-            PlayerChapter(startPosition = chapter.startPosition, name = chapter.name)
+        val serverUrl = repository.getBaseUrl()
+        return this.map { chapter ->
+            val imageUri =
+                chapter.imageUri?.let { uri ->
+                    if (uri.startsWith("/")) {
+                        "$serverUrl$uri"
+                    } else uri
+                }
+            PlayerChapter(
+                startPosition = chapter.startPosition,
+                name = chapter.name,
+                imageUri = imageUri,
+            )
         }
     }
 

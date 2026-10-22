@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -46,6 +45,7 @@ import androidx.tv.material3.Glow
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import dev.jdtech.jellyfin.core.presentation.dummy.dummyMovies
+import dev.jdtech.jellyfin.core.presentation.theme.CentralShapes
 import dev.jdtech.jellyfin.models.FindroidItem
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import kotlin.time.Duration.Companion.milliseconds
@@ -97,7 +97,7 @@ fun HomeCarousel(
 
     Surface(
         onClick = { onDetails(items.getOrElse(activeIndex) { items.first() }) },
-        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(20.dp)),
+        shape = ClickableSurfaceDefaults.shape(CentralShapes.LargeCard),
         border = ClickableSurfaceDefaults.border(Border.None),
         scale = ClickableSurfaceScale.None,
         glow = ClickableSurfaceDefaults.glow(Glow.None),
@@ -111,7 +111,7 @@ fun HomeCarousel(
             modifier
                 .padding(horizontal = 24.dp)
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(20.dp))
+                .clip(CentralShapes.LargeCard)
                 .then(
                     if (playFocusRequester != null) Modifier.focusRequester(playFocusRequester)
                     else Modifier

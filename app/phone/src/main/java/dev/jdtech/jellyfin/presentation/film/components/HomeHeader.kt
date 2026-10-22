@@ -32,6 +32,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import dev.jdtech.jellyfin.core.R as CoreR
+import dev.jdtech.jellyfin.core.presentation.dummy.dummyServer
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
 
@@ -160,7 +161,7 @@ fun HomeHeader(
 private fun HomeHeaderLoadingPreview() {
     FindroidTheme {
         HomeHeader(
-            serverName = "Jellyfin",
+            serverName = dummyServer.name,
             userImageUrl = null,
             isLoading = true,
             isError = false,
@@ -177,7 +178,7 @@ private fun HomeHeaderLoadingPreview() {
 private fun HomeHeaderErrorPreview() {
     FindroidTheme {
         HomeHeader(
-            serverName = "Jellyfin",
+            serverName = dummyServer.name,
             userImageUrl = null,
             isLoading = false,
             isError = true,

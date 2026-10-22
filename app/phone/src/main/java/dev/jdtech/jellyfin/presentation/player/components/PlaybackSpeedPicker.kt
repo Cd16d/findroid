@@ -50,6 +50,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import dev.jdtech.jellyfin.core.R as CoreR
+import dev.jdtech.jellyfin.core.presentation.theme.PlayerOverlayBackground
 import dev.jdtech.jellyfin.player.core.R as PlayerR
 import dev.jdtech.jellyfin.player.core.presentation.drawCustomRoundRect
 import dev.jdtech.jellyfin.presentation.components.SelectableTrackItem
@@ -142,7 +143,7 @@ fun PlaybackSpeedPicker(
                 modifier =
                     Modifier.size(46.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFF262626))
+                        .background(PlayerOverlayBackground)
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = ripple(bounded = true, radius = 23.dp),
@@ -327,7 +328,7 @@ fun PlaybackSpeedPicker(
                 modifier =
                     Modifier.size(46.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFF262626))
+                        .background(PlayerOverlayBackground)
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = ripple(bounded = true, radius = 23.dp),
@@ -429,7 +430,7 @@ fun PlaybackSpeedPicker(
                                             .clip(CircleShape)
                                             .background(
                                                 if (isSelected) MaterialTheme.colorScheme.primary
-                                                else Color(0xFF262626)
+                                                else PlayerOverlayBackground
                                             )
                                             .clickable(
                                                 interactionSource =

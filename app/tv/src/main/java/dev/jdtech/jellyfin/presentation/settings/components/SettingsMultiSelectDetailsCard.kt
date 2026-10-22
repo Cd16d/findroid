@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -31,6 +30,7 @@ import androidx.tv.material3.ClickableSurfaceScale
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
+import dev.jdtech.jellyfin.core.presentation.theme.CentralShapes
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
 import dev.jdtech.jellyfin.settings.R as SettingsR
@@ -105,7 +105,7 @@ private fun SettingsMultiSelectDetailsCardItem(
 ) {
     Surface(
         onClick = { onCheckedChange(option.first) },
-        shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(4.dp)),
+        shape = ClickableSurfaceDefaults.shape(shape = CentralShapes.Tiny),
         colors =
             ClickableSurfaceDefaults.colors(
                 containerColor = Color.Transparent,
@@ -114,7 +114,7 @@ private fun SettingsMultiSelectDetailsCardItem(
         border =
             ClickableSurfaceDefaults.border(
                 focusedBorder =
-                    Border(BorderStroke(4.dp, Color.White), shape = RoundedCornerShape(10.dp))
+                    Border(BorderStroke(4.dp, Color.White), shape = CentralShapes.ItemCard)
             ),
         scale = ClickableSurfaceScale.None,
     ) {

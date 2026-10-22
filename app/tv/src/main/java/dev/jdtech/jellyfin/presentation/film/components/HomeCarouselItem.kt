@@ -44,6 +44,8 @@ import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.core.presentation.dummy.dummyMovie
+import dev.jdtech.jellyfin.core.presentation.theme.GoldStar
+import dev.jdtech.jellyfin.core.presentation.theme.PlayerBackground
 import dev.jdtech.jellyfin.models.FindroidEpisode
 import dev.jdtech.jellyfin.models.FindroidItem
 import dev.jdtech.jellyfin.models.FindroidMovie
@@ -69,7 +71,7 @@ fun HomeCarouselItem(
     showLogo: Boolean = false,
     isFocused: Boolean = false,
 ) {
-    Box(modifier = modifier.fillMaxSize().background(Color(0xFF141414))) {
+    Box(modifier = modifier.fillMaxSize().background(PlayerBackground)) {
         val windowSize = LocalWindowInfo.current.containerDpSize
         val screenWidth = windowSize.width
         val screenHeight = windowSize.height
@@ -238,7 +240,7 @@ fun HomeCarouselItem(
                         text = "★ %.1f".format(rating),
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFFFFD700),
+                        color = GoldStar,
                     )
                 }
                 val year =

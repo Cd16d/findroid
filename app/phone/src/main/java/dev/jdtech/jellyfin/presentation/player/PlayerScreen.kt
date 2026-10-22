@@ -548,10 +548,7 @@ fun PlayerScreen(
         val insets = WindowInsets.safeDrawing.asPaddingValues()
         val density = LocalDensity.current
 
-        val cardWidth =
-            remember(uiState.currentTrickplay, videoAspectRatio) {
-                calculateTrickplayCardWidth(uiState.currentTrickplay, videoAspectRatio)
-            }
+        val cardWidth = calculateTrickplayCardWidth(uiState.currentTrickplay, videoAspectRatio)
         val cardHalfWidth = cardWidth / 2
         val seekBarStartOffset =
             videoPaddingInset + insets.calculateLeftPadding(LayoutDirection.Ltr) + 20.dp
@@ -649,7 +646,18 @@ fun PlayerScreen(
                         }
                     },
                     update = { playerView -> playerView.resizeMode = effectiveResizeMode },
-                    modifier = Modifier.fillMaxSize(),
+                    modifier =
+                        Modifier.fillMaxSize().onGloballyPositioned { coordinates ->
+                            val bounds = coordinates.boundsInWindow()
+                            onVideoBoundsChanged(
+                                android.graphics.Rect(
+                                    bounds.left.roundToInt(),
+                                    bounds.top.roundToInt(),
+                                    bounds.right.roundToInt(),
+                                    bounds.bottom.roundToInt(),
+                                )
+                            )
+                        },
                 )
             }
         }
@@ -1178,9 +1186,9 @@ fun PlayerScreen(
                     Modifier.fillMaxSize()
                         .padding(
                             end =
-                                insets.calculateRightPadding(
-                                    androidx.compose.ui.unit.LayoutDirection.Ltr
-                                ) + 24.dp + videoPaddingEnd,
+                                insets.calculateRightPadding(LayoutDirection.Ltr) +
+                                    24.dp +
+                                    videoPaddingEnd,
                             bottom = floatingSkipButtonBottomPadding,
                         )
                         .zIndex(6f),
@@ -1251,14 +1259,8 @@ fun PlayerScreen(
                                 )
                             )
                             .padding(
-                                start =
-                                    insets.calculateLeftPadding(
-                                        androidx.compose.ui.unit.LayoutDirection.Ltr
-                                    ) + 16.dp,
-                                end =
-                                    insets.calculateRightPadding(
-                                        androidx.compose.ui.unit.LayoutDirection.Ltr
-                                    ) + 16.dp,
+                                start = insets.calculateLeftPadding(LayoutDirection.Ltr) + 16.dp,
+                                end = insets.calculateRightPadding(LayoutDirection.Ltr) + 16.dp,
                                 top = insets.calculateTopPadding() + 12.dp,
                                 bottom = insets.calculateBottomPadding() + 12.dp,
                             )
@@ -1447,7 +1449,6 @@ fun PlayerScreen(
     }
 }
 
-@OptIn(UnstableApi::class)
 @Preview(showBackground = true, backgroundColor = 0xFF000000, widthDp = 840, heightDp = 400)
 @Composable
 private fun PlayerScreenLandscapePreview() {
@@ -1485,7 +1486,6 @@ private fun PlayerScreenLandscapePreview() {
     }
 }
 
-@OptIn(UnstableApi::class)
 @Preview(showBackground = true, backgroundColor = 0xFF000000, widthDp = 360, heightDp = 800)
 @Composable
 private fun PlayerScreenPortraitPreview() {

@@ -10,6 +10,11 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import dev.jdtech.jellyfin.core.presentation.theme.PaletteBlue
+import dev.jdtech.jellyfin.core.presentation.theme.PaletteBrown
+import dev.jdtech.jellyfin.core.presentation.theme.PaletteGreen
+import dev.jdtech.jellyfin.core.presentation.theme.PaletteOrange
+import dev.jdtech.jellyfin.core.presentation.theme.PalettePurple
 import dev.jdtech.jellyfin.models.FindroidSegment
 import dev.jdtech.jellyfin.models.FindroidSegmentType
 import dev.jdtech.jellyfin.player.core.R
@@ -260,11 +265,11 @@ val FindroidSegmentType.labelRes: Int?
  */
 fun getSegmentColor(type: FindroidSegmentType?): Color? {
     return when (type) {
-        FindroidSegmentType.INTRO -> Color(0xFF4CAF50) // Green
-        FindroidSegmentType.OUTRO -> Color(0xFFFF9800) // Orange / Yellow
-        FindroidSegmentType.RECAP -> Color(0xFF2196F3) // Blue
-        FindroidSegmentType.PREVIEW -> Color(0xFF9C27B0) // Purple
-        FindroidSegmentType.COMMERCIAL -> Color(0xFF795548) // Brown
+        FindroidSegmentType.INTRO -> PaletteGreen
+        FindroidSegmentType.OUTRO -> PaletteOrange
+        FindroidSegmentType.RECAP -> PaletteBlue
+        FindroidSegmentType.PREVIEW -> PalettePurple
+        FindroidSegmentType.COMMERCIAL -> PaletteBrown
         else -> null
     }
 }

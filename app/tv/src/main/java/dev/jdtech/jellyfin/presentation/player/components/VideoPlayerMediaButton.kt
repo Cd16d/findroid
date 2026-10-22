@@ -14,6 +14,7 @@ import androidx.tv.material3.IconButton
 import androidx.tv.material3.IconButtonDefaults
 import androidx.tv.material3.MaterialTheme
 import dev.jdtech.jellyfin.core.R as CoreR
+import dev.jdtech.jellyfin.core.presentation.theme.PlayerOverlayBackground
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 
 /**
@@ -34,14 +35,14 @@ fun VideoPlayerMediaButton(
         colors =
             if (isPrimaryAction) {
                 IconButtonDefaults.colors(
-                    containerColor = Color(0xFF262626).copy(alpha = 0.70f),
+                    containerColor = PlayerOverlayBackground.copy(alpha = 0.70f),
                     focusedContainerColor = MaterialTheme.colorScheme.primary,
                     contentColor = Color.White,
                     focusedContentColor = Color.Black,
                 )
             } else {
                 IconButtonDefaults.colors(
-                    containerColor = Color(0xFF262626).copy(alpha = 0.70f),
+                    containerColor = PlayerOverlayBackground.copy(alpha = 0.70f),
                     focusedContainerColor = Color.White,
                     contentColor = Color.White,
                     focusedContentColor = Color.Black,

@@ -22,6 +22,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import dev.jdtech.jellyfin.core.R as CoreR
+import dev.jdtech.jellyfin.core.presentation.theme.PlayerOverlayBackground
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 
 /**
@@ -67,7 +68,9 @@ fun PlayerCenterControls(
                     Modifier.size(48.dp)
                         .clip(CircleShape)
                         .background(
-                            Color(0xFF262626).copy(alpha = if (hasPreviousItem) 0.6f else 0.25f)
+                            PlayerOverlayBackground.copy(
+                                alpha = if (hasPreviousItem) 0.6f else 0.25f
+                            )
                         )
                         .then(
                             if (hasPreviousItem) {
@@ -99,7 +102,7 @@ fun PlayerCenterControls(
             modifier =
                 Modifier.size(52.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFF262626).copy(alpha = 0.6f))
+                    .background(PlayerOverlayBackground.copy(alpha = 0.6f))
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = ripple(bounded = true, radius = 26.dp),
@@ -158,7 +161,7 @@ fun PlayerCenterControls(
             modifier =
                 Modifier.size(52.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFF262626).copy(alpha = 0.6f))
+                    .background(PlayerOverlayBackground.copy(alpha = 0.6f))
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = ripple(bounded = true, radius = 26.dp),
@@ -184,7 +187,7 @@ fun PlayerCenterControls(
                     Modifier.size(48.dp)
                         .clip(CircleShape)
                         .background(
-                            Color(0xFF262626).copy(alpha = if (hasNextItem) 0.6f else 0.25f)
+                            PlayerOverlayBackground.copy(alpha = if (hasNextItem) 0.6f else 0.25f)
                         )
                         .then(
                             if (hasNextItem) {

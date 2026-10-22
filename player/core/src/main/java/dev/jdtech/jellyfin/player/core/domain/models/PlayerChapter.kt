@@ -9,4 +9,6 @@ data class PlayerChapter(
     val startPosition: Long,
     /** The name. */
     val name: String? = null,
+    /** Optional explicit thumbnail image URI from the server. */
+    val imageUri: String? = null,
 ) : Parcelable

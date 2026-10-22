@@ -422,7 +422,7 @@ private fun DownloadItemCardDownloadedPreview() {
             item = dummyMovie,
             state =
                 DownloadItemCardState(
-                    title = "Inception",
+                    title = dummyMovie.name,
                     metadataText = "2010 • 2h 28m",
                     status = DownloadStatus.DOWNLOADED,
                     playbackProgress = 0.45f,
@@ -439,7 +439,7 @@ private fun DownloadItemCardDownloadingPreview() {
             item = dummyMovie,
             state =
                 DownloadItemCardState(
-                    title = "Oppenheimer",
+                    title = dummyMovie.name,
                     metadataText = "45% • 3.2 MB/s • 1m 20s",
                     status = DownloadStatus.DOWNLOADING,
                     downloadProgress = 0.45f,
@@ -456,7 +456,7 @@ private fun DownloadItemCardPendingPreview() {
             item = dummyMovie,
             state =
                 DownloadItemCardState(
-                    title = "Interstellar",
+                    title = dummyMovie.name,
                     metadataText = "In coda",
                     status = DownloadStatus.PENDING,
                 ),
@@ -472,7 +472,7 @@ private fun DownloadItemCardSelectionPreview() {
             item = dummyMovie,
             state =
                 DownloadItemCardState(
-                    title = "Blade Runner 2049",
+                    title = dummyMovie.name,
                     metadataText = "2017 • 2h 44m",
                     status = DownloadStatus.DOWNLOADED,
                     isSelected = true,
@@ -490,7 +490,7 @@ private fun DownloadItemCardEliminatingPreview() {
             item = dummyMovie,
             state =
                 DownloadItemCardState(
-                    title = "Inception",
+                    title = dummyMovie.name,
                     metadataText = "2010 • 2h 28m",
                     status = DownloadStatus.DOWNLOADED,
                     playbackProgress = 0.45f,

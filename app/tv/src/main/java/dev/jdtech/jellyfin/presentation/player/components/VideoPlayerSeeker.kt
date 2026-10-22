@@ -44,6 +44,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import dev.jdtech.jellyfin.core.R as CoreR
+import dev.jdtech.jellyfin.core.presentation.theme.PlayerOverlayBackground
 import dev.jdtech.jellyfin.models.FindroidSegment
 import dev.jdtech.jellyfin.player.core.R as PlayerCoreR
 import dev.jdtech.jellyfin.player.core.domain.models.PlayerChapter
@@ -105,7 +106,7 @@ fun VideoPlayerSeeker(
 
     val chapterFocusRequester = remember { FocusRequester() }
 
-    val pillBackground = Color(0xFF262626).copy(alpha = 0.70f)
+    val pillBackground = PlayerOverlayBackground.copy(alpha = 0.70f)
     val pillBorder = BorderStroke(1.dp, Color.White.copy(alpha = 0.15f))
 
     val pillsAlpha by

@@ -45,6 +45,8 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.C
 import androidx.window.core.layout.WindowSizeClass
+import dev.jdtech.jellyfin.core.presentation.dummy.dummyEpisode
+import dev.jdtech.jellyfin.core.presentation.dummy.dummyMovie
 import dev.jdtech.jellyfin.models.FindroidSegment
 import dev.jdtech.jellyfin.player.cast.presentation.CastPlayerViewModel
 import dev.jdtech.jellyfin.player.core.R as PlayerCoreR
@@ -431,9 +433,9 @@ private fun mockUiStateEpisode() =
     CastPlayerViewModel.UiState(
         currentItemTitle =
             CastPlayerViewModel.CurrentItemTitle(
-                seriesName = "Series Name",
+                seriesName = dummyEpisode.seriesName,
                 episodeInfo = "S01E01",
-                title = "Episode Title",
+                title = dummyEpisode.name,
             ),
         currentItemPoster = null,
         isMovie = false,
@@ -448,7 +450,7 @@ private fun mockUiStateEpisode() =
 
 private fun mockUiStateMovie() =
     CastPlayerViewModel.UiState(
-        currentItemTitle = CastPlayerViewModel.CurrentItemTitle(title = "Title"),
+        currentItemTitle = CastPlayerViewModel.CurrentItemTitle(title = dummyMovie.name),
         currentItemPoster = null,
         isMovie = true,
         defaultAspectRatio = 2f / 3f,

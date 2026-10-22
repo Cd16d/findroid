@@ -1,8 +1,6 @@
 package dev.jdtech.jellyfin.player.cast.presentation
 
 import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -25,29 +23,31 @@ import dev.jdtech.jellyfin.player.core.domain.models.Trickplay
 import dev.jdtech.jellyfin.player.core.domain.utils.SegmentUtils
 import dev.jdtech.jellyfin.player.core.domain.utils.SegmentUtils.getSegments
 import dev.jdtech.jellyfin.player.core.domain.utils.SegmentUtils.getSkipButtonTextStringId
+import dev.jdtech.jellyfin.player.core.domain.utils.fetchTrickplay
 import dev.jdtech.jellyfin.repository.JellyfinRepository
 import dev.jdtech.jellyfin.settings.domain.AppPreferences
 import dev.jdtech.jellyfin.settings.domain.Constants
 import dev.jdtech.jellyfin.utils.getTranslatablePartName
 import java.util.UUID
 import javax.inject.Inject
-import kotlin.math.ceil
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import timber.log.Timber
 
 /** ViewModel managing state and playback controls for Google Cast media sessions. */
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class CastPlayerViewModel
 @Inject
@@ -147,7 +147,6 @@ constructor(
         }
         private set
 
-    private var trickplayJob: Job? = null
     private var activeSegment: FindroidSegment? = null
 
     // Segments preferences
@@ -198,6 +197,32 @@ constructor(
                     onMediaItemCleared()
                 }
                 Timber.d("CurrentItem: $item")
+            }
+            .launchIn(viewModelScope)
+
+        combine(
+                playerController.currentItem.map { it?.item },
+                appPreferences.observe(appPreferences.playerTrickplay),
+            ) { item, isTrickplayEnabled ->
+                if (isTrickplayEnabled && item != null) item else null
+            }
+            .distinctUntilChanged()
+            .flatMapLatest { item ->
+                flow {
+                    if (item != null) {
+                        val trickplay = fetchTrickplay(repository, item, defaultDispatcher)
+                        emit(trickplay)
+                    } else {
+                        emit(null)
+                    }
+                }
+            }
+            .onEach { trickplay ->
+                val oldTrickplay = _uiState.value.currentTrickplay
+                if (oldTrickplay != trickplay) {
+                    oldTrickplay?.images?.forEach { it.recycle() }
+                    _uiState.update { it.copy(currentTrickplay = trickplay) }
+                }
             }
             .launchIn(viewModelScope)
     }
@@ -276,11 +301,6 @@ constructor(
         currentMediaItemSegments =
             getSegments(item.itemId, repository) { appPreferences.getSegmentColor(it.name) }
         _uiState.update { it.copy(segments = currentMediaItemSegments) }
-
-        trickplayJob?.cancel()
-        if (appPreferences.getValue(appPreferences.playerTrickplay)) {
-            trickplayJob = viewModelScope.launch(defaultDispatcher) { getTrickplay(item) }
-        }
     }
 
     /**
@@ -447,8 +467,6 @@ constructor(
      */
     private fun onMediaItemCleared() {
         clearActiveSegment()
-        trickplayJob?.cancel()
-        trickplayJob = null
         currentItemId = null
         savedStateHandle.remove<String>(KEY_CURRENT_ITEM_ID)
         currentMediaItemSegments = emptyList()
@@ -488,83 +506,8 @@ constructor(
         )
     }
 
-    /**
-     * Downloads trickplay (BIF/Thumbnail) data for scrubbing previews, slices the sprite sheet into
-     * individual bitmaps, and updates the UI state so the seek bar can show thumbnails.
-     */
-    private suspend fun getTrickplay(item: PlayerItem) {
-        val trickplayInfo = item.trickplayInfo ?: return
-        withContext(defaultDispatcher) {
-            val tilesPerSheet = trickplayInfo.tileWidth * trickplayInfo.tileHeight
-            if (tilesPerSheet <= 0) return@withContext
-            val sheetCount =
-                ceil(trickplayInfo.thumbnailCount.toDouble().div(tilesPerSheet)).toInt()
-            val bitmaps = mutableListOf<Bitmap>()
-            var success = false
-
-            try {
-                for (i in 0 until sheetCount) {
-                    if (bitmaps.size >= trickplayInfo.thumbnailCount) break
-                    coroutineContext.ensureActive()
-                    val byteArray =
-                        repository.getTrickplayData(item.itemId, trickplayInfo.width, i) ?: continue
-                    coroutineContext.ensureActive()
-                    val fullBitmap =
-                        BitmapFactory.decodeByteArray(byteArray, 0, byteArray.size) ?: continue
-                    try {
-                        for (offsetY in
-                            0..<trickplayInfo.height * trickplayInfo.tileHeight step
-                                trickplayInfo.height) {
-                            for (offsetX in
-                                0..<trickplayInfo.width * trickplayInfo.tileWidth step
-                                    trickplayInfo.width) {
-                                coroutineContext.ensureActive()
-                                if (bitmaps.size < trickplayInfo.thumbnailCount) {
-                                    val bitmap =
-                                        Bitmap.createBitmap(
-                                            fullBitmap,
-                                            offsetX,
-                                            offsetY,
-                                            trickplayInfo.width,
-                                            trickplayInfo.height,
-                                        )
-                                    bitmaps.add(bitmap)
-                                } else {
-                                    break
-                                }
-                            }
-                            if (bitmaps.size >= trickplayInfo.thumbnailCount) break
-                        }
-                    } finally {
-                        fullBitmap.recycle()
-                    }
-                }
-
-                coroutineContext.ensureActive()
-                if (currentItemId == item.itemId) {
-                    val oldTrickplay = _uiState.value.currentTrickplay
-                    oldTrickplay?.images?.forEach { it.recycle() }
-                    _uiState.update {
-                        it.copy(currentTrickplay = Trickplay(trickplayInfo.interval, bitmaps))
-                    }
-                    success = true
-                }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Throwable) {
-                Timber.e(e, "Failed to decode trickplay thumbnails")
-            } finally {
-                if (!success) {
-                    bitmaps.forEach { it.recycle() }
-                    bitmaps.clear()
-                }
-            }
-        }
-    }
-
     override fun onCleared() {
         clearActiveSegment()
-        trickplayJob?.cancel()
         val oldTrickplay = _uiState.value.currentTrickplay
         oldTrickplay?.images?.forEach { it.recycle() }
     }
