@@ -138,14 +138,21 @@ fun ItemCard(
                 }
 
                 is FindroidSeason -> {
-                    if (
-                        showParentTitle &&
-                            item.seriesName.isNotBlank() &&
-                            !item.name.equals(item.seriesName, ignoreCase = true)
-                    ) {
-                        item.name
+                    val year = item.premiereDate?.year ?: item.productionYear
+                    val seasonLabel =
+                        if (
+                            showParentTitle &&
+                                item.seriesName.isNotBlank() &&
+                                !item.name.equals(item.seriesName, ignoreCase = true)
+                        ) {
+                            item.name
+                        } else {
+                            item.name
+                        }
+                    if (year != null && year > 0) {
+                        "$year - $seasonLabel"
                     } else {
-                        ""
+                        seasonLabel
                     }
                 }
 

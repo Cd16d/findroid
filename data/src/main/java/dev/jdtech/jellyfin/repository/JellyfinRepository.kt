@@ -22,7 +22,9 @@ import org.jellyfin.sdk.model.api.ItemFields
 import org.jellyfin.sdk.model.api.ItemFilter
 import org.jellyfin.sdk.model.api.PlayMethod
 import org.jellyfin.sdk.model.api.PublicSystemInfo
+import org.jellyfin.sdk.model.api.SeriesStatus
 import org.jellyfin.sdk.model.api.UserConfiguration
+import org.jellyfin.sdk.model.api.VideoType
 
 interface JellyfinRepository {
     suspend fun getAdditionalParts(itemId: UUID): List<FindroidPart>
@@ -76,6 +78,84 @@ interface JellyfinRepository {
     suspend fun getFavoriteItems(): List<FindroidItem>
 
     suspend fun getSearchItems(query: String): List<FindroidItem>
+
+    suspend fun getSearchSuggestions(): List<String>
+
+    suspend fun getAvailableContentTypes(): List<BaseItemKind>
+
+    suspend fun getAvailableVideoQualities(): List<String>
+
+    suspend fun getAvailableItemFilters(): List<ItemFilter>
+
+    suspend fun getAvailableSeriesStatuses(): List<SeriesStatus>
+
+    suspend fun getAvailableFeatures(): List<String>
+
+    suspend fun getGenres(includeItemTypes: List<BaseItemKind>? = null): List<String>
+
+    suspend fun getTags(includeItemTypes: List<BaseItemKind>? = null): List<String>
+
+    suspend fun getStudios(includeItemTypes: List<BaseItemKind>? = null): List<String>
+
+    suspend fun getOfficialRatings(includeItemTypes: List<BaseItemKind>? = null): List<String>
+
+    suspend fun getYears(includeItemTypes: List<BaseItemKind>? = null): List<Int>
+
+    suspend fun getAudioLanguages(includeItemTypes: List<BaseItemKind>? = null): List<String>
+
+    suspend fun getSubtitleLanguages(includeItemTypes: List<BaseItemKind>? = null): List<String>
+
+    suspend fun getSearchItemsFiltered(
+        query: String,
+        includeItemTypes: List<BaseItemKind>? = null,
+        seriesStatuses: List<SeriesStatus>? = null,
+        genres: List<String>? = null,
+        tags: List<String>? = null,
+        officialRatings: List<String>? = null,
+        years: List<Int>? = null,
+        studios: List<String>? = null,
+        audioLanguages: List<String>? = null,
+        subtitleLanguages: List<String>? = null,
+        filters: List<ItemFilter>? = null,
+        is3D: Boolean? = null,
+        hasSubtitles: Boolean? = null,
+        is4K: Boolean? = null,
+        isHD: Boolean? = null,
+        videoTypes: List<VideoType>? = null,
+        hasTrailer: Boolean? = null,
+        hasSpecialFeatures: Boolean? = null,
+        hasThemeSong: Boolean? = null,
+        hasThemeVideo: Boolean? = null,
+        minCommunityRating: Double? = null,
+        startIndex: Int? = null,
+        limit: Int? = null,
+    ): List<FindroidItem>
+
+    fun getSearchItemsFilteredPaging(
+        query: String,
+        includeItemTypes: List<BaseItemKind>? = null,
+        seriesStatuses: List<SeriesStatus>? = null,
+        genres: List<String>? = null,
+        tags: List<String>? = null,
+        officialRatings: List<String>? = null,
+        years: List<Int>? = null,
+        studios: List<String>? = null,
+        audioLanguages: List<String>? = null,
+        subtitleLanguages: List<String>? = null,
+        filters: List<ItemFilter>? = null,
+        is3D: Boolean? = null,
+        hasSubtitles: Boolean? = null,
+        is4K: Boolean? = null,
+        isHD: Boolean? = null,
+        videoTypes: List<VideoType>? = null,
+        hasTrailer: Boolean? = null,
+        hasSpecialFeatures: Boolean? = null,
+        hasThemeSong: Boolean? = null,
+        hasThemeVideo: Boolean? = null,
+        minCommunityRating: Double? = null,
+    ): Flow<PagingData<FindroidItem>>
+
+    suspend fun getRandomItem(): FindroidItem?
 
     suspend fun getSuggestions(forceRefresh: Boolean = false): List<FindroidItem>
 

@@ -29,7 +29,6 @@ import androidx.compose.material3.adaptive.navigationsuite.rememberNavigationSui
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -63,6 +62,8 @@ import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import androidx.window.core.layout.WindowSizeClass
 import dev.jdtech.jellyfin.core.R as CoreR
+import dev.jdtech.jellyfin.film.presentation.search.SearchAction
+import dev.jdtech.jellyfin.film.presentation.search.SearchViewModel
 import dev.jdtech.jellyfin.models.CollectionType
 import dev.jdtech.jellyfin.models.FindroidBoxSet
 import dev.jdtech.jellyfin.models.FindroidCollection
@@ -74,6 +75,7 @@ import dev.jdtech.jellyfin.models.FindroidSeason
 import dev.jdtech.jellyfin.models.FindroidShow
 import dev.jdtech.jellyfin.navigation.navigateOrReuse
 import dev.jdtech.jellyfin.navigation.resumedAction
+import dev.jdtech.jellyfin.navigation.setupEntries
 import dev.jdtech.jellyfin.player.cast.models.CastConnectionState
 import dev.jdtech.jellyfin.player.cast.presentation.CastSessionViewModel
 import dev.jdtech.jellyfin.presentation.account.AccountMenuWrapper
@@ -91,6 +93,7 @@ import dev.jdtech.jellyfin.presentation.film.LibraryScreen
 import dev.jdtech.jellyfin.presentation.film.MediaScreen
 import dev.jdtech.jellyfin.presentation.film.MovieScreen
 import dev.jdtech.jellyfin.presentation.film.PersonScreen
+import dev.jdtech.jellyfin.presentation.film.SearchScreen
 import dev.jdtech.jellyfin.presentation.film.SeasonScreen
 import dev.jdtech.jellyfin.presentation.film.ShowScreen
 import dev.jdtech.jellyfin.presentation.settings.AboutScreen
@@ -99,12 +102,6 @@ import dev.jdtech.jellyfin.presentation.settings.DownloadPresetsScreen
 import dev.jdtech.jellyfin.presentation.settings.SettingsFileEditScreen
 import dev.jdtech.jellyfin.presentation.settings.SettingsScreen
 import dev.jdtech.jellyfin.presentation.settings.SmartDownloadsScreen
-import dev.jdtech.jellyfin.presentation.setup.addresses.ServerAddressesScreen
-import dev.jdtech.jellyfin.presentation.setup.addserver.AddServerScreen
-import dev.jdtech.jellyfin.presentation.setup.login.LoginScreen
-import dev.jdtech.jellyfin.presentation.setup.servers.ServersScreen
-import dev.jdtech.jellyfin.presentation.setup.users.UsersScreen
-import dev.jdtech.jellyfin.presentation.setup.welcome.WelcomeScreen
 import dev.jdtech.jellyfin.presentation.theme.spacings
 import dev.jdtech.jellyfin.presentation.utils.LocalOfflineMode
 import dev.jdtech.jellyfin.presentation.utils.rememberSafePadding
@@ -112,7 +109,7 @@ import dev.jdtech.jellyfin.settings.domain.AppPreferences
 import dev.jdtech.jellyfin.utils.restart
 import java.util.UUID
 
-private val TOP_LEVEL_ROUTES = setOf(HomeRoute, MediaRoute, DownloadsRoute)
+private val TOP_LEVEL_ROUTES = setOf(HomeRoute, MediaRoute, SearchRoute, DownloadsRoute)
 private val GLOBAL_TRANSITION_SPEC = fadeIn(tween(300)) togetherWith fadeOut(tween(300))
 
 data class TabBarItem(
@@ -127,9 +124,16 @@ val homeTab =
 
 val mediaTab =
     TabBarItem(
-        title = CoreR.string.title_media,
+        title = CoreR.string.title_my_library,
         icon = CoreR.drawable.ic_library,
         route = MediaRoute,
+    )
+
+val searchTab =
+    TabBarItem(
+        title = CoreR.string.search,
+        icon = CoreR.drawable.ic_search,
+        route = SearchRoute,
     )
 
 val downloadsTab =
@@ -181,10 +185,6 @@ fun NavigationRoot(
             listOf(saveableStateHolderDecorator, viewModelStoreDecorator)
         }
 
-    // Exposed as a state object (rather than a plain value) so the entry content closures, which
-    // nav3 caches per back stack snapshot, always read the current value.
-    val searchExpanded = remember { mutableStateOf(false) }
-
     // Live setup condition: keep the back stacks in a consistent state across mode switches. The
     // stacks are reconciled during composition (rather than in a LaunchedEffect, which only runs
     // after the first frame has been composed) so the first frame of the new mode already shows
@@ -202,13 +202,13 @@ fun NavigationRoot(
         appliedSetupMode.setupComplete = setupComplete
     }
 
+    // Exposed as a state object (rather than a plain value) so the entry content closures, which
     if (setupComplete) {
         MainNavigation(
             navigationState = navigationState,
             navigator = navigator,
             entryDecorators = entryDecorators,
             isOfflineMode = LocalOfflineMode.current,
-            searchExpanded = searchExpanded,
         )
     } else {
         SetupNavigation(
@@ -231,38 +231,29 @@ private fun MainNavigation(
     navigator: Navigator,
     entryDecorators: List<NavEntryDecorator<NavKey>>,
     isOfflineMode: Boolean,
-    searchExpanded: MutableState<Boolean>,
 ) {
     val context = LocalContext.current
     val mainViewModel: dev.jdtech.jellyfin.viewmodels.MainViewModel =
         hiltViewModel(context as ViewModelStoreOwner)
     val castSessionViewModel: CastSessionViewModel = hiltViewModel(context as ViewModelStoreOwner)
+    val searchViewModel: SearchViewModel = hiltViewModel(context as ViewModelStoreOwner)
 
     val navigationItems =
         when (isOfflineMode) {
-            false -> listOf(homeTab, mediaTab, downloadsTab)
+            false -> listOf(homeTab, mediaTab, searchTab, downloadsTab)
             true -> listOf(homeTab, downloadsTab)
         }
     val tabRoutes = navigationItems.map { it.route }
 
     val topLevelRoute = navigationState.topLevelRoute
     val atTabRoot = navigationState.currentBackStack().last() == topLevelRoute
-    val showBottomBar = atTabRoot && topLevelRoute in tabRoutes && !searchExpanded.value
+    val showBottomBar = atTabRoot && topLevelRoute in tabRoutes
 
     val safePadding =
         rememberSafePadding(
             handleStartInsets = false,
             handleBottomInsets = !showBottomBar,
         )
-
-    // The search bar belongs to the Media tab: collapse it when the active top level route
-    // changes away from Media (e.g. via the home button on a detail screen) so that the bottom
-    // bar is shown again.
-    LaunchedEffect(topLevelRoute) {
-        if (topLevelRoute != MediaRoute) {
-            searchExpanded.value = false
-        }
-    }
 
     val navigationSuiteScaffoldState = rememberNavigationSuiteScaffoldState()
 
@@ -324,7 +315,6 @@ private fun MainNavigation(
             is HomeRoute,
             is ShowRoute,
             is MovieRoute,
-            is MediaRoute,
             is LibraryRoute,
             is EpisodeRoute,
             is SeasonRoute,
@@ -333,10 +323,7 @@ private fun MainNavigation(
             else -> false
         }
     val showCastButton =
-        isCastRoute &&
-            !searchExpanded.value &&
-            !isOfflineMode &&
-            castSessionViewModel.sessionManager.isSupported
+        isCastRoute && !isOfflineMode && castSessionViewModel.sessionManager.isSupported
 
     val showCastMiniPlayer by
         remember(
@@ -375,11 +362,6 @@ private fun MainNavigation(
     val entryProvider = entryProvider {
         mainEntries(
             navigator = navigator,
-            onSearchClick = {
-                searchExpanded.value = true
-                navigator.navigate(MediaRoute)
-            },
-            searchExpanded = searchExpanded,
             onUserClick = { isAccountMenuOpen = true },
         )
     }
@@ -415,11 +397,13 @@ private fun MainNavigation(
                         NavigationSuiteItem(
                             selected = topLevelRoute == item.route,
                             onClick = {
-                                if (item.route == MediaRoute && topLevelRoute == MediaRoute) {
-                                    searchExpanded.value = true
+                                if (topLevelRoute == item.route) {
+                                    if (item.route == SearchRoute) {
+                                        searchViewModel.onAction(SearchAction.OnTabReselected)
+                                    }
+                                } else {
+                                    navigator.navigate(item.route)
                                 }
-
-                                navigator.navigate(item.route)
                             },
                             icon = {
                                 Icon(
@@ -571,71 +555,8 @@ private fun SetupNavigation(
     )
 }
 
-/**
- * Registers the setup flow entries.
- *
- * The same entries serve both the dedicated setup mode and the setup flow reached from the main UI
- * (e.g. via "manage servers" in Settings). [onSetupComplete] captures the difference: in setup mode
- * completing the flow flips the live condition to the main UI (a no-op), while in the main UI it
- * navigates home. It is invoked through the nearest entry's RESUMED guard.
- */
-private fun EntryProviderScope<NavKey>.setupEntries(
-    navigate: (NavKey) -> Unit,
-    goBack: () -> Unit,
-    navigateOrReuse: (NavKey) -> Unit,
-    showBack: Boolean,
-    onSetupComplete: () -> Unit,
-) {
-    entry<WelcomeRoute> {
-        WelcomeScreen(onContinueClick = dropUnlessResumed { navigate(ServersRoute) })
-    }
-    entry<ServersRoute> {
-        ServersScreen(
-            navigateToUsers = dropUnlessResumed { navigate(UsersRoute) },
-            navigateToAddresses =
-                resumedAction { serverId -> navigate(ServerAddressesRoute(serverId)) },
-            onAddClick = dropUnlessResumed { navigate(AddServerRoute) },
-            onBackClick = dropUnlessResumed { goBack() },
-            showBack = showBack,
-        )
-    }
-    entry<AddServerRoute> {
-        AddServerScreen(
-            onSuccess = dropUnlessResumed { navigate(UsersRoute) },
-            onBackClick = dropUnlessResumed { goBack() },
-        )
-    }
-    entry<ServerAddressesRoute> { key ->
-        ServerAddressesScreen(
-            serverId = key.serverId,
-            navigateBack = dropUnlessResumed { goBack() },
-        )
-    }
-    entry<UsersRoute> {
-        UsersScreen(
-            navigateToHome = dropUnlessResumed { onSetupComplete() },
-            onChangeServerClick = dropUnlessResumed { navigateOrReuse(ServersRoute) },
-            onAddClick = dropUnlessResumed { navigate(LoginRoute()) },
-            onBackClick = dropUnlessResumed { goBack() },
-            onPublicUserClick =
-                resumedAction { username -> navigate(LoginRoute(username = username)) },
-            showBack = showBack,
-        )
-    }
-    entry<LoginRoute> { key ->
-        LoginScreen(
-            onSuccess = dropUnlessResumed { onSetupComplete() },
-            onChangeServerClick = dropUnlessResumed { navigateOrReuse(ServersRoute) },
-            onBackClick = dropUnlessResumed { goBack() },
-            prefilledUsername = key.username,
-        )
-    }
-}
-
 private fun EntryProviderScope<NavKey>.mainEntries(
     navigator: Navigator,
-    onSearchClick: () -> Unit,
-    searchExpanded: MutableState<Boolean>,
     onUserClick: () -> Unit,
 ) {
     setupEntries(
@@ -657,7 +578,6 @@ private fun EntryProviderScope<NavKey>.mainEntries(
                         )
                     )
                 },
-            onSearchClick = dropUnlessResumed { onSearchClick() },
             onUserClick = dropUnlessResumed { onUserClick() },
             onManageServers = dropUnlessResumed { navigator.navigate(ServersRoute) },
             onItemClick = resumedAction { item -> navigateToItem(navigator, item) },
@@ -667,9 +587,10 @@ private fun EntryProviderScope<NavKey>.mainEntries(
         MediaScreen(
             onItemClick = resumedAction { item -> navigateToItem(navigator, item) },
             onFavoritesClick = dropUnlessResumed { navigator.navigate(FavoritesRoute) },
-            searchExpanded = searchExpanded.value,
-            onSearchExpand = { searchExpanded.value = it },
         )
+    }
+    entry<SearchRoute> {
+        SearchScreen(onItemClick = resumedAction { item -> navigateToItem(navigator, item) })
     }
     entry<DownloadsRoute> {
         val context = LocalContext.current
@@ -691,11 +612,7 @@ private fun EntryProviderScope<NavKey>.mainEntries(
                 dropUnlessResumed {
                     navigator.navigate(SettingsRoute(indexes = listOf(CoreR.string.title_download)))
                 },
-            onExploreLibraryClick =
-                dropUnlessResumed {
-                    searchExpanded.value = false
-                    navigator.navigate(MediaRoute)
-                },
+            onExploreLibraryClick = dropUnlessResumed { navigator.navigate(MediaRoute) },
             onGoOnlineClick =
                 dropUnlessResumed {
                     val appPreferences = AppPreferences(context)
@@ -741,11 +658,7 @@ private fun EntryProviderScope<NavKey>.mainEntries(
         FavoritesScreen(
             onItemClick = resumedAction { item -> navigateToItem(navigator, item) },
             navigateBack = dropUnlessResumed { navigator.goBack() },
-            onExploreLibraryClick =
-                dropUnlessResumed {
-                    searchExpanded.value = false
-                    navigator.navigate(MediaRoute)
-                },
+            onExploreLibraryClick = dropUnlessResumed { navigator.navigate(MediaRoute) },
         )
     }
     entry<MovieRoute> { key ->

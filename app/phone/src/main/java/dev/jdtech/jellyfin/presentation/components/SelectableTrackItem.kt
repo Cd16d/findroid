@@ -44,8 +44,9 @@ private val ChipShape = RoundedCornerShape(6.dp)
  * @param chips List of badge labels (e.g. language or codec chips).
  * @param isSelected Whether this row is currently chosen.
  * @param onClick Callback when the row is tapped.
- * @param modifier Optional modifier for the row.
- * @param shape Corner [Shape] defining rounded edges according to list styling.
+ * @param modifier Optional modifier for the row. Defaults to [Modifier].
+ * @param shape Corner [Shape] defining rounded edges according to list styling. Defaults to
+ *   [TrackItemShape].
  */
 @Composable
 fun SelectableTrackItem(
@@ -168,5 +169,18 @@ fun SelectableTrackItem(
                 }
             }
         }
+    }
+}
+
+@androidx.compose.ui.tooling.preview.Preview(showBackground = true)
+@Composable
+private fun SelectableTrackItemPreview() {
+    dev.jdtech.jellyfin.presentation.theme.FindroidTheme {
+        SelectableTrackItem(
+            title = "English (AAC 5.1)",
+            chips = listOf("Default", "5.1"),
+            isSelected = true,
+            onClick = {},
+        )
     }
 }

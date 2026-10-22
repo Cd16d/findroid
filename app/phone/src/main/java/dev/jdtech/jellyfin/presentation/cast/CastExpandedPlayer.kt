@@ -79,20 +79,13 @@ fun CastExpandedPlayer(
     val actions =
         remember(viewModel, onDeviceClick, onClose) {
             CastPlayerActions(
-                onPlay = { viewModel.playerController.play() },
-                onPause = { viewModel.playerController.pause() },
-                onSeek = { viewModel.playerController.seekTo(it) },
-                onPlayPreviousItem = {
-                    val playerState = viewModel.uiState.value.playerState
-                    if (!playerState.hasPreviousItem || playerState.currentPosition > 5000) {
-                        viewModel.playerController.seekTo(0)
-                    } else {
-                        viewModel.playPreviousItem()
-                    }
-                },
+                onPlay = { viewModel.play() },
+                onPause = { viewModel.pause() },
+                onSeek = { viewModel.seekTo(it) },
+                onPlayPreviousItem = { viewModel.rewindOrPlayPreviousItem() },
                 onPlayNextItem = { viewModel.playNextItem() },
                 onSkipSegment = { viewModel.skipSegment(it) },
-                onVolumeChange = { viewModel.playerController.setVolume(it) },
+                onVolumeChange = { viewModel.setVolume(it) },
                 onAudioTrackSelected = { viewModel.onAudioTrackSelected(it) },
                 onSubtitleTrackSelected = { viewModel.onSubtitleTrackSelected(it) },
                 onDeviceClick = onDeviceClick,

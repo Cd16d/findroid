@@ -24,6 +24,13 @@ import androidx.core.net.toUri
 import dev.jdtech.jellyfin.presentation.theme.spacings
 import dev.jdtech.jellyfin.settings.presentation.models.Preference
 
+/**
+ * Settings card item displaying current app language and launching system locale preferences when
+ * clicked.
+ *
+ * @param preference Language preference model.
+ * @param modifier Optional modifier applied to card surface. Defaults to [Modifier].
+ */
 @Composable
 fun SettingsAppLanguageCard(preference: Preference, modifier: Modifier = Modifier) {
     val context = LocalContext.current
@@ -65,5 +72,20 @@ fun SettingsAppLanguageCard(preference: Preference, modifier: Modifier = Modifie
                 Text(text = currentValue, style = MaterialTheme.typography.bodyMedium)
             }
         }
+    }
+}
+
+@androidx.compose.ui.tooling.preview.Preview(showBackground = true)
+@Composable
+private fun SettingsAppLanguageCardPreview() {
+    dev.jdtech.jellyfin.presentation.theme.FindroidTheme {
+        SettingsAppLanguageCard(
+            preference =
+                dev.jdtech.jellyfin.settings.presentation.models.PreferenceAppLanguage(
+                    nameStringResource = dev.jdtech.jellyfin.core.R.string.app_name,
+                    descriptionStringRes = null,
+                    iconDrawableId = null,
+                )
+        )
     }
 }

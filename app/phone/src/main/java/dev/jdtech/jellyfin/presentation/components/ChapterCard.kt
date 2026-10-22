@@ -29,9 +29,9 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import dev.jdtech.jellyfin.models.FindroidSegment
-import dev.jdtech.jellyfin.models.FindroidSegmentType
 import dev.jdtech.jellyfin.player.core.R as PlayerR
 import dev.jdtech.jellyfin.player.core.domain.models.PlayerChapter
 import dev.jdtech.jellyfin.player.core.domain.models.Trickplay
@@ -40,30 +40,24 @@ import dev.jdtech.jellyfin.player.core.presentation.findChapterSegment
 import dev.jdtech.jellyfin.player.core.presentation.findChapterSegmentType
 import dev.jdtech.jellyfin.player.core.presentation.formatDuration
 import dev.jdtech.jellyfin.player.core.presentation.getSegmentColor
+import dev.jdtech.jellyfin.player.core.presentation.labelRes
 
 private val MenuSingleShape = RoundedCornerShape(24.dp)
 private val ChapterThumbShape = RoundedCornerShape(12.dp)
 
 /**
- * Returns a short human-readable label for a [FindroidSegmentType] (e.g. "Intro", "Ad").
- *
- * @param type The segment category.
- * @return Short display string, or null if the segment type does not have a designated label.
- */
-fun getSegmentLabel(type: FindroidSegmentType?): String? {
-    return when (type) {
-        FindroidSegmentType.INTRO -> "Intro"
-        FindroidSegmentType.OUTRO -> "Outro"
-        FindroidSegmentType.RECAP -> "Recap"
-        FindroidSegmentType.PREVIEW -> "Preview"
-        FindroidSegmentType.COMMERCIAL -> "Ad"
-        else -> null
-    }
-}
-
-/**
  * Shared chapter item card with preview thumbnail, segment border tint, segment badge, and current
  * playback selection indicator.
+ *
+ * @param chapter Chapter model containing name and start position.
+ * @param index Chapter index in media track.
+ * @param isCurrent Whether chapter is currently active.
+ * @param onClick Callback when chapter card is tapped.
+ * @param modifier Optional modifier applied to row. Defaults to [Modifier].
+ * @param nextChapterStart Next chapter start timestamp in Ms. Defaults to [Long.MAX_VALUE].
+ * @param segments List of media segments. Defaults to `emptyList()`.
+ * @param durationMs Total media duration in Ms. Defaults to `0L`.
+ * @param trickplay Trickplay model for thumbnail extraction. Defaults to `null`.
  */
 @Composable
 fun ChapterCard(
@@ -96,14 +90,13 @@ fun ChapterCard(
                 durationMs = durationMs.coerceAtLeast(0L),
             )
 
-    val matchedColor = matchedSegment?.color
     val segmentColor =
-        when (matchedColor) {
+        when (val matchedColor = matchedSegment?.color) {
             0L -> getSegmentColor(segmentType)
             null -> getSegmentColor(segmentType)
             else -> Color(matchedColor)
         }
-    val segmentLabel = getSegmentLabel(segmentType)
+    val segmentLabel = segmentType?.labelRes?.let { stringResource(it) }
 
     val chapterTitle =
         chapter.name?.takeIf { it.isNotBlank() }
@@ -220,5 +213,22 @@ fun ChapterCard(
                 )
             }
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun ChapterCardPreview() {
+    dev.jdtech.jellyfin.presentation.theme.FindroidTheme {
+        ChapterCard(
+            chapter =
+                PlayerChapter(
+                    name = "Chapter 1",
+                    startPosition = 0L,
+                ),
+            index = 0,
+            isCurrent = true,
+            onClick = {},
+        )
     }
 }

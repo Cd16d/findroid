@@ -18,6 +18,7 @@ import androidx.compose.foundation.indication
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
@@ -48,6 +49,10 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import dev.jdtech.jellyfin.core.presentation.components.MAX_PARTICLES
+import dev.jdtech.jellyfin.core.presentation.components.Particle
+import dev.jdtech.jellyfin.core.presentation.components.particleCount
+import dev.jdtech.jellyfin.core.presentation.components.respawnParticle
 import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.max
@@ -269,6 +274,25 @@ fun Modifier.spoilerCardGesture(
         }
 }
 
+/**
+ * Interactive spoiler mask container that blurs underlying composable content until revealed.
+ *
+ * @param modifier Modifier applied to container. Defaults to [Modifier].
+ * @param enabled Whether spoiler protection is active. Defaults to `true`.
+ * @param shape Mask clipping shape. Defaults to [RectangleShape].
+ * @param initiallyRevealed Initial revealed state. Defaults to `false`.
+ * @param isRevealed Controlled revealed state if driven externally. Defaults to `null`.
+ * @param onRevealChange Callback when revealed state changes. Defaults to `null`.
+ * @param blurRadius Blur radius applied when content is masked. Defaults to `16.dp`.
+ * @param consumeClickOnMask Whether clicks on mask are consumed. Defaults to `true`.
+ * @param revealOnLongPress Whether long press reveals mask. Defaults to `true`.
+ * @param onTap Optional callback when tapped. Defaults to `null`.
+ * @param contentAlphaWhenMasked Content alpha when masked. Defaults to `1f`.
+ * @param state SpoilerState instance. Defaults to `null`.
+ * @param isTarget Optional target check lambda. Defaults to `null`.
+ * @param touchOffsetCorrection Optional offset correction. Defaults to `null`.
+ * @param content Composable content protected by spoiler mask.
+ */
 @Composable
 fun SpoilerMask(
     modifier: Modifier = Modifier,
@@ -408,44 +432,6 @@ fun SpoilerMask(
         }
     }
 }
-
-private class Particle(
-    var x: Float = 0f,
-    var y: Float = 0f,
-    var vecX: Float = 0f,
-    var vecY: Float = 0f,
-    var velocity: Float = 0f,
-    var radiusDp: Float = 0.8f,
-    var lifeTime: Float = 1500f,
-    var currentTime: Float = 0f,
-    var alphaTier: Float = 0.6f,
-)
-
-private fun respawnParticle(
-    p: Particle,
-    width: Float,
-    height: Float,
-    random: Random,
-    density: Float,
-) {
-    p.x = random.nextFloat() * width
-    p.y = random.nextFloat() * height
-    val angle = random.nextFloat() * (2f * Math.PI.toFloat())
-    p.vecX = cos(angle)
-    p.vecY = sin(angle)
-    p.velocity = (8f + random.nextFloat() * 12f) * density
-    p.radiusDp = 0.65f + random.nextFloat() * 0.35f
-    p.lifeTime = 1000f + random.nextFloat() * 2000f
-    p.currentTime = random.nextFloat() * p.lifeTime
-    p.alphaTier =
-        when (random.nextInt(3)) {
-            0 -> 0.35f
-            1 -> 0.65f
-            else -> 1.0f
-        }
-}
-
-private const val MAX_PARTICLES = 2000
 
 @Composable
 private fun SpoilerParticleOverlay(
@@ -634,27 +620,15 @@ private fun SpoilerParticleOverlay(
     }
 }
 
-private fun particleCount(areaDp: Float): Int {
-    return when {
-        areaDp < 500f -> 10
-        areaDp < 1_000f -> 25
-        areaDp < 2_500f -> 50
-        areaDp < 5_000f -> 85
-        areaDp < 8_000f -> 125
-        areaDp < 11_000f -> 165
-        areaDp < 14_500f -> 210
-        areaDp < 19_000f -> 270
-        areaDp < 24_000f -> 340
-        areaDp < 30_000f -> 430
-        areaDp < 37_000f -> 530
-        areaDp < 45_000f -> 640
-        areaDp < 54_000f -> 770
-        areaDp < 64_000f -> 910
-        areaDp < 75_000f -> 1060
-        areaDp < 88_000f -> 1230
-        areaDp < 102_000f -> 1410
-        areaDp < 118_000f -> 1600
-        areaDp < 136_000f -> 1800
-        else -> MAX_PARTICLES
+@androidx.compose.ui.tooling.preview.Preview(showBackground = true)
+@Composable
+private fun SpoilerMaskPreview() {
+    dev.jdtech.jellyfin.presentation.theme.FindroidTheme {
+        SpoilerMask(enabled = true) {
+            androidx.compose.material3.Text(
+                text = "Spoiler Content Text",
+                modifier = Modifier.padding(16.dp),
+            )
+        }
     }
 }

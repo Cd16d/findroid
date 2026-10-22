@@ -187,7 +187,6 @@ class MPVPlayer(
             mpvLib.setOptionString("alang", it.split("-").last())
         }
         trackSelectionParameters.preferredTextLanguages.firstOrNull()?.let {
-            println(it.split("-").last())
             mpvLib.setOptionString("slang", it.split("-").last())
         }
 
@@ -377,11 +376,7 @@ class MPVPlayer(
                         }
                     }
                 }
-                "seekable" -> {
-                    if (isSeekable != value) {
-                        isSeekable = value
-                    }
-                }
+                "seekable" -> isSeekable = value
             }
         }
     }

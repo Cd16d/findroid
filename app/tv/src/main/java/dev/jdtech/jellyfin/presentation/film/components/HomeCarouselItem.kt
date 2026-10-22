@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
@@ -32,7 +31,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -63,9 +62,9 @@ fun HomeCarouselItem(
     isFocused: Boolean = false,
 ) {
     Box(modifier = modifier.fillMaxSize().background(Color(0xFF141414))) {
-        val configuration = LocalConfiguration.current
-        val screenWidth = configuration.screenWidthDp.dp
-        val screenHeight = configuration.screenHeightDp.dp
+        val windowSize = LocalWindowInfo.current.containerDpSize
+        val screenWidth = windowSize.width
+        val screenHeight = windowSize.height
 
         val backdropImage =
             item.images.backdrop
@@ -167,11 +166,14 @@ fun HomeCarouselItem(
             var logoAspectRatio by remember(logoUri) { mutableStateOf<Float?>(null) }
 
             val (maxLogoWidth, maxLogoHeight) =
-                when {
-                    logoAspectRatio == null -> 260.dp to 90.dp
-                    (logoAspectRatio ?: 1f) < 1.6f -> 140.dp to 110.dp
-                    (logoAspectRatio ?: 1f) > 2.5f -> 280.dp to 75.dp
-                    else -> 240.dp to 90.dp
+                when (val aspect = logoAspectRatio) {
+                    null -> 260.dp to 90.dp
+                    else ->
+                        when {
+                            aspect < 1.6f -> 140.dp to 110.dp
+                            aspect > 2.5f -> 280.dp to 75.dp
+                            else -> 240.dp to 90.dp
+                        }
                 }
 
             if (logoUri != null && !isLogoFailed) {

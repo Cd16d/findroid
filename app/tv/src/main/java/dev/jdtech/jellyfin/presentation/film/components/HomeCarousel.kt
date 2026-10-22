@@ -48,6 +48,7 @@ import androidx.tv.material3.Surface
 import dev.jdtech.jellyfin.core.presentation.dummy.dummyMovies
 import dev.jdtech.jellyfin.models.FindroidItem
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
+import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.delay
 
 @Composable
@@ -76,7 +77,7 @@ fun HomeCarousel(
 
     LaunchedEffect(isActive, activeIndex, items.size, lastInteractionTime) {
         if (isActive && items.size > 1) {
-            delay(6000L)
+            delay(6000L.milliseconds)
             activeIndex = (activeIndex + 1) % items.size
         }
     }
@@ -124,8 +125,7 @@ fun HomeCarousel(
                             when (keyEvent.key) {
                                 Key.DirectionLeft -> {
                                     if (items.size > 1) {
-                                        activeIndex =
-                                            if (activeIndex > 0) activeIndex - 1 else items.size - 1
+                                        activeIndex = (activeIndex - 1 + items.size) % items.size
                                     }
                                     try {
                                         playFocusRequester?.requestFocus()
@@ -135,8 +135,7 @@ fun HomeCarousel(
 
                                 Key.DirectionRight -> {
                                     if (items.size > 1) {
-                                        activeIndex =
-                                            if (activeIndex < items.size - 1) activeIndex + 1 else 0
+                                        activeIndex = (activeIndex + 1) % items.size
                                     }
                                     try {
                                         playFocusRequester?.requestFocus()
@@ -185,13 +184,13 @@ fun HomeCarousel(
                 modifier = Modifier.align(Alignment.BottomEnd).padding(end = 28.dp, bottom = 18.dp),
             ) {
                 repeat(items.size) { index ->
-                    val isActive = activeIndex == index
+                    val isIndicatorActive = activeIndex == index
                     Box(
                         modifier =
-                            Modifier.size(if (isActive) 10.dp else 6.dp)
+                            Modifier.size(if (isIndicatorActive) 10.dp else 6.dp)
                                 .clip(CircleShape)
                                 .background(
-                                    if (isActive) MaterialTheme.colorScheme.primary
+                                    if (isIndicatorActive) MaterialTheme.colorScheme.primary
                                     else Color.White.copy(alpha = 0.4f)
                                 )
                     )

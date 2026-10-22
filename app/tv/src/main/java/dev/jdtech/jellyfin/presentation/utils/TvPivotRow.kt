@@ -87,6 +87,17 @@ suspend fun LazyListState.scrollItemToPivot(
     }
 }
 
+/**
+ * TV list item wrapper box ensuring focused item z-index depth elevation.
+ *
+ * @param index Item index in list row.
+ * @param controller TvPivotRowController managing pivot scrolling.
+ * @param isItemFocused Whether item currently holds focus.
+ * @param modifier Optional modifier applied to item container box. Defaults to [Modifier].
+ * @param transformOrigin TransformOrigin for focus scale animation. Defaults to
+ *   `TransformOrigin(0f, 0.5f)`.
+ * @param content Composable item content inside pivot row box.
+ */
 @Composable
 fun TvPivotItem(
     index: Int,
@@ -97,4 +108,18 @@ fun TvPivotItem(
     content: @Composable () -> Unit,
 ) {
     Box(modifier = modifier.zIndex(if (isItemFocused) 1f else 0f)) { content() }
+}
+
+@androidx.compose.ui.tooling.preview.Preview
+@Composable
+private fun TvPivotItemPreview() {
+    dev.jdtech.jellyfin.presentation.theme.FindroidTheme {
+        TvPivotItem(
+            index = 0,
+            controller = rememberTvPivotRowController(),
+            isItemFocused = true,
+        ) {
+            androidx.tv.material3.Text("Pivot Item")
+        }
+    }
 }

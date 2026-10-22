@@ -28,6 +28,15 @@ import dev.jdtech.jellyfin.models.FindroidImages
 import dev.jdtech.jellyfin.models.HomeItem
 import dev.jdtech.jellyfin.presentation.theme.spacings
 
+/**
+ * Horizontal row component rendering a media library view section with a title and view-all button.
+ *
+ * @param view HomeItem.ViewItem model representing library view items.
+ * @param itemsPadding Padding applied around row items.
+ * @param onAction Callback invoked for view navigation or item selection actions.
+ * @param modifier Optional modifier applied to column layout. Defaults to [Modifier].
+ * @param hideEpisodeSpoilers Whether episode thumbnails should be blurred. Defaults to `false`.
+ */
 @Composable
 fun HomeView(
     view: HomeItem.ViewItem,
@@ -78,5 +87,26 @@ fun HomeView(
                 )
             }
         }
+    }
+}
+
+@androidx.compose.ui.tooling.preview.Preview(showBackground = true)
+@Composable
+private fun HomeViewPreview() {
+    dev.jdtech.jellyfin.presentation.theme.FindroidTheme {
+        HomeView(
+            view =
+                HomeItem.ViewItem(
+                    view =
+                        dev.jdtech.jellyfin.models.View(
+                            id = java.util.UUID.randomUUID(),
+                            name = "Movies",
+                            items = listOf(dev.jdtech.jellyfin.core.presentation.dummy.dummyMovie),
+                            type = dev.jdtech.jellyfin.models.CollectionType.Movies,
+                        )
+                ),
+            itemsPadding = PaddingValues(16.dp),
+            onAction = {},
+        )
     }
 }

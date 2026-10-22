@@ -34,6 +34,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaSession
 import androidx.media3.ui.AspectRatioFrameLayout
 import dagger.hilt.android.AndroidEntryPoint
+import dev.jdtech.jellyfin.models.VolumeKeyEvent
 import dev.jdtech.jellyfin.player.local.presentation.PlayerEvents
 import dev.jdtech.jellyfin.player.local.presentation.PlayerViewModel
 import dev.jdtech.jellyfin.presentation.player.PlayerScreen
@@ -60,7 +61,7 @@ class PlayerActivity : AppCompatActivity() {
 
     private val volumeKeyEvents =
         MutableSharedFlow<dev.jdtech.jellyfin.models.VolumeKeyEvent>(extraBufferCapacity = 8)
-    private var lastVolumeDownTime = 0L
+    private var lastVolumeKeyTime = 0L
 
     private var isInPipMode by mutableStateOf(false)
     private var currentResizeMode by mutableIntStateOf(AspectRatioFrameLayout.RESIZE_MODE_FIT)
@@ -341,31 +342,16 @@ class PlayerActivity : AppCompatActivity() {
             val action = event.action
             val keyCode = event.keyCode
             when (keyCode) {
-                KeyEvent.KEYCODE_VOLUME_UP -> {
-                    if (action == KeyEvent.ACTION_DOWN) {
-                        val isRepeat = event.repeatCount > 0
-                        val now = SystemClock.uptimeMillis()
-                        if (!isRepeat || now - lastVolumeDownTime >= 50L) {
-                            lastVolumeDownTime = now
-                            volumeKeyEvents.tryEmit(
-                                dev.jdtech.jellyfin.models.VolumeKeyEvent(
-                                    isUp = true,
-                                    isRepeat = isRepeat,
-                                )
-                            )
-                        }
-                    }
-                    return true
-                }
+                KeyEvent.KEYCODE_VOLUME_UP,
                 KeyEvent.KEYCODE_VOLUME_DOWN -> {
                     if (action == KeyEvent.ACTION_DOWN) {
                         val isRepeat = event.repeatCount > 0
                         val now = SystemClock.uptimeMillis()
-                        if (!isRepeat || now - lastVolumeDownTime >= 50L) {
-                            lastVolumeDownTime = now
+                        if (!isRepeat || now - lastVolumeKeyTime >= 50L) {
+                            lastVolumeKeyTime = now
                             volumeKeyEvents.tryEmit(
-                                dev.jdtech.jellyfin.models.VolumeKeyEvent(
-                                    isUp = false,
+                                VolumeKeyEvent(
+                                    isUp = keyCode == KeyEvent.KEYCODE_VOLUME_UP,
                                     isRepeat = isRepeat,
                                 )
                             )

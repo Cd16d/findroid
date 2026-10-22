@@ -683,31 +683,18 @@ constructor(
     }
 
     override fun onPlaybackStateChanged(state: Int) {
-        var stateString = "UNKNOWN_STATE             -"
         when (state) {
-            ExoPlayer.STATE_IDLE -> {
-                stateString = "ExoPlayer.STATE_IDLE      -"
-            }
-
-            ExoPlayer.STATE_BUFFERING -> {
-                stateString = "ExoPlayer.STATE_BUFFERING -"
-            }
-
-            ExoPlayer.STATE_READY -> {
-                stateString = "ExoPlayer.STATE_READY     -"
-                _uiState.update { it.copy(fileLoaded = true) }
-            }
-
+            ExoPlayer.STATE_READY -> _uiState.update { it.copy(fileLoaded = true) }
+            Player.STATE_BUFFERING -> {}
+            Player.STATE_IDLE -> {}
             ExoPlayer.STATE_ENDED -> {
-                stateString = "ExoPlayer.STATE_ENDED     -"
-                val currentSleepMode = _uiState.value.sleepTimerStatus.mode
-                if (currentSleepMode is SleepTimerMode.EndOfMedia) {
+                if (_uiState.value.sleepTimerStatus.mode is SleepTimerMode.EndOfMedia) {
                     setSleepTimer(SleepTimerMode.Off)
                 }
                 eventsChannel.trySend(PlayerEvents.NavigateBack)
             }
         }
-        Timber.d("Changed player state to $stateString")
+        Timber.d("Changed player state to $state")
     }
 
     override fun onPositionDiscontinuity(
@@ -715,13 +702,6 @@ constructor(
         newPosition: Player.PositionInfo,
         reason: Int,
     ) {
-        if (reason == Player.DISCONTINUITY_REASON_SEEK) {
-            updateCurrentSegment()
-        }
-    }
-
-    @Suppress("DEPRECATION", "OVERRIDE_DEPRECATION")
-    override fun onPositionDiscontinuity(reason: Int) {
         if (reason == Player.DISCONTINUITY_REASON_SEEK) {
             updateCurrentSegment()
         }

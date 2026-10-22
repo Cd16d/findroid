@@ -43,6 +43,18 @@ import dev.jdtech.jellyfin.presentation.utils.parallaxLayoutModifier
 import dev.jdtech.jellyfin.utils.toBlurHashPainter
 import dev.jdtech.jellyfin.utils.toOptimizedImageUri
 
+/**
+ * Parallax header image banner for media detail screens with optional logo, spoiler masking, and
+ * blurhash placeholder.
+ *
+ * @param item Media item model containing backdrop/poster images.
+ * @param scrollState ScrollState of parent scroll container to drive parallax effect.
+ * @param showLogo Whether to overlay the media item logo. Defaults to `false`.
+ * @param hideEpisodeSpoilers Whether episode spoiler protection is active. Defaults to `false`.
+ * @param isRevealed Whether spoiler protection is currently revealed. Defaults to `false`.
+ * @param onRevealChange Callback when spoiler revealed state changes. Defaults to `null`.
+ * @param content Additional overlay composable content inside header banner. Defaults to `{}`.
+ */
 @Composable
 fun ItemHeader(
     item: FindroidItem,
@@ -261,5 +273,16 @@ private fun ItemHeaderBase(
                 tint = Color.White.copy(alpha = 0.25f),
             )
         }
+    }
+}
+
+@androidx.compose.ui.tooling.preview.Preview(showBackground = true)
+@Composable
+private fun ItemHeaderPreview() {
+    dev.jdtech.jellyfin.presentation.theme.FindroidTheme {
+        ItemHeader(
+            item = dev.jdtech.jellyfin.core.presentation.dummy.dummyMovie,
+            scrollState = androidx.compose.foundation.rememberScrollState(),
+        )
     }
 }

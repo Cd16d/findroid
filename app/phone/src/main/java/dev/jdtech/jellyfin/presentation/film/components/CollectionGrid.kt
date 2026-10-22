@@ -22,6 +22,13 @@ import dev.jdtech.jellyfin.models.FindroidEpisode
 import dev.jdtech.jellyfin.presentation.theme.spacings
 import dev.jdtech.jellyfin.presentation.utils.GridCellsAdaptiveWithMinColumns
 
+/**
+ * Vertical grid displaying media collection sections with sticky header title cards.
+ *
+ * @param sections List of collection sections containing media items.
+ * @param innerPadding PaddingValues applied around grid layout.
+ * @param onAction Callback invoked for collection grid user actions.
+ */
 @Composable
 fun CollectionGrid(
     sections: List<CollectionSection>,
@@ -76,5 +83,24 @@ fun CollectionGrid(
                 )
             }
         }
+    }
+}
+
+@androidx.compose.ui.tooling.preview.Preview(showBackground = true)
+@Composable
+private fun CollectionGridPreview() {
+    dev.jdtech.jellyfin.presentation.theme.FindroidTheme {
+        CollectionGrid(
+            sections =
+                listOf(
+                    CollectionSection(
+                        id = 1,
+                        name = dev.jdtech.jellyfin.models.UiText.DynamicString("Movies"),
+                        items = listOf(dev.jdtech.jellyfin.core.presentation.dummy.dummyMovie),
+                    )
+                ),
+            innerPadding = PaddingValues(0.dp),
+            onAction = {},
+        )
     }
 }

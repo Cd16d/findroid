@@ -2,6 +2,10 @@ package dev.jdtech.jellyfin.presentation.film.components
 
 import android.content.res.Configuration
 import androidx.annotation.DrawableRes
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -31,7 +35,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewScreenSizes
-import androidx.compose.ui.unit.dp
 import androidx.window.core.layout.WindowSizeClass
 import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
@@ -39,8 +42,8 @@ import dev.jdtech.jellyfin.presentation.theme.spacings
 
 @Composable
 fun PlaceholderScreen(
-    title: String,
     modifier: Modifier = Modifier,
+    title: String? = null,
     isEmpty: Boolean = true,
     subtitle: String? = null,
     buttonText: String? = null,
@@ -48,24 +51,30 @@ fun PlaceholderScreen(
     @DrawableRes image: Int? = null,
     content: @Composable () -> Unit = {},
 ) {
-    if (isEmpty) {
-        PlaceholderScreenContent(
-            title = title,
-            modifier = modifier,
-            subtitle = subtitle,
-            buttonText = buttonText,
-            onButtonClick = onButtonClick,
-            image = image,
-        )
-    } else {
-        content()
+    AnimatedContent(
+        targetState = isEmpty,
+        transitionSpec = { fadeIn() togetherWith fadeOut() },
+        label = "placeholder_screen_transition",
+    ) { empty ->
+        if (empty) {
+            PlaceholderScreenContent(
+                title = title,
+                modifier = modifier,
+                subtitle = subtitle,
+                buttonText = buttonText,
+                onButtonClick = onButtonClick,
+                image = image,
+            )
+        } else {
+            content()
+        }
     }
 }
 
 @Composable
 fun PlaceholderScreenContent(
-    title: String,
     modifier: Modifier = Modifier,
+    title: String? = null,
     subtitle: String? = null,
     buttonText: String? = null,
     onButtonClick: (() -> Unit)? = null,
@@ -78,13 +87,21 @@ fun PlaceholderScreenContent(
             WindowSizeClass.WIDTH_DP_EXPANDED_LOWER_BOUND
         )
 
+    val hasTitle = !title.isNullOrBlank()
+    val hasSubtitle = !subtitle.isNullOrBlank()
+    val hasText = hasTitle || hasSubtitle
+
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
-        val useSideBySide = isLandscape && !isExpanded && maxWidth >= 600.dp && maxHeight >= 320.dp
-        val showImage = maxHeight >= 480.dp
+        val useSideBySide = isLandscape && !isExpanded
 
         if (image != null && useSideBySide) {
             Row(
-                modifier = Modifier.fillMaxSize().padding(MaterialTheme.spacings.default),
+                modifier =
+                    Modifier.fillMaxSize()
+                        .padding(
+                            horizontal = MaterialTheme.spacings.default,
+                            vertical = MaterialTheme.spacings.small,
+                        ),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceEvenly,
             ) {
@@ -95,39 +112,47 @@ fun PlaceholderScreenContent(
                     contentScale = ContentScale.Fit,
                     alignment = Alignment.Center,
                 )
-                Column(
-                    modifier =
-                        Modifier.weight(1f)
-                            .fillMaxHeight()
-                            .verticalScroll(rememberScrollState())
-                            .padding(horizontal = MaterialTheme.spacings.default),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center,
-                ) {
-                    Text(
-                        text = title,
-                        style = MaterialTheme.typography.headlineLarge,
-                        textAlign = TextAlign.Center,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    if (subtitle != null) {
-                        Spacer(modifier = Modifier.height(MaterialTheme.spacings.medium))
-                        Text(
-                            text = subtitle,
-                            modifier =
-                                Modifier.padding(horizontal = MaterialTheme.spacings.default),
-                            style = MaterialTheme.typography.titleMedium,
-                            textAlign = TextAlign.Center,
-                        )
-                    }
-                    if (buttonText != null && onButtonClick != null) {
-                        Spacer(modifier = Modifier.height(MaterialTheme.spacings.default))
-                        Button(onClick = onButtonClick) { Text(text = buttonText) }
+                if (hasText || (buttonText != null && onButtonClick != null)) {
+                    Column(
+                        modifier =
+                            Modifier.weight(1f)
+                                .fillMaxHeight()
+                                .verticalScroll(rememberScrollState())
+                                .padding(horizontal = MaterialTheme.spacings.default),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
+                    ) {
+                        if (hasTitle) {
+                            Text(
+                                text = title,
+                                style = MaterialTheme.typography.headlineLarge,
+                                textAlign = TextAlign.Center,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold,
+                            )
+                        }
+                        if (hasSubtitle) {
+                            if (hasTitle) {
+                                Spacer(modifier = Modifier.height(MaterialTheme.spacings.medium))
+                            }
+                            Text(
+                                text = subtitle,
+                                modifier =
+                                    Modifier.padding(horizontal = MaterialTheme.spacings.default),
+                                style = MaterialTheme.typography.titleMedium,
+                                textAlign = TextAlign.Center,
+                            )
+                        }
+                        if (buttonText != null && onButtonClick != null) {
+                            if (hasText) {
+                                Spacer(modifier = Modifier.height(MaterialTheme.spacings.default))
+                            }
+                            Button(onClick = onButtonClick) { Text(text = buttonText) }
+                        }
                     }
                 }
             }
-        } else if (image != null && showImage) {
+        } else if (image != null) {
             Column(
                 modifier =
                     Modifier.fillMaxSize()
@@ -138,15 +163,19 @@ fun PlaceholderScreenContent(
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.headlineLarge,
-                    textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold,
-                )
-                if (subtitle != null) {
-                    Spacer(modifier = Modifier.height(MaterialTheme.spacings.default))
+                if (hasTitle) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.headlineLarge,
+                        textAlign = TextAlign.Center,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+                if (hasSubtitle) {
+                    if (hasTitle) {
+                        Spacer(modifier = Modifier.height(MaterialTheme.spacings.default))
+                    }
                     Text(
                         text = subtitle,
                         modifier = Modifier.padding(horizontal = MaterialTheme.spacings.default),
@@ -154,7 +183,9 @@ fun PlaceholderScreenContent(
                         textAlign = TextAlign.Center,
                     )
                 }
-                Spacer(modifier = Modifier.height(MaterialTheme.spacings.large))
+                if (hasText) {
+                    Spacer(modifier = Modifier.height(MaterialTheme.spacings.large))
+                }
                 Image(
                     painter = painterResource(image),
                     contentDescription = null,
@@ -180,15 +211,19 @@ fun PlaceholderScreenContent(
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.headlineLarge,
-                    textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold,
-                )
-                if (subtitle != null) {
-                    Spacer(modifier = Modifier.height(MaterialTheme.spacings.medium))
+                if (hasTitle) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.headlineLarge,
+                        textAlign = TextAlign.Center,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+                if (hasSubtitle) {
+                    if (hasTitle) {
+                        Spacer(modifier = Modifier.height(MaterialTheme.spacings.medium))
+                    }
                     Text(
                         text = subtitle,
                         modifier = Modifier.padding(horizontal = MaterialTheme.spacings.default),
@@ -197,7 +232,9 @@ fun PlaceholderScreenContent(
                     )
                 }
                 if (buttonText != null && onButtonClick != null) {
-                    Spacer(modifier = Modifier.height(MaterialTheme.spacings.default))
+                    if (hasText) {
+                        Spacer(modifier = Modifier.height(MaterialTheme.spacings.default))
+                    }
                     Button(onClick = onButtonClick) { Text(text = buttonText) }
                 }
             }

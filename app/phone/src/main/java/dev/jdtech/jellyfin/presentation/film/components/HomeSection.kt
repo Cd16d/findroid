@@ -20,6 +20,16 @@ import dev.jdtech.jellyfin.film.presentation.home.HomeAction
 import dev.jdtech.jellyfin.models.HomeSection
 import dev.jdtech.jellyfin.presentation.theme.spacings
 
+/**
+ * Horizontal row component rendering a home screen section with a title header.
+ *
+ * @param section HomeSection model containing section title and items.
+ * @param itemsPadding Padding applied around row items.
+ * @param onAction Callback invoked when an item in the section is interacted with.
+ * @param modifier Optional modifier applied to column layout. Defaults to [Modifier].
+ * @param hideEpisodeSpoilers Whether episode thumbnails/overviews should be blurred. Defaults to
+ *   `false`.
+ */
 @Composable
 fun HomeSection(
     section: HomeSection,
@@ -50,5 +60,22 @@ fun HomeSection(
                 )
             }
         }
+    }
+}
+
+@androidx.compose.ui.tooling.preview.Preview(showBackground = true)
+@Composable
+private fun HomeSectionPreview() {
+    dev.jdtech.jellyfin.presentation.theme.FindroidTheme {
+        HomeSection(
+            section =
+                HomeSection(
+                    id = java.util.UUID.randomUUID(),
+                    name = dev.jdtech.jellyfin.models.UiText.DynamicString("Continue Watching"),
+                    items = listOf(dev.jdtech.jellyfin.core.presentation.dummy.dummyMovie),
+                ),
+            itemsPadding = PaddingValues(16.dp),
+            onAction = {},
+        )
     }
 }

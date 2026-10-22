@@ -18,6 +18,25 @@ import dev.jdtech.jellyfin.models.FindroidSegment
 import dev.jdtech.jellyfin.player.cast.models.CastPlaybackStatus
 import dev.jdtech.jellyfin.player.cast.presentation.CastPlayerViewModel
 
+/**
+ * Bottom control section of expanded Google Cast player.
+ *
+ * @param uiState Cast player UI state model.
+ * @param isScrubbing Whether seeker bar is being dragged.
+ * @param scrubPosition Current scrub drag position in ms.
+ * @param onScrubStart Callback when scrub drag starts.
+ * @param onScrubStop Callback when scrub drag stops.
+ * @param onPlay Callback to resume playback.
+ * @param onPause Callback to pause playback.
+ * @param onPlayPreviousItem Callback to play previous item.
+ * @param onPlayNextItem Callback to play next item.
+ * @param onSkipSegment Callback to skip segment.
+ * @param onVolumeChange Callback when volume slider moves.
+ * @param onClickAudio Callback when audio track button is tapped.
+ * @param onClickSubtitle Callback when subtitle track button is tapped.
+ * @param modifier Modifier applied to column layout. Defaults to [Modifier].
+ * @param onOpenChapters Optional callback to open chapter selector. Defaults to `null`.
+ */
 @Composable
 fun PlayerBottomSection(
     uiState: CastPlayerViewModel.UiState,
@@ -124,5 +143,27 @@ private fun CastPlayerTitles(uiState: CastPlayerViewModel.UiState) {
                 textAlign = TextAlign.Center,
             )
         }
+    }
+}
+
+@androidx.compose.ui.tooling.preview.Preview(showBackground = true)
+@Composable
+private fun PlayerBottomSectionPreview() {
+    dev.jdtech.jellyfin.presentation.theme.FindroidTheme {
+        PlayerBottomSection(
+            uiState = CastPlayerViewModel.UiState(),
+            isScrubbing = false,
+            scrubPosition = 0f,
+            onScrubStart = {},
+            onScrubStop = {},
+            onPlay = {},
+            onPause = {},
+            onPlayPreviousItem = {},
+            onPlayNextItem = {},
+            onSkipSegment = {},
+            onVolumeChange = {},
+            onClickAudio = {},
+            onClickSubtitle = {},
+        )
     }
 }

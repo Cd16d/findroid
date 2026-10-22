@@ -30,15 +30,11 @@ import dev.jdtech.jellyfin.core.presentation.dummy.dummyCollections
 import dev.jdtech.jellyfin.film.presentation.media.MediaAction
 import dev.jdtech.jellyfin.film.presentation.media.MediaState
 import dev.jdtech.jellyfin.film.presentation.media.MediaViewModel
-import dev.jdtech.jellyfin.film.presentation.search.SearchAction
-import dev.jdtech.jellyfin.film.presentation.search.SearchState
-import dev.jdtech.jellyfin.film.presentation.search.SearchViewModel
 import dev.jdtech.jellyfin.models.FindroidItem
 import dev.jdtech.jellyfin.presentation.components.ErrorDialog
 import dev.jdtech.jellyfin.presentation.film.components.Direction
 import dev.jdtech.jellyfin.presentation.film.components.ErrorCard
 import dev.jdtech.jellyfin.presentation.film.components.FavoritesCard
-import dev.jdtech.jellyfin.presentation.film.components.FilmSearchBar
 import dev.jdtech.jellyfin.presentation.film.components.ItemCard
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
@@ -48,21 +44,14 @@ import dev.jdtech.jellyfin.presentation.utils.rememberSafePadding
 fun MediaScreen(
     onItemClick: (FindroidItem) -> Unit,
     onFavoritesClick: () -> Unit,
-    searchExpanded: Boolean,
-    onSearchExpand: (Boolean) -> Unit,
     viewModel: MediaViewModel = hiltViewModel(),
-    searchViewModel: SearchViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val searchState by searchViewModel.state.collectAsStateWithLifecycle()
 
     LaunchedEffect(true) { viewModel.loadData() }
 
     MediaScreenLayout(
         state = state,
-        searchState = searchState,
-        searchExpanded = searchExpanded,
-        onSearchExpand = onSearchExpand,
         onAction = { action ->
             when (action) {
                 is MediaAction.OnItemClick -> onItemClick(action.item)
@@ -71,24 +60,13 @@ fun MediaScreen(
             }
             viewModel.onAction(action)
         },
-        onSearchAction = { action ->
-            when (action) {
-                is SearchAction.OnItemClick -> onItemClick(action.item)
-                else -> Unit
-            }
-            searchViewModel.onAction(action)
-        },
     )
 }
 
 @Composable
 private fun MediaScreenLayout(
     state: MediaState,
-    searchState: SearchState,
-    searchExpanded: Boolean,
-    onSearchExpand: (Boolean) -> Unit,
     onAction: (MediaAction) -> Unit,
-    onSearchAction: (SearchAction) -> Unit,
 ) {
     val safePadding = rememberSafePadding(handleStartInsets = false, handleBottomInsets = false)
     val castPadding = LocalCastPlayerHeight.current
@@ -101,9 +79,9 @@ private fun MediaScreenLayout(
         animateDpAsState(
             targetValue =
                 if (state.error != null) {
-                    safePadding.top + 144.dp
+                    safePadding.top + 72.dp
                 } else {
-                    safePadding.top + 88.dp
+                    safePadding.top + MaterialTheme.spacings.default
                 },
             label = "content_padding",
         )
@@ -122,15 +100,6 @@ private fun MediaScreenLayout(
         }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        FilmSearchBar(
-            state = searchState,
-            expanded = searchExpanded,
-            onExpand = onSearchExpand,
-            onAction = onSearchAction,
-            modifier = Modifier.fillMaxWidth(),
-            paddingStart = paddingStart,
-            paddingEnd = paddingEnd,
-        )
         LazyVerticalGrid(
             columns = GridCells.Adaptive(minSize = minColumnSize),
             modifier = Modifier.fillMaxSize(),
@@ -164,7 +133,7 @@ private fun MediaScreenLayout(
                     Modifier.fillMaxWidth()
                         .padding(
                             start = paddingStart,
-                            top = safePadding.top + 80.dp,
+                            top = safePadding.top + MaterialTheme.spacings.small,
                             end = paddingEnd,
                         ),
             )
@@ -185,11 +154,7 @@ private fun MediaScreenLayoutPreview() {
         MediaScreenLayout(
             state =
                 MediaState(libraries = dummyCollections, error = Exception("Failed to load data")),
-            searchState = SearchState(),
-            searchExpanded = false,
-            onSearchExpand = {},
             onAction = {},
-            onSearchAction = {},
         )
     }
 }

@@ -11,12 +11,15 @@ import org.jellyfin.sdk.api.client.HttpClientOptions
 import org.jellyfin.sdk.api.client.extensions.authenticationApi
 import org.jellyfin.sdk.api.client.extensions.brandingApi
 import org.jellyfin.sdk.api.client.extensions.deviceApi
+import org.jellyfin.sdk.api.client.extensions.filterApi
+import org.jellyfin.sdk.api.client.extensions.genreApi
 import org.jellyfin.sdk.api.client.extensions.libraryApi
 import org.jellyfin.sdk.api.client.extensions.mediaInfoApi
 import org.jellyfin.sdk.api.client.extensions.mediaSegmentApi
 import org.jellyfin.sdk.api.client.extensions.searchApi
 import org.jellyfin.sdk.api.client.extensions.sessionApi
 import org.jellyfin.sdk.api.client.extensions.showApi
+import org.jellyfin.sdk.api.client.extensions.studioApi
 import org.jellyfin.sdk.api.client.extensions.suggestionApi
 import org.jellyfin.sdk.api.client.extensions.systemApi
 import org.jellyfin.sdk.api.client.extensions.trickPlayApi
@@ -24,6 +27,7 @@ import org.jellyfin.sdk.api.client.extensions.userApi
 import org.jellyfin.sdk.api.client.extensions.userDataApi
 import org.jellyfin.sdk.api.client.extensions.userViewApi
 import org.jellyfin.sdk.api.client.extensions.videoApi
+import org.jellyfin.sdk.api.client.extensions.yearApi
 import org.jellyfin.sdk.api.okhttp.OkHttpFactory
 import org.jellyfin.sdk.createJellyfin
 import org.jellyfin.sdk.model.ClientInfo
@@ -72,12 +76,15 @@ class JellyfinApi(
     val authenticationApi = api.authenticationApi
     val brandingApi = api.brandingApi
     val deviceApi = api.deviceApi
+    val filterApi = api.filterApi
+    val genreApi = api.genreApi
     val libraryApi = api.libraryApi
     val mediaInfoApi = api.mediaInfoApi
     val mediaSegmentApi = api.mediaSegmentApi
     val searchApi = api.searchApi
     val sessionApi = api.sessionApi
     val showApi = api.showApi
+    val studioApi = api.studioApi
     val suggestionApi = api.suggestionApi
     val systemApi = api.systemApi
     val trickPlayApi = api.trickPlayApi
@@ -85,6 +92,7 @@ class JellyfinApi(
     val userDataApi = api.userDataApi
     val userViewApi = api.userViewApi
     val videoApi = api.videoApi
+    val yearApi = api.yearApi
 
     companion object {
         @Volatile private var INSTANCE: JellyfinApi? = null

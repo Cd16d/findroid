@@ -112,6 +112,13 @@ fun rememberOledBurnInOffset(
     }
 }
 
+/**
+ * Full-screen TV screensaver component with animated slideshow and OLED burn-in prevention offset.
+ *
+ * @param slides List of screensaver slides with title and backdrop/logo image URIs.
+ * @param modifier Optional modifier applied to screensaver container. Defaults to [Modifier].
+ * @param cycleIntervalMs Slide rotation interval in milliseconds. Defaults to `60_000L`.
+ */
 @Composable
 fun AppScreensaver(
     slides: List<ScreensaverSlide>,
@@ -285,5 +292,22 @@ fun AppScreensaver(
                 }
             }
         }
+    }
+}
+
+@androidx.compose.ui.tooling.preview.Preview
+@Composable
+private fun AppScreensaverPreview() {
+    dev.jdtech.jellyfin.presentation.theme.FindroidTheme {
+        AppScreensaver(
+            slides =
+                listOf(
+                    ScreensaverSlide(
+                        title = "Findroid Screensaver",
+                        backdropUri = null,
+                        logoUri = null,
+                    )
+                )
+        )
     }
 }

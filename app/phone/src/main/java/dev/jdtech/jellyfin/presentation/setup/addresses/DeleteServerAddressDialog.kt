@@ -7,6 +7,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import dev.jdtech.jellyfin.setup.R as SetupR
 
+/**
+ * Confirmation dialog for removing a saved Jellyfin server address.
+ *
+ * @param address Server address URL string to be deleted.
+ * @param onConfirm Callback when removal is confirmed.
+ * @param onDismiss Callback when dialog is dismissed.
+ */
 @Composable
 fun DeleteServerAddressDialog(address: String, onConfirm: () -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
@@ -22,4 +29,16 @@ fun DeleteServerAddressDialog(address: String, onConfirm: () -> Unit, onDismiss:
             TextButton(onClick = onDismiss) { Text(text = stringResource(SetupR.string.cancel)) }
         },
     )
+}
+
+@androidx.compose.ui.tooling.preview.Preview
+@Composable
+private fun DeleteServerAddressDialogPreview() {
+    dev.jdtech.jellyfin.presentation.theme.FindroidTheme {
+        DeleteServerAddressDialog(
+            address = "https://jellyfin.example.com",
+            onConfirm = {},
+            onDismiss = {},
+        )
+    }
 }

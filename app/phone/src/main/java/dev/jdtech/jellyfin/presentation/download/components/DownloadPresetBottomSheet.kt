@@ -1,14 +1,10 @@
 package dev.jdtech.jellyfin.presentation.download.components
 
-import android.text.format.Formatter
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
@@ -24,14 +20,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -67,7 +61,6 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -83,12 +76,13 @@ import dev.jdtech.jellyfin.models.FindroidMediaStream
 import dev.jdtech.jellyfin.models.FindroidSeason
 import dev.jdtech.jellyfin.models.FindroidSourceType
 import dev.jdtech.jellyfin.player.core.domain.utils.TrackFormatter
+import dev.jdtech.jellyfin.presentation.download.components.presets.CheckboxOptionRow
+import dev.jdtech.jellyfin.presentation.download.components.presets.PresetCard
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.utils.DeviceCodecCapabilities
 import java.util.Locale
 import kotlinx.coroutines.launch
 import org.jellyfin.sdk.model.api.MediaStreamType
-import org.jellyfin.sdk.model.api.VideoRangeType
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -390,7 +384,7 @@ fun DownloadPresetBottomSheetLayout(
         ) {
             presets.forEach { preset ->
                 key(preset.id) {
-                    DownloadPresetCard(
+                    PresetCard(
                         preset = preset,
                         isSelected = preset.id == selectedPresetId,
                         showDetails = showDetails,
@@ -781,315 +775,6 @@ fun DownloadPresetBottomSheetLayout(
                 text = stringResource(CoreR.string.download_button_description),
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
             )
-        }
-    }
-}
-
-@Composable
-private fun DownloadPresetCard(
-    preset: DownloadQualityPreset,
-    isSelected: Boolean,
-    showDetails: Boolean,
-    runtimeTicks: Long,
-    sourceSize: Long,
-    isOriginalSupported: Boolean,
-    originalVideoStream: FindroidMediaStream?,
-    onSelect: () -> Unit,
-    modifier: Modifier = Modifier,
-    audioStreams: List<FindroidMediaStream> = emptyList(),
-    currentLocale: Locale = LocalConfiguration.current.locales[0],
-) {
-    val context = LocalContext.current
-    val isOriginalUnsupported = preset.isOriginal && !isOriginalSupported
-
-    val borderColor by
-        animateColorAsState(
-            targetValue =
-                when {
-                    isSelected -> MaterialTheme.colorScheme.primary
-                    isOriginalUnsupported -> MaterialTheme.colorScheme.error.copy(alpha = 0.8f)
-                    else -> MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)
-                },
-            label = "presetBorderColor",
-        )
-    val borderWidth = if (isSelected || isOriginalUnsupported) 2.dp else 1.dp
-
-    val sourceSizeStr = stringResource(CoreR.string.download_preset_source_size)
-    val approxSizeStr = preset.displayApproxSize.asString()
-
-    val sizeBadgeText =
-        remember(preset, sourceSize, runtimeTicks, context, sourceSizeStr, approxSizeStr) {
-            if (preset.isOriginal) {
-                if (sourceSize > 0) {
-                    Formatter.formatFileSize(context, sourceSize)
-                } else {
-                    sourceSizeStr
-                }
-            } else {
-                if (runtimeTicks > 0) {
-                    val durationSec = (runtimeTicks / 10_000_000L).coerceAtLeast(1)
-                    val estimatedBytes = (preset.totalBitrateBps * durationSec) / 8L
-                    "~${Formatter.formatFileSize(context, estimatedBytes)}"
-                } else {
-                    approxSizeStr
-                }
-            }
-        }
-
-    Card(
-        onClick = onSelect,
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors =
-            CardDefaults.cardColors(
-                containerColor =
-                    when {
-                        isSelected -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
-                        isOriginalUnsupported ->
-                            MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.25f)
-                        else -> MaterialTheme.colorScheme.surfaceContainer
-                    }
-            ),
-        border = BorderStroke(borderWidth, borderColor),
-    ) {
-        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = preset.displayName.asString(),
-                        style =
-                            MaterialTheme.typography.titleMedium.copy(
-                                fontWeight =
-                                    if (isSelected) FontWeight.Bold else FontWeight.SemiBold
-                            ),
-                        color =
-                            when {
-                                isOriginalUnsupported -> MaterialTheme.colorScheme.error
-                                isSelected -> MaterialTheme.colorScheme.primary
-                                else -> MaterialTheme.colorScheme.onSurface
-                            },
-                    )
-                    if (isOriginalUnsupported) {
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = stringResource(CoreR.string.download_preset_not_supported),
-                            style =
-                                MaterialTheme.typography.bodySmall.copy(
-                                    fontWeight = FontWeight.Medium
-                                ),
-                            color = MaterialTheme.colorScheme.error,
-                        )
-                    }
-                }
-
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color =
-                        when {
-                            isSelected -> MaterialTheme.colorScheme.primaryContainer
-                            isOriginalUnsupported -> MaterialTheme.colorScheme.errorContainer
-                            else -> MaterialTheme.colorScheme.surfaceContainerHigh
-                        },
-                ) {
-                    Text(
-                        text = sizeBadgeText,
-                        style =
-                            MaterialTheme.typography.labelMedium.copy(
-                                fontWeight = FontWeight.Medium
-                            ),
-                        color =
-                            when {
-                                isSelected -> MaterialTheme.colorScheme.onPrimaryContainer
-                                isOriginalUnsupported -> MaterialTheme.colorScheme.onErrorContainer
-                                else -> MaterialTheme.colorScheme.onSurfaceVariant
-                            },
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                    )
-                }
-            }
-
-            AnimatedVisibility(
-                visible = showDetails,
-                enter = fadeIn() + expandVertically(),
-                exit = fadeOut() + shrinkVertically(),
-            ) {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    HorizontalDivider(
-                        modifier = Modifier.padding(vertical = 10.dp),
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-                    )
-                    if (preset.isOriginal) {
-                        val videoText =
-                            remember(originalVideoStream) {
-                                if (originalVideoStream != null) {
-                                    val parts = mutableListOf<String>()
-                                    if (originalVideoStream.codec.isNotBlank())
-                                        parts.add(originalVideoStream.codec.uppercase(Locale.US))
-                                    if (originalVideoStream.height != null)
-                                        parts.add("${originalVideoStream.height}p")
-                                    originalVideoStream.videoRangeType
-                                        ?.takeIf { it != VideoRangeType.SDR }
-                                        ?.let { parts.add(it.name) }
-                                    "Video: ${parts.joinToString(" • ")}"
-                                } else {
-                                    "Video: Direct Stream (Original source)"
-                                }
-                            }
-                        Text(
-                            text = videoText,
-                            style = MaterialTheme.typography.bodySmall,
-                            color =
-                                if (isOriginalUnsupported) MaterialTheme.colorScheme.error
-                                else MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        if (audioStreams.isNotEmpty()) {
-                            audioStreams.forEach { stream ->
-                                key(stream.index) {
-                                    Spacer(modifier = Modifier.height(2.dp))
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text(
-                                            text =
-                                                stringResource(
-                                                    CoreR.string.download_preset_audio,
-                                                    formatAudioTrackName(stream, currentLocale),
-                                                ),
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        )
-                                        if (stream.isDefault == true) {
-                                            Spacer(modifier = Modifier.width(6.dp))
-                                            Surface(
-                                                shape = RoundedCornerShape(4.dp),
-                                                color =
-                                                    MaterialTheme.colorScheme
-                                                        .surfaceContainerHighest,
-                                            ) {
-                                                Text(
-                                                    text =
-                                                        stringResource(CoreR.string.track_default),
-                                                    style = MaterialTheme.typography.labelSmall,
-                                                    color =
-                                                        MaterialTheme.colorScheme.onSurfaceVariant,
-                                                    modifier =
-                                                        Modifier.padding(
-                                                            horizontal = 4.dp,
-                                                            vertical = 1.dp,
-                                                        ),
-                                                )
-                                            }
-                                        }
-                                        if (stream.isExternal) {
-                                            Spacer(modifier = Modifier.width(6.dp))
-                                            Surface(
-                                                shape = RoundedCornerShape(4.dp),
-                                                color =
-                                                    MaterialTheme.colorScheme.secondaryContainer,
-                                            ) {
-                                                Text(
-                                                    text = stringResource(CoreR.string.external),
-                                                    style = MaterialTheme.typography.labelSmall,
-                                                    color =
-                                                        MaterialTheme.colorScheme
-                                                            .onSecondaryContainer,
-                                                    modifier =
-                                                        Modifier.padding(
-                                                            horizontal = 4.dp,
-                                                            vertical = 1.dp,
-                                                        ),
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        } else {
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                text =
-                                    stringResource(
-                                        CoreR.string.download_preset_audio,
-                                        "Direct Stream (${stringResource(CoreR.string.download_preset_original_audio)})",
-                                    ),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    } else {
-                        Text(
-                            text =
-                                "Video: ${preset.videoCodec.uppercase(Locale.US)} • ${preset.resolutionText.asString()} • ${preset.bitrateText.asString()}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text =
-                                stringResource(
-                                    CoreR.string.download_preset_audio,
-                                    "${preset.audioCodec.uppercase(Locale.US)} • ${preset.audioText.asString()}",
-                                ),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun CheckboxOptionRow(
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-    label: String,
-    modifier: Modifier = Modifier,
-    subtitle: String? = null,
-    shape: RoundedCornerShape = RoundedCornerShape(0.dp),
-) {
-    Row(
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .clip(shape)
-                .toggleable(
-                    value = checked,
-                    role = Role.Checkbox,
-                    onValueChange = onCheckedChange,
-                )
-                .defaultMinSize(minHeight = 48.dp)
-                .padding(horizontal = 16.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Checkbox(
-            checked = checked,
-            onCheckedChange = null,
-        )
-        Spacer(modifier = Modifier.width(10.dp))
-        Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            AnimatedVisibility(
-                visible = !subtitle.isNullOrBlank(),
-                enter = fadeIn() + expandVertically(),
-                exit = fadeOut() + shrinkVertically(),
-            ) {
-                if (!subtitle.isNullOrBlank()) {
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = subtitle,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
         }
     }
 }

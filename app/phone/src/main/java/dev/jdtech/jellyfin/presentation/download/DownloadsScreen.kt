@@ -57,6 +57,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.PreviewScreenSizes
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
@@ -85,10 +86,21 @@ import dev.jdtech.jellyfin.presentation.download.models.DownloadCardActions
 import dev.jdtech.jellyfin.presentation.download.models.DownloadItemCardState
 import dev.jdtech.jellyfin.presentation.download.models.DownloadStatus
 import dev.jdtech.jellyfin.presentation.film.components.PlaceholderScreen
+import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.utils.LocalOfflineMode
 import dev.jdtech.jellyfin.presentation.utils.rememberSafePadding
 import java.util.UUID
 
+/**
+ * Main downloads screen displaying downloaded movies, shows, active transfers, and storage info.
+ *
+ * @param onMovieClick Callback when a downloaded movie item is tapped.
+ * @param onShowClick Callback when a downloaded show item is tapped.
+ * @param onStorageClick Callback when storage details card is tapped.
+ * @param onExploreLibraryClick Callback to navigate to media library when empty.
+ * @param onGoOnlineClick Callback when switching back online from offline banner. Defaults to `{}`.
+ * @param viewModel ViewModel providing download queue and state. Defaults to [hiltViewModel].
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DownloadsScreen(
@@ -926,5 +938,18 @@ fun DownloadsScreen(
                 )
             }
         }
+    }
+}
+
+@PreviewScreenSizes
+@Composable
+private fun DownloadsScreenPreview() {
+    FindroidTheme {
+        DownloadsScreen(
+            onMovieClick = {},
+            onShowClick = {},
+            onStorageClick = {},
+            onExploreLibraryClick = {},
+        )
     }
 }

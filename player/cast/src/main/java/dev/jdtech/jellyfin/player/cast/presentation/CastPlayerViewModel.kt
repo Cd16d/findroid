@@ -202,7 +202,7 @@ constructor(
     /** Handles the transition when a new media item starts playing. */
     private suspend fun onMediaItemTransition(item: PlayerItem) {
         Timber.d("Cast MediaItem transition: ${item.itemId}")
-        resetSkipButtonTimer()
+        clearActiveSegment()
         currentItemId = item.itemId
         savedStateHandle[KEY_CURRENT_ITEM_ID] = item.itemId.toString()
         val isMovie = item.mediaType == PlayerMediaType.MOVIE
@@ -287,7 +287,7 @@ constructor(
      */
     private fun updateCurrentSegment(positionMs: Long) {
         if (currentMediaItemSegments.isEmpty()) {
-            resetSkipButtonTimer()
+            clearActiveSegment()
             return
         }
 
@@ -348,7 +348,7 @@ constructor(
         Timber.d("Updated current segment: ${_uiState.value.currentSegment?.type}")
     }
 
-    private fun resetSkipButtonTimer() {
+    private fun clearActiveSegment() {
         activeSegment = null
     }
 
@@ -391,7 +391,7 @@ constructor(
      * segment's end boundary.
      */
     fun skipSegment(segment: FindroidSegment) {
-        resetSkipButtonTimer()
+        clearActiveSegment()
         if (shouldSkipToNextEpisode(segment)) {
             playNextItem()
         } else {
@@ -443,7 +443,7 @@ constructor(
      * disconnects.
      */
     private fun onMediaItemCleared() {
-        resetSkipButtonTimer()
+        clearActiveSegment()
         trickplayJob?.cancel()
         trickplayJob = null
         currentItemId = null
@@ -560,7 +560,7 @@ constructor(
     }
 
     override fun onCleared() {
-        resetSkipButtonTimer()
+        clearActiveSegment()
         trickplayJob?.cancel()
         val oldTrickplay = _uiState.value.currentTrickplay
         oldTrickplay?.images?.forEach { it.recycle() }

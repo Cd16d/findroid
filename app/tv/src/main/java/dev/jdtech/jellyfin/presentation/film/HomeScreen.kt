@@ -239,18 +239,20 @@ private fun HomeScreenLayout(
         if (carouselItems.isNotEmpty()) firstSectionFocusRequester
         else (contentFocusRequester ?: firstSectionFocusRequester)
 
-    LaunchedEffect(autoFocusContent, carouselItems.isNotEmpty(), state.isLoading) {
-        if (autoFocusContent) {
-            if (carouselItems.isNotEmpty()) {
-                for (attempt in 0..15) {
-                    try {
-                        effectiveCarouselPlayRequester?.requestFocus()
-                        onInitialFocusRequested()
-                        break
-                    } catch (_: Exception) {
-                        delay(60.milliseconds)
-                    }
-                }
+    val targetRequester =
+        remember(
+            autoFocusContent,
+            state.isLoading,
+            carouselItems.isNotEmpty(),
+            state.views,
+            state.resumeSection,
+            state.nextUpSection,
+            state.error,
+        ) {
+            if (!autoFocusContent) {
+                null
+            } else if (carouselItems.isNotEmpty()) {
+                effectiveCarouselPlayRequester
             } else if (
                 !state.isLoading &&
                     (state.views.isNotEmpty() ||
@@ -258,15 +260,21 @@ private fun HomeScreenLayout(
                         state.nextUpSection != null ||
                         state.error != null)
             ) {
-                for (attempt in 0..15) {
-                    try {
-                        effectiveFirstSectionRequester.requestFocus()
-                        onInitialFocusRequested()
-                        break
-                    } catch (_: Exception) {
-                        delay(60.milliseconds)
-                    }
-                }
+                effectiveFirstSectionRequester
+            } else {
+                null
+            }
+        }
+
+    LaunchedEffect(targetRequester) {
+        val requester = targetRequester ?: return@LaunchedEffect
+        repeat(16) {
+            try {
+                requester.requestFocus()
+                onInitialFocusRequested()
+                return@LaunchedEffect
+            } catch (_: Exception) {
+                delay(60.milliseconds)
             }
         }
     }
@@ -383,11 +391,7 @@ private fun HomeScreenLayout(
             LazyColumn(
                 state = lazyListState,
                 modifier = Modifier.fillMaxSize().padding(top = topHeaderHeight).zIndex(1f),
-                contentPadding =
-                    PaddingValues(
-                        top = 0.dp,
-                        bottom = maxOf(300.dp, screenHeight - 370.dp),
-                    ),
+                contentPadding = PaddingValues(bottom = maxOf(300.dp, screenHeight - 370.dp)),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
                 state.resumeSection?.let { section ->

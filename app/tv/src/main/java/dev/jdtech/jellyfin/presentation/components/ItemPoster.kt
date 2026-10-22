@@ -20,6 +20,16 @@ enum class Direction {
     VERTICAL,
 }
 
+/**
+ * Media item poster component with blurhash placeholder and aspect ratio formatting.
+ *
+ * @param item Media item model containing poster/backdrop image.
+ * @param direction Poster orientation direction (`HORIZONTAL` 16:9 or `VERTICAL` 0.70 aspect
+ *   ratio).
+ * @param modifier Optional modifier applied to poster box. Defaults to [Modifier].
+ * @param blurOnly Whether to only display blurhash placeholder without loading high-res image.
+ *   Defaults to `false`.
+ */
 @Composable
 fun ItemPoster(
     item: FindroidItem,
@@ -69,5 +79,16 @@ fun ItemPoster(
                 modifier = Modifier.fillMaxSize(),
             )
         }
+    }
+}
+
+@androidx.compose.ui.tooling.preview.Preview
+@Composable
+private fun ItemPosterPreview() {
+    dev.jdtech.jellyfin.presentation.theme.FindroidTheme {
+        ItemPoster(
+            item = dev.jdtech.jellyfin.core.presentation.dummy.dummyMovie,
+            direction = Direction.VERTICAL,
+        )
     }
 }

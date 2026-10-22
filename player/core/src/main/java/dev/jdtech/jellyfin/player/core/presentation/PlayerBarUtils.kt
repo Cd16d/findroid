@@ -1,6 +1,7 @@
 package dev.jdtech.jellyfin.player.core.presentation
 
 import android.content.Context
+import androidx.annotation.StringRes
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
@@ -235,6 +236,22 @@ fun calculateBarSlices(
 }
 
 /**
+ * Returns the string resource ID for the localized label of a [FindroidSegmentType], or null if
+ * unlabeled.
+ */
+val FindroidSegmentType.labelRes: Int?
+    @StringRes
+    get() =
+        when (this) {
+            FindroidSegmentType.INTRO -> R.string.segment_intro
+            FindroidSegmentType.OUTRO -> R.string.segment_outro
+            FindroidSegmentType.RECAP -> R.string.segment_recap
+            FindroidSegmentType.PREVIEW -> R.string.segment_preview
+            FindroidSegmentType.COMMERCIAL -> R.string.segment_commercial
+            FindroidSegmentType.UNKNOWN -> null
+        }
+
+/**
  * Returns the distinctive UI accent [Color] assigned to each [FindroidSegmentType], or null if
  * unstyled.
  *
@@ -273,15 +290,7 @@ fun getSectionTitle(
 
     val segment = segments.firstOrNull { posMs in it.startTicks..it.endTicks }
 
-    val segmentLabel =
-        when (segment?.type) {
-            FindroidSegmentType.INTRO -> context.getString(R.string.segment_intro)
-            FindroidSegmentType.OUTRO -> context.getString(R.string.segment_outro)
-            FindroidSegmentType.RECAP -> context.getString(R.string.segment_recap)
-            FindroidSegmentType.PREVIEW -> context.getString(R.string.segment_preview)
-            FindroidSegmentType.COMMERCIAL -> context.getString(R.string.segment_commercial)
-            else -> null
-        }
+    val segmentLabel = segment?.type?.labelRes?.let { context.getString(it) }
 
     val chapterLabel =
         if (chapter != null) {

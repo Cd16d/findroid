@@ -76,6 +76,7 @@ import dev.jdtech.jellyfin.player.core.domain.utils.TrackFormatter
 import dev.jdtech.jellyfin.player.core.presentation.findChapterSegment
 import dev.jdtech.jellyfin.player.core.presentation.findChapterSegmentType
 import dev.jdtech.jellyfin.player.core.presentation.getSegmentColor
+import dev.jdtech.jellyfin.player.core.presentation.labelRes
 import dev.jdtech.jellyfin.player.local.presentation.PlayerViewModel
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import kotlin.time.Duration.Companion.milliseconds
@@ -937,10 +938,10 @@ private fun ChapterList(
     LaunchedEffect(currentChapterIndex) {
         if (currentChapterIndex in chapters.indices) {
             listState.scrollToItem(currentChapterIndex)
-            for (attempt in 0..5) {
+            repeat(6) {
                 try {
                     initialFocusRequester.requestFocus()
-                    break
+                    return@LaunchedEffect
                 } catch (_: Exception) {
                     delay(50.milliseconds)
                 }
@@ -1044,15 +1045,7 @@ private fun ChapterItem(
     segmentType: FindroidSegmentType? = null,
     customSegmentColor: Color? = null,
 ) {
-    val segmentLabel =
-        when (segmentType) {
-            FindroidSegmentType.INTRO -> "Intro"
-            FindroidSegmentType.OUTRO -> "Outro"
-            FindroidSegmentType.RECAP -> "Recap"
-            FindroidSegmentType.PREVIEW -> "Preview"
-            FindroidSegmentType.COMMERCIAL -> "Ad"
-            else -> null
-        }
+    val segmentLabel = segmentType?.labelRes?.let { stringResource(it) }
     val chapterName =
         chapter.name?.takeIf { it.isNotBlank() }
             ?: stringResource(id = PlayerR.string.chapter_title, chapterIndex + 1)

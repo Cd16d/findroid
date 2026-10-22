@@ -1,9 +1,11 @@
 package dev.jdtech.jellyfin.presentation.film
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -20,6 +22,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.isTraversalGroup
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.traversalIndex
@@ -51,7 +55,6 @@ import kotlinx.coroutines.launch
 @Composable
 fun HomeScreen(
     onLibraryClick: (library: FindroidCollection) -> Unit,
-    onSearchClick: () -> Unit,
     onUserClick: () -> Unit,
     onManageServers: () -> Unit,
     onItemClick: (item: FindroidItem) -> Unit,
@@ -67,7 +70,6 @@ fun HomeScreen(
             when (action) {
                 is HomeAction.OnItemClick -> onItemClick(action.item)
                 is HomeAction.OnLibraryClick -> onLibraryClick(action.library)
-                is HomeAction.OnSearchClick -> onSearchClick()
                 is HomeAction.OnUserClick -> onUserClick()
                 is HomeAction.OnManageServers -> onManageServers()
                 else -> Unit
@@ -153,20 +155,35 @@ private fun HomeScreenLayout(
         if (state.error != null && showErrorDialog) {
             ErrorDialog(exception = state.error!!, onDismissRequest = { showErrorDialog = false })
         }
-    }
 
-    HomeHeader(
-        serverName = state.server?.name ?: "",
-        userImageUrl = state.userImageUrl,
-        isLoading = state.isLoading,
-        isError = state.error != null,
-        onServerClick = { showServerSelectionBottomSheet = true },
-        onErrorClick = { showErrorDialog = true },
-        onRetryClick = { onAction(HomeAction.OnRetryClick) },
-        onSearchClick = { onAction(HomeAction.OnSearchClick) },
-        onUserClick = { onAction(HomeAction.OnUserClick) },
-        modifier = Modifier.padding(start = paddingStart, top = paddingTop, end = paddingEnd),
-    )
+        Box(
+            modifier =
+                Modifier.fillMaxWidth()
+                    .background(
+                        brush =
+                            Brush.verticalGradient(
+                                colors =
+                                    listOf(
+                                        MaterialTheme.colorScheme.surface,
+                                        Color.Transparent,
+                                    )
+                            )
+                    )
+                    .padding(start = paddingStart, top = paddingTop, end = paddingEnd)
+                    .padding(bottom = MaterialTheme.spacings.small)
+        ) {
+            HomeHeader(
+                serverName = state.server?.name ?: "",
+                userImageUrl = state.userImageUrl,
+                isLoading = state.isLoading,
+                isError = state.error != null,
+                onServerClick = { showServerSelectionBottomSheet = true },
+                onErrorClick = { showErrorDialog = true },
+                onRetryClick = { onAction(HomeAction.OnRetryClick) },
+                onUserClick = { onAction(HomeAction.OnUserClick) },
+            )
+        }
+    }
 
     if (showServerSelectionBottomSheet) {
         ServerSelectionBottomSheet(

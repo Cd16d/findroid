@@ -52,10 +52,12 @@ import org.jellyfin.sdk.model.api.PlaybackStartInfo
 import org.jellyfin.sdk.model.api.PlaybackStopInfo
 import org.jellyfin.sdk.model.api.PublicSystemInfo
 import org.jellyfin.sdk.model.api.RepeatMode
+import org.jellyfin.sdk.model.api.SeriesStatus
 import org.jellyfin.sdk.model.api.SortOrder as ItemSortOrder
 import org.jellyfin.sdk.model.api.SubtitleDeliveryMethod
 import org.jellyfin.sdk.model.api.SubtitleProfile
 import org.jellyfin.sdk.model.api.UserConfiguration
+import org.jellyfin.sdk.model.api.VideoType
 import timber.log.Timber
 
 class JellyfinRepositoryImpl(
@@ -255,12 +257,535 @@ class JellyfinRepositoryImpl(
                     searchTerm = query,
                     includeItemTypes =
                         listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES, BaseItemKind.EPISODE),
+                    isMissing = false,
                     recursive = true,
                 )
                 .content
                 .items
                 .mapNotNull { it.toFindroidItem(this@JellyfinRepositoryImpl, database) }
+                .filter { (it as? FindroidEpisode)?.missing != true }
                 .distinctBy { it.id }
+        }
+
+    override suspend fun getSearchSuggestions(): List<String> =
+        withContext(Dispatchers.IO) {
+            try {
+                val userId = jellyfinApi.userId ?: return@withContext emptyList()
+                val hintsResponse = runCatching {
+                    jellyfinApi.searchApi.getSearchHints(
+                        userId = userId,
+                        searchTerm = "",
+                        limit = 20,
+                    )
+                }
+                    .getOrNull()
+                val hintNames =
+                    hintsResponse
+                        ?.content
+                        ?.searchHints
+                        ?.map { it.name }
+                        ?.filter { it.isNotBlank() }
+                        ?.distinct()
+                        .orEmpty()
+
+                if (hintNames.isNotEmpty()) {
+                    return@withContext hintNames
+                }
+
+                val libraryItemsResponse = runCatching {
+                    jellyfinApi.libraryApi.getItems(
+                        userId = userId,
+                        includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES),
+                        limit = 20,
+                        sortBy = listOf(ItemSortBy.RANDOM),
+                        recursive = true,
+                    )
+                }
+                    .getOrNull()
+
+                libraryItemsResponse
+                    ?.content
+                    ?.items
+                    ?.mapNotNull { it.name }
+                    ?.filter { it.isNotBlank() }
+                    ?.distinct()
+                    .orEmpty()
+            } catch (e: Exception) {
+                Timber.e(e)
+                emptyList()
+            }
+        }
+
+    override suspend fun getAvailableContentTypes(): List<BaseItemKind> =
+        listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES, BaseItemKind.EPISODE)
+
+    override suspend fun getAvailableVideoQualities(): List<String> =
+        listOf("SD", "HD", "4K", "3D", "DVD", "BLU_RAY", "ISO")
+
+    override suspend fun getAvailableItemFilters(): List<ItemFilter> =
+        listOf(
+            ItemFilter.IS_UNPLAYED,
+            ItemFilter.IS_PLAYED,
+            ItemFilter.IS_FAVORITE,
+            ItemFilter.IS_RESUMABLE,
+        )
+
+    override suspend fun getAvailableSeriesStatuses(): List<SeriesStatus> =
+        listOf(
+            SeriesStatus.CONTINUING,
+            SeriesStatus.ENDED,
+            SeriesStatus.UNRELEASED,
+        )
+
+    override suspend fun getAvailableFeatures(): List<String> =
+        listOf(
+            "HAS_SUBTITLES",
+            "HAS_TRAILER",
+            "HAS_EXTRA",
+            "HAS_THEME_SONG",
+            "HAS_THEME_VIDEO",
+        )
+
+    private fun getEffectiveTypes(includeItemTypes: List<BaseItemKind>?): List<BaseItemKind> =
+        includeItemTypes?.ifEmpty { null }
+            ?: listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES, BaseItemKind.EPISODE)
+
+    override suspend fun getGenres(includeItemTypes: List<BaseItemKind>?): List<String> =
+        withContext(Dispatchers.IO) {
+            try {
+                jellyfinApi.genreApi
+                    .getGenres(
+                        userId = jellyfinApi.userId,
+                        includeItemTypes = getEffectiveTypes(includeItemTypes),
+                    )
+                    .content
+                    .items
+                    .mapNotNull { it.name }
+                    .filter { it.isNotBlank() }
+                    .distinct()
+                    .sorted()
+            } catch (_: Exception) {
+                emptyList()
+            }
+        }
+
+    override suspend fun getTags(includeItemTypes: List<BaseItemKind>?): List<String> =
+        withContext(Dispatchers.IO) {
+            try {
+                jellyfinApi.filterApi
+                    .getQueryFilters(
+                        userId = jellyfinApi.userId,
+                        includeItemTypes = getEffectiveTypes(includeItemTypes),
+                    )
+                    .content
+                    .tags
+                    .orEmpty()
+                    .filter { it.isNotBlank() }
+                    .distinct()
+                    .sorted()
+            } catch (_: Exception) {
+                emptyList()
+            }
+        }
+
+    override suspend fun getStudios(includeItemTypes: List<BaseItemKind>?): List<String> =
+        withContext(Dispatchers.IO) {
+            try {
+                jellyfinApi.studioApi
+                    .getStudios(
+                        userId = jellyfinApi.userId,
+                        includeItemTypes = getEffectiveTypes(includeItemTypes),
+                    )
+                    .content
+                    .items
+                    .mapNotNull { it.name }
+                    .filter { it.isNotBlank() }
+                    .distinct()
+                    .sorted()
+            } catch (_: Exception) {
+                emptyList()
+            }
+        }
+
+    override suspend fun getOfficialRatings(includeItemTypes: List<BaseItemKind>?): List<String> =
+        withContext(Dispatchers.IO) {
+            try {
+                val legacyRatings: List<String> = runCatching {
+                    jellyfinApi.filterApi
+                        .getQueryFiltersLegacy(userId = jellyfinApi.userId)
+                        .content
+                        .officialRatings
+                        .orEmpty()
+                }
+                    .getOrDefault(emptyList())
+
+                val legacyNoUserRatings: List<String> = runCatching {
+                    jellyfinApi.filterApi.getQueryFiltersLegacy().content.officialRatings.orEmpty()
+                }
+                    .getOrDefault(emptyList())
+
+                val itemRatings: List<String> = runCatching {
+                    jellyfinApi.libraryApi
+                        .getItems(
+                            userId = jellyfinApi.userId!!,
+                            includeItemTypes = getEffectiveTypes(includeItemTypes),
+                            recursive = true,
+                            limit = 500,
+                        )
+                        .content
+                        .items
+                        .mapNotNull { it.officialRating }
+                        .filter { it.isNotBlank() }
+                }
+                    .getOrDefault(emptyList())
+
+                val result =
+                    (legacyRatings + legacyNoUserRatings + itemRatings)
+                        .filter { it.isNotBlank() }
+                        .distinct()
+                        .sorted()
+
+                if (result.isNotEmpty()) {
+                    result
+                } else {
+                    listOf(
+                        "G",
+                        "PG",
+                        "PG-13",
+                        "R",
+                        "NC-17",
+                        "TV-Y",
+                        "TV-Y7",
+                        "TV-G",
+                        "TV-PG",
+                        "TV-14",
+                        "TV-MA",
+                    )
+                }
+            } catch (e: Exception) {
+                Timber.e(e)
+                listOf(
+                    "G",
+                    "PG",
+                    "PG-13",
+                    "R",
+                    "NC-17",
+                    "TV-Y",
+                    "TV-Y7",
+                    "TV-G",
+                    "TV-PG",
+                    "TV-14",
+                    "TV-MA",
+                )
+            }
+        }
+
+    override suspend fun getYears(includeItemTypes: List<BaseItemKind>?): List<Int> =
+        withContext(Dispatchers.IO) {
+            try {
+                jellyfinApi.yearApi
+                    .getYears(
+                        userId = jellyfinApi.userId,
+                        includeItemTypes = getEffectiveTypes(includeItemTypes),
+                    )
+                    .content
+                    .items
+                    .mapNotNull { it.name?.toIntOrNull() ?: it.productionYear }
+                    .distinct()
+                    .sortedDescending()
+            } catch (_: Exception) {
+                emptyList()
+            }
+        }
+
+    override suspend fun getAudioLanguages(includeItemTypes: List<BaseItemKind>?): List<String> =
+        withContext(Dispatchers.IO) {
+            try {
+                jellyfinApi.filterApi
+                    .getQueryFilters(
+                        userId = jellyfinApi.userId,
+                        includeItemTypes = getEffectiveTypes(includeItemTypes),
+                    )
+                    .content
+                    .audioLanguages
+                    .orEmpty()
+                    .mapNotNull { item ->
+                        val code = item.value?.takeIf { it.isNotBlank() } ?: item.name
+                        code?.takeIf { it.isNotBlank() }
+                    }
+                    .distinct()
+                    .sorted()
+            } catch (_: Exception) {
+                emptyList()
+            }
+        }
+
+    override suspend fun getSubtitleLanguages(includeItemTypes: List<BaseItemKind>?): List<String> =
+        withContext(Dispatchers.IO) {
+            try {
+                jellyfinApi.filterApi
+                    .getQueryFilters(
+                        userId = jellyfinApi.userId,
+                        includeItemTypes = getEffectiveTypes(includeItemTypes),
+                    )
+                    .content
+                    .subtitleLanguages
+                    .orEmpty()
+                    .mapNotNull { item ->
+                        val code = item.value?.takeIf { it.isNotBlank() } ?: item.name
+                        code?.takeIf { it.isNotBlank() }
+                    }
+                    .distinct()
+                    .sorted()
+            } catch (_: Exception) {
+                emptyList()
+            }
+        }
+
+    override suspend fun getSearchItemsFiltered(
+        query: String,
+        includeItemTypes: List<BaseItemKind>?,
+        seriesStatuses: List<SeriesStatus>?,
+        genres: List<String>?,
+        tags: List<String>?,
+        officialRatings: List<String>?,
+        years: List<Int>?,
+        studios: List<String>?,
+        audioLanguages: List<String>?,
+        subtitleLanguages: List<String>?,
+        filters: List<ItemFilter>?,
+        is3D: Boolean?,
+        hasSubtitles: Boolean?,
+        is4K: Boolean?,
+        isHD: Boolean?,
+        videoTypes: List<VideoType>?,
+        hasTrailer: Boolean?,
+        hasSpecialFeatures: Boolean?,
+        hasThemeSong: Boolean?,
+        hasThemeVideo: Boolean?,
+        minCommunityRating: Double?,
+        startIndex: Int?,
+        limit: Int?,
+    ): List<FindroidItem> =
+        withContext(Dispatchers.IO) {
+            try {
+                val processedOfficialRatings =
+                    officialRatings
+                        ?.flatMap { rating ->
+                            if (rating.contains("-")) {
+                                listOf(rating, rating.substringAfter("-"))
+                            } else {
+                                listOf(rating)
+                            }
+                        }
+                        ?.distinct()
+                        ?.ifEmpty { null }
+
+                val processedAudioLanguages =
+                    audioLanguages
+                        ?.flatMap { lang ->
+                            when (lang.lowercase()) {
+                                "english",
+                                "eng",
+                                "en" -> listOf("English", "eng", "en")
+                                "spanish",
+                                "spa",
+                                "es" -> listOf("Spanish", "spa", "es")
+                                "french",
+                                "fre",
+                                "fra",
+                                "fr" -> listOf("French", "fre", "fra", "fr")
+                                "german",
+                                "ger",
+                                "deu",
+                                "de" -> listOf("German", "ger", "deu", "de")
+                                "japanese",
+                                "jpn",
+                                "ja" -> listOf("Japanese", "jpn", "ja")
+                                "italian",
+                                "ita",
+                                "it" -> listOf("Italian", "ita", "it")
+                                "chinese",
+                                "chi",
+                                "zho",
+                                "zh" -> listOf("Chinese", "chi", "zho", "zh")
+                                "korean",
+                                "kor",
+                                "ko" -> listOf("Korean", "kor", "ko")
+                                "russian",
+                                "rus",
+                                "ru" -> listOf("Russian", "rus", "ru")
+                                "portuguese",
+                                "por",
+                                "pt" -> listOf("Portuguese", "por", "pt")
+                                else -> listOf(lang)
+                            }
+                        }
+                        ?.distinct()
+                        ?.ifEmpty { null }
+
+                val processedSubtitleLanguages =
+                    subtitleLanguages
+                        ?.flatMap { lang ->
+                            when (lang.lowercase()) {
+                                "english",
+                                "eng",
+                                "en" -> listOf("English", "eng", "en")
+                                "spanish",
+                                "spa",
+                                "es" -> listOf("Spanish", "spa", "es")
+                                "french",
+                                "fre",
+                                "fra",
+                                "fr" -> listOf("French", "fre", "fra", "fr")
+                                "german",
+                                "ger",
+                                "deu",
+                                "de" -> listOf("German", "ger", "deu", "de")
+                                "japanese",
+                                "jpn",
+                                "ja" -> listOf("Japanese", "jpn", "ja")
+                                "italian",
+                                "ita",
+                                "it" -> listOf("Italian", "ita", "it")
+                                "chinese",
+                                "chi",
+                                "zho",
+                                "zh" -> listOf("Chinese", "chi", "zho", "zh")
+                                "korean",
+                                "kor",
+                                "ko" -> listOf("Korean", "kor", "ko")
+                                "russian",
+                                "rus",
+                                "ru" -> listOf("Russian", "rus", "ru")
+                                "portuguese",
+                                "por",
+                                "pt" -> listOf("Portuguese", "por", "pt")
+                                else -> listOf(lang)
+                            }
+                        }
+                        ?.distinct()
+                        ?.ifEmpty { null }
+
+                jellyfinApi.libraryApi
+                    .getItems(
+                        userId = jellyfinApi.userId!!,
+                        searchTerm = query.ifBlank { null },
+                        includeItemTypes =
+                            includeItemTypes
+                                ?: listOf(
+                                    BaseItemKind.MOVIE,
+                                    BaseItemKind.SERIES,
+                                    BaseItemKind.EPISODE,
+                                ),
+                        seriesStatus = seriesStatuses?.ifEmpty { null },
+                        genres = genres?.ifEmpty { null },
+                        tags = tags?.ifEmpty { null },
+                        officialRatings = processedOfficialRatings,
+                        years = years?.ifEmpty { null },
+                        studios = studios?.ifEmpty { null },
+                        audioLanguages = processedAudioLanguages,
+                        subtitleLanguages = processedSubtitleLanguages,
+                        filters = filters?.ifEmpty { null },
+                        is3d = is3D,
+                        hasSubtitles = hasSubtitles,
+                        is4k = is4K,
+                        isHd = isHD,
+                        videoTypes = videoTypes?.ifEmpty { null },
+                        hasTrailer = hasTrailer,
+                        hasSpecialFeature = hasSpecialFeatures,
+                        hasThemeSong = hasThemeSong,
+                        hasThemeVideo = hasThemeVideo,
+                        minCommunityRating = minCommunityRating,
+                        isMissing = false,
+                        recursive = true,
+                        startIndex = startIndex,
+                        limit = limit,
+                    )
+                    .content
+                    .items
+                    .mapNotNull { it.toFindroidItem(this@JellyfinRepositoryImpl, database) }
+                    .filter { (it as? FindroidEpisode)?.missing != true }
+                    .distinctBy { it.id }
+            } catch (e: Exception) {
+                Timber.e(e)
+                emptyList()
+            }
+        }
+
+    override fun getSearchItemsFilteredPaging(
+        query: String,
+        includeItemTypes: List<BaseItemKind>?,
+        seriesStatuses: List<SeriesStatus>?,
+        genres: List<String>?,
+        tags: List<String>?,
+        officialRatings: List<String>?,
+        years: List<Int>?,
+        studios: List<String>?,
+        audioLanguages: List<String>?,
+        subtitleLanguages: List<String>?,
+        filters: List<ItemFilter>?,
+        is3D: Boolean?,
+        hasSubtitles: Boolean?,
+        is4K: Boolean?,
+        isHD: Boolean?,
+        videoTypes: List<VideoType>?,
+        hasTrailer: Boolean?,
+        hasSpecialFeatures: Boolean?,
+        hasThemeSong: Boolean?,
+        hasThemeVideo: Boolean?,
+        minCommunityRating: Double?,
+    ): Flow<PagingData<FindroidItem>> {
+        return Pager(
+                config = PagingConfig(pageSize = 20, enablePlaceholders = false),
+                pagingSourceFactory = {
+                    SearchItemsPagingSource(
+                        jellyfinRepository = this,
+                        query = query,
+                        includeItemTypes = includeItemTypes,
+                        seriesStatuses = seriesStatuses,
+                        genres = genres,
+                        tags = tags,
+                        officialRatings = officialRatings,
+                        years = years,
+                        studios = studios,
+                        audioLanguages = audioLanguages,
+                        subtitleLanguages = subtitleLanguages,
+                        filters = filters,
+                        is3D = is3D,
+                        hasSubtitles = hasSubtitles,
+                        is4K = is4K,
+                        isHD = isHD,
+                        videoTypes = videoTypes,
+                        hasTrailer = hasTrailer,
+                        hasSpecialFeatures = hasSpecialFeatures,
+                        hasThemeSong = hasThemeSong,
+                        hasThemeVideo = hasThemeVideo,
+                        minCommunityRating = minCommunityRating,
+                    )
+                },
+            )
+            .flow
+    }
+
+    override suspend fun getRandomItem(): FindroidItem? =
+        withContext(Dispatchers.IO) {
+            try {
+                jellyfinApi.libraryApi
+                    .getItems(
+                        jellyfinApi.userId!!,
+                        includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES),
+                        sortBy = listOf(ItemSortBy.RANDOM),
+                        limit = 1,
+                        recursive = true,
+                    )
+                    .content
+                    .items
+                    .firstOrNull()
+                    ?.toFindroidItem(this@JellyfinRepositoryImpl, database)
+            } catch (_: Exception) {
+                null
+            }
         }
 
     override suspend fun getSuggestions(forceRefresh: Boolean): List<FindroidItem> {
@@ -731,7 +1256,7 @@ class JellyfinRepositoryImpl(
                 val policy = jellyfinApi.userApi.getCurrentUser().content.policy
                 (policy?.enableSyncTranscoding != false) &&
                     (policy?.enableVideoPlaybackTranscoding != false)
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 true
             }
         }

@@ -17,8 +17,19 @@ import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.delay
 
+/**
+ * Dynamic clock text component for TV UI with automatic minute tick updates.
+ *
+ * @param modifier Optional modifier applied to clock text layout. Defaults to [Modifier].
+ * @param style TextStyle for clock time text. Defaults to `MaterialTheme.typography.titleSmall`.
+ * @param color Text color for clock time text. Defaults to `Color.White.copy(alpha = 0.9f)`.
+ * @param showDate Whether to display the formatted date underneath time. Defaults to `false`.
+ * @param dateStyle TextStyle for date text. Defaults to `MaterialTheme.typography.titleMedium`.
+ * @param dateColor Text color for date text. Defaults to `Color.White.copy(alpha = 0.85f)`.
+ */
 @Composable
 fun ClockText(
     modifier: Modifier = Modifier,
@@ -42,7 +53,7 @@ fun ClockText(
                 value = LocalDateTime.now()
                 val now = LocalTime.now()
                 val millisUntilNextMinute = ((60 - now.second) * 1000L) - (now.nano / 1_000_000L)
-                delay(maxOf(1000L, millisUntilNextMinute))
+                delay(maxOf(1000L, millisUntilNextMinute).milliseconds)
             }
         }
 
@@ -79,4 +90,10 @@ fun ClockText(
             modifier = modifier,
         )
     }
+}
+
+@androidx.compose.ui.tooling.preview.Preview
+@Composable
+private fun ClockTextPreview() {
+    dev.jdtech.jellyfin.presentation.theme.FindroidTheme { ClockText(showDate = true) }
 }

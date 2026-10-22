@@ -66,6 +66,13 @@ val SegmentPalette =
         0xFF9E9E9EL, // Grey
     )
 
+/**
+ * Settings card for configuring segment actions and highlight colors.
+ *
+ * @param preference Segment configuration preference model.
+ * @param onUpdate Callback when preference segment action or color changes.
+ * @param modifier Optional modifier applied to card layout. Defaults to [Modifier].
+ */
 @Composable
 fun SettingsSegmentConfigCard(
     preference: PreferenceSegmentConfig,
@@ -348,5 +355,20 @@ fun SegmentColorPickerDialog(
                 }
             }
         }
+    }
+}
+
+@androidx.compose.ui.tooling.preview.Preview(showBackground = true)
+@Composable
+private fun SettingsSegmentConfigCardPreview() {
+    dev.jdtech.jellyfin.presentation.theme.FindroidTheme {
+        SettingsSegmentConfigCard(
+            preference =
+                dev.jdtech.jellyfin.settings.presentation.models.PreferenceSegmentConfig(
+                    nameStringResource = dev.jdtech.jellyfin.core.R.string.app_name,
+                    segmentType = "Intro",
+                ),
+            onUpdate = {},
+        )
     }
 }
