@@ -28,6 +28,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.core.presentation.dummy.dummyEpisode
 import dev.jdtech.jellyfin.models.FindroidEpisode
 import dev.jdtech.jellyfin.models.isDownloaded
@@ -109,7 +110,7 @@ fun EpisodeCard(
             Text(
                 text =
                     stringResource(
-                        id = dev.jdtech.jellyfin.core.R.string.episode_name,
+                        id = CoreR.string.episode_name,
                         episode.indexNumber,
                         episode.name,
                     ),

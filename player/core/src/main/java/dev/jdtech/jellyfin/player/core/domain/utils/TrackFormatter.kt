@@ -10,7 +10,12 @@ import dev.jdtech.jellyfin.player.core.domain.models.TrackDisplayInfo
 import java.util.Locale
 import org.jellyfin.sdk.model.api.MediaStreamType
 
+/**
+ * Utility object for formatting media track information such as codecs, channel layouts, languages,
+ * and display labels.
+ */
 object TrackFormatter {
+    /** Formats a raw codec string into a human-readable display label. */
     fun formatCodec(codec: String?): String? {
         if (codec.isNullOrBlank()) return null
         val c = codec.lowercase(Locale.US)
@@ -38,6 +43,10 @@ object TrackFormatter {
         }
     }
 
+    /**
+     * Formats audio channel layout or channel count into a standardized string (e.g. "Stereo",
+     * "5.1").
+     */
     fun formatChannelLayout(channelLayout: String? = null, channelCount: Int? = null): String? {
         if (!channelLayout.isNullOrBlank()) {
             val layout = channelLayout.trim().lowercase(Locale.US)
@@ -66,6 +75,7 @@ object TrackFormatter {
         }
     }
 
+    /** Formats an ISO language code into a localized display language name. */
     fun formatLanguageName(
         language: String?,
         currentLocale: Locale = Locale.getDefault(),
@@ -88,6 +98,10 @@ object TrackFormatter {
             }
     }
 
+    /**
+     * Creates formatted track display information including localized names and status tags/chips
+     * for UI display.
+     */
     fun getTrackDisplayInfo(
         track: Track,
         context: Context,
@@ -203,6 +217,7 @@ object TrackFormatter {
         return TrackDisplayInfo(name = baseName, chips = chips)
     }
 
+    /** Converts an ExoPlayer [Tracks.Group] into a domain [Track] model. */
     fun toTrack(group: Tracks.Group, fallbackIndex: Int = 0): Track {
         val format = group.mediaTrackGroup.getFormat(0)
         val label = format.label
@@ -242,6 +257,7 @@ object TrackFormatter {
         )
     }
 
+    /** Creates formatted track display information directly from an ExoPlayer [Tracks.Group]. */
     fun getTrackDisplayInfo(
         group: Tracks.Group,
         context: Context,
@@ -259,6 +275,7 @@ object TrackFormatter {
         )
     }
 
+    /** Converts a [FindroidMediaStream] into a domain [Track] model. */
     fun toTrack(stream: FindroidMediaStream): Track {
         return Track(
             id = stream.index ?: 0,
@@ -281,7 +298,9 @@ object TrackFormatter {
     }
 }
 
+/** Converts an ExoPlayer [Tracks.Group] into a domain [Track] model. */
 fun Tracks.Group.toTrack(fallbackIndex: Int = 0): Track =
     TrackFormatter.toTrack(this, fallbackIndex)
 
+/** Converts a [FindroidMediaStream] into a domain [Track] model. */
 fun FindroidMediaStream.toTrack(): Track = TrackFormatter.toTrack(this)

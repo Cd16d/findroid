@@ -6,6 +6,7 @@ import dev.jdtech.jellyfin.api.JellyfinApi
 import dev.jdtech.jellyfin.database.ServerDatabaseDao
 import dev.jdtech.jellyfin.models.FindroidCollection
 import dev.jdtech.jellyfin.models.FindroidEpisode
+import dev.jdtech.jellyfin.models.FindroidImages
 import dev.jdtech.jellyfin.models.FindroidItem
 import dev.jdtech.jellyfin.models.FindroidMovie
 import dev.jdtech.jellyfin.models.FindroidPart
@@ -30,6 +31,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.withContext
 import org.jellyfin.sdk.model.api.BaseItemDto
 import org.jellyfin.sdk.model.api.BaseItemKind
@@ -114,11 +116,16 @@ class JellyfinRepositoryOfflineImpl(
         sortOrder: SortOrder,
         filters: List<ItemFilter>?,
     ): Flow<PagingData<FindroidItem>> {
-        TODO("Not yet implemented")
+        return flowOf(PagingData.empty())
     }
 
     override suspend fun getPerson(personId: UUID): FindroidPerson {
-        TODO("Not yet implemented")
+        return FindroidPerson(
+            id = personId,
+            name = "",
+            overview = "",
+            images = FindroidImages(),
+        )
     }
 
     override suspend fun getPersonItems(
@@ -126,11 +133,11 @@ class JellyfinRepositoryOfflineImpl(
         includeTypes: List<BaseItemKind>?,
         recursive: Boolean,
     ): List<FindroidItem> {
-        TODO("Not yet implemented")
+        return emptyList()
     }
 
     override suspend fun getFavoriteItems(): List<FindroidItem> {
-        TODO("Not yet implemented")
+        return emptyList()
     }
 
     override suspend fun getAvailableContentTypes(): List<BaseItemKind> =
@@ -356,7 +363,7 @@ class JellyfinRepositoryOfflineImpl(
         }
 
     override suspend fun getStreamUrl(itemId: UUID, mediaSourceId: String): String {
-        TODO("Not yet implemented")
+        return ""
     }
 
     override suspend fun getSegments(itemId: UUID): List<FindroidSegment> =
@@ -463,9 +470,7 @@ class JellyfinRepositoryOfflineImpl(
         return jellyfinApi.api.baseUrl.orEmpty()
     }
 
-    override suspend fun updateDeviceName(name: String) {
-        TODO("Not yet implemented")
-    }
+    override suspend fun updateDeviceName(name: String) {}
 
     override suspend fun getUserConfiguration(): UserConfiguration? {
         return null

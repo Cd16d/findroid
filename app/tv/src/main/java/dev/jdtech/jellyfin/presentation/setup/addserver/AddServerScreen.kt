@@ -41,6 +41,7 @@ import androidx.tv.material3.Icon
 import androidx.tv.material3.LocalContentColor
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.core.presentation.dummy.dummyDiscoveredServer
 import dev.jdtech.jellyfin.presentation.setup.components.DiscoveredServerItem
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
@@ -109,8 +110,7 @@ private fun AddServerScreenLayout(state: AddServerState, onAction: (AddServerAct
                 value = serverAddress,
                 leadingIcon = {
                     Icon(
-                        painter =
-                            painterResource(id = dev.jdtech.jellyfin.core.R.drawable.ic_server),
+                        painter = painterResource(id = CoreR.drawable.ic_server),
                         contentDescription = null,
                     )
                 },

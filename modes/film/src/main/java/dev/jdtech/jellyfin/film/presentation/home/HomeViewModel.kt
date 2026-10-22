@@ -28,6 +28,11 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
+/**
+ * ViewModel responsible for loading, mapping, and state management of the home screen layout.
+ * Fetches media sections (suggestions, continue watching, next up, and library views) concurrently
+ * based on user preferences and Jellyfin server capabilities.
+ */
 @HiltViewModel
 class HomeViewModel
 @Inject
@@ -89,6 +94,7 @@ constructor(
                 }
 
                 coroutineScope {
+                    // Concurrently fetch each configured home screen section
                     val suggestionsDeferred = async { fetchSuggestions(forceRefreshSuggestions) }
                     val resumeDeferred = async { fetchResumeItems() }
                     val nextUpDeferred = async { fetchNextUpItems() }
@@ -99,6 +105,7 @@ constructor(
                     val nextUp = nextUpDeferred.await()
                     val views = viewsDeferred.await()
 
+                    // Map fetched section items into the unified HomeState
                     _state.update {
                         it.copy(
                             suggestionsSection = suggestions,
@@ -168,11 +175,13 @@ constructor(
         if (!appPreferences.getValue(appPreferences.homeLatest)) {
             return emptyList()
         }
+        // Filter user library views down to only supported collection types (e.g. movies, tv shows)
         val supportedViews =
             repository.getUserViews().filter { view ->
                 CollectionType.fromString(view.collectionType?.serialName) in
                     CollectionType.supported
             }
+        // Concurrently fetch latest media items for each supported library view
         return coroutineScope {
             supportedViews
                 .map { view ->
@@ -183,6 +192,7 @@ constructor(
                 }
                 .awaitAll()
         }
+            // Exclude empty view categories and map remaining views to HomeItem.ViewItem wrappers
             .filter { (_, latest) -> latest.isNotEmpty() }
             .map { (view, latest) -> HomeItem.ViewItem(view.toView(latest)) }
     }

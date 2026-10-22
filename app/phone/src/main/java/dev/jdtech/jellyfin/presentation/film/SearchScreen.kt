@@ -524,9 +524,8 @@ private fun isSeasonSection(
     return (shows.itemCount > 0 && shows[0] is FindroidSeason) ||
         state.selectedContentTypes.contains(BaseItemKind.SEASON) ||
         (state.selectedContentTypes.isEmpty() &&
-            (state.selectedYears.size == 1 ||
-                (yearRange != null &&
-                    yearRange.start.roundToInt() == yearRange.endInclusive.roundToInt())))
+            (yearRange != null &&
+                yearRange.start.roundToInt() == yearRange.endInclusive.roundToInt()))
 }
 
 /**
@@ -663,6 +662,19 @@ private fun ContainedSearchBarPreview() {
                 showIntegratedSurpriseButton = true,
                 onSurpriseClick = {},
                 focusRequester = remember { FocusRequester() },
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun SectionHeaderPreview() {
+    FindroidTheme {
+        Surface {
+            SectionHeader(
+                title = "Movies",
+                modifier = Modifier.padding(16.dp),
             )
         }
     }

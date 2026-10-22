@@ -98,6 +98,10 @@ enum class PlayerSidePanelType {
     SLEEP_TIMER,
 }
 
+/**
+ * Side panel drawer for TV player settings, audio/subtitle selection, playback speed, aspect ratio
+ * adjustments, chapters list, and sleep timer.
+ */
 @androidx.annotation.OptIn(UnstableApi::class)
 @Composable
 fun PlayerSidePanel(
@@ -256,6 +260,8 @@ fun PlayerSidePanel(
 
 @Composable
 private fun PanelHeader(panelType: PlayerSidePanelType) {
+    if (panelType == PlayerSidePanelType.NONE) return
+
     val titleRes =
         when (panelType) {
             PlayerSidePanelType.AUDIO -> PlayerR.string.audio
@@ -265,7 +271,7 @@ private fun PanelHeader(panelType: PlayerSidePanelType) {
             PlayerSidePanelType.ASPECT_RATIO -> PlayerR.string.aspect_ratio
             PlayerSidePanelType.CHAPTERS -> PlayerR.string.chapters
             PlayerSidePanelType.SLEEP_TIMER -> PlayerR.string.sleep_timer
-            PlayerSidePanelType.NONE -> CoreR.string.title_settings
+            PlayerSidePanelType.NONE -> error("Unreachable")
         }
 
     Text(
@@ -1201,6 +1207,263 @@ private fun ChapterItem(
                     color = LocalContentColor.current.copy(alpha = 0.7f),
                 )
             }
+        }
+    }
+}
+
+@Preview(device = "id:tv_1080p")
+@Composable
+private fun PlayerSidePanelPreview() {
+    FindroidTheme {
+        Box(
+            modifier = Modifier.fillMaxSize().background(Color.Black),
+            contentAlignment = Alignment.CenterEnd,
+        ) {
+            Column(
+                modifier =
+                    Modifier.fillMaxHeight()
+                        .width(360.dp)
+                        .padding(end = 32.dp, top = 28.dp, bottom = 28.dp)
+            ) {
+                PanelHeader(panelType = PlayerSidePanelType.SETTINGS)
+                Spacer(modifier = Modifier.height(16.dp))
+                NavigationItem(
+                    title = stringResource(id = PlayerR.string.subtitles),
+                    subtitle = stringResource(id = PlayerR.string.none),
+                    iconRes = CoreR.drawable.ic_closed_caption,
+                    onClick = {},
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                NavigationItem(
+                    title = stringResource(id = PlayerR.string.audio),
+                    subtitle = "English (Stereo)",
+                    iconRes = CoreR.drawable.ic_audio,
+                    onClick = {},
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                NavigationItem(
+                    title = stringResource(id = PlayerR.string.playback_speed),
+                    subtitle = "1.0x",
+                    iconRes = CoreR.drawable.ic_playback_speed,
+                    onClick = {},
+                )
+            }
+        }
+    }
+}
+
+@Preview
+@Composable
+private fun AudioTrackListPreview() {
+    FindroidTheme {
+        Column(
+            modifier = Modifier.width(320.dp).background(Color.Black).padding(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            SelectableItem(
+                title = "English (AAC)",
+                chips = listOf("Default", "Stereo"),
+                isSelected = true,
+                onClick = {},
+            )
+            SelectableItem(
+                title = "Japanese (FLAC)",
+                chips = listOf("5.1"),
+                isSelected = false,
+                onClick = {},
+            )
+        }
+    }
+}
+
+@Preview
+@Composable
+private fun SubtitleTrackListPreview() {
+    FindroidTheme {
+        Column(
+            modifier = Modifier.width(320.dp).background(Color.Black).padding(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            SelectableItem(
+                title = stringResource(id = PlayerR.string.none),
+                isSelected = false,
+                onClick = {},
+            )
+            SelectableItem(
+                title = "English [SDH]",
+                chips = listOf("Full", "ASS"),
+                isSelected = true,
+                onClick = {},
+            )
+        }
+    }
+}
+
+@Preview
+@Composable
+private fun SpeedListPreview() {
+    FindroidTheme {
+        Column(
+            modifier = Modifier.width(320.dp).background(Color.Black).padding(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            SelectableItem(
+                title = stringResource(id = PlayerR.string.normal_speed),
+                isSelected = true,
+                onClick = {},
+            )
+            SelectableItem(
+                title = "1.25x",
+                isSelected = false,
+                onClick = {},
+            )
+            SelectableItem(
+                title = "1.5x",
+                isSelected = false,
+                onClick = {},
+            )
+        }
+    }
+}
+
+@Preview
+@Composable
+private fun AspectRatioListPreview() {
+    FindroidTheme {
+        Column(
+            modifier = Modifier.width(320.dp).background(Color.Black).padding(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            SelectableItem(
+                title = stringResource(id = PlayerR.string.aspect_ratio_fit),
+                isSelected = true,
+                onClick = {},
+            )
+            SelectableItem(
+                title = stringResource(id = PlayerR.string.aspect_ratio_zoom),
+                isSelected = false,
+                onClick = {},
+            )
+            SelectableItem(
+                title = stringResource(id = PlayerR.string.aspect_ratio_fill),
+                isSelected = false,
+                onClick = {},
+            )
+        }
+    }
+}
+
+@Preview
+@Composable
+private fun SettingsListPreview() {
+    FindroidTheme {
+        Column(
+            modifier = Modifier.width(320.dp).background(Color.Black).padding(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            NavigationItem(
+                title = stringResource(id = PlayerR.string.subtitles),
+                subtitle = "English",
+                iconRes = CoreR.drawable.ic_closed_caption,
+                onClick = {},
+            )
+            NavigationItem(
+                title = stringResource(id = PlayerR.string.audio),
+                subtitle = "Japanese (5.1)",
+                iconRes = CoreR.drawable.ic_audio,
+                onClick = {},
+            )
+            NavigationItem(
+                title = stringResource(id = PlayerR.string.playback_speed),
+                subtitle = stringResource(id = PlayerR.string.normal_speed),
+                iconRes = CoreR.drawable.ic_playback_speed,
+                onClick = {},
+            )
+            NavigationItem(
+                title = stringResource(id = PlayerR.string.aspect_ratio),
+                subtitle = stringResource(id = PlayerR.string.aspect_ratio_fit),
+                iconRes = CoreR.drawable.ic_aspect_ratio,
+                onClick = {},
+            )
+            NavigationItem(
+                title = stringResource(id = PlayerR.string.sleep_timer),
+                subtitle = stringResource(id = PlayerR.string.sleep_timer_off),
+                iconRes = CoreR.drawable.ic_sleep_timer,
+                onClick = {},
+            )
+        }
+    }
+}
+
+@Preview
+@Composable
+private fun SleepTimerListPreview() {
+    FindroidTheme {
+        Column(
+            modifier = Modifier.width(320.dp).background(Color.Black).padding(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            SelectableItem(
+                title = stringResource(id = PlayerR.string.sleep_timer_end_of_video),
+                isSelected = false,
+                onClick = {},
+            )
+            SelectableItem(
+                title = stringResource(id = PlayerR.string.sleep_timer_minutes, 30),
+                isSelected = true,
+                chips = listOf("28m remaining"),
+                onClick = {},
+            )
+            SelectableItem(
+                title = stringResource(id = PlayerR.string.sleep_timer_off),
+                isSelected = false,
+                onClick = {},
+            )
+        }
+    }
+}
+
+@Preview
+@Composable
+private fun ChapterListPreview() {
+    FindroidTheme {
+        Column(
+            modifier = Modifier.width(320.dp).background(Color.Black).padding(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            ChapterItem(
+                chapter = PlayerChapter(name = "Intro", startPosition = 0L),
+                chapterIndex = 0,
+                isCurrent = true,
+                onClick = {},
+                trickplay = null,
+                chapterImageUrl = null,
+            )
+            ChapterItem(
+                chapter = PlayerChapter(name = "Part 1", startPosition = 120_000L),
+                chapterIndex = 1,
+                isCurrent = false,
+                onClick = {},
+                trickplay = null,
+                chapterImageUrl = null,
+            )
+        }
+    }
+}
+
+@Preview
+@Composable
+private fun ChapterItemPreview() {
+    FindroidTheme {
+        Box(modifier = Modifier.width(320.dp).background(Color.Black).padding(8.dp)) {
+            ChapterItem(
+                chapter = PlayerChapter(name = "Chapter 1: Arrival", startPosition = 300_000L),
+                chapterIndex = 0,
+                isCurrent = true,
+                onClick = {},
+                trickplay = null,
+                chapterImageUrl = null,
+            )
         }
     }
 }

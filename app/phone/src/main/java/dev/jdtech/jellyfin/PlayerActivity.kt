@@ -59,8 +59,7 @@ class PlayerActivity : AppCompatActivity() {
     private lateinit var mediaSession: MediaSession
     private var wasPip: Boolean = false
 
-    private val volumeKeyEvents =
-        MutableSharedFlow<dev.jdtech.jellyfin.models.VolumeKeyEvent>(extraBufferCapacity = 8)
+    private val volumeKeyEvents = MutableSharedFlow<VolumeKeyEvent>(extraBufferCapacity = 8)
     private var lastVolumeKeyTime = 0L
 
     private var isInPipMode by mutableStateOf(false)

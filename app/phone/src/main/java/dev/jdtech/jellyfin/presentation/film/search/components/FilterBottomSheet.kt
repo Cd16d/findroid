@@ -722,6 +722,29 @@ private fun EmptyFilterOptionsViewPreview() {
     FindroidTheme { Surface(modifier = Modifier.height(100.dp)) { EmptyFilterOptionsView() } }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Preview(showBackground = true)
+@Composable
+private fun FilterBottomSheetPreview() {
+    FindroidTheme {
+        FilterBottomSheet(
+            state =
+                SearchState(
+                    isFilterSheetOpen = true,
+                    activeBottomSheetCategory = FilterCategory.VIDEO_TYPE,
+                    availableContentTypes =
+                        listOf(
+                            BaseItemKind.MOVIE,
+                            BaseItemKind.SERIES,
+                            BaseItemKind.EPISODE,
+                        ),
+                ),
+            onAction = {},
+            onDismissRequest = {},
+        )
+    }
+}
+
 @Preview(showBackground = true)
 @Composable
 private fun FilterCardListPreview() {

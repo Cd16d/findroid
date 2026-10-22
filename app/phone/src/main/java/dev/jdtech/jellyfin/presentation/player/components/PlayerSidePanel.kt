@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -63,34 +64,6 @@ import dev.jdtech.jellyfin.presentation.components.ChapterCard
 import dev.jdtech.jellyfin.presentation.components.SelectableTrackItem
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import kotlinx.coroutines.delay
-
-private val MenuTopShape =
-    RoundedCornerShape(
-        topStart = 24.dp,
-        topEnd = 24.dp,
-        bottomStart = 4.dp,
-        bottomEnd = 4.dp,
-    )
-private val MenuBottomShape =
-    RoundedCornerShape(
-        topStart = 4.dp,
-        topEnd = 4.dp,
-        bottomStart = 24.dp,
-        bottomEnd = 24.dp,
-    )
-private val MenuMiddleShape = RoundedCornerShape(4.dp)
-private val MenuSingleShape = RoundedCornerShape(24.dp)
-private val ChipShape = RoundedCornerShape(4.dp)
-private val ChapterThumbShape = RoundedCornerShape(12.dp)
-
-private fun getItemShape(index: Int, totalCount: Int): Shape {
-    return when {
-        totalCount <= 1 -> MenuSingleShape
-        index == 0 -> MenuTopShape
-        index == totalCount - 1 -> MenuBottomShape
-        else -> MenuMiddleShape
-    }
-}
 
 /**
  * Sliding side panel for large screen / tablet devices hosting settings, tracks, speed, and
@@ -253,7 +226,9 @@ fun PlayerSidePanel(
  *
  * @param viewModel Active [PlayerViewModel].
  * @param tracks Current media [Tracks].
+ * @param currentSpeed Current playback speed.
  * @param currentResizeMode Video resize mode.
+ * @param isPlaying Whether media is currently actively playing.
  * @param onNavigate Callback to navigate to a sub-page.
  * @param onLock Callback to lock the player controls.
  */
@@ -685,6 +660,61 @@ private fun TabletChaptersList(viewModel: PlayerViewModel) {
                     viewModel.player.seekTo(chapter.startPosition)
                 },
             )
+        }
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF141414, widthDp = 400, heightDp = 600)
+@Composable
+private fun PlayerSidePanelPreview() {
+    FindroidTheme {
+        Surface(color = Color(0xFF141414)) {
+            Column(
+                modifier =
+                    Modifier.fillMaxSize()
+                        .padding(horizontal = 24.dp)
+                        .padding(top = 28.dp, bottom = 24.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Text(
+                        text = stringResource(id = CoreR.string.title_settings),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                    )
+                }
+                TabletNavigationItem(
+                    title = stringResource(id = PlayerR.string.audio),
+                    subtitle = "English (Stereo)",
+                    iconRes = CoreR.drawable.ic_audio,
+                    onClick = {},
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                TabletNavigationItem(
+                    title = stringResource(id = PlayerR.string.subtitles),
+                    subtitle = stringResource(id = PlayerR.string.none),
+                    iconRes = CoreR.drawable.ic_closed_caption,
+                    onClick = {},
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                TabletNavigationItem(
+                    title = stringResource(id = PlayerR.string.playback_speed),
+                    subtitle = "1.0x",
+                    iconRes = CoreR.drawable.ic_playback_speed,
+                    onClick = {},
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                TabletNavigationItem(
+                    title = stringResource(id = PlayerR.string.aspect_ratio),
+                    subtitle = stringResource(id = PlayerR.string.aspect_ratio_fit),
+                    iconRes = CoreR.drawable.ic_aspect_ratio,
+                    onClick = {},
+                )
+            }
         }
     }
 }

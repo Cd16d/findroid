@@ -41,6 +41,13 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 
+/**
+ * ViewModel managing settings state, navigation events, and preference persistence.
+ *
+ * @param appPreferences Preferences repository.
+ * @param context Application context.
+ * @param savedStateHandle Saved state handle for instance state preservation.
+ */
 @HiltViewModel
 class SettingsViewModel
 @Inject

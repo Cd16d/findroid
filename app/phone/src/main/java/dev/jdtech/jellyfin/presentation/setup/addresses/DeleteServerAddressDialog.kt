@@ -5,6 +5,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
+import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.setup.R as SetupR
 
 /**
@@ -31,10 +33,10 @@ fun DeleteServerAddressDialog(address: String, onConfirm: () -> Unit, onDismiss:
     )
 }
 
-@androidx.compose.ui.tooling.preview.Preview
+@Preview
 @Composable
 private fun DeleteServerAddressDialogPreview() {
-    dev.jdtech.jellyfin.presentation.theme.FindroidTheme {
+    FindroidTheme {
         DeleteServerAddressDialog(
             address = "https://jellyfin.example.com",
             onConfirm = {},

@@ -55,6 +55,16 @@ import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.roundToInt
 
+/**
+ * Audio track, subtitle track, and volume control bar for expanded Google Cast player.
+ *
+ * @param uiState Cast player UI state model.
+ * @param volume Current volume level (0.0 to 1.0).
+ * @param onVolumeChange Callback when volume slider is adjusted.
+ * @param onClickAudio Callback when audio track button is tapped.
+ * @param onClickSubtitle Callback when subtitle track button is tapped.
+ * @param modifier Modifier applied to layout. Defaults to [Modifier].
+ */
 @Composable
 fun CastTrackVolumeControls(
     uiState: CastPlayerViewModel.UiState,
@@ -159,6 +169,14 @@ private object VolumeSliderDefaults {
     val ThumbTrackGapSize: Dp = 6.dp
 }
 
+/**
+ * Custom volume slider with inset icon and haptic feedback.
+ *
+ * @param volume Current volume fraction from 0.0 to 1.0.
+ * @param onValueChange Callback when volume value changes.
+ * @param modifier Modifier applied to slider. Defaults to [Modifier].
+ * @param isMuted Whether audio is currently muted. Defaults to false.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VolumeSlider(

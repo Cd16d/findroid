@@ -46,6 +46,7 @@ import dev.jdtech.jellyfin.core.presentation.dummy.dummyVideoMetadata
 import dev.jdtech.jellyfin.film.presentation.movie.MovieAction
 import dev.jdtech.jellyfin.film.presentation.movie.MovieState
 import dev.jdtech.jellyfin.film.presentation.movie.MovieViewModel
+import dev.jdtech.jellyfin.models.DownloadQualityPreset
 import dev.jdtech.jellyfin.player.cast.models.CastConnectionState
 import dev.jdtech.jellyfin.player.cast.presentation.CastSessionViewModel
 import dev.jdtech.jellyfin.presentation.film.components.ActorsRow
@@ -163,7 +164,7 @@ private fun MovieScreenLayout(
     onRememberSettings: (presetId: String, downloadExternalAudio: Boolean) -> Unit = { _, _ -> },
     defaultStorageIndex: Int = -1,
     userCanTranscode: Boolean = true,
-    presets: List<dev.jdtech.jellyfin.models.DownloadQualityPreset> = emptyList(),
+    presets: List<DownloadQualityPreset> = emptyList(),
     navigateToDownloadPresets: () -> Unit = {},
 ) {
     val safePadding = rememberSafePadding()

@@ -21,6 +21,10 @@ enum class FilterCategory {
     SERIES_STATUS,
 }
 
+/**
+ * Represents the UI state for the search screen, including query, available server metadata, active
+ * filter selections, and bottom sheet state.
+ */
 data class SearchState(
     val query: String = "",
     val hideEpisodeSpoilers: Boolean = false,
@@ -50,7 +54,6 @@ data class SearchState(
     val selectedGenres: Set<String> = emptySet(),
     val selectedRatings: Set<String> = emptySet(),
     val selectedTags: Set<String> = emptySet(),
-    val selectedYears: Set<Int> = emptySet(),
     val selectedYearRange: ClosedFloatingPointRange<Float>? = null,
     val selectedCommunityRatingRange: ClosedFloatingPointRange<Float>? = null,
     val selectedStudios: Set<String> = emptySet(),
@@ -73,7 +76,6 @@ data class SearchState(
                 selectedGenres.size +
                 selectedRatings.size +
                 selectedTags.size +
-                selectedYears.size +
                 (if (selectedYearRange != null) 1 else 0) +
                 (if (selectedCommunityRatingRange != null) 1 else 0) +
                 selectedStudios.size
@@ -90,7 +92,7 @@ data class SearchState(
             FilterCategory.GENRES -> selectedGenres.isNotEmpty()
             FilterCategory.PARENTAL_RATINGS -> selectedRatings.isNotEmpty()
             FilterCategory.TAGS -> selectedTags.isNotEmpty()
-            FilterCategory.YEARS -> selectedYears.isNotEmpty() || selectedYearRange != null
+            FilterCategory.YEARS -> selectedYearRange != null
             FilterCategory.COMMUNITY_RATING -> selectedCommunityRatingRange != null
             FilterCategory.STUDIOS -> selectedStudios.isNotEmpty()
         }
@@ -130,7 +132,6 @@ data class SearchQueryParams(
     val selectedGenres: Set<String>,
     val selectedRatings: Set<String>,
     val selectedTags: Set<String>,
-    val selectedYears: Set<Int>,
     val selectedYearRange: ClosedFloatingPointRange<Float>?,
     val selectedCommunityRatingRange: ClosedFloatingPointRange<Float>?,
     val selectedStudios: Set<String>,
@@ -144,7 +145,7 @@ val SearchQueryParams.effectiveYears: List<Int>?
                 val end = selectedYearRange.endInclusive.roundToInt()
                 (start..end).toList()
             }
-            else -> selectedYears.toList().ifEmpty { null }
+            else -> null
         }
 
 val SearchState.queryParams: SearchQueryParams
@@ -162,7 +163,6 @@ val SearchState.queryParams: SearchQueryParams
             selectedGenres = selectedGenres,
             selectedRatings = selectedRatings,
             selectedTags = selectedTags,
-            selectedYears = selectedYears,
             selectedYearRange = selectedYearRange,
             selectedCommunityRatingRange = selectedCommunityRatingRange,
             selectedStudios = selectedStudios,

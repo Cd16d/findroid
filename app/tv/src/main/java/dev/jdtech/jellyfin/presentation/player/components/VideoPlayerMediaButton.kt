@@ -16,6 +16,10 @@ import androidx.tv.material3.MaterialTheme
 import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 
+/**
+ * TV-styled media control icon button with focus scaling, border highlights, and primary action
+ * accent colors.
+ */
 @Composable
 fun VideoPlayerMediaButton(
     icon: Painter,

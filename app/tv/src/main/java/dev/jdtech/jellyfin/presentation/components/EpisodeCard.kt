@@ -26,11 +26,19 @@ import androidx.tv.material3.ClickableSurfaceScale
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
+import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.core.presentation.dummy.dummyEpisode
 import dev.jdtech.jellyfin.models.FindroidEpisode
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
 
+/**
+ * Horizontal TV episode card component displaying thumbnail poster, episode title, and synopsis.
+ *
+ * @param episode Episode item model.
+ * @param onClick Callback executed on card click.
+ * @param hideEpisodeSpoilers Whether to hide episode thumbnails/titles to prevent spoilers.
+ */
 @Composable
 fun EpisodeCard(
     episode: FindroidEpisode,
@@ -83,7 +91,7 @@ fun EpisodeCard(
                 Text(
                     text =
                         stringResource(
-                            id = dev.jdtech.jellyfin.core.R.string.episode_name,
+                            id = CoreR.string.episode_name,
                             episode.indexNumber,
                             episode.name,
                         ),
@@ -103,8 +111,8 @@ fun EpisodeCard(
     }
 }
 
-@Preview
+@Preview(device = "id:tv_1080p")
 @Composable
-private fun ItemCardPreviewEpisode() {
+private fun EpisodeCardPreview() {
     FindroidTheme { EpisodeCard(episode = dummyEpisode, onClick = {}) }
 }

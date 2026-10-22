@@ -1,5 +1,9 @@
 package dev.jdtech.jellyfin.presentation.download
 
+/**
+ * Main downloads screen for displaying downloaded media, managing active transfers, and storage
+ * info.
+ */
 import android.text.format.Formatter
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState

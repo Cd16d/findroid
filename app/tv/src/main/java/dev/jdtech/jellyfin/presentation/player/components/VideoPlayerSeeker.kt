@@ -54,6 +54,10 @@ import dev.jdtech.jellyfin.presentation.theme.spacings
 import java.util.Date
 import kotlin.time.Duration
 
+/**
+ * Seeker component for TV video playback including status pills (time, chapter, finish time) and
+ * interactive seek bar with trickplay and segment support.
+ */
 @Composable
 fun VideoPlayerSeeker(
     focusRequester: FocusRequester,
@@ -79,8 +83,7 @@ fun VideoPlayerSeeker(
     val progressMs = if (rawProgressMs > 0L) rawProgressMs else 0L
     val activePositionMs = if (isScrubbing) scrubPositionMs.coerceAtLeast(0L) else progressMs
 
-    val displayedProgressMs = if (isScrubbing) scrubPositionMs.coerceAtLeast(0L) else progressMs
-    val contentProgressString = formatDuration(displayedProgressMs)
+    val contentProgressString = formatDuration(activePositionMs)
     val contentDurationString = formatDuration(durationMs)
 
     val sectionTitle =
@@ -168,6 +171,7 @@ fun VideoPlayerSeeker(
                             interactionSource = chapterInteractionSource,
                             modifier =
                                 Modifier.focusRequester(chapterFocusRequester).focusProperties {
+                                    canFocus = !isScrubbing
                                     down = focusRequester
                                 },
                             shape = ClickableSurfaceDefaults.shape(CircleShape),

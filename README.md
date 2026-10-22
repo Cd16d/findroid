@@ -8,6 +8,13 @@
 ![GitHub all releases](https://img.shields.io/github/downloads/jarnedemeulemeester/findroid/total?style=for-the-badge)
 ![GitHub](https://img.shields.io/github/license/jarnedemeulemeester/findroid?style=for-the-badge)
 
+> [!IMPORTANT]
+> **Beta Release & Notice:**
+> This repository contains a Beta release designed to test potential new features, updated user interfaces, and architectural redesigns for Findroid.
+>
+> 🤖 **AI Assistance Disclaimer:**
+> Artificial Intelligence tools were utilized during the development, refactoring, and documentation of these new features. While all code has undergone static analysis, formatting checks (`ktfmt`), and automated build verifications, unexpected issues may arise. If you encounter any bugs, please report them directly to the [GitHub repository issue tracker](https://github.com/jarnedemeulemeester/findroid/issues).
+
 Findroid is third-party Android application for Jellyfin that provides a native user interface to browse and play movies and series.
 
 I am developing this application in my spare time.
@@ -51,27 +58,53 @@ I am developing this application in my spare time.
   - Skip button
   - Auto skip
 
-
 ### ✨ New - Beta only
-- Offline playback / downloads
+
+- **Phone Player Redesign**
+  - Modern Jetpack Compose player UI with custom progress bar
+  - Sleep timer picker
+  - Playback speed selector
+  - Aspect ratio selector
+  - Chapters list
+- **Android TV**
+  - Redesigned TV home carousel and main screen navigation
+  - Dedicated TV video player controls layout with D-Pad scrubbing, chapter pills, and settings panel
+  - TV screensaver
+  - Quick connect screen as default login
+- **Advanced Search & Filtering**
+  - Added Search screen
+  - Filter chips and bottom sheet
+- **Anti-Spoiler Mode**
+  - Particle mask over episode titles, thumbnails, and descriptions to prevent spoilers
+  - Interactive press-and-hold reveal gestures
+  - Phone and TV anti-spoiler mode
+- **Offline Playback & Download Presets**
   - Redesigned Downloads page
   - Resumable direct-stream downloads powered by OkHttp 3
   - Foreground download service with persistent progress notifications
   - Multi-storage volume management (internal storage & SD card)
-  - **Test** (100% vibecoded)**:**
+  - **Alpha:**
     - Smart Downloads
-    - Transcoded downloads
-- Multi parts video support
-- Images
-  - Blur placeholder
-  - Request exact dimension images from the server
-- Google Cast (Chromecast) support
-- Account menu
-- Quick Connect support (also input)
-- Anti Spoiler Mode
+    - Transcode downloads
+- **Google Cast (Chromecast)**
+  - Cast Button and mini player
+  - Expanded Cast player with:
+    - scrubbing timeline
+    - chapter dialog
+    - track/subtitle selector
+    - volume controls
+- **Media Segment & Skip Configuration**
+  - Custom segment skip actions
+  - Configurable color for segments
+- **Multi-Part Video support**
+- **Blur hash Image placeholders**
+  - blur hash image placeholders
+  - exact dimension image requests from the Jellyfin server
+- **Account & Connection Management**
+  - User account menu with Quick Connect authentication input support
 
 ## Planned features
-- Android TV
+- Android TV - Search feature
 - Websocket connection (Syncplay)
 
 ## Translating

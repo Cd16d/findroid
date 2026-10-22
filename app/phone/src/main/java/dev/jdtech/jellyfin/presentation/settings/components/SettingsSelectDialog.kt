@@ -27,6 +27,14 @@ import dev.jdtech.jellyfin.settings.R as SettingsR
 import dev.jdtech.jellyfin.settings.domain.models.Preference
 import dev.jdtech.jellyfin.settings.presentation.models.PreferenceSelect
 
+/**
+ * Dialog displaying a list of selectable options for a single-selection preference.
+ *
+ * @param preference Single-select preference model.
+ * @param options List of key-value pairs representing option values and labels.
+ * @param onUpdate Callback invoked when an option is selected.
+ * @param onDismissRequest Callback invoked when the dialog is dismissed.
+ */
 @Composable
 fun SettingsSelectDialog(
     preference: PreferenceSelect,

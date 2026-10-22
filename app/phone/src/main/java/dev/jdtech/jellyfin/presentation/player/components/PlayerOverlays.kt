@@ -19,6 +19,7 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -72,6 +73,17 @@ import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 
+/**
+ * Vertical pill overlay displaying current volume or screen brightness level. Features a liquid
+ * fill animation indicating level percentage, a top numeric indicator, and a bottom context icon
+ * representing volume or brightness level.
+ *
+ * @param value Current volume or brightness level normalized between 0.0 and 1.0.
+ * @param isVolume True for volume adjustment overlay; false for screen brightness.
+ * @param visible Whether the overlay is currently visible.
+ * @param modifier Optional [Modifier] applied to the overlay container.
+ * @param animate Whether transitions between values should be animated with spring physics.
+ */
 @Composable
 fun VolumeBrightnessOverlay(
     value: Float,
@@ -253,7 +265,7 @@ fun FloatingSkipButton(
                     contentColor = Color.Black,
                 ),
             contentPadding =
-                androidx.compose.foundation.layout.PaddingValues(
+                PaddingValues(
                     horizontal = 20.dp,
                     vertical = 10.dp,
                 ),
@@ -742,6 +754,31 @@ private fun ScreenLockOverlayPreview() {
             isLocked = true,
             showUnlockButton = true,
             onUnlock = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF000000)
+@Composable
+private fun SlideToUnlockPreview() {
+    FindroidTheme {
+        Box(
+            modifier = Modifier.size(width = 300.dp, height = 100.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            SlideToUnlock(onUnlock = {})
+        }
+    }
+}
+
+@OptIn(UnstableApi::class)
+@Preview(showBackground = true, backgroundColor = 0xFF000000, widthDp = 400, heightDp = 200)
+@Composable
+private fun ZoomFeedbackOverlayPreview() {
+    FindroidTheme {
+        ZoomFeedbackOverlay(
+            visible = true,
+            resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM,
         )
     }
 }

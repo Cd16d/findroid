@@ -48,6 +48,13 @@ private fun getItemShape(index: Int, total: Int): Shape =
         else -> MiddleShape
     }
 
+/**
+ * Container component that displays a group of settings preferences inside rounded cards.
+ *
+ * @param group Group model containing a header title and list of preference items.
+ * @param onAction Callback triggered when user updates or interacts with a preference item.
+ * @param modifier Optional modifier applied to the card container layout. Defaults to [Modifier].
+ */
 @Composable
 fun SettingsGroupCard(
     group: PreferenceGroup,

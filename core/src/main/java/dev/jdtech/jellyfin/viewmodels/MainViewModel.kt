@@ -19,6 +19,10 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
+/**
+ * Main ViewModel managing app-wide initialization state, server/user setup status, dynamic color
+ * preferences, volume key event broadcasting, and Google Cast overlay state.
+ */
 @HiltViewModel
 class MainViewModel
 @Inject
@@ -27,6 +31,8 @@ constructor(private val appPreferences: AppPreferences, private val database: Se
     private val _state = MutableStateFlow(MainState())
     val state = _state.asStateFlow()
 
+    // SharedFlow buffer for physical volume key press events intercepted by activities and
+    // broadcast to active player components or UI volume overlays.
     private val _volumeKeyEvents = MutableSharedFlow<VolumeKeyEvent>(extraBufferCapacity = 8)
     val volumeKeyEvents = _volumeKeyEvents.asSharedFlow()
 
@@ -37,7 +43,14 @@ constructor(private val appPreferences: AppPreferences, private val database: Se
         _isCastPlayerOpen.value = isOpen
     }
 
+    /**
+     * Emits a physical volume key event into [volumeKeyEvents]. Uses non-blocking
+     * [MutableSharedFlow.tryEmit] backed by `extraBufferCapacity` to prevent dropping key press
+     * events or stalling the UI thread when hardware volume buttons are held down.
+     */
     fun emitVolumeKeyEvent(isUp: Boolean, isRepeat: Boolean = false) {
+        // tryEmit ensures fast key-repeat events are delivered without blocking the key event
+        // handler
         _volumeKeyEvents.tryEmit(VolumeKeyEvent(isUp = isUp, isRepeat = isRepeat))
     }
 

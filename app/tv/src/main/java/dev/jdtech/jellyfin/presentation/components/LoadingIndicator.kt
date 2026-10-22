@@ -5,7 +5,9 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 
 /** Indeterminate circular loading indicator styled for TV interfaces. */
 @Composable
@@ -18,8 +20,8 @@ fun LoadingIndicator() {
     )
 }
 
-@androidx.compose.ui.tooling.preview.Preview
+@Preview
 @Composable
 private fun LoadingIndicatorPreview() {
-    dev.jdtech.jellyfin.presentation.theme.FindroidTheme { LoadingIndicator() }
+    FindroidTheme { LoadingIndicator() }
 }

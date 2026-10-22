@@ -5,6 +5,7 @@ import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.ItemFilter
 import org.jellyfin.sdk.model.api.SeriesStatus
 
+/** Represents user interactions and actions on the search screen and filter bottom sheet. */
 sealed interface SearchAction {
     data class Search(val query: String) : SearchAction
 
@@ -37,8 +38,6 @@ sealed interface SearchAction {
     data class ToggleRating(val rating: String) : SearchAction
 
     data class ToggleTag(val tag: String) : SearchAction
-
-    data class ToggleYear(val year: Int) : SearchAction
 
     data class SetYearRange(val range: ClosedFloatingPointRange<Float>?) : SearchAction
 

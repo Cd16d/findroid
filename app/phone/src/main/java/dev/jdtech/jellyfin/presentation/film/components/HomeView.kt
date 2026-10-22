@@ -19,14 +19,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import dev.jdtech.jellyfin.core.R as CoreR
+import dev.jdtech.jellyfin.core.presentation.dummy.dummyMovie
 import dev.jdtech.jellyfin.film.R as FilmR
 import dev.jdtech.jellyfin.film.presentation.home.HomeAction
+import dev.jdtech.jellyfin.models.CollectionType
 import dev.jdtech.jellyfin.models.FindroidCollection
 import dev.jdtech.jellyfin.models.FindroidImages
 import dev.jdtech.jellyfin.models.HomeItem
+import dev.jdtech.jellyfin.models.View
+import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
+import java.util.UUID
 
 /**
  * Horizontal row component rendering a media library view section with a title and view-all button.
@@ -90,19 +96,19 @@ fun HomeView(
     }
 }
 
-@androidx.compose.ui.tooling.preview.Preview(showBackground = true)
+@Preview(showBackground = true)
 @Composable
 private fun HomeViewPreview() {
-    dev.jdtech.jellyfin.presentation.theme.FindroidTheme {
+    FindroidTheme {
         HomeView(
             view =
                 HomeItem.ViewItem(
                     view =
-                        dev.jdtech.jellyfin.models.View(
-                            id = java.util.UUID.randomUUID(),
+                        View(
+                            id = UUID.randomUUID(),
                             name = "Movies",
-                            items = listOf(dev.jdtech.jellyfin.core.presentation.dummy.dummyMovie),
-                            type = dev.jdtech.jellyfin.models.CollectionType.Movies,
+                            items = listOf(dummyMovie),
+                            type = CollectionType.Movies,
                         )
                 ),
             itemsPadding = PaddingValues(16.dp),

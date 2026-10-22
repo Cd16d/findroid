@@ -26,6 +26,10 @@ import dev.jdtech.jellyfin.presentation.components.ClockText
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
 
+/**
+ * Layout container positioning top header (media title & clock) and bottom controls (seeker, action
+ * buttons, episode shelf) on TV player.
+ */
 @Composable
 fun VideoPlayerControlsLayout(
     mediaTitle: @Composable () -> Unit,

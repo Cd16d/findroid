@@ -28,12 +28,28 @@ import org.jellyfin.sdk.model.api.ItemFields
 import org.jellyfin.sdk.model.api.MediaStreamType
 import timber.log.Timber
 
+/**
+ * Manages playback playlists and queue navigation. Converts Jellyfin domain models into
+ * player-ready [PlayerItem] instances and handles sequence navigation.
+ */
 class PlaylistManager @Inject internal constructor(private val repository: JellyfinRepository) {
     private var startItem: FindroidItem? = null
     private var items: List<FindroidItem> = emptyList()
     private val playerItems: MutableList<PlayerItem> = mutableListOf()
+
+    /** The index of the currently active media item in the playlist. */
     var currentItemIndex: Int = 0
 
+    /**
+     * Builds and returns the initial [PlayerItem] for playback given an item ID and kind.
+     *
+     * @param itemId Unique identifier of the requested item.
+     * @param itemKind The [BaseItemKind] of the requested item (e.g. MOVIE, SERIES, EPISODE).
+     * @param mediaSourceIndex Optional index of the specific media source to use.
+     * @param startFromBeginning Whether to start playback from position 0 instead of saved
+     *   position.
+     * @return The constructed [PlayerItem], or `null` if the item could not be retrieved.
+     */
     suspend fun getInitialItem(
         itemId: UUID,
         itemKind: BaseItemKind,
@@ -135,6 +151,11 @@ class PlaylistManager @Inject internal constructor(private val repository: Jelly
         return playerItem
     }
 
+    /**
+     * Retrieves the previous [PlayerItem] in the active playlist relative to [currentItemIndex].
+     *
+     * @return The previous [PlayerItem], or `null` if at the start of the playlist or on error.
+     */
     suspend fun getPreviousPlayerItem(): PlayerItem? {
         Timber.d("Retrieving previous player item")
 
@@ -159,6 +180,11 @@ class PlaylistManager @Inject internal constructor(private val repository: Jelly
         return playerItem
     }
 
+    /**
+     * Retrieves the next [PlayerItem] in the active playlist relative to [currentItemIndex].
+     *
+     * @return The next [PlayerItem], or `null` if at the end of the playlist or on error.
+     */
     suspend fun getNextPlayerItem(): PlayerItem? {
         Timber.d("Retrieving next player item")
 
@@ -183,6 +209,11 @@ class PlaylistManager @Inject internal constructor(private val repository: Jelly
         return playerItem
     }
 
+    /**
+     * Updates [currentItemIndex] to match the specified item ID.
+     *
+     * @param itemId Unique identifier of the target item in the playlist.
+     */
     fun setCurrentMediaItemIndex(itemId: UUID) {
         currentItemIndex = items.indexOfFirst { it.id == itemId }
     }

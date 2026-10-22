@@ -28,6 +28,13 @@ import dev.jdtech.jellyfin.models.User
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import org.jellyfin.sdk.model.api.ImageType
 
+/**
+ * Circular user profile icon button for TV header navigation.
+ *
+ * @param user User model representing currently active Jellyfin user profile.
+ * @param onClick Callback executed when button is clicked.
+ * @param modifier Optional modifier applied to surface container. Defaults to [Modifier].
+ */
 @Composable
 fun ProfileButton(user: User?, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val context = LocalContext.current
@@ -66,7 +73,7 @@ fun ProfileButton(user: User?, onClick: () -> Unit, modifier: Modifier = Modifie
     }
 }
 
-@Preview
+@Preview(device = "id:tv_1080p")
 @Composable
 private fun ProfileButtonPreview() {
     FindroidTheme { ProfileButton(user = dummyUser, onClick = {}) }

@@ -72,6 +72,20 @@ import dev.jdtech.jellyfin.presentation.theme.spacings
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
+/**
+ * Dialog for selecting chapters during Cast playback.
+ *
+ * @param visible Whether the dialog is visible.
+ * @param chapters List of chapters available for current item.
+ * @param currentPositionMs Current playback position in milliseconds.
+ * @param trickplay Trickplay information for thumbnail previews.
+ * @param onChapterSelected Callback when a chapter is selected with its start position in ms.
+ * @param onDismiss Callback when dialog is dismissed.
+ * @param modifier Modifier applied to the dialog surface. Defaults to [Modifier].
+ * @param segments Optional list of segments (e.g. intro/outro) to highlight. Defaults to empty
+ *   list.
+ * @param durationMs Total item duration in milliseconds. Defaults to 0.
+ */
 @Composable
 fun CastChaptersDialog(
     visible: Boolean,
@@ -218,35 +232,6 @@ fun CastChaptersDialog(
                         .fillMaxWidth()
                         .statusBarsPadding()
                         .offset { IntOffset(0, animatedOffset.roundToInt()) }
-                        .pointerInput(Unit) {
-                            awaitEachGesture {
-                                awaitFirstDown(requireUnconsumed = false)
-                                while (true) {
-                                    val event = awaitPointerEvent()
-                                    val change = event.changes.firstOrNull() ?: break
-
-                                    if (change.changedToUp()) {
-                                        if (offsetY > 150f) {
-                                            onDismiss()
-                                        }
-                                        offsetY = 0f
-                                        break
-                                    }
-
-                                    if (!change.isConsumed) {
-                                        val deltaY = change.position.y - change.previousPosition.y
-                                        val deltaX = change.position.x - change.previousPosition.x
-
-                                        if (abs(deltaY) > 0) {
-                                            offsetY = (offsetY + deltaY).coerceAtLeast(0f)
-                                            change.consume()
-                                        } else if (abs(deltaX) > 0) {
-                                            change.consume()
-                                        }
-                                    }
-                                }
-                            }
-                        }
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,

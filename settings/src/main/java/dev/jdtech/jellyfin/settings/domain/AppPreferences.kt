@@ -10,6 +10,10 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import timber.log.Timber
 
+/**
+ * Manages application preferences using [SharedPreferences]. Provides typed preference objects and
+ * reactive state observation.
+ */
 class AppPreferences @Inject constructor(val sharedPreferences: SharedPreferences) {
     constructor(
         context: Context
@@ -80,59 +84,49 @@ class AppPreferences @Inject constructor(val sharedPreferences: SharedPreference
     val playerChapterMarkers = Preference("pref_player_chapter_markers", true)
 
     // Player - Media Segments
-    val prefSegmentColorIntro
-        get() = Preference("pref_segment_color_intro", 0xFF4CAF50L)
+    val prefSegmentColorIntro = Preference("pref_segment_color_intro", 0xFF4CAF50L)
 
-    val prefSegmentColorOutro
-        get() = Preference("pref_segment_color_outro", 0xFFFF9800L)
+    val prefSegmentColorOutro = Preference("pref_segment_color_outro", 0xFFFF9800L)
 
-    val prefSegmentColorRecap
-        get() = Preference("pref_segment_color_recap", 0xFF2196F3L)
+    val prefSegmentColorRecap = Preference("pref_segment_color_recap", 0xFF2196F3L)
 
-    val prefSegmentColorPreview
-        get() = Preference("pref_segment_color_preview", 0xFF9C27B0L)
+    val prefSegmentColorPreview = Preference("pref_segment_color_preview", 0xFF9C27B0L)
 
-    val prefSegmentColorCommercial
-        get() = Preference("pref_segment_color_commercial", 0xFF795548L)
+    val prefSegmentColorCommercial = Preference("pref_segment_color_commercial", 0xFF795548L)
 
-    val playerMediaSegmentsSkipButton
-        get() = Preference("pref_player_media_segments_skip_button", true)
+    val playerMediaSegmentsSkipButton = Preference("pref_player_media_segments_skip_button", true)
 
-    val playerMediaSegmentsSkipButtonType
-        get() =
-            Preference(
-                "pref_player_media_segments_skip_button_type",
-                setOf(
-                    Constants.MediaSegmentType.INTRO.value,
-                    Constants.MediaSegmentType.OUTRO.value,
-                ),
-            )
+    val playerMediaSegmentsSkipButtonType =
+        Preference(
+            "pref_player_media_segments_skip_button_type",
+            setOf(
+                Constants.MediaSegmentType.INTRO.value,
+                Constants.MediaSegmentType.OUTRO.value,
+            ),
+        )
 
-    val playerMediaSegmentsSkipButtonDuration
-        get() = Preference("pref_player_media_segments_skip_button_duration", 5L)
+    val playerMediaSegmentsSkipButtonDuration =
+        Preference("pref_player_media_segments_skip_button_duration", 5L)
 
-    val playerMediaSegmentsAutoSkip
-        get() = Preference("pref_player_media_segments_auto_skip", false)
+    val playerMediaSegmentsAutoSkip = Preference("pref_player_media_segments_auto_skip", false)
 
-    val playerMediaSegmentsAutoSkipMode
-        get() =
-            Preference(
-                "pref_player_media_segments_auto_skip_mode",
-                Constants.PlayerMediaSegmentsAutoSkip.ALWAYS.value,
-            )
+    val playerMediaSegmentsAutoSkipMode =
+        Preference(
+            "pref_player_media_segments_auto_skip_mode",
+            Constants.PlayerMediaSegmentsAutoSkip.ALWAYS.value,
+        )
 
-    val playerMediaSegmentsAutoSkipType
-        get() =
-            Preference(
-                "pref_player_media_segments_auto_skip_type",
-                setOf(
-                    Constants.MediaSegmentType.INTRO.value,
-                    Constants.MediaSegmentType.OUTRO.value,
-                ),
-            )
+    val playerMediaSegmentsAutoSkipType =
+        Preference(
+            "pref_player_media_segments_auto_skip_type",
+            setOf(
+                Constants.MediaSegmentType.INTRO.value,
+                Constants.MediaSegmentType.OUTRO.value,
+            ),
+        )
 
-    val playerMediaSegmentsNextEpisodeThreshold
-        get() = Preference("pref_player_media_segments_next_episode_threshold", 5_000L)
+    val playerMediaSegmentsNextEpisodeThreshold =
+        Preference("pref_player_media_segments_next_episode_threshold", 5_000L)
 
     enum class SegmentAction {
         NONE,

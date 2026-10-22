@@ -74,6 +74,17 @@ import dev.jdtech.jellyfin.presentation.theme.spacings
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
+/**
+ * Dialog for selecting audio or subtitle tracks during Cast playback.
+ *
+ * @param visible Whether the dialog is visible.
+ * @param type Track type ([C.TRACK_TYPE_AUDIO] or [C.TRACK_TYPE_TEXT]).
+ * @param tracks Available tracks for selection.
+ * @param onSetTrack Callback when a track is selected, or null for "None" subtitle.
+ * @param onDismiss Callback when dialog is dismissed.
+ * @param displayExtraInfo Whether to display extra track information like codecs/channels.
+ * @param modifier Modifier applied to the dialog surface. Defaults to [Modifier].
+ */
 @Composable
 fun CastTrackSelectionDialog(
     visible: Boolean,
@@ -216,38 +227,6 @@ fun CastTrackSelectionDialog(
                         .fillMaxWidth()
                         .statusBarsPadding()
                         .offset { IntOffset(0, animatedOffset.roundToInt()) }
-                        .pointerInput(Unit) {
-                            awaitEachGesture {
-                                awaitFirstDown(requireUnconsumed = false)
-                                while (true) {
-                                    val event = awaitPointerEvent()
-                                    val change = event.changes.firstOrNull() ?: break
-
-                                    if (change.changedToUp()) {
-                                        if (offsetY > 150f) {
-                                            onDismiss()
-                                        }
-                                        offsetY = 0f
-                                        break
-                                    }
-
-                                    // Only handle if not already consumed by children (like the
-                                    // list)
-                                    if (!change.isConsumed) {
-                                        val deltaY = change.position.y - change.previousPosition.y
-                                        val deltaX = change.position.x - change.previousPosition.x
-
-                                        if (abs(deltaY) > 0) {
-                                            offsetY = (offsetY + deltaY).coerceAtLeast(0f)
-                                            change.consume()
-                                        } else if (abs(deltaX) > 0) {
-                                            // Other swipes (horizontal): consume and do nothing
-                                            change.consume()
-                                        }
-                                    }
-                                }
-                            }
-                        }
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,

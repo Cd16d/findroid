@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -66,36 +67,6 @@ import dev.jdtech.jellyfin.presentation.components.ChapterCard
 import dev.jdtech.jellyfin.presentation.components.SelectableTrackItem
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import kotlinx.coroutines.delay
-
-private val DialogShape = RoundedCornerShape(24.dp)
-private val ChipShape = RoundedCornerShape(4.dp)
-private val ChapterThumbShape = RoundedCornerShape(12.dp)
-
-private val MenuTopShape =
-    RoundedCornerShape(
-        topStart = 24.dp,
-        topEnd = 24.dp,
-        bottomStart = 4.dp,
-        bottomEnd = 4.dp,
-    )
-private val MenuBottomShape =
-    RoundedCornerShape(
-        topStart = 4.dp,
-        topEnd = 4.dp,
-        bottomStart = 24.dp,
-        bottomEnd = 24.dp,
-    )
-private val MenuMiddleShape = RoundedCornerShape(4.dp)
-private val MenuSingleShape = RoundedCornerShape(24.dp)
-
-private fun getItemShape(index: Int, totalCount: Int): Shape {
-    return when {
-        totalCount <= 1 -> MenuSingleShape
-        index == 0 -> MenuTopShape
-        index == totalCount - 1 -> MenuBottomShape
-        else -> MenuMiddleShape
-    }
-}
 
 /**
  * Modal bottom sheet presenting player settings, track pickers, playback speed, aspect ratio, and
@@ -726,6 +697,46 @@ private fun PhoneChaptersList(
                     viewModel.player.seekTo(chapter.startPosition)
                     onChapterSelected()
                 },
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF0E0E10)
+@Composable
+private fun PlayerBottomSheetPreview() {
+    FindroidTheme {
+        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = stringResource(id = CoreR.string.title_settings),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                )
+            }
+            PhoneNavigationRow(
+                title = stringResource(id = PlayerR.string.audio),
+                subtitle = "English",
+                iconRes = CoreR.drawable.ic_audio,
+                onClick = {},
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            PhoneNavigationRow(
+                title = stringResource(id = PlayerR.string.subtitles),
+                subtitle = "English [CC]",
+                iconRes = CoreR.drawable.ic_closed_caption,
+                onClick = {},
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            PhoneNavigationRow(
+                title = stringResource(id = PlayerR.string.playback_speed),
+                subtitle = "1.0x",
+                iconRes = CoreR.drawable.ic_playback_speed,
+                onClick = {},
             )
         }
     }

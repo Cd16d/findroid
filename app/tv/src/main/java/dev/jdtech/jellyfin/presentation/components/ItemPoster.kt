@@ -8,10 +8,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.tooling.preview.Preview
 import coil3.compose.AsyncImage
+import dev.jdtech.jellyfin.core.presentation.dummy.dummyMovie
 import dev.jdtech.jellyfin.models.FindroidEpisode
 import dev.jdtech.jellyfin.models.FindroidItem
 import dev.jdtech.jellyfin.models.FindroidMovie
+import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.utils.toBlurHashPainter
 import dev.jdtech.jellyfin.utils.toOptimizedImageUri
 
@@ -82,12 +85,12 @@ fun ItemPoster(
     }
 }
 
-@androidx.compose.ui.tooling.preview.Preview
+@Preview(device = "id:tv_1080p")
 @Composable
 private fun ItemPosterPreview() {
-    dev.jdtech.jellyfin.presentation.theme.FindroidTheme {
+    FindroidTheme {
         ItemPoster(
-            item = dev.jdtech.jellyfin.core.presentation.dummy.dummyMovie,
+            item = dummyMovie,
             direction = Direction.VERTICAL,
         )
     }

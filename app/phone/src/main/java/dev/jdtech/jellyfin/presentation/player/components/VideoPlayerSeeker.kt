@@ -60,6 +60,8 @@ import kotlin.time.Duration.Companion.minutes
  * @param onScrubbingChanged Callback reporting scrub status, scrub timestamp in ms, and touch X
  *   offset.
  * @param onOpenChapters Optional callback to navigate to the chapters sheet/panel.
+ * @param isPortrait Whether display is in portrait orientation.
+ * @param isCompactWidth Whether screen layout width is compact (< 600dp).
  */
 @Composable
 fun VideoPlayerSeeker(

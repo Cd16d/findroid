@@ -15,6 +15,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
@@ -26,6 +27,17 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 
+/**
+ * Overlay layout for the TV video player providing background gradient scrim, control visibility
+ * animations, user interaction timeouts, and preview key listeners.
+ *
+ * @param isPlaying Whether media is currently playing.
+ * @param modifier Modifier applied to the overlay container.
+ * @param isScrubbing Whether user is currently seeking or scrubbing timeline.
+ * @param state Video player state managing controls visibility.
+ * @param focusRequester FocusRequester to request focus when controls become visible.
+ * @param controls Composable slot containing player controls UI.
+ */
 @Composable
 fun VideoPlayerOverlay(
     isPlaying: Boolean,
@@ -37,7 +49,9 @@ fun VideoPlayerOverlay(
 ) {
     LaunchedEffect(state.controlsVisible) {
         if (state.controlsVisible) {
-            focusRequester.requestFocus()
+            try {
+                focusRequester.requestFocus()
+            } catch (_: Exception) {}
         }
     }
 
@@ -56,7 +70,8 @@ fun VideoPlayerOverlay(
     ) {
         Box(
             modifier =
-                modifier.fillMaxSize().onPreviewKeyEvent { keyEvent ->
+                modifier.fillMaxSize().focusRequester(focusRequester).onPreviewKeyEvent { keyEvent
+                    ->
                     if (keyEvent.type == KeyEventType.KeyDown && keyEvent.key != Key.Back) {
                         if (isPlaying && !isScrubbing) {
                             state.showControls()

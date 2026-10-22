@@ -18,9 +18,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import androidx.tv.material3.Text
+import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import kotlin.math.abs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -36,6 +39,13 @@ val NoOpBringIntoViewSpec =
         ): Float = 0f
     }
 
+/**
+ * Controller managing focus state and keyline pivot scrolling for horizontal TV row lists.
+ * Coordinates smooth scrolling of items to the TV horizontal keyline when items gain focus.
+ *
+ * @param lazyListState [LazyListState] instance managing list scroll position.
+ * @param scope [CoroutineScope] used to launch animated scroll coroutines on focus shifts.
+ */
 @Stable
 class TvPivotRowController(
     val lazyListState: LazyListState,
@@ -50,6 +60,11 @@ class TvPivotRowController(
     }
 }
 
+/**
+ * Creates and remembers a [TvPivotRowController] instance across recompositions.
+ *
+ * @param lazyListState LazyListState instance managing pivot list scrolling.
+ */
 @Composable
 fun rememberTvPivotRowController(
     lazyListState: LazyListState = rememberLazyListState()
@@ -110,16 +125,16 @@ fun TvPivotItem(
     Box(modifier = modifier.zIndex(if (isItemFocused) 1f else 0f)) { content() }
 }
 
-@androidx.compose.ui.tooling.preview.Preview
+@Preview(device = "id:tv_1080p")
 @Composable
 private fun TvPivotItemPreview() {
-    dev.jdtech.jellyfin.presentation.theme.FindroidTheme {
+    FindroidTheme {
         TvPivotItem(
             index = 0,
             controller = rememberTvPivotRowController(),
             isItemFocused = true,
         ) {
-            androidx.tv.material3.Text("Pivot Item")
+            Text("Pivot Item")
         }
     }
 }

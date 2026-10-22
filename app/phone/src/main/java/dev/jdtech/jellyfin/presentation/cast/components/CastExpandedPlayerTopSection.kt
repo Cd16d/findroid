@@ -1,5 +1,6 @@
 package dev.jdtech.jellyfin.presentation.cast.components
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -18,6 +19,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -27,6 +29,7 @@ import coil3.compose.AsyncImage
 import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.player.cast.models.Device
 import dev.jdtech.jellyfin.player.cast.presentation.CastPlayerViewModel
+import dev.jdtech.jellyfin.player.core.R as PlayerCoreR
 import dev.jdtech.jellyfin.player.core.domain.models.PlayerImage
 import dev.jdtech.jellyfin.player.core.domain.models.Trickplay
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
@@ -34,6 +37,16 @@ import dev.jdtech.jellyfin.presentation.theme.spacings
 import dev.jdtech.jellyfin.utils.toBlurHashPainter
 import dev.jdtech.jellyfin.utils.toOptimizedImageUri
 
+/**
+ * Top artwork and header section of expanded Google Cast player.
+ *
+ * @param uiState Cast player UI state model.
+ * @param isScrubbing Whether seeker bar is being dragged.
+ * @param scrubPosition Current scrub drag position in ms.
+ * @param onClose Callback to close/collapse expanded player.
+ * @param onDeviceClick Callback when device button is tapped.
+ * @param modifier Modifier applied to layout. Defaults to [Modifier].
+ */
 @Composable
 fun PlayerTopSection(
     uiState: CastPlayerViewModel.UiState,
@@ -94,6 +107,34 @@ fun PlayerTopSection(
             )
         }
     }
+}
+
+/**
+ * Displays a trickplay thumbnail preview for scrubbing positions.
+ *
+ * @param trickplay The trickplay model containing thumbnail images and interval info.
+ * @param scrubPosition Current scrub position in milliseconds.
+ * @param modifier Modifier applied to the image layout. Defaults to [Modifier].
+ */
+@Composable
+fun TrickplayThumbnail(
+    trickplay: Trickplay,
+    scrubPosition: Float,
+    modifier: Modifier = Modifier,
+) {
+    if (trickplay.images.isEmpty() || trickplay.interval <= 0) return
+
+    val safePosition = if (scrubPosition.isFinite() && scrubPosition > 0f) scrubPosition else 0f
+    val index = (safePosition / trickplay.interval).toInt().coerceIn(0, trickplay.images.size - 1)
+    val image = trickplay.images.getOrNull(index) ?: return
+    val imageBitmap = remember(image) { image.asImageBitmap() }
+
+    Image(
+        bitmap = imageBitmap,
+        contentDescription = stringResource(PlayerCoreR.string.player_trickplay),
+        contentScale = ContentScale.Crop,
+        modifier = modifier.fillMaxSize(),
+    )
 }
 
 @Composable

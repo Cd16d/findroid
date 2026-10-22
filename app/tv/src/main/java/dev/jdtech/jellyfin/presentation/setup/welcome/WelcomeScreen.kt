@@ -28,6 +28,7 @@ import androidx.tv.material3.Text
 import dev.jdtech.jellyfin.core.R
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
+import dev.jdtech.jellyfin.setup.R as SetupR
 import dev.jdtech.jellyfin.setup.presentation.welcome.WelcomeAction
 
 @Composable
@@ -63,32 +64,30 @@ private fun WelcomeScreenLayout(onAction: (WelcomeAction) -> Unit) {
             )
             Spacer(modifier = Modifier.height(MaterialTheme.spacings.medium))
             Text(
-                text = stringResource(dev.jdtech.jellyfin.setup.R.string.welcome),
+                text = stringResource(SetupR.string.welcome),
                 style = MaterialTheme.typography.displayMedium,
             )
             Spacer(modifier = Modifier.height(MaterialTheme.spacings.default))
             Text(
-                text = stringResource(dev.jdtech.jellyfin.setup.R.string.welcome_text),
+                text = stringResource(SetupR.string.welcome_text),
                 style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center,
             )
             Spacer(modifier = Modifier.height(MaterialTheme.spacings.large))
             OutlinedButton(onClick = { onAction(WelcomeAction.OnLearnMoreClick) }) {
-                Text(
-                    text = stringResource(dev.jdtech.jellyfin.setup.R.string.welcome_btn_learn_more)
-                )
+                Text(text = stringResource(SetupR.string.welcome_btn_learn_more))
             }
             Spacer(modifier = Modifier.height(MaterialTheme.spacings.medium))
             Button(
                 onClick = { onAction(WelcomeAction.OnContinueClick) },
                 modifier = Modifier.focusRequester(focusRequester),
             ) {
-                Text(text = stringResource(dev.jdtech.jellyfin.setup.R.string.welcome_btn_continue))
+                Text(text = stringResource(SetupR.string.welcome_btn_continue))
             }
         }
     }
 
-    LaunchedEffect(true) { focusRequester.requestFocus() }
+    LaunchedEffect(Unit) { focusRequester.requestFocus() }
 }
 
 @Preview(device = "id:tv_1080p")

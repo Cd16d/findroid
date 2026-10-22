@@ -6,9 +6,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.models.FindroidItemPerson
+import dev.jdtech.jellyfin.models.FindroidItemPersonImage
+import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
+import java.util.UUID
+import org.jellyfin.sdk.model.api.PersonKind
 
 /**
  * Media information text block displaying genres, director, and writers.
@@ -46,20 +51,20 @@ fun InfoText(
     }
 }
 
-@androidx.compose.ui.tooling.preview.Preview(showBackground = true)
+@Preview(showBackground = true)
 @Composable
 private fun InfoTextPreview() {
-    dev.jdtech.jellyfin.presentation.theme.FindroidTheme {
+    FindroidTheme {
         InfoText(
             genres = listOf("Action", "Sci-Fi"),
             director =
                 FindroidItemPerson(
-                    id = java.util.UUID.randomUUID(),
+                    id = UUID.randomUUID(),
                     name = "Robert Rodriguez",
-                    type = org.jellyfin.sdk.model.api.PersonKind.DIRECTOR,
+                    type = PersonKind.DIRECTOR,
                     role = "Director",
                     image =
-                        dev.jdtech.jellyfin.models.FindroidItemPersonImage(
+                        FindroidItemPersonImage(
                             uri = null,
                             blurHash = null,
                         ),

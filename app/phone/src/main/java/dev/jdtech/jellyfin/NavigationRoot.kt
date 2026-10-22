@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -73,6 +74,7 @@ import dev.jdtech.jellyfin.models.FindroidItem
 import dev.jdtech.jellyfin.models.FindroidMovie
 import dev.jdtech.jellyfin.models.FindroidSeason
 import dev.jdtech.jellyfin.models.FindroidShow
+import dev.jdtech.jellyfin.models.VolumeKeyEvent
 import dev.jdtech.jellyfin.navigation.navigateOrReuse
 import dev.jdtech.jellyfin.navigation.resumedAction
 import dev.jdtech.jellyfin.navigation.setupEntries
@@ -107,7 +109,10 @@ import dev.jdtech.jellyfin.presentation.utils.LocalOfflineMode
 import dev.jdtech.jellyfin.presentation.utils.rememberSafePadding
 import dev.jdtech.jellyfin.settings.domain.AppPreferences
 import dev.jdtech.jellyfin.utils.restart
+import dev.jdtech.jellyfin.viewmodels.MainViewModel
 import java.util.UUID
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 
 private val TOP_LEVEL_ROUTES = setOf(HomeRoute, MediaRoute, SearchRoute, DownloadsRoute)
 private val GLOBAL_TRANSITION_SPEC = fadeIn(tween(300)) togetherWith fadeOut(tween(300))
@@ -145,12 +150,7 @@ val downloadsTab =
 
 val LocalCastPlayerHeight = compositionLocalOf { 0.dp }
 
-val LocalVolumeKeyEvents =
-    compositionLocalOf<
-        kotlinx.coroutines.flow.SharedFlow<dev.jdtech.jellyfin.models.VolumeKeyEvent>
-    > {
-        kotlinx.coroutines.flow.MutableSharedFlow()
-    }
+val LocalVolumeKeyEvents = compositionLocalOf<SharedFlow<VolumeKeyEvent>> { MutableSharedFlow() }
 
 @Composable
 fun NavigationRoot(
@@ -224,7 +224,7 @@ fun NavigationRoot(
  */
 private class AppliedSetupMode(var setupComplete: Boolean)
 
-@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MainNavigation(
     navigationState: NavigationState,
@@ -233,8 +233,7 @@ private fun MainNavigation(
     isOfflineMode: Boolean,
 ) {
     val context = LocalContext.current
-    val mainViewModel: dev.jdtech.jellyfin.viewmodels.MainViewModel =
-        hiltViewModel(context as ViewModelStoreOwner)
+    val mainViewModel: MainViewModel = hiltViewModel(context as ViewModelStoreOwner)
     val castSessionViewModel: CastSessionViewModel = hiltViewModel(context as ViewModelStoreOwner)
     val searchViewModel: SearchViewModel = hiltViewModel(context as ViewModelStoreOwner)
 

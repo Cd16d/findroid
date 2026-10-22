@@ -51,6 +51,19 @@ import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.delay
 
+/**
+ * TV top hero carousel component displaying rotating media highlights.
+ *
+ * @param items List of media items displayed in carousel.
+ * @param onDetails Callback executed to open item details screen.
+ * @param modifier Optional modifier applied to carousel surface. Defaults to [Modifier].
+ * @param isActive Whether carousel auto-rotation is active. Defaults to `true`.
+ * @param showLogo Whether to display media logo image over backdrop. Defaults to `false`.
+ * @param playFocusRequester Optional FocusRequester for carousel focus delegation.
+ * @param upFocusRequester Optional FocusRequester directed on D-pad up navigation.
+ * @param downFocusRequester Optional FocusRequester directed on D-pad down navigation.
+ * @param onFocusChanged Optional callback triggered when carousel focus state changes.
+ */
 @Composable
 fun HomeCarousel(
     items: List<FindroidItem>,

@@ -67,6 +67,16 @@ import dev.jdtech.jellyfin.viewmodels.MainViewModel
 import java.util.UUID
 import org.jellyfin.sdk.model.api.BaseItemKind
 
+/**
+ * Main TV screen component displaying navigation header tabs and section content.
+ *
+ * @param navigateToSettings Callback to navigate to settings screen.
+ * @param navigateToLibrary Callback to navigate to library view screen.
+ * @param navigateToMovie Callback to navigate to movie details screen.
+ * @param navigateToShow Callback to navigate to show details screen.
+ * @param navigateToPlayer Callback to navigate to media player.
+ * @param mainViewModel MainViewModel instance managing main UI state.
+ */
 @Composable
 fun MainScreen(
     navigateToSettings: () -> Unit,
@@ -90,7 +100,7 @@ fun MainScreen(
 
     val delegatedUiState by mainViewModel.uiState.collectAsState()
 
-    LaunchedEffect(true) { mainViewModel.loadServerAndUser() }
+    LaunchedEffect(Unit) { mainViewModel.loadServerAndUser() }
 
     MainScreenLayout(
         uiState = delegatedUiState,

@@ -9,6 +9,10 @@ import org.jellyfin.sdk.model.api.SeriesStatus
 import org.jellyfin.sdk.model.api.VideoType
 import timber.log.Timber
 
+/**
+ * PagingSource for fetching filtered search items from the Jellyfin repository with pagination
+ * support.
+ */
 class SearchItemsPagingSource(
     private val jellyfinRepository: JellyfinRepository,
     private val query: String,
@@ -77,5 +81,11 @@ class SearchItemsPagingSource(
         }
     }
 
-    override fun getRefreshKey(state: PagingState<Int, FindroidItem>): Int = 0
+    override fun getRefreshKey(state: PagingState<Int, FindroidItem>): Int? {
+        return state.anchorPosition?.let { anchorPosition ->
+            val anchorPage = state.closestPageToPosition(anchorPosition)
+            anchorPage?.prevKey?.plus(state.config.pageSize)
+                ?: anchorPage?.nextKey?.minus(state.config.pageSize)
+        }
+    }
 }

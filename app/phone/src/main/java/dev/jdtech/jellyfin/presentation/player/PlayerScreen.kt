@@ -63,7 +63,10 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.zIndex
@@ -78,7 +81,9 @@ import androidx.media3.ui.CaptionStyleCompat
 import androidx.media3.ui.PlayerView
 import androidx.media3.ui.SubtitleView
 import androidx.window.core.layout.WindowSizeClass
+import dev.jdtech.jellyfin.PlayerActivity
 import dev.jdtech.jellyfin.isControlsLocked
+import dev.jdtech.jellyfin.models.VolumeKeyEvent
 import dev.jdtech.jellyfin.player.local.presentation.PlayerEvents
 import dev.jdtech.jellyfin.player.local.presentation.PlayerViewModel
 import dev.jdtech.jellyfin.presentation.player.components.DoubleTapSeekOverlay
@@ -96,12 +101,14 @@ import dev.jdtech.jellyfin.presentation.player.components.ZoomFeedbackOverlay
 import dev.jdtech.jellyfin.presentation.player.components.calculateTrickplayCardWidth
 import dev.jdtech.jellyfin.presentation.player.components.rememberPlayerHaptics
 import dev.jdtech.jellyfin.presentation.player.components.rememberVideoPlayerState
+import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.settings.domain.AppPreferences
 import dev.jdtech.jellyfin.settings.domain.Constants
 import java.util.UUID
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.minutes
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -150,7 +157,7 @@ fun PlayerScreen(
     onToggleOrientation: () -> Unit = {},
     isOrientationLocked: Boolean = false,
     onVideoBoundsChanged: (android.graphics.Rect) -> Unit = {},
-    volumeKeyEvents: Flow<dev.jdtech.jellyfin.models.VolumeKeyEvent> = emptyFlow(),
+    volumeKeyEvents: Flow<VolumeKeyEvent> = emptyFlow(),
     appPreferences: AppPreferences? = null,
     viewModel: PlayerViewModel = hiltViewModel(),
 ) {
@@ -455,7 +462,7 @@ fun PlayerScreen(
 
     val panelDpAnimSpec = tween<Dp>(durationMillis = 350, easing = FastOutSlowInEasing)
     val panelSlideAnimSpec =
-        tween<androidx.compose.ui.unit.IntOffset>(
+        tween<IntOffset>(
             durationMillis = 350,
             easing = FastOutSlowInEasing,
         )
@@ -547,14 +554,12 @@ fun PlayerScreen(
             }
         val cardHalfWidth = cardWidth / 2
         val seekBarStartOffset =
-            videoPaddingInset +
-                insets.calculateLeftPadding(androidx.compose.ui.unit.LayoutDirection.Ltr) +
-                20.dp
+            videoPaddingInset + insets.calculateLeftPadding(LayoutDirection.Ltr) + 20.dp
         val touchXAbsoluteDp = seekBarStartOffset + with(density) { seekBarTouchX.toDp() }
         val maxAvailableRight =
             screenWidth -
                 videoPaddingEnd -
-                insets.calculateRightPadding(androidx.compose.ui.unit.LayoutDirection.Ltr) -
+                insets.calculateRightPadding(LayoutDirection.Ltr) -
                 20.dp
         val clampedOffsetX =
             (touchXAbsoluteDp - cardHalfWidth).coerceIn(
@@ -1204,7 +1209,7 @@ fun PlayerScreen(
                         activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR
                     }
                     isControlsLocked = false
-                    (activity as? dev.jdtech.jellyfin.PlayerActivity)?.updatePipParams()
+                    (activity as? PlayerActivity)?.updatePipParams()
                     showUnlockButton = false
                     unlockJob?.cancel()
                 },
@@ -1407,7 +1412,7 @@ fun PlayerScreen(
                             haptics.confirm()
                             activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LOCKED
                             isControlsLocked = true
-                            (activity as? dev.jdtech.jellyfin.PlayerActivity)?.updatePipParams()
+                            (activity as? PlayerActivity)?.updatePipParams()
                             videoPlayerState.setLocked(true)
                         },
                     )
@@ -1433,11 +1438,89 @@ fun PlayerScreen(
                         haptics.confirm()
                         activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LOCKED
                         isControlsLocked = true
-                        (activity as? dev.jdtech.jellyfin.PlayerActivity)?.updatePipParams()
+                        (activity as? PlayerActivity)?.updatePipParams()
                         videoPlayerState.setLocked(true)
                     },
                 )
             }
+        }
+    }
+}
+
+@OptIn(UnstableApi::class)
+@Preview(showBackground = true, backgroundColor = 0xFF000000, widthDp = 840, heightDp = 400)
+@Composable
+private fun PlayerScreenLandscapePreview() {
+    FindroidTheme {
+        Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+            PlayerTopBar(
+                title = "S01E01 - Pilot",
+                subtitle = "Breaking Bad",
+                onBack = {},
+                onOpenSubtitles = {},
+                onOpenAudio = {},
+                onEnterPip = {},
+                onOpenSettings = {},
+                onToggleOrientation = {},
+            )
+            PlayerCenterControls(
+                isPlaying = true,
+                isBuffering = false,
+                onPlayPause = {},
+                onSeekRelative = {},
+                hasPreviousItem = true,
+                hasNextItem = true,
+                onPreviousItem = {},
+                onNextItem = {},
+                modifier = Modifier.align(Alignment.Center),
+            )
+            VideoPlayerSeeker(
+                state = rememberVideoPlayerState(),
+                onSeek = {},
+                contentProgress = 12.minutes,
+                contentDuration = 45.minutes,
+                modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp),
+            )
+        }
+    }
+}
+
+@OptIn(UnstableApi::class)
+@Preview(showBackground = true, backgroundColor = 0xFF000000, widthDp = 360, heightDp = 800)
+@Composable
+private fun PlayerScreenPortraitPreview() {
+    FindroidTheme {
+        Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+            PlayerTopBar(
+                title = "S01E01 - Pilot",
+                subtitle = "Breaking Bad",
+                onBack = {},
+                onOpenSubtitles = {},
+                onOpenAudio = {},
+                onEnterPip = {},
+                onOpenSettings = {},
+                onToggleOrientation = {},
+                isCompactWidth = true,
+            )
+            PlayerCenterControls(
+                isPlaying = false,
+                isBuffering = false,
+                onPlayPause = {},
+                onSeekRelative = {},
+                hasPreviousItem = true,
+                hasNextItem = true,
+                onPreviousItem = {},
+                onNextItem = {},
+                modifier = Modifier.align(Alignment.Center),
+            )
+            VideoPlayerSeeker(
+                state = rememberVideoPlayerState(),
+                onSeek = {},
+                contentProgress = 5.minutes,
+                contentDuration = 42.minutes,
+                isCompactWidth = true,
+                modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp),
+            )
         }
     }
 }

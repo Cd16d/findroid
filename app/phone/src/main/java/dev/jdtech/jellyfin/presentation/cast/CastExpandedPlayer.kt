@@ -50,13 +50,23 @@ import dev.jdtech.jellyfin.player.cast.presentation.CastPlayerViewModel
 import dev.jdtech.jellyfin.player.core.R as PlayerCoreR
 import dev.jdtech.jellyfin.player.core.domain.models.Track
 import dev.jdtech.jellyfin.presentation.cast.components.CastChaptersDialog
+import dev.jdtech.jellyfin.presentation.cast.components.CastExpandedPlayerBottomSection
 import dev.jdtech.jellyfin.presentation.cast.components.CastTrackSelectionDialog
-import dev.jdtech.jellyfin.presentation.cast.components.PlayerBottomSection
 import dev.jdtech.jellyfin.presentation.cast.components.PlayerTopSection
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.utils.rememberSafePadding
 import kotlinx.coroutines.flow.distinctUntilChanged
 
+/**
+ * Main Composable for the expanded Google Cast player sheet/panel.
+ *
+ * @param onDeviceClick Callback when the connected device button is clicked.
+ * @param onClose Callback when the expanded player is closed.
+ * @param modifier Modifier applied to the outer layout. Defaults to [Modifier].
+ * @param onDismissStarted Callback when bottom sheet dismiss animation starts.
+ * @param onDismissCanceled Callback when bottom sheet dismiss animation is canceled.
+ * @param viewModel ViewModel backing the Cast player state. Defaults to hiltViewModel().
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CastExpandedPlayer(
@@ -174,6 +184,10 @@ data class CastPlayerActions(
     val onClose: () -> Unit,
 )
 
+/**
+ * Internal layout container for the expanded Cast player, supporting both vertical phone bottom
+ * sheets and expanded side-sheets.
+ */
 @Composable
 private fun CastExpandedPlayerLayout(
     isExpandedScreen: Boolean,
@@ -264,7 +278,7 @@ private fun CastExpandedPlayerLayout(
                         modifier = Modifier.weight(1f).fillMaxHeight(),
                     )
 
-                    PlayerBottomSection(
+                    CastExpandedPlayerBottomSection(
                         uiState = uiState,
                         isScrubbing = isScrubbing,
                         scrubPosition = scrubPosition,
@@ -294,7 +308,7 @@ private fun CastExpandedPlayerLayout(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                PlayerBottomSection(
+                CastExpandedPlayerBottomSection(
                     uiState = uiState,
                     isScrubbing = isScrubbing,
                     scrubPosition = scrubPosition,

@@ -156,6 +156,10 @@ private fun VideoSize.toAspectRatio(): Float =
         16f / 9f
     }
 
+/**
+ * Main player screen for Android TV, supporting ExoPlayer playback, UI overlays, side panels,
+ * season/episode navigation shelf, and screensaver integration.
+ */
 @OptIn(UnstableApi::class)
 @Composable
 fun PlayerScreen(
@@ -704,7 +708,6 @@ fun PlayerScreen(
 
             VideoPlayerOverlay(
                 modifier = Modifier.fillMaxSize().zIndex(2f),
-                focusRequester = playPauseFocusRequester,
                 state = videoPlayerState,
                 isPlaying = isPlaying,
                 isScrubbing = isScrubbing,

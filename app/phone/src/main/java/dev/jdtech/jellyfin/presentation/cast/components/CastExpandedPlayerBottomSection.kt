@@ -13,10 +13,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import dev.jdtech.jellyfin.models.FindroidSegment
 import dev.jdtech.jellyfin.player.cast.models.CastPlaybackStatus
 import dev.jdtech.jellyfin.player.cast.presentation.CastPlayerViewModel
+import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 
 /**
  * Bottom control section of expanded Google Cast player.
@@ -38,7 +40,7 @@ import dev.jdtech.jellyfin.player.cast.presentation.CastPlayerViewModel
  * @param onOpenChapters Optional callback to open chapter selector. Defaults to `null`.
  */
 @Composable
-fun PlayerBottomSection(
+fun CastExpandedPlayerBottomSection(
     uiState: CastPlayerViewModel.UiState,
     isScrubbing: Boolean,
     scrubPosition: Float,
@@ -146,11 +148,11 @@ private fun CastPlayerTitles(uiState: CastPlayerViewModel.UiState) {
     }
 }
 
-@androidx.compose.ui.tooling.preview.Preview(showBackground = true)
+@Preview(showBackground = true)
 @Composable
-private fun PlayerBottomSectionPreview() {
-    dev.jdtech.jellyfin.presentation.theme.FindroidTheme {
-        PlayerBottomSection(
+private fun CastExpandedPlayerBottomSectionPreview() {
+    FindroidTheme {
+        CastExpandedPlayerBottomSection(
             uiState = CastPlayerViewModel.UiState(),
             isScrubbing = false,
             scrubPosition = 0f,

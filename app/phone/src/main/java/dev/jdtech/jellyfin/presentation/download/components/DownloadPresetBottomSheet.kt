@@ -58,8 +58,6 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -76,6 +74,7 @@ import dev.jdtech.jellyfin.models.FindroidMediaStream
 import dev.jdtech.jellyfin.models.FindroidSeason
 import dev.jdtech.jellyfin.models.FindroidSourceType
 import dev.jdtech.jellyfin.player.core.domain.utils.TrackFormatter
+import dev.jdtech.jellyfin.presentation.download.components.presets.AudioTrackBadges
 import dev.jdtech.jellyfin.presentation.download.components.presets.CheckboxOptionRow
 import dev.jdtech.jellyfin.presentation.download.components.presets.PresetCard
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
@@ -84,6 +83,23 @@ import java.util.Locale
 import kotlinx.coroutines.launch
 import org.jellyfin.sdk.model.api.MediaStreamType
 
+/** Bottom sheet UI for selecting download quality presets and options. */
+
+/**
+ * Modal bottom sheet for choosing download quality presets, audio tracks, and settings.
+ *
+ * @param onConfirm Callback when user confirms selection.
+ * @param onDismiss Callback when sheet is dismissed.
+ * @param modifier Modifier to be applied to the layout.
+ * @param item Target media item to download.
+ * @param presets List of available quality presets.
+ * @param initialPresetId ID of the initially selected preset.
+ * @param hasExternalAudio Whether external audio tracks exist.
+ * @param initialDownloadExternalAudio Initial state for external audio checkbox.
+ * @param initialRememberSetting Initial state for remember setting checkbox.
+ * @param onAddClick Callback when clicking to add a custom preset.
+ * @param sheetState Material bottom sheet state.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DownloadPresetBottomSheet(
@@ -190,8 +206,6 @@ fun DownloadPresetBottomSheet(
         remember(initialRememberSetting) { mutableStateOf(initialRememberSetting) }
     var showDetails by remember { mutableStateOf(false) }
 
-    var isAtTop by remember { mutableStateOf(false) }
-
     val scope = rememberCoroutineScope()
 
     ModalBottomSheet(
@@ -230,11 +244,6 @@ fun DownloadPresetBottomSheet(
                     )
                 }
             },
-            modifier =
-                Modifier.onGloballyPositioned { coordinates ->
-                    val topInWindow = coordinates.positionInWindow().y
-                    isAtTop = topInWindow <= 32f
-                },
         )
     }
 }
@@ -260,6 +269,30 @@ private fun formatAudioTrackName(
     }
 }
 
+/**
+ * Main content layout for the download preset bottom sheet.
+ *
+ * @param selectedPresetId Currently selected preset ID.
+ * @param onSelectPreset Callback when a preset is selected.
+ * @param downloadExternalAudio State for downloading external audio.
+ * @param onDownloadExternalAudioChange Callback when external audio option changes.
+ * @param hasExternalAudio Whether external audio tracks exist.
+ * @param rememberSetting State for remembering selection.
+ * @param onRememberSettingChange Callback when remember setting option changes.
+ * @param modifier Modifier to be applied to the layout.
+ * @param presets List of quality presets to display.
+ * @param audioStreams Available audio streams.
+ * @param selectedAudioStreamIndex Index of selected audio stream.
+ * @param onSelectedAudioStreamIndexChange Callback when audio stream index changes.
+ * @param runtimeTicks Media duration in ticks.
+ * @param sourceSize Media file size in bytes.
+ * @param originalVideoStream Original video stream details.
+ * @param isOriginalSupported Whether original video codec is supported.
+ * @param showDetails Whether detailed preset specifications are expanded.
+ * @param onShowDetailsChange Callback to toggle detailed specifications.
+ * @param onAddClick Callback to add custom preset.
+ * @param onConfirm Callback when confirming download options.
+ */
 @Composable
 fun DownloadPresetBottomSheetLayout(
     selectedPresetId: String,
@@ -530,58 +563,10 @@ fun DownloadPresetBottomSheetLayout(
                                                     overflow = TextOverflow.Ellipsis,
                                                     modifier = Modifier.weight(1f, fill = false),
                                                 )
-                                                if (selectedStream?.isDefault == true) {
-                                                    Spacer(modifier = Modifier.width(6.dp))
-                                                    Surface(
-                                                        shape = RoundedCornerShape(4.dp),
-                                                        color =
-                                                            MaterialTheme.colorScheme
-                                                                .surfaceContainerHighest,
-                                                    ) {
-                                                        Text(
-                                                            text =
-                                                                stringResource(
-                                                                    CoreR.string.track_default
-                                                                ),
-                                                            style =
-                                                                MaterialTheme.typography.labelSmall,
-                                                            color =
-                                                                MaterialTheme.colorScheme
-                                                                    .onSurfaceVariant,
-                                                            modifier =
-                                                                Modifier.padding(
-                                                                    horizontal = 4.dp,
-                                                                    vertical = 1.dp,
-                                                                ),
-                                                        )
-                                                    }
-                                                }
-                                                if (selectedStream?.isExternal == true) {
-                                                    Spacer(modifier = Modifier.width(6.dp))
-                                                    Surface(
-                                                        shape = RoundedCornerShape(4.dp),
-                                                        color =
-                                                            MaterialTheme.colorScheme
-                                                                .secondaryContainer,
-                                                    ) {
-                                                        Text(
-                                                            text =
-                                                                stringResource(
-                                                                    CoreR.string.external
-                                                                ),
-                                                            style =
-                                                                MaterialTheme.typography.labelSmall,
-                                                            color =
-                                                                MaterialTheme.colorScheme
-                                                                    .onSecondaryContainer,
-                                                            modifier =
-                                                                Modifier.padding(
-                                                                    horizontal = 4.dp,
-                                                                    vertical = 1.dp,
-                                                                ),
-                                                        )
-                                                    }
-                                                }
+                                                AudioTrackBadges(
+                                                    isDefault = selectedStream?.isDefault == true,
+                                                    isExternal = selectedStream?.isExternal == true,
+                                                )
                                             }
                                         }
                                     }
@@ -677,61 +662,10 @@ fun DownloadPresetBottomSheetLayout(
                                                             modifier =
                                                                 Modifier.weight(1f, fill = false),
                                                         )
-                                                        if (stream.isDefault == true) {
-                                                            Spacer(modifier = Modifier.width(6.dp))
-                                                            Surface(
-                                                                shape = RoundedCornerShape(4.dp),
-                                                                color =
-                                                                    MaterialTheme.colorScheme
-                                                                        .surfaceContainerHighest,
-                                                            ) {
-                                                                Text(
-                                                                    text =
-                                                                        stringResource(
-                                                                            CoreR.string
-                                                                                .track_default
-                                                                        ),
-                                                                    style =
-                                                                        MaterialTheme.typography
-                                                                            .labelSmall,
-                                                                    color =
-                                                                        MaterialTheme.colorScheme
-                                                                            .onSurfaceVariant,
-                                                                    modifier =
-                                                                        Modifier.padding(
-                                                                            horizontal = 4.dp,
-                                                                            vertical = 1.dp,
-                                                                        ),
-                                                                )
-                                                            }
-                                                        }
-                                                        if (stream.isExternal) {
-                                                            Spacer(modifier = Modifier.width(6.dp))
-                                                            Surface(
-                                                                shape = RoundedCornerShape(4.dp),
-                                                                color =
-                                                                    MaterialTheme.colorScheme
-                                                                        .secondaryContainer,
-                                                            ) {
-                                                                Text(
-                                                                    text =
-                                                                        stringResource(
-                                                                            CoreR.string.external
-                                                                        ),
-                                                                    style =
-                                                                        MaterialTheme.typography
-                                                                            .labelSmall,
-                                                                    color =
-                                                                        MaterialTheme.colorScheme
-                                                                            .onSecondaryContainer,
-                                                                    modifier =
-                                                                        Modifier.padding(
-                                                                            horizontal = 4.dp,
-                                                                            vertical = 1.dp,
-                                                                        ),
-                                                                )
-                                                            }
-                                                        }
+                                                        AudioTrackBadges(
+                                                            isDefault = stream.isDefault == true,
+                                                            isExternal = stream.isExternal,
+                                                        )
                                                     }
                                                 }
                                             }

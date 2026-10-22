@@ -47,6 +47,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 
+/** ViewModel managing state and playback controls for Google Cast media sessions. */
 @HiltViewModel
 class CastPlayerViewModel
 @Inject
@@ -81,12 +82,14 @@ constructor(
         this.defaultDispatcher = defaultDispatcher
     }
 
+    /** Title and subtitle information for the currently playing media item. */
     data class CurrentItemTitle(
         val seriesName: String? = null,
         val episodeInfo: String? = null,
         val title: String,
     )
 
+    /** UI state for the Cast player expanded interface. */
     data class UiState(
         val connectionState: CastConnectionState = CastConnectionState.DISCONNECTED,
         val playerState: CastPlayerState = CastPlayerState(),

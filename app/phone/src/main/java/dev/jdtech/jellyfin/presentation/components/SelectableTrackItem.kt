@@ -30,8 +30,10 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import dev.jdtech.jellyfin.core.R as CoreR
+import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 
 val TrackItemShape = RoundedCornerShape(24.dp)
 private val ChipShape = RoundedCornerShape(6.dp)
@@ -172,10 +174,10 @@ fun SelectableTrackItem(
     }
 }
 
-@androidx.compose.ui.tooling.preview.Preview(showBackground = true)
+@Preview(showBackground = true)
 @Composable
 private fun SelectableTrackItemPreview() {
-    dev.jdtech.jellyfin.presentation.theme.FindroidTheme {
+    FindroidTheme {
         SelectableTrackItem(
             title = "English (AAC 5.1)",
             chips = listOf("Default", "5.1"),

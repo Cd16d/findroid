@@ -39,6 +39,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
@@ -46,6 +47,7 @@ import coil3.compose.AsyncImage
 import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.models.FindroidItem
 import dev.jdtech.jellyfin.player.core.domain.models.PlayerImages
+import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.utils.toOptimizedImageUri
 import kotlinx.coroutines.delay
 import org.jellyfin.sdk.model.api.ImageType
@@ -295,10 +297,10 @@ fun AppScreensaver(
     }
 }
 
-@androidx.compose.ui.tooling.preview.Preview
+@Preview(device = "id:tv_1080p")
 @Composable
 private fun AppScreensaverPreview() {
-    dev.jdtech.jellyfin.presentation.theme.FindroidTheme {
+    FindroidTheme {
         AppScreensaver(
             slides =
                 listOf(

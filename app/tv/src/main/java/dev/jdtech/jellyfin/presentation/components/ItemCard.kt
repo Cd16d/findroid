@@ -41,6 +41,18 @@ import dev.jdtech.jellyfin.models.FindroidItem
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
 
+/**
+ * TV grid and list item card component displaying poster artwork and title.
+ *
+ * @param item Media item model.
+ * @param direction Layout orientation direction (`HORIZONTAL` or `VERTICAL`).
+ * @param onClick Callback executed on card click.
+ * @param modifier Optional modifier applied to card container. Defaults to [Modifier].
+ * @param focusRequester Optional FocusRequester for card focus management.
+ * @param upFocusRequester Optional FocusRequester directed on D-pad up navigation.
+ * @param onFocus Optional callback triggered on focus state changes.
+ * @param hideEpisodeSpoilers Whether to hide episode thumbnails/titles to prevent spoilers.
+ */
 @Composable
 fun ItemCard(
     item: FindroidItem,
@@ -178,19 +190,19 @@ fun ItemCard(
     }
 }
 
-@Preview
+@Preview(device = "id:tv_1080p")
 @Composable
 private fun ItemCardPreviewMovie() {
     FindroidTheme { ItemCard(item = dummyMovie, direction = Direction.HORIZONTAL, onClick = {}) }
 }
 
-@Preview
+@Preview(device = "id:tv_1080p")
 @Composable
 private fun ItemCardPreviewMovieVertical() {
     FindroidTheme { ItemCard(item = dummyMovie, direction = Direction.VERTICAL, onClick = {}) }
 }
 
-@Preview
+@Preview(device = "id:tv_1080p")
 @Composable
 private fun ItemCardPreviewEpisode() {
     FindroidTheme { ItemCard(item = dummyEpisode, direction = Direction.HORIZONTAL, onClick = {}) }

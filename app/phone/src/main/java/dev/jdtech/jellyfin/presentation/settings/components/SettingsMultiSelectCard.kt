@@ -27,6 +27,13 @@ import dev.jdtech.jellyfin.settings.R as SettingsR
 import dev.jdtech.jellyfin.settings.domain.models.Preference
 import dev.jdtech.jellyfin.settings.presentation.models.PreferenceMultiSelect
 
+/**
+ * Settings card for multi-selection preferences displaying multiple options.
+ *
+ * @param preference Multi-select preference configuration model.
+ * @param onUpdate Callback invoked when selected values change.
+ * @param modifier Optional modifier applied to card surface layout. Defaults to [Modifier].
+ */
 @Composable
 fun SettingsMultiSelectCard(
     preference: PreferenceMultiSelect,
@@ -91,7 +98,7 @@ fun SettingsMultiSelectCard(
 
 @Preview
 @Composable
-private fun SettingsSelectCardPreview() {
+private fun SettingsMultiSelectCardPreview() {
     FindroidTheme {
         SettingsMultiSelectCard(
             preference =

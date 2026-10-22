@@ -14,6 +14,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 
+/** Header title display showing current media title and optional season/episode subtitle. */
 @Composable
 fun VideoPlayerMediaTitle(title: String, subtitle: String?) {
     Column {

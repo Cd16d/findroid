@@ -96,9 +96,10 @@ fun VideoPlayerSeekBar(
     val currentState by rememberUpdatedState(state)
 
     val isHighlight = isDragging || isScrubbing
+    val targetTrackHeight = if (isHighlight) highlightTrackHeight else trackHeight
     val animatedTrackHeight by
         animateDpAsState(
-            targetValue = trackHeight,
+            targetValue = targetTrackHeight,
             animationSpec = tween(150),
             label = "trackHeight",
         )

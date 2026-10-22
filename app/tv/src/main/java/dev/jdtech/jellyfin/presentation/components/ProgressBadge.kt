@@ -24,9 +24,15 @@ import dev.jdtech.jellyfin.models.FindroidItem
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
 
+/**
+ * Badge displaying item played state indicator or unplayed item count.
+ *
+ * @param item Media item model.
+ * @param modifier Optional modifier applied to badge container. Defaults to [Modifier].
+ */
 @Composable
 fun ProgressBadge(item: FindroidItem, modifier: Modifier = Modifier) {
-    if (!(!item.played && item.unplayedItemCount == null)) {
+    if (item.played || item.unplayedItemCount != null) {
         Box(
             modifier =
                 modifier
@@ -60,13 +66,13 @@ fun ProgressBadge(item: FindroidItem, modifier: Modifier = Modifier) {
     }
 }
 
-@Preview
+@Preview(device = "id:tv_1080p")
 @Composable
 private fun ProgressBadgePreviewWatched() {
     FindroidTheme { ProgressBadge(item = dummyEpisode) }
 }
 
-@Preview
+@Preview(device = "id:tv_1080p")
 @Composable
 private fun ProgressBadgePreviewItemRemaining() {
     FindroidTheme { ProgressBadge(item = dummyShow) }

@@ -11,8 +11,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
@@ -92,8 +94,8 @@ fun ClockText(
     }
 }
 
-@androidx.compose.ui.tooling.preview.Preview
+@Preview(device = "id:tv_1080p")
 @Composable
 private fun ClockTextPreview() {
-    dev.jdtech.jellyfin.presentation.theme.FindroidTheme { ClockText(showDate = true) }
+    FindroidTheme { ClockText(showDate = true) }
 }

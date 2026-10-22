@@ -35,6 +35,10 @@ import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.VideoType
 import timber.log.Timber
 
+/**
+ * ViewModel managing state, metadata loading, and paginated search queries across movies, shows,
+ * and episodes.
+ */
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class SearchViewModel
@@ -296,9 +300,6 @@ constructor(
             is SearchAction.ToggleTag -> {
                 _state.update { it.copy(selectedTags = it.selectedTags.toggle(action.tag)) }
             }
-            is SearchAction.ToggleYear -> {
-                _state.update { it.copy(selectedYears = it.selectedYears.toggle(action.year)) }
-            }
             is SearchAction.SetYearRange -> {
                 _state.update { currentState ->
                     if (currentState.selectedYearRange == action.range) currentState
@@ -329,7 +330,6 @@ constructor(
                         selectedGenres = emptySet(),
                         selectedRatings = emptySet(),
                         selectedTags = emptySet(),
-                        selectedYears = emptySet(),
                         selectedYearRange = null,
                         selectedCommunityRatingRange = null,
                         selectedStudios = emptySet(),
@@ -357,8 +357,7 @@ constructor(
                         FilterCategory.PARENTAL_RATINGS ->
                             currentState.copy(selectedRatings = emptySet())
                         FilterCategory.TAGS -> currentState.copy(selectedTags = emptySet())
-                        FilterCategory.YEARS ->
-                            currentState.copy(selectedYears = emptySet(), selectedYearRange = null)
+                        FilterCategory.YEARS -> currentState.copy(selectedYearRange = null)
                         FilterCategory.COMMUNITY_RATING ->
                             currentState.copy(selectedCommunityRatingRange = null)
                         FilterCategory.STUDIOS -> currentState.copy(selectedStudios = emptySet())

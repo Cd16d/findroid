@@ -6,6 +6,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.platform.LocalContext
 
+/** Composable side-effect to keep the TV screen on while active in composition. */
 @Composable
 fun KeepScreenOn() {
     val context = LocalContext.current

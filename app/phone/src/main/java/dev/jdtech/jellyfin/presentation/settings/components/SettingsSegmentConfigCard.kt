@@ -37,9 +37,11 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.presentation.components.BaseDialog
+import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
 import dev.jdtech.jellyfin.presentation.utils.GridCellsAdaptiveWithMinColumns
 import dev.jdtech.jellyfin.settings.R as SettingsR
@@ -176,6 +178,14 @@ fun SettingsSegmentConfigCard(
     }
 }
 
+/**
+ * Dialog for selecting the action to take for a media segment.
+ *
+ * @param title Dialog title string.
+ * @param currentAction Currently selected segment action.
+ * @param onActionSelected Callback when an action is selected.
+ * @param onDismissRequest Callback when dialog is dismissed.
+ */
 @Composable
 fun SegmentActionSelectionDialog(
     title: String,
@@ -218,6 +228,14 @@ fun SegmentActionSelectionDialog(
     }
 }
 
+/**
+ * Dialog for picking a color tint for a media segment marker.
+ *
+ * @param title Dialog title string.
+ * @param currentColor Currently selected color value.
+ * @param onColorSelected Callback when a color is selected.
+ * @param onDismissRequest Callback when dialog is dismissed.
+ */
 @Composable
 fun SegmentColorPickerDialog(
     title: String,
@@ -358,17 +376,43 @@ fun SegmentColorPickerDialog(
     }
 }
 
-@androidx.compose.ui.tooling.preview.Preview(showBackground = true)
+@Preview(showBackground = true)
 @Composable
 private fun SettingsSegmentConfigCardPreview() {
-    dev.jdtech.jellyfin.presentation.theme.FindroidTheme {
+    FindroidTheme {
         SettingsSegmentConfigCard(
             preference =
-                dev.jdtech.jellyfin.settings.presentation.models.PreferenceSegmentConfig(
-                    nameStringResource = dev.jdtech.jellyfin.core.R.string.app_name,
+                PreferenceSegmentConfig(
+                    nameStringResource = CoreR.string.app_name,
                     segmentType = "Intro",
                 ),
             onUpdate = {},
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun SegmentActionSelectionDialogPreview() {
+    FindroidTheme {
+        SegmentActionSelectionDialog(
+            title = "Intro Segment",
+            currentAction = SegmentAction.SHOW_BUTTON,
+            onActionSelected = {},
+            onDismissRequest = {},
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun SegmentColorPickerDialogPreview() {
+    FindroidTheme {
+        SegmentColorPickerDialog(
+            title = "Intro Segment",
+            currentColor = 0xFF4CAF50L,
+            onColorSelected = {},
+            onDismissRequest = {},
         )
     }
 }

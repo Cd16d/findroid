@@ -41,6 +41,7 @@ import dev.jdtech.jellyfin.player.core.presentation.findChapterSegmentType
 import dev.jdtech.jellyfin.player.core.presentation.formatDuration
 import dev.jdtech.jellyfin.player.core.presentation.getSegmentColor
 import dev.jdtech.jellyfin.player.core.presentation.labelRes
+import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 
 private val MenuSingleShape = RoundedCornerShape(24.dp)
 private val ChapterThumbShape = RoundedCornerShape(12.dp)
@@ -219,7 +220,7 @@ fun ChapterCard(
 @Preview(showBackground = true)
 @Composable
 private fun ChapterCardPreview() {
-    dev.jdtech.jellyfin.presentation.theme.FindroidTheme {
+    FindroidTheme {
         ChapterCard(
             chapter =
                 PlayerChapter(

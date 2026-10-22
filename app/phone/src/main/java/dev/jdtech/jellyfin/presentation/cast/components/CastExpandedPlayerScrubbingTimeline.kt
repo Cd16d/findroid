@@ -2,7 +2,6 @@ package dev.jdtech.jellyfin.presentation.cast.components
 
 import android.text.format.DateFormat
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -10,7 +9,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -26,8 +24,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -40,13 +36,26 @@ import dev.jdtech.jellyfin.models.FindroidSegment
 import dev.jdtech.jellyfin.player.cast.models.CastPlaybackStatus
 import dev.jdtech.jellyfin.player.core.R
 import dev.jdtech.jellyfin.player.core.domain.models.PlayerChapter
-import dev.jdtech.jellyfin.player.core.domain.models.Trickplay
 import dev.jdtech.jellyfin.player.core.presentation.formatDuration
 import dev.jdtech.jellyfin.player.core.presentation.getSectionTitle
 import dev.jdtech.jellyfin.presentation.player.components.VideoPlayerSeekBar
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import java.util.Date
 
+/**
+ * Timeline component for the expanded Cast player, including badges, chapter info, remaining time,
+ * and seek bar.
+ *
+ * @param playerStatus Current playback status.
+ * @param currentProgress Current progress in milliseconds.
+ * @param duration Duration in milliseconds.
+ * @param chapters List of chapters for the current media item.
+ * @param onScrubStart Callback when scrub drag starts.
+ * @param onScrubStop Callback when scrub drag stops.
+ * @param modifier Modifier applied to the timeline layout. Defaults to [Modifier].
+ * @param segments List of media segments (e.g. intros, credits). Defaults to empty list.
+ * @param onOpenChapters Optional callback when chapter badge is tapped to open chapter selector.
+ */
 @Composable
 fun CastScrubbingTimeline(
     playerStatus: CastPlaybackStatus,
@@ -248,27 +257,6 @@ fun CastScrubbingTimeline(
             modifier = Modifier.fillMaxWidth().height(48.dp),
         )
     }
-}
-
-@Composable
-fun TrickplayThumbnail(
-    trickplay: Trickplay,
-    scrubPosition: Float,
-    modifier: Modifier = Modifier,
-) {
-    if (trickplay.images.isEmpty() || trickplay.interval <= 0) return
-
-    val safePosition = if (scrubPosition.isFinite() && scrubPosition > 0f) scrubPosition else 0f
-    val index = (safePosition / trickplay.interval).toInt().coerceIn(0, trickplay.images.size - 1)
-    val image = trickplay.images.getOrNull(index) ?: return
-    val imageBitmap = remember(image) { image.asImageBitmap() }
-
-    Image(
-        bitmap = imageBitmap,
-        contentDescription = stringResource(R.string.player_trickplay),
-        contentScale = ContentScale.Crop,
-        modifier = modifier.fillMaxSize(),
-    )
 }
 
 @Preview(showBackground = true)

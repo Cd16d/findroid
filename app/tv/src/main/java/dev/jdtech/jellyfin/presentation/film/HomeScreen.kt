@@ -10,6 +10,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.foundation.gestures.animateScrollBy
@@ -95,6 +96,21 @@ import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.ImageType
 import org.jellyfin.sdk.model.api.MediaStreamType
 
+/**
+ * Home screen component displaying media hero carousel and horizontal content recommendation rows.
+ *
+ * @param navigateToMovie Callback to navigate to movie details screen.
+ * @param navigateToShow Callback to navigate to show details screen.
+ * @param navigateToPlayer Callback to navigate to media player.
+ * @param navigateToLibrary Callback to navigate to library view screen.
+ * @param isLoading Callback triggered when loading status changes.
+ * @param onScrollOffsetChanged Callback triggered when home content scrolling state changes.
+ * @param contentFocusRequester Optional FocusRequester for content focus delegation.
+ * @param upFocusRequester Optional FocusRequester directed on D-pad up navigation.
+ * @param autoFocusContent Whether to automatically request initial focus on content.
+ * @param onInitialFocusRequested Callback triggered after initial focus is requested.
+ * @param viewModel HomeViewModel instance managing home screen state.
+ */
 @Composable
 fun HomeScreen(
     navigateToMovie: (itemId: UUID) -> Unit,
@@ -170,7 +186,7 @@ fun HomeScreen(
     )
 }
 
-@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun HomeScreenLayout(
     state: HomeState,

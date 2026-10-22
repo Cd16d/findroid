@@ -47,7 +47,6 @@ import dev.jdtech.jellyfin.presentation.components.SelectableTrackItem
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 
 private val CardShape = RoundedCornerShape(20.dp)
-private val MenuSingleShape = RoundedCornerShape(24.dp)
 
 private val Presets = listOf(10, 15, 30, 45, 60)
 

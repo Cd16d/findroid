@@ -54,6 +54,14 @@ import dev.jdtech.jellyfin.utils.toBlurHashPainter
 import dev.jdtech.jellyfin.utils.toOptimizedImageUri
 import org.jellyfin.sdk.model.api.ImageType
 
+/**
+ * Individual hero slide item within the home carousel displaying backdrop artwork and metadata.
+ *
+ * @param item Media item model.
+ * @param modifier Optional modifier applied to carousel item layout. Defaults to [Modifier].
+ * @param showLogo Whether to display media logo image over backdrop. Defaults to `false`.
+ * @param isFocused Whether the item currently holds focus in carousel. Defaults to `false`.
+ */
 @Composable
 fun HomeCarouselItem(
     item: FindroidItem,

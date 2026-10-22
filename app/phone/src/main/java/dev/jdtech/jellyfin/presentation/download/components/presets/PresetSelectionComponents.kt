@@ -38,13 +38,83 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.models.DownloadQualityPreset
+import dev.jdtech.jellyfin.models.DownloadQualityPresets
 import dev.jdtech.jellyfin.models.FindroidMediaStream
+import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import java.util.Locale
 import org.jellyfin.sdk.model.api.VideoRangeType
 
+/** UI components for download preset selection, quality options, and audio track badges. */
+
+/**
+ * Renders badges for default and external audio tracks.
+ *
+ * @param isDefault Whether the audio track is marked as default.
+ * @param isExternal Whether the audio track is external.
+ * @param modifier Modifier to be applied to the layout.
+ */
+@Composable
+fun AudioTrackBadges(
+    isDefault: Boolean,
+    isExternal: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (isDefault) {
+            Spacer(modifier = Modifier.width(6.dp))
+            Surface(
+                shape = RoundedCornerShape(4.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerHighest,
+            ) {
+                Text(
+                    text = stringResource(CoreR.string.track_default),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
+                )
+            }
+        }
+        if (isExternal) {
+            Spacer(modifier = Modifier.width(6.dp))
+            Surface(
+                shape = RoundedCornerShape(4.dp),
+                color = MaterialTheme.colorScheme.secondaryContainer,
+            ) {
+                Text(
+                    text = stringResource(CoreR.string.external),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Card displaying a download quality preset option with details and selection state.
+ *
+ * @param preset The quality preset model.
+ * @param isSelected Whether this preset is currently selected.
+ * @param showDetails Whether to expand and show detailed media stream specifications.
+ * @param onSelect Callback invoked when the preset card is tapped.
+ * @param modifier Modifier to be applied to the layout.
+ * @param isOriginalSupported Whether the device supports direct play/download of the original
+ *   source codec.
+ * @param originalVideoStream The original video stream metadata if available.
+ * @param audioStreams Available audio streams for the original source.
+ * @param runtimeTicks Media duration in ticks.
+ * @param sourceSize Media file size in bytes.
+ * @param formatAudioTrackName Formatter function for audio track titles.
+ * @param currentLocale Current user locale for language formatting.
+ */
 @Composable
 fun PresetCard(
     preset: DownloadQualityPreset,
@@ -223,49 +293,10 @@ fun PresetCard(
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         )
-                                        if (stream.isDefault == true) {
-                                            Spacer(modifier = Modifier.width(6.dp))
-                                            Surface(
-                                                shape = RoundedCornerShape(4.dp),
-                                                color =
-                                                    MaterialTheme.colorScheme
-                                                        .surfaceContainerHighest,
-                                            ) {
-                                                Text(
-                                                    text =
-                                                        stringResource(CoreR.string.track_default),
-                                                    style = MaterialTheme.typography.labelSmall,
-                                                    color =
-                                                        MaterialTheme.colorScheme.onSurfaceVariant,
-                                                    modifier =
-                                                        Modifier.padding(
-                                                            horizontal = 4.dp,
-                                                            vertical = 1.dp,
-                                                        ),
-                                                )
-                                            }
-                                        }
-                                        if (stream.isExternal) {
-                                            Spacer(modifier = Modifier.width(6.dp))
-                                            Surface(
-                                                shape = RoundedCornerShape(4.dp),
-                                                color =
-                                                    MaterialTheme.colorScheme.secondaryContainer,
-                                            ) {
-                                                Text(
-                                                    text = stringResource(CoreR.string.external),
-                                                    style = MaterialTheme.typography.labelSmall,
-                                                    color =
-                                                        MaterialTheme.colorScheme
-                                                            .onSecondaryContainer,
-                                                    modifier =
-                                                        Modifier.padding(
-                                                            horizontal = 4.dp,
-                                                            vertical = 1.dp,
-                                                        ),
-                                                )
-                                            }
-                                        }
+                                        AudioTrackBadges(
+                                            isDefault = stream.isDefault == true,
+                                            isExternal = stream.isExternal,
+                                        )
                                     }
                                 }
                             }
@@ -305,6 +336,16 @@ fun PresetCard(
     }
 }
 
+/**
+ * Row item containing a checkbox, primary label, and optional subtitle.
+ *
+ * @param checked Checked state of the checkbox.
+ * @param onCheckedChange Callback invoked when the row or checkbox is toggled.
+ * @param label Main label text for the option.
+ * @param modifier Modifier to be applied to the layout.
+ * @param subtitle Optional subtitle text for additional description.
+ * @param shape Corner shape for clipping and touch feedback.
+ */
 @Composable
 fun CheckboxOptionRow(
     checked: Boolean,
@@ -353,6 +394,82 @@ fun CheckboxOptionRow(
                     )
                 }
             }
+        }
+    }
+}
+
+@Preview
+@Composable
+private fun PresetCardStandardPreview() {
+    FindroidTheme {
+        Surface {
+            PresetCard(
+                preset = DownloadQualityPresets.BALANCED,
+                isSelected = false,
+                showDetails = false,
+                onSelect = {},
+            )
+        }
+    }
+}
+
+@Preview
+@Composable
+private fun PresetCardSelectedPreview() {
+    FindroidTheme {
+        Surface {
+            PresetCard(
+                preset = DownloadQualityPresets.BALANCED,
+                isSelected = true,
+                showDetails = false,
+                onSelect = {},
+            )
+        }
+    }
+}
+
+@Preview
+@Composable
+private fun PresetCardUnsupportedPreview() {
+    FindroidTheme {
+        Surface {
+            PresetCard(
+                preset = DownloadQualityPresets.ORIGINAL,
+                isSelected = false,
+                showDetails = false,
+                isOriginalSupported = false,
+                onSelect = {},
+            )
+        }
+    }
+}
+
+@Preview
+@Composable
+private fun PresetCardExpandedPreview() {
+    FindroidTheme {
+        Surface {
+            PresetCard(
+                preset = DownloadQualityPresets.BALANCED,
+                isSelected = true,
+                showDetails = true,
+                onSelect = {},
+            )
+        }
+    }
+}
+
+@Preview
+@Composable
+private fun CheckboxOptionRowPreview() {
+    FindroidTheme {
+        Surface {
+            CheckboxOptionRow(
+                checked = true,
+                onCheckedChange = {},
+                label = "Include external audio",
+                subtitle = "Downloads external audio tracks",
+            )
         }
     }
 }
