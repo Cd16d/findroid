@@ -399,7 +399,7 @@ private fun MainNavigation(
                         NavigationSuiteItem(
                             selected = topLevelRoute == item.route,
                             onClick = {
-                                haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
+                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                                 if (topLevelRoute == item.route) {
                                     if (item.route == SearchRoute) {
                                         searchViewModel.onAction(SearchAction.OnTabReselected)

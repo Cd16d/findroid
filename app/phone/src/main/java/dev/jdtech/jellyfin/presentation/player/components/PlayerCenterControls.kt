@@ -131,7 +131,9 @@ fun PlayerCenterControls(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = ripple(bounded = true, radius = 34.dp),
                         onClick = {
-                            haptics.confirm()
+                            if (!isBuffering) {
+                                haptics.confirm()
+                            }
                             onPlayPause()
                         },
                     ),

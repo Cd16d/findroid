@@ -3,7 +3,6 @@ package dev.jdtech.jellyfin.presentation.player.components
 import android.content.res.Configuration
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -35,6 +34,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -69,6 +69,8 @@ import dev.jdtech.jellyfin.player.local.presentation.PlayerViewModel
 import dev.jdtech.jellyfin.presentation.components.ChapterCard
 import dev.jdtech.jellyfin.presentation.components.SelectableTrackItem
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
+import dev.jdtech.jellyfin.settings.domain.Constants.PlayerResizeMode
+import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.delay
 
 /**
@@ -91,8 +93,8 @@ fun PlayerBottomSheet(
     panelType: PlayerSidePanelType,
     onPanelTypeChange: (PlayerSidePanelType) -> Unit,
     viewModel: PlayerViewModel,
-    currentResizeMode: Int,
-    onResizeModeChange: (Int) -> Unit,
+    currentResizeMode: PlayerResizeMode,
+    onResizeModeChange: (PlayerResizeMode) -> Unit,
     onDismiss: () -> Unit,
     onLock: () -> Unit,
     modifier: Modifier = Modifier,
@@ -271,7 +273,7 @@ fun PlayerBottomSheet(
 private fun PhoneSettingsMenu(
     viewModel: PlayerViewModel,
     tracks: Tracks,
-    currentResizeMode: Int,
+    currentResizeMode: PlayerResizeMode,
     currentSpeed: Float,
     isPlaying: Boolean,
     onNavigate: (PlayerSidePanelType) -> Unit,
@@ -311,10 +313,8 @@ private fun PhoneSettingsMenu(
     val currentSpeedText = "${currentSpeed}x"
     val currentAspectText =
         when (currentResizeMode) {
-            AspectRatioFrameLayout.RESIZE_MODE_ZOOM ->
-                stringResource(id = PlayerR.string.aspect_ratio_zoom)
-            AspectRatioFrameLayout.RESIZE_MODE_FILL ->
-                stringResource(id = PlayerR.string.aspect_ratio_fill)
+            PlayerResizeMode.ZOOM -> stringResource(id = PlayerR.string.aspect_ratio_zoom)
+            PlayerResizeMode.FILL -> stringResource(id = PlayerR.string.aspect_ratio_fill)
             else -> stringResource(id = PlayerR.string.aspect_ratio_fit)
         }
 
@@ -322,7 +322,7 @@ private fun PhoneSettingsMenu(
     val isMovie = uiState.seriesId == null
     val sleepTimerSubtitle =
         if (uiState.sleepTimerStatus.isActive) {
-            when (val mode = uiState.sleepTimerStatus.mode) {
+            when (uiState.sleepTimerStatus.mode) {
                 is SleepTimerMode.EndOfMedia -> {
                     if (isMovie) stringResource(id = PlayerR.string.sleep_timer_end_of_video)
                     else stringResource(id = PlayerR.string.sleep_timer_end_of_episode)
@@ -561,7 +561,7 @@ private fun PhoneSubtitleTrackList(viewModel: PlayerViewModel, tracks: Tracks) {
 
     val selectedTrackIndex = remember(tracks) { subtitleGroups.indexOfFirst { it.isSelected } }
 
-    var optimisticSelectedIndex by remember(tracks) { mutableStateOf(selectedTrackIndex) }
+    var optimisticSelectedIndex by remember(tracks) { mutableIntStateOf(selectedTrackIndex) }
 
     LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         item {
@@ -611,22 +611,20 @@ private fun PhoneSubtitleTrackList(viewModel: PlayerViewModel, tracks: Tracks) {
  */
 @Composable
 private fun PhoneAspectRatioList(
-    currentResizeMode: Int,
+    currentResizeMode: PlayerResizeMode,
     isMpv: Boolean = false,
-    onResizeModeSelected: (Int) -> Unit,
+    onResizeModeSelected: (PlayerResizeMode) -> Unit,
 ) {
     val modes =
         listOf(
-                AspectRatioFrameLayout.RESIZE_MODE_FIT to
-                    stringResource(id = PlayerR.string.aspect_ratio_fit),
-                AspectRatioFrameLayout.RESIZE_MODE_ZOOM to
-                    stringResource(id = PlayerR.string.aspect_ratio_zoom),
+                PlayerResizeMode.FIT to stringResource(id = PlayerR.string.aspect_ratio_fit),
+                PlayerResizeMode.ZOOM to stringResource(id = PlayerR.string.aspect_ratio_zoom),
             )
             .let { modes ->
                 if (isMpv) modes
                 else
                     modes +
-                        (AspectRatioFrameLayout.RESIZE_MODE_FILL to
+                        (PlayerResizeMode.FILL to
                             stringResource(id = PlayerR.string.aspect_ratio_fill))
             }
     LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -663,7 +661,7 @@ private fun PhoneChaptersList(
     LaunchedEffect(viewModel.player) {
         while (true) {
             currentPosition = viewModel.player.currentPosition
-            delay(400)
+            delay(400.milliseconds)
         }
     }
 
@@ -784,7 +782,7 @@ private fun PhoneSpeedListPreview() {
 private fun PhoneAspectRatioListPreview() {
     FindroidTheme {
         PhoneAspectRatioList(
-            currentResizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT,
+            currentResizeMode = PlayerResizeMode.FIT,
             onResizeModeSelected = {},
         )
     }

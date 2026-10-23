@@ -31,12 +31,16 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -72,6 +76,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.zIndex
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.common.Timeline
 import androidx.media3.common.VideoSize
@@ -84,6 +89,7 @@ import androidx.window.core.layout.WindowSizeClass
 import dev.jdtech.jellyfin.PlayerActivity
 import dev.jdtech.jellyfin.isControlsLocked
 import dev.jdtech.jellyfin.models.VolumeKeyEvent
+import dev.jdtech.jellyfin.player.local.mpv.updateMpvResizeMode
 import dev.jdtech.jellyfin.player.local.presentation.PlayerEvents
 import dev.jdtech.jellyfin.player.local.presentation.PlayerViewModel
 import dev.jdtech.jellyfin.presentation.player.components.DoubleTapSeekOverlay
@@ -93,6 +99,7 @@ import dev.jdtech.jellyfin.presentation.player.components.PlayerCenterControls
 import dev.jdtech.jellyfin.presentation.player.components.PlayerSidePanel
 import dev.jdtech.jellyfin.presentation.player.components.PlayerSidePanelType
 import dev.jdtech.jellyfin.presentation.player.components.PlayerTopBar
+import dev.jdtech.jellyfin.presentation.player.components.QuickSpeedOverlay
 import dev.jdtech.jellyfin.presentation.player.components.ScreenLockOverlay
 import dev.jdtech.jellyfin.presentation.player.components.TrickplayScrubber
 import dev.jdtech.jellyfin.presentation.player.components.VideoPlayerSeeker
@@ -152,8 +159,8 @@ fun PlayerScreen(
     onEnterPip: () -> Unit,
     isPipSupported: Boolean = true,
     isInPictureInPictureMode: Boolean = false,
-    resizeMode: Int? = null,
-    onResizeModeChange: (Int) -> Unit = {},
+    resizeMode: PlayerResizeMode? = null,
+    onResizeModeChange: (PlayerResizeMode) -> Unit = {},
     onToggleOrientation: () -> Unit = {},
     isOrientationLocked: Boolean = false,
     onVideoBoundsChanged: (android.graphics.Rect) -> Unit = {},
@@ -168,20 +175,10 @@ fun PlayerScreen(
         remember(prefs) { prefs.observe(prefs.playerDefaultResizeMode) }
             .collectAsState(initial = prefs.getValue(prefs.playerDefaultResizeMode))
     val defaultResizeMode =
-        remember(defaultResizeModePref) {
-            val resizeModePref = PlayerResizeMode.fromValue(defaultResizeModePref)
-            when (resizeModePref) {
-                PlayerResizeMode.ZOOM -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-                PlayerResizeMode.STRETCH -> AspectRatioFrameLayout.RESIZE_MODE_FILL
-                PlayerResizeMode.FIT -> AspectRatioFrameLayout.RESIZE_MODE_FIT
-            }
-        }
+        remember(defaultResizeModePref) { PlayerResizeMode.fromValue(defaultResizeModePref) }
     val currentResizeMode =
-        if (
-            viewModel.isMpv &&
-                (resizeMode ?: defaultResizeMode) == AspectRatioFrameLayout.RESIZE_MODE_FILL
-        ) {
-            AspectRatioFrameLayout.RESIZE_MODE_FIT
+        if (viewModel.isMpv && (resizeMode ?: defaultResizeMode) == PlayerResizeMode.FILL) {
+            PlayerResizeMode.FIT
         } else {
             resizeMode ?: defaultResizeMode
         }
@@ -261,10 +258,10 @@ fun PlayerScreen(
 
             // Single press: NO vibration.
             // Keeping pressed (isRepeat == true): Light tick vibration on intermediate steps,
-            // boundary haptic ONCE when hitting 0% or 100%, and STOP vibrating when held at limit.
+            // reject haptic ONCE when hitting 0% or 100%, and STOP vibrating when held at limit.
             if (isRepeat && volumeChanged) {
                 if (currentSysVol == 0 || currentSysVol == max) {
-                    haptics.boundary()
+                    haptics.reject()
                 } else {
                     haptics.tick()
                 }
@@ -308,6 +305,13 @@ fun PlayerScreen(
     val isGesturesZoomEnabled by
         remember(prefs) { prefs.observe(prefs.playerGesturesZoom) }
             .collectAsState(initial = prefs.getValue(prefs.playerGesturesZoom))
+
+    val isGesturesQuickSpeedEnabled by
+        remember(prefs) { prefs.observe(prefs.playerGesturesQuickSpeed) }
+            .collectAsState(initial = prefs.getValue(prefs.playerGesturesQuickSpeed))
+
+    val isQuickSpeedAllowed = isGesturesMasterEnabled && isGesturesQuickSpeedEnabled
+    var isQuickSpeedActive by remember { mutableStateOf(false) }
 
     val isGesturesSeekTrickplayEnabled by
         remember(prefs) { prefs.observe(prefs.playerGesturesSeekTrickplay) }
@@ -557,11 +561,11 @@ fun PlayerScreen(
 
     val effectiveResizeMode =
         if (isInPip || shouldShrinkVideo) AspectRatioFrameLayout.RESIZE_MODE_FIT
-        else currentResizeMode
+        else currentResizeMode.aspectRatioMode
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize().background(Color.Black)) {
         val screenWidth = maxWidth
-        val insets = WindowInsets.safeDrawing.asPaddingValues()
+        val insets = WindowInsets.safeDrawing.union(WindowInsets.displayCutout).asPaddingValues()
         val density = LocalDensity.current
 
         val cardWidth = calculateTrickplayCardWidth(uiState.currentTrickplay, videoAspectRatio)
@@ -569,6 +573,8 @@ fun PlayerScreen(
         val seekBarStartOffset =
             videoPaddingInset + insets.calculateLeftPadding(LayoutDirection.Ltr) + 20.dp
         val touchXAbsoluteDp = seekBarStartOffset + with(density) { seekBarTouchX.toDp() }
+        val minAvailableLeft =
+            videoPaddingInset + insets.calculateLeftPadding(LayoutDirection.Ltr) + 16.dp
         val maxAvailableRight =
             screenWidth -
                 videoPaddingEnd -
@@ -576,8 +582,8 @@ fun PlayerScreen(
                 20.dp
         val clampedOffsetX =
             (touchXAbsoluteDp - cardHalfWidth).coerceIn(
-                videoPaddingInset + 16.dp,
-                (maxAvailableRight - cardWidth + 4.dp).coerceAtLeast(videoPaddingInset + 16.dp),
+                minAvailableLeft,
+                (maxAvailableRight - cardWidth + 4.dp).coerceAtLeast(minAvailableLeft),
             )
 
         // Video Player Container (with animated padding and corner radius when panel opens on
@@ -630,6 +636,7 @@ fun PlayerScreen(
                             playerView.controllerAutoShow = false
                             playerView.player = viewModel.player
                             playerView.resizeMode = effectiveResizeMode
+                            playerView.player?.updateMpvResizeMode(currentResizeMode)
                             val captioningManager =
                                 ctx.getSystemService(Context.CAPTIONING_SERVICE)
                                     as? CaptioningManager
@@ -662,7 +669,10 @@ fun PlayerScreen(
                             playerView.setBackgroundColor(android.graphics.Color.BLACK)
                         }
                     },
-                    update = { playerView -> playerView.resizeMode = effectiveResizeMode },
+                    update = { playerView ->
+                        playerView.resizeMode = effectiveResizeMode
+                        playerView.player?.updateMpvResizeMode(currentResizeMode)
+                    },
                     modifier =
                         Modifier.fillMaxSize().onGloballyPositioned { coordinates ->
                             val bounds = coordinates.boundsInWindow()
@@ -677,6 +687,31 @@ fun PlayerScreen(
                         },
                 )
             }
+        }
+
+        AnimatedVisibility(
+            visible =
+                (isBuffering || !uiState.fileLoaded) &&
+                    !isAnyScrubbing &&
+                    videoPlayerState.sidePanelType == PlayerSidePanelType.NONE,
+            enter = fadeIn(tween(200)),
+            exit = fadeOut(tween(200)),
+            modifier =
+                Modifier.align(Alignment.Center)
+                    .padding(
+                        start =
+                            videoPaddingInset + insets.calculateLeftPadding(LayoutDirection.Ltr),
+                        end = videoPaddingEnd + insets.calculateRightPadding(LayoutDirection.Ltr),
+                        top = videoPaddingInset + insets.calculateTopPadding(),
+                        bottom = videoPaddingInset + insets.calculateBottomPadding(),
+                    )
+                    .zIndex(6f),
+        ) {
+            CircularProgressIndicator(
+                color = MaterialTheme.colorScheme.primary,
+                strokeWidth = 4.dp,
+                modifier = Modifier.size(56.dp),
+            )
         }
 
         if (!isInPip) {
@@ -795,7 +830,9 @@ fun PlayerScreen(
                                                 currentPerformSeekRight()
                                             } else {
                                                 // Center double tap: play / pause
-                                                haptics.confirm()
+                                                if (!isBuffering) {
+                                                    haptics.confirm()
+                                                }
                                                 if (viewModel.player.isPlaying)
                                                     viewModel.player.pause()
                                                 else viewModel.player.play()
@@ -813,6 +850,7 @@ fun PlayerScreen(
                             isVBAllowed,
                             isSeekAllowed,
                             isZoomAllowed,
+                            isQuickSpeedAllowed,
                         ) {
                             if (
                                 !videoPlayerState.isControlsLocked &&
@@ -845,10 +883,36 @@ fun PlayerScreen(
                                     var continuousBrightness = 0f
                                     var lastSetVolumeInt = -1
 
+                                    var originalSpeed = viewModel.player.playbackParameters.speed
+                                    var quickSpeedTriggered = false
+                                    val quickSpeedJob =
+                                        if (
+                                            isQuickSpeedAllowed &&
+                                                !isHorizontalEdgeTouch &&
+                                                !isVerticalEdgeTouch
+                                        ) {
+                                            coroutineScope.launch {
+                                                delay(400.milliseconds)
+                                                quickSpeedTriggered = true
+                                                isQuickSpeedActive = true
+                                                haptics.tick()
+                                                originalSpeed =
+                                                    viewModel.player.playbackParameters.speed
+                                                viewModel.player.playbackParameters =
+                                                    PlaybackParameters(2.0f)
+                                            }
+                                        } else null
+
                                     while (true) {
                                         val event = awaitPointerEvent()
                                         val pressedChanges = event.changes.filter { it.pressed }
                                         if (pressedChanges.isEmpty()) {
+                                            quickSpeedJob?.cancel()
+                                            if (quickSpeedTriggered) {
+                                                isQuickSpeedActive = false
+                                                viewModel.player.playbackParameters =
+                                                    PlaybackParameters(originalSpeed)
+                                            }
                                             if (isHorizontalDrag) {
                                                 haptics.gestureEnd()
                                                 viewModel.player.seekTo(gestureScrubPositionMs)
@@ -862,6 +926,12 @@ fun PlayerScreen(
                                         }
 
                                         if (pressedChanges.size >= 2) {
+                                            quickSpeedJob?.cancel()
+                                            if (quickSpeedTriggered) {
+                                                isQuickSpeedActive = false
+                                                viewModel.player.playbackParameters =
+                                                    PlaybackParameters(originalSpeed)
+                                            }
                                             isPinchGesture = true
                                             if (isHorizontalDrag) {
                                                 isGestureScrubbing = false
@@ -880,23 +950,15 @@ fun PlayerScreen(
 
                                                 if (totalZoom > 1.15f) {
                                                     if (
-                                                        currentResizeMode !=
-                                                            AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                                                        currentResizeMode != PlayerResizeMode.ZOOM
                                                     ) {
-                                                        onResizeModeChange(
-                                                            AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-                                                        )
+                                                        onResizeModeChange(PlayerResizeMode.ZOOM)
                                                         totalZoom = 1f
                                                         triggerPinchZoomFeedback()
                                                     }
                                                 } else if (totalZoom < 0.85f) {
-                                                    if (
-                                                        currentResizeMode !=
-                                                            AspectRatioFrameLayout.RESIZE_MODE_FIT
-                                                    ) {
-                                                        onResizeModeChange(
-                                                            AspectRatioFrameLayout.RESIZE_MODE_FIT
-                                                        )
+                                                    if (currentResizeMode != PlayerResizeMode.FIT) {
+                                                        onResizeModeChange(PlayerResizeMode.FIT)
                                                         totalZoom = 1f
                                                         triggerPinchZoomFeedback()
                                                     }
@@ -918,6 +980,12 @@ fun PlayerScreen(
                                                         abs(totalDragY) > 20f &&
                                                         abs(totalDragY) > abs(totalDragX) * 1.5f
                                                 ) {
+                                                    quickSpeedJob?.cancel()
+                                                    if (quickSpeedTriggered) {
+                                                        isQuickSpeedActive = false
+                                                        viewModel.player.playbackParameters =
+                                                            PlaybackParameters(originalSpeed)
+                                                    }
                                                     isVerticalDrag = true
                                                     isVerticalGestureActive = true
                                                     if (isRightSide) {
@@ -969,6 +1037,12 @@ fun PlayerScreen(
                                                         abs(totalDragX) > 25f &&
                                                         abs(totalDragX) > abs(totalDragY) * 1.5f
                                                 ) {
+                                                    quickSpeedJob?.cancel()
+                                                    if (quickSpeedTriggered) {
+                                                        isQuickSpeedActive = false
+                                                        viewModel.player.playbackParameters =
+                                                            PlaybackParameters(originalSpeed)
+                                                    }
                                                     isHorizontalDrag = true
                                                     haptics.gestureStart()
                                                     startPosition = viewModel.player.currentPosition
@@ -1119,7 +1193,7 @@ fun PlayerScreen(
             // Zoom / Aspect Ratio Feedback Overlay (YouTube-style edge flash & badge)
             ZoomFeedbackOverlay(
                 visible = showZoomFeedback,
-                resizeMode = currentResizeMode,
+                resizeMode = currentResizeMode.aspectRatioMode,
                 cornerRadius = videoCornerRadius,
                 modifier =
                     Modifier.padding(
@@ -1130,6 +1204,14 @@ fun PlayerScreen(
                         )
                         .zIndex(10f),
             )
+
+            // Hold for 2x speed quick speed overlay
+            Box(modifier = Modifier.align(Alignment.TopCenter).padding(top = 48.dp).zIndex(10f)) {
+                QuickSpeedOverlay(
+                    visible = isQuickSpeedActive,
+                    speed = "2x",
+                )
+            }
 
             // A. Centered Trickplay Scrubber Card when swiping on video screen (TV-style)
             AnimatedVisibility(

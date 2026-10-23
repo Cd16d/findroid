@@ -555,6 +555,18 @@ constructor(
                                                 ),
                                                 PreferenceSwitch(
                                                     nameStringResource =
+                                                        R.string.player_gestures_quick_speed,
+                                                    descriptionStringRes =
+                                                        R.string
+                                                            .player_gestures_quick_speed_summary,
+                                                    dependencies =
+                                                        listOf(appPreferences.playerGestures),
+                                                    supportedDeviceTypes = listOf(DeviceType.PHONE),
+                                                    backendPreference =
+                                                        appPreferences.playerGesturesQuickSpeed,
+                                                ),
+                                                PreferenceSwitch(
+                                                    nameStringResource =
                                                         R.string.player_brightness_remember,
                                                     dependencies =
                                                         listOf(

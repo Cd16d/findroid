@@ -37,6 +37,7 @@ import androidx.media3.common.util.Util
 import dev.jdtech.jellyfin.settings.domain.Constants.PlayerMpvAo
 import dev.jdtech.jellyfin.settings.domain.Constants.PlayerMpvHwdec
 import dev.jdtech.jellyfin.settings.domain.Constants.PlayerMpvVo
+import dev.jdtech.jellyfin.settings.domain.Constants.PlayerResizeMode
 import dev.jdtech.mpv.MPVLib
 import dev.jdtech.mpv.MPVLib.MpvEvent
 import dev.jdtech.mpv.MPVLib.MpvFormat
@@ -63,7 +64,6 @@ class MPVPlayer(
 ) : BasePlayer(), MPVLib.EventObserver, AudioManager.OnAudioFocusChangeListener {
     private val mpvLib: MPVLib
     private val audioManager: AudioManager by lazy { context.getSystemService()!! }
-    private var audioFocusCallback: () -> Unit = {}
     private lateinit var audioFocusRequest: AudioFocusRequestCompat
     private val handler: Handler = Handler(context.mainLooper)
 
@@ -321,6 +321,7 @@ class MPVPlayer(
     private var initialIndex: Int = 0
     private var initialSeekTo: Long = 0L
     private var oldMediaItem: MediaItem? = null
+    private var currentResizeMode: PlayerResizeMode = PlayerResizeMode.FIT
 
     // mpv events
     override fun eventProperty(property: String) {
@@ -460,16 +461,39 @@ class MPVPlayer(
                 MpvEvent.MPV_EVENT_PLAYBACK_RESTART -> {
                     if (!isPlayerReady) {
                         isPlayerReady = true
-                        seekTo(C.TIME_UNSET)
+                        if (initialSeekTo > 0L) {
+                            seekTo(C.TIME_UNSET)
+                        }
                         if (playWhenReady) {
                             Timber.d("Starting playback...")
-                            mpvLib.setPropertyBoolean("pause", false)
+                            if (handleAudioFocus) {
+                                val res =
+                                    AudioManagerCompat.requestAudioFocus(
+                                        audioManager,
+                                        audioFocusRequest,
+                                    )
+                                if (res != AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
+                                    mpvLib.setPropertyBoolean("pause", true)
+                                } else {
+                                    mpvLib.setPropertyBoolean("pause", false)
+                                }
+                            } else {
+                                mpvLib.setPropertyBoolean("pause", false)
+                            }
                         }
+                        val isPausedForCache = mpvLib.getPropertyBoolean("paused-for-cache") == true
+                        setResizeMode(currentResizeMode)
+                        setPlayerStateAndNotifyIfChanged(
+                            playbackState = if (isPausedForCache) STATE_BUFFERING else STATE_READY
+                        )
                         for (videoListener in videoListeners) {
                             videoListener.onRenderedFirstFrame()
                         }
                     } else {
-                        setPlayerStateAndNotifyIfChanged(playbackState = STATE_READY)
+                        val isPausedForCache = mpvLib.getPropertyBoolean("paused-for-cache") == true
+                        setPlayerStateAndNotifyIfChanged(
+                            playbackState = if (isPausedForCache) STATE_BUFFERING else STATE_READY
+                        )
                     }
                 }
                 else -> Unit
@@ -810,7 +834,6 @@ class MPVPlayer(
         isPlayerReady = false
         isSeekable = false
         playbackState = STATE_IDLE
-        currentPlayWhenReady = false
         currentPositionMs = null
         currentDurationMs = null
         currentCacheDurationMs = null
@@ -983,9 +1006,15 @@ class MPVPlayer(
             val seekTo = if (positionMs != C.TIME_UNSET) positionMs else initialSeekTo
             initialSeekTo =
                 if (isPlayerReady) {
-                    mpvLib.command(
-                        arrayOf("seek", "${seekTo.toDouble().div(C.MILLIS_PER_SECOND)}", "absolute")
-                    )
+                    if (seekTo > 0L || positionMs != C.TIME_UNSET) {
+                        mpvLib.command(
+                            arrayOf(
+                                "seek",
+                                "${seekTo.toDouble().div(C.MILLIS_PER_SECOND)}",
+                                "absolute",
+                            )
+                        )
+                    }
                     0L
                 } else {
                     seekTo
@@ -1004,7 +1033,7 @@ class MPVPlayer(
                     arrayOf(
                         /* command= */ "sub-add",
                         /* url= */ "${subtitle.uri}",
-                        /* flags= */ "auto",
+                        /* flags= */ "async",
                         /* title= */ "${subtitle.label}",
                         /* lang= */ "${subtitle.language}",
                     )
@@ -1461,15 +1490,22 @@ class MPVPlayer(
         TODO("Not yet implemented")
     }
 
-    fun updateZoomMode(enabled: Boolean) {
-        if (enabled) {
-            mpvLib.setOptionString("panscan", "1")
-            mpvLib.setOptionString("sub-use-margins", "yes")
-            mpvLib.setOptionString("sub-ass-force-margins", "yes")
-        } else {
-            mpvLib.setOptionString("panscan", "0")
-            mpvLib.setOptionString("sub-use-margins", "no")
-            mpvLib.setOptionString("sub-ass-force-margins", "no")
+    fun setResizeMode(resizeMode: PlayerResizeMode) {
+        currentResizeMode = resizeMode
+        if (isPlayerReady) {
+            when (resizeMode) {
+                PlayerResizeMode.ZOOM -> {
+                    mpvLib.setPropertyBoolean("keepaspect", true)
+                    mpvLib.setPropertyDouble("panscan", 1.0)
+                    mpvLib.setPropertyString("video-aspect-override", "-1")
+                }
+                PlayerResizeMode.FILL,
+                PlayerResizeMode.FIT -> {
+                    mpvLib.setPropertyBoolean("keepaspect", true)
+                    mpvLib.setPropertyDouble("panscan", 0.0)
+                    mpvLib.setPropertyString("video-aspect-override", "-1")
+                }
+            }
         }
     }
 
@@ -1506,6 +1542,7 @@ class MPVPlayer(
                 height: Int,
             ) {
                 mpvLib.setPropertyString("android-surface-size", "${width}x$height")
+                setResizeMode(currentResizeMode)
             }
 
             /**
@@ -1631,4 +1668,8 @@ class MPVPlayer(
             return tracks
         }
     }
+}
+
+fun Player.updateMpvResizeMode(resizeMode: PlayerResizeMode) {
+    (this as? MPVPlayer)?.setResizeMode(resizeMode)
 }

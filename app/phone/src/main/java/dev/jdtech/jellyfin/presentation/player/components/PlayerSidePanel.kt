@@ -2,7 +2,6 @@ package dev.jdtech.jellyfin.presentation.player.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -64,6 +63,8 @@ import dev.jdtech.jellyfin.player.local.presentation.PlayerViewModel
 import dev.jdtech.jellyfin.presentation.components.ChapterCard
 import dev.jdtech.jellyfin.presentation.components.SelectableTrackItem
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
+import dev.jdtech.jellyfin.settings.domain.Constants.PlayerResizeMode
+import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.delay
 
 /**
@@ -85,8 +86,8 @@ fun PlayerSidePanel(
     panelType: PlayerSidePanelType,
     onPanelTypeChange: (PlayerSidePanelType) -> Unit,
     viewModel: PlayerViewModel,
-    currentResizeMode: Int,
-    onResizeModeChange: (Int) -> Unit,
+    currentResizeMode: PlayerResizeMode,
+    onResizeModeChange: (PlayerResizeMode) -> Unit,
     onClose: () -> Unit,
     onLock: () -> Unit,
     modifier: Modifier = Modifier,
@@ -239,7 +240,7 @@ private fun TabletSettingsMenu(
     viewModel: PlayerViewModel,
     tracks: Tracks,
     currentSpeed: Float,
-    currentResizeMode: Int,
+    currentResizeMode: PlayerResizeMode,
     isPlaying: Boolean,
     onNavigate: (PlayerSidePanelType) -> Unit,
     onLock: () -> Unit,
@@ -276,10 +277,8 @@ private fun TabletSettingsMenu(
     val currentSpeedText = "${currentSpeed}x"
     val currentAspectText =
         when (currentResizeMode) {
-            AspectRatioFrameLayout.RESIZE_MODE_ZOOM ->
-                stringResource(id = PlayerR.string.aspect_ratio_zoom)
-            AspectRatioFrameLayout.RESIZE_MODE_FILL ->
-                stringResource(id = PlayerR.string.aspect_ratio_fill)
+            PlayerResizeMode.ZOOM -> stringResource(id = PlayerR.string.aspect_ratio_zoom)
+            PlayerResizeMode.FILL -> stringResource(id = PlayerR.string.aspect_ratio_fill)
             else -> stringResource(id = PlayerR.string.aspect_ratio_fit)
         }
 
@@ -576,18 +575,15 @@ private fun TabletSubtitleTrackList(viewModel: PlayerViewModel, tracks: Tracks) 
  */
 @Composable
 private fun TabletAspectRatioList(
-    currentResizeMode: Int,
+    currentResizeMode: PlayerResizeMode,
     isMpv: Boolean = false,
-    onResizeModeSelected: (Int) -> Unit,
+    onResizeModeSelected: (PlayerResizeMode) -> Unit,
 ) {
     val modes =
         listOf(
-                AspectRatioFrameLayout.RESIZE_MODE_FIT to
-                    stringResource(id = PlayerR.string.aspect_ratio_fit),
-                AspectRatioFrameLayout.RESIZE_MODE_ZOOM to
-                    stringResource(id = PlayerR.string.aspect_ratio_zoom),
-                AspectRatioFrameLayout.RESIZE_MODE_FILL to
-                    stringResource(id = PlayerR.string.aspect_ratio_fill),
+                PlayerResizeMode.FIT to stringResource(id = PlayerR.string.aspect_ratio_fit),
+                PlayerResizeMode.ZOOM to stringResource(id = PlayerR.string.aspect_ratio_zoom),
+                PlayerResizeMode.FILL to stringResource(id = PlayerR.string.aspect_ratio_fill),
             )
             .let { modes -> if (isMpv) modes.dropLast(1) else modes }
     LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -620,7 +616,7 @@ private fun TabletChaptersList(viewModel: PlayerViewModel) {
     LaunchedEffect(viewModel.player) {
         while (true) {
             currentPosition = viewModel.player.currentPosition
-            delay(400)
+            delay(400.milliseconds)
         }
     }
 
@@ -755,7 +751,7 @@ private fun TabletSpeedListPreview() {
 private fun TabletAspectRatioListPreview() {
     FindroidTheme {
         TabletAspectRatioList(
-            currentResizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM,
+            currentResizeMode = PlayerResizeMode.ZOOM,
             onResizeModeSelected = {},
         )
     }

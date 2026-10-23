@@ -53,7 +53,6 @@ import androidx.media3.common.C
 import androidx.media3.common.Player
 import androidx.media3.common.Tracks
 import androidx.media3.common.util.UnstableApi
-import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.tv.material3.ClickableSurfaceColors
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.ClickableSurfaceScale
@@ -82,6 +81,7 @@ import dev.jdtech.jellyfin.player.core.presentation.getSegmentColor
 import dev.jdtech.jellyfin.player.core.presentation.labelRes
 import dev.jdtech.jellyfin.player.local.presentation.PlayerViewModel
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
+import dev.jdtech.jellyfin.settings.domain.Constants.PlayerResizeMode
 import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.delay
 import org.jellyfin.sdk.model.api.MediaStreamType
@@ -111,8 +111,8 @@ fun PlayerSidePanel(
     panelType: PlayerSidePanelType,
     onPanelTypeChange: (PlayerSidePanelType) -> Unit,
     viewModel: PlayerViewModel,
-    currentResizeMode: Int,
-    onResizeModeChange: (Int) -> Unit,
+    currentResizeMode: PlayerResizeMode,
+    onResizeModeChange: (PlayerResizeMode) -> Unit,
     modifier: Modifier = Modifier,
     onClose: () -> Unit = {},
 ) {
@@ -492,17 +492,17 @@ private fun SpeedList(
 @androidx.annotation.OptIn(UnstableApi::class)
 @Composable
 private fun AspectRatioList(
-    currentResizeMode: Int,
+    currentResizeMode: PlayerResizeMode,
     isMpv: Boolean = false,
-    onResizeModeChange: (Int) -> Unit,
+    onResizeModeChange: (PlayerResizeMode) -> Unit,
     initialFocusRequester: FocusRequester,
     onBack: () -> Unit,
 ) {
     val resizeModes = remember {
         listOf(
-                AspectRatioFrameLayout.RESIZE_MODE_FIT to PlayerR.string.aspect_ratio_fit,
-                AspectRatioFrameLayout.RESIZE_MODE_ZOOM to PlayerR.string.aspect_ratio_zoom,
-                AspectRatioFrameLayout.RESIZE_MODE_FILL to PlayerR.string.aspect_ratio_fill,
+                PlayerResizeMode.FIT to PlayerR.string.aspect_ratio_fit,
+                PlayerResizeMode.ZOOM to PlayerR.string.aspect_ratio_zoom,
+                PlayerResizeMode.FILL to PlayerR.string.aspect_ratio_fill,
             )
             .let { modes -> if (isMpv) modes.dropLast(1) else modes }
     }
@@ -537,7 +537,7 @@ private fun AspectRatioList(
 private fun SettingsList(
     viewModel: PlayerViewModel,
     tracks: Tracks,
-    currentResizeMode: Int,
+    currentResizeMode: PlayerResizeMode,
     onNavigate: (PlayerSidePanelType) -> Unit,
     subtitlesFocusRequester: FocusRequester,
     audioFocusRequester: FocusRequester,
@@ -612,10 +612,8 @@ private fun SettingsList(
 
     val resizeModeLabel =
         when (currentResizeMode) {
-            AspectRatioFrameLayout.RESIZE_MODE_ZOOM ->
-                stringResource(id = PlayerR.string.aspect_ratio_zoom)
-            AspectRatioFrameLayout.RESIZE_MODE_FILL ->
-                stringResource(id = PlayerR.string.aspect_ratio_fill)
+            PlayerResizeMode.ZOOM -> stringResource(id = PlayerR.string.aspect_ratio_zoom)
+            PlayerResizeMode.FILL -> stringResource(id = PlayerR.string.aspect_ratio_fill)
             else -> stringResource(id = PlayerR.string.aspect_ratio_fit)
         }
 

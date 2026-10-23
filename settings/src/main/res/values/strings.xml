@@ -37,6 +37,8 @@
     <string name="player_gestures_zoom">Zoom gesture</string>
     <string name="player_gestures_seek">Seek gesture</string>
     <string name="player_gestures_chapter_skip">Chapter gesture</string>
+    <string name="player_gestures_quick_speed">Hold for 2x speed gesture</string>
+    <string name="player_gestures_quick_speed_summary">Press and hold on video to play at 2x speed</string>
     <string name="player_gestures_vb_summary">Swipe up and down on the right side of the screen to change the volume and on the left side to change the brightness</string>
     <string name="player_gestures_zoom_summary">Pinch to fill the screen with the video</string>
     <string name="player_gestures_chapter_skip_summary">Long press on Left / Right side to skip chapters (overrides 2x speed gesture)</string>

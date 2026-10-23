@@ -21,7 +21,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.view.WindowCompat
@@ -34,7 +33,6 @@ import androidx.media3.common.Player
 import androidx.media3.common.VideoSize
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaSession
-import androidx.media3.ui.AspectRatioFrameLayout
 import dagger.hilt.android.AndroidEntryPoint
 import dev.jdtech.jellyfin.models.VolumeKeyEvent
 import dev.jdtech.jellyfin.player.local.presentation.PlayerEvents
@@ -65,7 +63,7 @@ class PlayerActivity : AppCompatActivity() {
     private var lastVolumeKeyTime = 0L
 
     private var isInPipMode by mutableStateOf(false)
-    private var currentResizeMode by mutableIntStateOf(AspectRatioFrameLayout.RESIZE_MODE_FIT)
+    private var currentResizeMode by mutableStateOf(Constants.PlayerResizeMode.FIT)
     private var isOrientationLockedState by mutableStateOf(false)
     private var currentVideoBounds: Rect? = null
 
@@ -233,16 +231,7 @@ class PlayerActivity : AppCompatActivity() {
                 }
                 launch {
                     appPreferences.observe(appPreferences.playerDefaultResizeMode).collect {
-                        val defaultResizeMode = Constants.PlayerResizeMode.fromValue(it)
-                        currentResizeMode =
-                            when (defaultResizeMode) {
-                                Constants.PlayerResizeMode.ZOOM ->
-                                    AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-                                Constants.PlayerResizeMode.STRETCH ->
-                                    AspectRatioFrameLayout.RESIZE_MODE_FILL
-                                Constants.PlayerResizeMode.FIT ->
-                                    AspectRatioFrameLayout.RESIZE_MODE_FIT
-                            }
+                        currentResizeMode = Constants.PlayerResizeMode.fromValue(it)
                     }
                 }
                 launch {

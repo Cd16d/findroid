@@ -115,6 +115,7 @@ import dev.jdtech.jellyfin.models.FindroidEpisode
 import dev.jdtech.jellyfin.models.FindroidSegment
 import dev.jdtech.jellyfin.player.core.R as PlayerR
 import dev.jdtech.jellyfin.player.core.domain.models.PlayerChapter
+import dev.jdtech.jellyfin.player.local.mpv.updateMpvResizeMode
 import dev.jdtech.jellyfin.player.local.presentation.PlayerEvents
 import dev.jdtech.jellyfin.player.local.presentation.PlayerViewModel
 import dev.jdtech.jellyfin.presentation.components.AppScreensaver
@@ -138,6 +139,7 @@ import dev.jdtech.jellyfin.presentation.utils.TvPivotItem
 import dev.jdtech.jellyfin.presentation.utils.rememberTvPivotRowController
 import dev.jdtech.jellyfin.presentation.utils.rememberTvTrailingSpace
 import dev.jdtech.jellyfin.settings.domain.AppPreferences
+import dev.jdtech.jellyfin.settings.domain.Constants.PlayerResizeMode
 import dev.jdtech.jellyfin.utils.toBlurHashPainter
 import dev.jdtech.jellyfin.utils.toOptimizedImageUri
 import java.util.UUID
@@ -286,7 +288,7 @@ fun PlayerScreen(
     var scrubStartingPositionMs by remember { mutableLongStateOf(0L) }
     var scrubJob by remember { mutableStateOf<Job?>(null) }
 
-    var resizeMode by remember { mutableIntStateOf(AspectRatioFrameLayout.RESIZE_MODE_FIT) }
+    var resizeMode by remember { mutableStateOf(PlayerResizeMode.FIT) }
     val isMpv = viewModel.isMpv
 
     val isMovie =
@@ -567,9 +569,9 @@ fun PlayerScreen(
     ) {
         val effectiveResizeMode =
             if (isPanelOpen) AspectRatioFrameLayout.RESIZE_MODE_FIT
-            else if (isMpv && resizeMode == AspectRatioFrameLayout.RESIZE_MODE_FILL)
+            else if (isMpv && resizeMode == PlayerResizeMode.FILL)
                 AspectRatioFrameLayout.RESIZE_MODE_FIT
-            else resizeMode
+            else resizeMode.aspectRatioMode
 
         BoxWithConstraints(
             modifier =
@@ -608,6 +610,7 @@ fun PlayerScreen(
                             playerView.controllerAutoShow = false
                             playerView.player = viewModel.player
                             playerView.resizeMode = effectiveResizeMode
+                            playerView.player?.updateMpvResizeMode(resizeMode)
                             val captioningManager =
                                 ctx.getSystemService(Context.CAPTIONING_SERVICE)
                                     as? CaptioningManager
@@ -640,7 +643,10 @@ fun PlayerScreen(
                             playerView.setBackgroundColor(android.graphics.Color.BLACK)
                         }
                     },
-                    update = { playerView -> playerView.resizeMode = effectiveResizeMode },
+                    update = { playerView ->
+                        playerView.resizeMode = effectiveResizeMode
+                        playerView.player?.updateMpvResizeMode(resizeMode)
+                    },
                     modifier = Modifier.fillMaxSize(),
                 )
             }

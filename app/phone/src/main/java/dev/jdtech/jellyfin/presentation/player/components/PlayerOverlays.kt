@@ -690,6 +690,62 @@ fun ZoomFeedbackOverlay(
     }
 }
 
+/**
+ * Visual feedback overlay displayed when pressing and holding on the video to trigger 2x speed
+ * playback.
+ *
+ * @param visible Whether the overlay is visible.
+ * @param modifier Optional [Modifier] applied to the overlay container.
+ * @param speed Text representation of the active speed (e.g. "2x").
+ */
+@Composable
+fun QuickSpeedOverlay(
+    visible: Boolean,
+    modifier: Modifier = Modifier,
+    speed: String = "2x",
+) {
+    AnimatedVisibility(
+        visible = visible,
+        enter =
+            fadeIn(animationSpec = tween(150)) +
+                scaleIn(animationSpec = tween(150), initialScale = 0.85f),
+        exit =
+            fadeOut(animationSpec = tween(150)) +
+                scaleOut(animationSpec = tween(150), targetScale = 0.85f),
+        modifier = modifier,
+    ) {
+        Box(
+            modifier =
+                Modifier.clip(CircleShape)
+                    .background(PlayerSheetBackground.copy(alpha = 0.85f))
+                    .border(
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.25f)),
+                        shape = CircleShape,
+                    )
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Text(
+                    text = speed,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                )
+                Icon(
+                    painter = painterResource(id = CoreR.drawable.ic_fast_forward),
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = Color.White,
+                )
+            }
+        }
+    }
+}
+
 @Preview(showBackground = true, backgroundColor = 0xFF000000)
 @Composable
 private fun VolumeOverlayPreview() {

@@ -82,6 +82,7 @@ class AppPreferences @Inject constructor(val sharedPreferences: SharedPreference
     val playerGesturesSeek = Preference("pref_player_gestures_seek", true)
     val playerGesturesSeekTrickplay = Preference("pref_player_gestures_seek_trickplay", true)
     val playerGesturesChapterSkip = Preference("pref_player_gestures_chapter_skip", true)
+    val playerGesturesQuickSpeed = Preference("pref_player_gestures_quick_speed", true)
     val playerGesturesBrightnessRemember = Preference("pref_player_brightness_remember", false)
     val playerDefaultResizeMode =
         Preference("pref_player_default_resize_mode", PlayerResizeMode.FIT.name.lowercase())

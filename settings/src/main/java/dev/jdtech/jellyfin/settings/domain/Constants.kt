@@ -37,10 +37,21 @@ object Constants {
         }
     }
 
-    enum class PlayerResizeMode {
-        FIT,
-        ZOOM,
-        STRETCH;
+    /**
+     * Scaling modes for player video surface sizing.
+     *
+     * @property aspectRatioMode Integer mapping corresponding to Media3's AspectRatioFrameLayout
+     *   constants: 0 = RESIZE_MODE_FIT, 4 = RESIZE_MODE_ZOOM, 3 = RESIZE_MODE_FILL.
+     */
+    enum class PlayerResizeMode(val aspectRatioMode: Int) {
+        /** AspectRatioFrameLayout.RESIZE_MODE_FIT (0) */
+        FIT(0),
+
+        /** AspectRatioFrameLayout.RESIZE_MODE_ZOOM (4) */
+        ZOOM(4),
+
+        /** AspectRatioFrameLayout.RESIZE_MODE_FILL (3) */
+        FILL(3);
 
         companion object {
             fun fromValue(value: String?): PlayerResizeMode =
