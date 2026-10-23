@@ -108,12 +108,12 @@ class PlayerActivity : AppCompatActivity() {
             val state =
                 if (isOrientationLockedState) {
                     if (resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT) {
-                        Constants.PlayerOrientation.SENSOR_PORTRAIT.value
+                        Constants.PlayerOrientation.SENSOR_PORTRAIT.name.lowercase()
                     } else {
-                        Constants.PlayerOrientation.SENSOR_LANDSCAPE.value
+                        Constants.PlayerOrientation.SENSOR_LANDSCAPE.name.lowercase()
                     }
                 } else {
-                    Constants.PlayerOrientation.SENSOR.value
+                    Constants.PlayerOrientation.SENSOR.name.lowercase()
                 }
             appPreferences.setValue(appPreferences.playerOrientationLast, state)
         }

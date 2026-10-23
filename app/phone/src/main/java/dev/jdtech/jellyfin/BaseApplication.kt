@@ -51,8 +51,7 @@ class BaseApplication : Application(), Configuration.Provider, SingletonImageLoa
         }
 
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
-            val currentTheme =
-                Constants.Theme.fromValue(appPreferences.getValue(appPreferences.theme))
+            val currentTheme = appPreferences.getTheme()
             val mode =
                 when (currentTheme) {
                     Constants.Theme.SYSTEM -> AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM

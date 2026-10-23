@@ -149,7 +149,8 @@ constructor(
                                                                 SettingsEvent.UpdateTheme(
                                                                     value
                                                                         ?: Constants.Theme.SYSTEM
-                                                                            .value
+                                                                            .name
+                                                                            .lowercase()
                                                                 )
                                                             )
                                                         }
@@ -439,7 +440,8 @@ constructor(
                                                                                 appPreferences
                                                                                     .playerMpvAo,
                                                                             options =
-                                                                                R.array.mpv_aos,
+                                                                                R.array
+                                                                                    .mpv_ao_options,
                                                                             optionValues =
                                                                                 R.array.mpv_aos,
                                                                         ),
@@ -588,31 +590,31 @@ constructor(
                                                     nameStringResource =
                                                         R.string.media_segments_type_intro,
                                                     segmentType =
-                                                        Constants.MediaSegmentType.INTRO.value,
+                                                        Constants.MediaSegmentType.INTRO.name,
                                                 ),
                                                 PreferenceSegmentConfig(
                                                     nameStringResource =
                                                         R.string.media_segments_type_outro,
                                                     segmentType =
-                                                        Constants.MediaSegmentType.OUTRO.value,
+                                                        Constants.MediaSegmentType.OUTRO.name,
                                                 ),
                                                 PreferenceSegmentConfig(
                                                     nameStringResource =
                                                         R.string.media_segments_type_recap,
                                                     segmentType =
-                                                        Constants.MediaSegmentType.RECAP.value,
+                                                        Constants.MediaSegmentType.RECAP.name,
                                                 ),
                                                 PreferenceSegmentConfig(
                                                     nameStringResource =
                                                         R.string.media_segments_type_preview,
                                                     segmentType =
-                                                        Constants.MediaSegmentType.PREVIEW.value,
+                                                        Constants.MediaSegmentType.PREVIEW.name,
                                                 ),
                                                 PreferenceSegmentConfig(
                                                     nameStringResource =
                                                         R.string.media_segments_type_commercial,
                                                     segmentType =
-                                                        Constants.MediaSegmentType.COMMERCIAL.value,
+                                                        Constants.MediaSegmentType.COMMERCIAL.name,
                                                 ),
                                                 PreferenceSelect(
                                                     nameStringResource =

@@ -200,7 +200,7 @@ private fun SettingsGroupCardPreview() {
                                 nameStringResource = SettingsR.string.pref_player_mpv_ao,
                                 dependencies = listOf(Preference("", false)),
                                 backendPreference = Preference("", ""),
-                                options = SettingsR.array.mpv_aos,
+                                options = SettingsR.array.mpv_ao_options,
                                 optionValues = SettingsR.array.mpv_aos,
                             ),
                         ),

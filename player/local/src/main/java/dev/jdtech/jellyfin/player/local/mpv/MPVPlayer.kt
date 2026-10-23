@@ -34,7 +34,9 @@ import androidx.media3.common.util.Clock
 import androidx.media3.common.util.ListenerSet
 import androidx.media3.common.util.Size
 import androidx.media3.common.util.Util
-import dev.jdtech.jellyfin.settings.domain.Constants
+import dev.jdtech.jellyfin.settings.domain.Constants.PlayerMpvAo
+import dev.jdtech.jellyfin.settings.domain.Constants.PlayerMpvHwdec
+import dev.jdtech.jellyfin.settings.domain.Constants.PlayerMpvVo
 import dev.jdtech.mpv.MPVLib
 import dev.jdtech.mpv.MPVLib.MpvEvent
 import dev.jdtech.mpv.MPVLib.MpvFormat
@@ -47,7 +49,7 @@ import org.json.JSONObject
 import timber.log.Timber
 
 class MPVPlayer(
-    context: Context,
+    private val context: Context,
     private val audioAttributes: AudioAttributes = AudioAttributes.DEFAULT,
     private val handleAudioFocus: Boolean = true,
     private var trackSelectionParameters: TrackSelectionParameters =
@@ -55,9 +57,9 @@ class MPVPlayer(
     private val seekBackIncrement: Long = C.DEFAULT_SEEK_BACK_INCREMENT_MS,
     private val seekForwardIncrement: Long = C.DEFAULT_SEEK_FORWARD_INCREMENT_MS,
     private val pauseAtEndOfMediaItems: Boolean = false,
-    videoOutput: String = Constants.PlayerMpvVo.GPU_NEXT.value,
-    audioOutput: String = Constants.PlayerMpvAo.AAUDIO.value,
-    hwDec: String = Constants.PlayerMpvHwdec.MEDIACODEC.value,
+    videoOutput: String = PlayerMpvVo.GPU_NEXT.value,
+    audioOutput: String = PlayerMpvAo.AUDIOTRACK.value,
+    hwDec: String = PlayerMpvHwdec.MEDIACODEC.value,
 ) : BasePlayer(), MPVLib.EventObserver, AudioManager.OnAudioFocusChangeListener {
     private val mpvLib: MPVLib
     private val audioManager: AudioManager by lazy { context.getSystemService()!! }
@@ -99,13 +101,13 @@ class MPVPlayer(
         var pauseAtEndOfMediaItems: Boolean = false
             private set
 
-        var videoOutput: String = Constants.PlayerMpvVo.GPU_NEXT.value
+        var videoOutput: String = PlayerMpvVo.GPU.value
             private set
 
-        var audioOutput: String = Constants.PlayerMpvAo.AAUDIO.value
+        var audioOutput: String = PlayerMpvAo.AUDIOTRACK.value
             private set
 
-        var hwDec: String = Constants.PlayerMpvHwdec.MEDIACODEC.value
+        var hwDec: String = PlayerMpvHwdec.MEDIACODEC.value
             private set
 
         fun setAudioAttributes(audioAttributes: AudioAttributes, handleAudioFocus: Boolean) =
@@ -598,11 +600,11 @@ class MPVPlayer(
              * @return The index of the period, or [C.INDEX_UNSET] if the period was not found.
              */
             override fun getIndexOfPeriod(uid: Any): Int {
-                return uid as Int
+                return if (uid is Int) uid else C.INDEX_UNSET
             }
 
             /**
-             * Returns the unique id of the period identified by its index in the timeline.
+             * Returns the unique id of the period at the specified index.
              *
              * @param periodIndex The index of the period.
              * @return The unique id of the period.
@@ -612,57 +614,40 @@ class MPVPlayer(
             }
         }
 
-    // OnAudioFocusChangeListener implementation.
-
-    /**
-     * Called on the listener to notify it the audio focus for this listener has been changed. The
-     * focusChange value indicates whether the focus was gained, whether the focus was lost, and
-     * whether that loss is transient, or whether the new focus holder will hold it for an unknown
-     * amount of time. When losing focus, listeners can use the focus change information to decide
-     * what behavior to adopt when losing focus. A music player could for instance elect to lower
-     * the volume of its music stream (duck) for transient focus losses, and pause otherwise.
-     *
-     * @param focusChange the type of focus change, one of [AudioManager.AUDIOFOCUS_GAIN],
-     *   [AudioManager.AUDIOFOCUS_LOSS], [AudioManager.AUDIOFOCUS_LOSS_TRANSIENT] and
-     *   [AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK].
-     */
+    // AudioFocus
     override fun onAudioFocusChange(focusChange: Int) {
         when (focusChange) {
             AudioManager.AUDIOFOCUS_LOSS,
             AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> {
-                val oldAudioFocusCallback = audioFocusCallback
                 val wasPlaying = isPlaying
-                mpvLib.setPropertyBoolean("pause", true)
-                setPlayerStateAndNotifyIfChanged(
-                    playWhenReady = false,
-                    playWhenReadyChangeReason = PLAY_WHEN_READY_CHANGE_REASON_AUDIO_FOCUS_LOSS,
-                )
-                audioFocusCallback = {
-                    oldAudioFocusCallback()
-                    if (wasPlaying) mpvLib.setPropertyBoolean("pause", false)
+                if (wasPlaying) {
+                    setPlayerStateAndNotifyIfChanged(
+                        playWhenReady = false,
+                        playWhenReadyChangeReason = PLAY_WHEN_READY_CHANGE_REASON_AUDIO_FOCUS_LOSS,
+                    )
+                    mpvLib.setPropertyBoolean("pause", true)
                 }
             }
             AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
-                mpvLib.command(arrayOf("multiply", "volume", "$AUDIO_FOCUS_DUCKING"))
-                audioFocusCallback = {
-                    mpvLib.command(arrayOf("multiply", "volume", "${1f / AUDIO_FOCUS_DUCKING}"))
-                }
+                val wasPlaying = isPlaying
+                if (wasPlaying)
+                    mpvLib.command(arrayOf("multiply", "volume", "$AUDIO_FOCUS_DUCKING"))
             }
             AudioManager.AUDIOFOCUS_GAIN -> {
-                audioFocusCallback()
-                audioFocusCallback = {}
+                val wasPlaying = isPlaying
+                if (wasPlaying) mpvLib.setPropertyBoolean("pause", false)
+                mpvLib.command(arrayOf("multiply", "volume", "${1f / AUDIO_FOCUS_DUCKING}"))
             }
         }
     }
 
     // Player implementation.
-
     /**
      * Returns the [Looper] associated with the application thread that's used to access the player
      * and on which player events are received.
      */
     override fun getApplicationLooper(): Looper {
-        return handler.looper
+        return context.mainLooper
     }
 
     /**
@@ -677,7 +662,7 @@ class MPVPlayer(
 
     /**
      * Unregister a listener registered through [.addListener]. The listener will no longer receive
-     * events.
+     * player events.
      *
      * @param listener The listener to unregister.
      */
@@ -770,9 +755,8 @@ class MPVPlayer(
     /**
      * Removes a range of media items from the playlist.
      *
-     * @param fromIndex The index at which to start removing media items.
-     * @param toIndex The index of the first item to be kept (exclusive). If the index is larger
-     *   than the size of the playlist, media items to the end of the playlist are removed.
+     * @param fromIndex The first item to be removed.
+     * @param toIndex The first item not to be removed (exclusive).
      */
     override fun removeMediaItems(fromIndex: Int, toIndex: Int) {
         TODO("Not yet implemented")
@@ -781,12 +765,12 @@ class MPVPlayer(
     /**
      * Returns the player's currently available [Commands].
      *
-     * The returned [Commands] are not updated when available commands change. Use
+     * The returned [Commands] will also be provided to
      * [ ][Player.Listener.onAvailableCommandsChanged] to get an update when the available commands
      * change.
      *
-     * Executing a command that is not available (for example, calling [.next] if
-     * [ ][.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM] is unavailable) will neither throw an exception nor
+     * Executing a command that is not available (for which [ ][isCommandAvailable] returns `false`)
+     * will lead to an [IllegalStateException] or [ ][UnsupportedOperationException] or will
      * generate a [.getPlayerError] player error}.
      *
      * [.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM] and [.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM] are unavailable
@@ -830,8 +814,6 @@ class MPVPlayer(
         currentPositionMs = null
         currentDurationMs = null
         currentCacheDurationMs = null
-        currentTracks = Tracks.EMPTY
-        playbackParameters = PlaybackParameters.DEFAULT
         initialCommands.clear()
     }
 
@@ -877,7 +859,7 @@ class MPVPlayer(
      *
      * Note that this method will always return `null` if [.getPlaybackState] is not [.STATE_IDLE].
      *
-     * @return The error, or `null`.
+     * @return The error, or null.
      * @see Player.Listener.onPlayerError
      */
     override fun getPlayerError(): PlaybackException? {
@@ -890,6 +872,7 @@ class MPVPlayer(
      * If the player is already in the ready state then this method pauses and resumes playback.
      *
      * @param playWhenReady Whether playback should proceed when ready.
+     * @see Player.Listener.onPlayWhenReadyChanged
      */
     override fun setPlayWhenReady(playWhenReady: Boolean) {
         if (currentPlayWhenReady != playWhenReady) {
@@ -927,6 +910,7 @@ class MPVPlayer(
      * Sets the [Player.RepeatMode] to be used for playback.
      *
      * @param repeatMode The repeat mode.
+     * @see Player.Listener.onRepeatModeChanged
      */
     override fun setRepeatMode(repeatMode: Int) {
         when (repeatMode) {
@@ -956,16 +940,17 @@ class MPVPlayer(
     }
 
     /**
-     * Sets whether shuffling of windows is enabled.
+     * Sets whether shuffling of media items is enabled of not.
      *
      * @param shuffleModeEnabled Whether shuffling is enabled.
+     * @see Player.Listener.onShuffleModeEnabledChanged
      */
     override fun setShuffleModeEnabled(shuffleModeEnabled: Boolean) {
         TODO("Not yet implemented")
     }
 
     /**
-     * Returns whether shuffling of windows is enabled.
+     * Returns whether shuffling of media items is enabled.
      *
      * @see Player.Listener.onShuffleModeEnabledChanged
      */
@@ -973,14 +958,8 @@ class MPVPlayer(
         return false
     }
 
-    /**
-     * Whether the player is currently loading the source.
-     *
-     * @return Whether the player is currently loading the source.
-     * @see Player.Listener.onIsLoadingChanged
-     */
     override fun isLoading(): Boolean {
-        return false
+        return playbackState == STATE_BUFFERING
     }
 
     /**

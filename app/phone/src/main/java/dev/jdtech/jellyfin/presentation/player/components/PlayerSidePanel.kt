@@ -202,6 +202,7 @@ fun PlayerSidePanel(
                 }
                 PlayerSidePanelType.ASPECT_RATIO -> {
                     TabletAspectRatioList(
+                        isMpv = viewModel.isMpv,
                         currentResizeMode = currentResizeMode,
                         onResizeModeSelected = onResizeModeChange,
                     )
@@ -574,16 +575,21 @@ private fun TabletSubtitleTrackList(viewModel: PlayerViewModel, tracks: Tracks) 
  * @param onResizeModeSelected Callback when a resize mode is picked.
  */
 @Composable
-private fun TabletAspectRatioList(currentResizeMode: Int, onResizeModeSelected: (Int) -> Unit) {
+private fun TabletAspectRatioList(
+    currentResizeMode: Int,
+    isMpv: Boolean = false,
+    onResizeModeSelected: (Int) -> Unit,
+) {
     val modes =
         listOf(
-            AspectRatioFrameLayout.RESIZE_MODE_FIT to
-                stringResource(id = PlayerR.string.aspect_ratio_fit),
-            AspectRatioFrameLayout.RESIZE_MODE_ZOOM to
-                stringResource(id = PlayerR.string.aspect_ratio_zoom),
-            AspectRatioFrameLayout.RESIZE_MODE_FILL to
-                stringResource(id = PlayerR.string.aspect_ratio_fill),
-        )
+                AspectRatioFrameLayout.RESIZE_MODE_FIT to
+                    stringResource(id = PlayerR.string.aspect_ratio_fit),
+                AspectRatioFrameLayout.RESIZE_MODE_ZOOM to
+                    stringResource(id = PlayerR.string.aspect_ratio_zoom),
+                AspectRatioFrameLayout.RESIZE_MODE_FILL to
+                    stringResource(id = PlayerR.string.aspect_ratio_fill),
+            )
+            .let { modes -> if (isMpv) modes.dropLast(1) else modes }
     LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         itemsIndexed(modes) { _, (mode, label) ->
             val isSelected = currentResizeMode == mode

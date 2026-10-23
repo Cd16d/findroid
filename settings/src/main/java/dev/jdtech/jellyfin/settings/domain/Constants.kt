@@ -2,49 +2,49 @@ package dev.jdtech.jellyfin.settings.domain
 
 object Constants {
     // Interface
-    enum class Theme(val value: String) {
-        SYSTEM("system"),
-        LIGHT("light"),
-        DARK("dark");
+    enum class Theme {
+        SYSTEM,
+        LIGHT,
+        DARK;
 
         companion object {
             fun fromValue(value: String?): Theme =
-                entries.firstOrNull { it.value == value } ?: SYSTEM
+                entries.firstOrNull { it.name.equals(value, ignoreCase = true) } ?: SYSTEM
         }
     }
 
     // Player
-    enum class PlayerBackend(val value: String) {
-        EXOPLAYER("exoplayer"),
-        MPV("mpv");
+    enum class PlayerBackend {
+        EXOPLAYER,
+        MPV;
 
         companion object {
             fun fromValue(value: String?): PlayerBackend =
-                entries.firstOrNull { it.value == value } ?: EXOPLAYER
+                entries.firstOrNull { it.name.equals(value, ignoreCase = true) } ?: EXOPLAYER
         }
     }
 
-    enum class PlayerOrientation(val value: String) {
-        SENSOR("sensor"),
-        SENSOR_LANDSCAPE("sensor_landscape"),
-        SENSOR_PORTRAIT("sensor_portrait"),
-        REMEMBER("remember"),
-        LOCKED("locked");
+    enum class PlayerOrientation {
+        SENSOR,
+        SENSOR_LANDSCAPE,
+        SENSOR_PORTRAIT,
+        REMEMBER,
+        LOCKED;
 
         companion object {
             fun fromValue(value: String?): PlayerOrientation =
-                entries.firstOrNull { it.value == value } ?: SENSOR
+                entries.firstOrNull { it.name.equals(value, ignoreCase = true) } ?: SENSOR
         }
     }
 
-    enum class PlayerResizeMode(val value: String) {
-        FIT("fit"),
-        ZOOM("zoom"),
-        STRETCH("stretch");
+    enum class PlayerResizeMode {
+        FIT,
+        ZOOM,
+        STRETCH;
 
         companion object {
             fun fromValue(value: String?): PlayerResizeMode =
-                entries.firstOrNull { it.value == value } ?: FIT
+                entries.firstOrNull { it.name.equals(value, ignoreCase = true) } ?: FIT
         }
     }
 
@@ -52,57 +52,42 @@ object Constants {
     enum class PlayerMpvHwdec(val value: String) {
         NO("no"),
         MEDIACODEC("mediacodec"),
-        MEDIACODEC_COPY("mediacodec-copy");
-
-        companion object {
-            fun fromValue(value: String?): PlayerMpvHwdec =
-                entries.firstOrNull { it.value == value } ?: MEDIACODEC
-        }
+        MEDIACODEC_COPY("mediacodec-copy"),
     }
 
     enum class PlayerMpvVo(val value: String) {
         GPU("gpu"),
-        GPU_NEXT("gpu-next");
-
-        companion object {
-            fun fromValue(value: String?): PlayerMpvVo =
-                entries.firstOrNull { it.value == value } ?: GPU_NEXT
-        }
+        GPU_NEXT("gpu-next"),
     }
 
     enum class PlayerMpvAo(val value: String) {
         AUDIOTRACK("audiotrack"),
         OPENSLES("opensles"),
-        AAUDIO("aaudio");
-
-        companion object {
-            fun fromValue(value: String?): PlayerMpvAo =
-                entries.firstOrNull { it.value == value } ?: AAUDIO
-        }
+        AAUDIO("aaudio"),
     }
 
     // Player - Media Segments
-    enum class MediaSegmentType(val value: String) {
-        INTRO("INTRO"),
-        OUTRO("OUTRO"),
-        RECAP("RECAP"),
-        PREVIEW("PREVIEW"),
-        COMMERCIAL("COMMERCIAL"),
-        UNKNOWN("UNKNOWN");
+    enum class MediaSegmentType {
+        INTRO,
+        OUTRO,
+        RECAP,
+        PREVIEW,
+        COMMERCIAL,
+        UNKNOWN;
 
         companion object {
             fun fromValue(value: String?): MediaSegmentType =
-                entries.firstOrNull { it.value.equals(value, ignoreCase = true) } ?: UNKNOWN
+                entries.firstOrNull { it.name.equals(value, ignoreCase = true) } ?: UNKNOWN
         }
     }
 
-    enum class PlayerMediaSegmentsAutoSkip(val value: String) {
-        ALWAYS("always"),
-        PIP("pip");
+    enum class PlayerMediaSegmentsAutoSkip {
+        ALWAYS,
+        PIP;
 
         companion object {
             fun fromValue(value: String?): PlayerMediaSegmentsAutoSkip =
-                entries.firstOrNull { it.value == value } ?: ALWAYS
+                entries.firstOrNull { it.name.equals(value, ignoreCase = true) } ?: ALWAYS
         }
     }
 

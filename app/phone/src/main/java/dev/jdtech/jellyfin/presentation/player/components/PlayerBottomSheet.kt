@@ -231,6 +231,7 @@ fun PlayerBottomSheet(
                     PlayerSidePanelType.ASPECT_RATIO -> {
                         PhoneAspectRatioList(
                             currentResizeMode = currentResizeMode,
+                            isMpv = viewModel.isMpv,
                             onResizeModeSelected = {
                                 onResizeModeChange(it)
                                 onDismiss()
@@ -609,16 +610,25 @@ private fun PhoneSubtitleTrackList(viewModel: PlayerViewModel, tracks: Tracks) {
  * @param onResizeModeSelected Callback when a resize mode is picked.
  */
 @Composable
-private fun PhoneAspectRatioList(currentResizeMode: Int, onResizeModeSelected: (Int) -> Unit) {
+private fun PhoneAspectRatioList(
+    currentResizeMode: Int,
+    isMpv: Boolean = false,
+    onResizeModeSelected: (Int) -> Unit,
+) {
     val modes =
         listOf(
-            AspectRatioFrameLayout.RESIZE_MODE_FIT to
-                stringResource(id = PlayerR.string.aspect_ratio_fit),
-            AspectRatioFrameLayout.RESIZE_MODE_ZOOM to
-                stringResource(id = PlayerR.string.aspect_ratio_zoom),
-            AspectRatioFrameLayout.RESIZE_MODE_FILL to
-                stringResource(id = PlayerR.string.aspect_ratio_fill),
-        )
+                AspectRatioFrameLayout.RESIZE_MODE_FIT to
+                    stringResource(id = PlayerR.string.aspect_ratio_fit),
+                AspectRatioFrameLayout.RESIZE_MODE_ZOOM to
+                    stringResource(id = PlayerR.string.aspect_ratio_zoom),
+            )
+            .let { modes ->
+                if (isMpv) modes
+                else
+                    modes +
+                        (AspectRatioFrameLayout.RESIZE_MODE_FILL to
+                            stringResource(id = PlayerR.string.aspect_ratio_fill))
+            }
     LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         itemsIndexed(modes) { _, (mode, label) ->
             val isSelected = currentResizeMode == mode

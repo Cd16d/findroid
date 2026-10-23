@@ -287,6 +287,7 @@ fun PlayerScreen(
     var scrubJob by remember { mutableStateOf<Job?>(null) }
 
     var resizeMode by remember { mutableIntStateOf(AspectRatioFrameLayout.RESIZE_MODE_FIT) }
+    val isMpv = viewModel.isMpv
 
     val isMovie =
         remember(itemKind) {
@@ -565,7 +566,10 @@ fun PlayerScreen(
                 }
     ) {
         val effectiveResizeMode =
-            if (isPanelOpen) AspectRatioFrameLayout.RESIZE_MODE_FIT else resizeMode
+            if (isPanelOpen) AspectRatioFrameLayout.RESIZE_MODE_FIT
+            else if (isMpv && resizeMode == AspectRatioFrameLayout.RESIZE_MODE_FILL)
+                AspectRatioFrameLayout.RESIZE_MODE_FIT
+            else resizeMode
 
         BoxWithConstraints(
             modifier =
@@ -600,8 +604,9 @@ fun PlayerScreen(
                 AndroidView(
                     factory = { ctx ->
                         PlayerView(ctx).also { playerView ->
-                            playerView.player = viewModel.player
                             playerView.useController = false
+                            playerView.controllerAutoShow = false
+                            playerView.player = viewModel.player
                             playerView.resizeMode = effectiveResizeMode
                             val captioningManager =
                                 ctx.getSystemService(Context.CAPTIONING_SERVICE)

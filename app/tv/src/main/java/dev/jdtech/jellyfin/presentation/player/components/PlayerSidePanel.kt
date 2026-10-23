@@ -232,6 +232,7 @@ fun PlayerSidePanel(
 
                 PlayerSidePanelType.ASPECT_RATIO -> {
                     AspectRatioList(
+                        isMpv = viewModel.isMpv,
                         currentResizeMode = currentResizeMode,
                         onResizeModeChange = onResizeModeChange,
                         initialFocusRequester = initialFocusRequester,
@@ -492,16 +493,18 @@ private fun SpeedList(
 @Composable
 private fun AspectRatioList(
     currentResizeMode: Int,
+    isMpv: Boolean = false,
     onResizeModeChange: (Int) -> Unit,
     initialFocusRequester: FocusRequester,
     onBack: () -> Unit,
 ) {
     val resizeModes = remember {
         listOf(
-            AspectRatioFrameLayout.RESIZE_MODE_FIT to PlayerR.string.aspect_ratio_fit,
-            AspectRatioFrameLayout.RESIZE_MODE_ZOOM to PlayerR.string.aspect_ratio_zoom,
-            AspectRatioFrameLayout.RESIZE_MODE_FILL to PlayerR.string.aspect_ratio_fill,
-        )
+                AspectRatioFrameLayout.RESIZE_MODE_FIT to PlayerR.string.aspect_ratio_fit,
+                AspectRatioFrameLayout.RESIZE_MODE_ZOOM to PlayerR.string.aspect_ratio_zoom,
+                AspectRatioFrameLayout.RESIZE_MODE_FILL to PlayerR.string.aspect_ratio_fill,
+            )
+            .let { modes -> if (isMpv) modes.dropLast(1) else modes }
     }
 
     LazyColumn(

@@ -103,7 +103,7 @@ import dev.jdtech.jellyfin.presentation.player.components.rememberPlayerHaptics
 import dev.jdtech.jellyfin.presentation.player.components.rememberVideoPlayerState
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.settings.domain.AppPreferences
-import dev.jdtech.jellyfin.settings.domain.Constants
+import dev.jdtech.jellyfin.settings.domain.Constants.PlayerResizeMode
 import java.util.UUID
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -169,14 +169,22 @@ fun PlayerScreen(
             .collectAsState(initial = prefs.getValue(prefs.playerDefaultResizeMode))
     val defaultResizeMode =
         remember(defaultResizeModePref) {
-            val resizeModePref = Constants.PlayerResizeMode.fromValue(defaultResizeModePref)
+            val resizeModePref = PlayerResizeMode.fromValue(defaultResizeModePref)
             when (resizeModePref) {
-                Constants.PlayerResizeMode.ZOOM -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-                Constants.PlayerResizeMode.STRETCH -> AspectRatioFrameLayout.RESIZE_MODE_FILL
-                Constants.PlayerResizeMode.FIT -> AspectRatioFrameLayout.RESIZE_MODE_FIT
+                PlayerResizeMode.ZOOM -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                PlayerResizeMode.STRETCH -> AspectRatioFrameLayout.RESIZE_MODE_FILL
+                PlayerResizeMode.FIT -> AspectRatioFrameLayout.RESIZE_MODE_FIT
             }
         }
-    val currentResizeMode = resizeMode ?: defaultResizeMode
+    val currentResizeMode =
+        if (
+            viewModel.isMpv &&
+                (resizeMode ?: defaultResizeMode) == AspectRatioFrameLayout.RESIZE_MODE_FILL
+        ) {
+            AspectRatioFrameLayout.RESIZE_MODE_FIT
+        } else {
+            resizeMode ?: defaultResizeMode
+        }
     val activity = context as? Activity
     val configuration = LocalConfiguration.current
     val isPortrait = configuration.orientation == Configuration.ORIENTATION_PORTRAIT
@@ -618,8 +626,9 @@ fun PlayerScreen(
                 AndroidView(
                     factory = { ctx ->
                         PlayerView(ctx).also { playerView ->
-                            playerView.player = viewModel.player
                             playerView.useController = false
+                            playerView.controllerAutoShow = false
+                            playerView.player = viewModel.player
                             playerView.resizeMode = effectiveResizeMode
                             val captioningManager =
                                 ctx.getSystemService(Context.CAPTIONING_SERVICE)

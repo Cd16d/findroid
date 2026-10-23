@@ -40,7 +40,9 @@ import dev.jdtech.jellyfin.player.core.domain.utils.fetchTrickplay
 import dev.jdtech.jellyfin.player.local.mpv.MPVPlayer
 import dev.jdtech.jellyfin.repository.JellyfinRepository
 import dev.jdtech.jellyfin.settings.domain.AppPreferences
-import dev.jdtech.jellyfin.settings.domain.Constants
+import dev.jdtech.jellyfin.settings.domain.Constants.PlayerBackend
+import dev.jdtech.jellyfin.settings.domain.Constants.PlayerMediaSegmentsAutoSkip
+import dev.jdtech.jellyfin.settings.domain.Constants.PlayerMpvAo
 import dev.jdtech.jellyfin.utils.getTranslatablePartName
 import java.util.UUID
 import javax.inject.Inject
@@ -138,7 +140,7 @@ constructor(
     var segmentsSkipButtonDuration: Long = 0L
     var segmentsAutoSkip: Boolean = false
     private var segmentsAutoSkipTypes: Set<String> = emptySet()
-    private var segmentsAutoSkipMode: String = Constants.PlayerMediaSegmentsAutoSkip.ALWAYS.value
+    private var segmentsAutoSkipMode: String = PlayerMediaSegmentsAutoSkip.ALWAYS.name.lowercase()
 
     private var activeSegment: FindroidSegment? = null
 
@@ -254,11 +256,10 @@ constructor(
             }
             .launchIn(viewModelScope)
 
-        val playerBackend =
-            Constants.PlayerBackend.fromValue(appPreferences.getValue(appPreferences.playerBackend))
+        val playerBackend = appPreferences.getPlayerBackend()
         player =
             when (playerBackend) {
-                Constants.PlayerBackend.EXOPLAYER -> {
+                PlayerBackend.EXOPLAYER -> {
                     val renderersFactory =
                         DefaultRenderersFactory(application)
                             .setExtensionRendererMode(
@@ -276,7 +277,17 @@ constructor(
                         .setPauseAtEndOfMediaItems(true)
                         .build()
                 }
-                Constants.PlayerBackend.MPV -> {
+                PlayerBackend.MPV -> {
+                    val audioOutput = appPreferences.getPlayerMpvAo().value
+                    val safeAudioOutput =
+                        if (audioOutput == PlayerMpvAo.AAUDIO.value) {
+                            PlayerMpvAo.AUDIOTRACK.value
+                        } else {
+                            audioOutput
+                        }
+                    if (safeAudioOutput != audioOutput) {
+                        appPreferences.setValue(appPreferences.playerMpvAo, safeAudioOutput)
+                    }
                     MPVPlayer.Builder(application)
                         .setAudioAttributes(audioAttributes, true)
                         .setTrackSelectionParameters(trackSelector.parameters)
@@ -287,13 +298,16 @@ constructor(
                             appPreferences.getValue(appPreferences.playerSeekForwardInc)
                         )
                         .setPauseAtEndOfMediaItems(true)
-                        .setVideoOutput(appPreferences.getValue(appPreferences.playerMpvVo))
-                        .setAudioOutput(appPreferences.getValue(appPreferences.playerMpvAo))
-                        .setHwDec(appPreferences.getValue(appPreferences.playerMpvHwdec))
+                        .setVideoOutput(appPreferences.getPlayerMpvVo().value)
+                        .setAudioOutput(safeAudioOutput)
+                        .setHwDec(appPreferences.getPlayerMpvHwdec().value)
                         .build()
                 }
             }
     }
+
+    val isMpv: Boolean
+        get() = player is MPVPlayer
 
     fun initializePlayer(itemId: UUID, itemKind: String, startFromBeginning: Boolean) {
         player.addListener(this)
@@ -563,11 +577,11 @@ constructor(
                 segmentsSkipButton &&
                     segmentsSkipButtonTypes.contains(currentSegment.type.toString())
 
-            val autoSkipMode = Constants.PlayerMediaSegmentsAutoSkip.fromValue(segmentsAutoSkipMode)
+            val autoSkipMode = PlayerMediaSegmentsAutoSkip.fromValue(segmentsAutoSkipMode)
             if (
                 isAutoSkipConfigured &&
-                    (autoSkipMode == Constants.PlayerMediaSegmentsAutoSkip.ALWAYS ||
-                        (autoSkipMode == Constants.PlayerMediaSegmentsAutoSkip.PIP &&
+                    (autoSkipMode == PlayerMediaSegmentsAutoSkip.ALWAYS ||
+                        (autoSkipMode == PlayerMediaSegmentsAutoSkip.PIP &&
                             isInPictureInPictureMode))
             ) {
                 // Auto Skip segment
@@ -575,7 +589,7 @@ constructor(
             } else if (
                 isSkipButtonConfigured ||
                     (isAutoSkipConfigured &&
-                        autoSkipMode == Constants.PlayerMediaSegmentsAutoSkip.PIP &&
+                        autoSkipMode == PlayerMediaSegmentsAutoSkip.PIP &&
                         !isInPictureInPictureMode)
             ) {
                 // Skip Button segment
