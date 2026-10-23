@@ -164,10 +164,12 @@ fun PlayerScreen(
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     val prefs = appPreferences ?: remember(context) { AppPreferences(context) }
+    val defaultResizeModePref by
+        remember(prefs) { prefs.observe(prefs.playerDefaultResizeMode) }
+            .collectAsState(initial = prefs.getValue(prefs.playerDefaultResizeMode))
     val defaultResizeMode =
-        remember(prefs) {
-            val resizeModePref =
-                Constants.PlayerResizeMode.fromValue(prefs.getValue(prefs.playerDefaultResizeMode))
+        remember(defaultResizeModePref) {
+            val resizeModePref = Constants.PlayerResizeMode.fromValue(defaultResizeModePref)
             when (resizeModePref) {
                 Constants.PlayerResizeMode.ZOOM -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM
                 Constants.PlayerResizeMode.STRETCH -> AspectRatioFrameLayout.RESIZE_MODE_FILL
@@ -181,7 +183,9 @@ fun PlayerScreen(
     val coroutineScope = rememberCoroutineScope()
     val audioManager = remember { context.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
 
-    val controlsTimeoutSeconds = remember { prefs.getValue(prefs.playerControlsTimeout) }
+    val controlsTimeoutSeconds by
+        remember(prefs) { prefs.observe(prefs.playerControlsTimeout) }
+            .collectAsState(initial = prefs.getValue(prefs.playerControlsTimeout))
     val videoPlayerState = rememberVideoPlayerState(controlsTimeoutSeconds = controlsTimeoutSeconds)
 
     val windowAdaptiveInfo = currentWindowAdaptiveInfo()
@@ -192,7 +196,9 @@ fun PlayerScreen(
         !windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND)
 
     val isInPip = isInPictureInPictureMode || viewModel.isInPictureInPictureMode
-    val hapticsEnabled = remember { prefs.getValue(prefs.playerHaptics) }
+    val hapticsEnabled by
+        remember(prefs) { prefs.observe(prefs.playerHaptics) }
+            .collectAsState(initial = prefs.getValue(prefs.playerHaptics))
     val haptics = rememberPlayerHaptics(enabled = hapticsEnabled)
 
     var currentPosition by remember { mutableLongStateOf(0L) }
@@ -245,7 +251,6 @@ fun PlayerScreen(
 
             val volumeChanged = currentSysVol != prevSysVol
 
-            // Samsung volume behavior:
             // Single press: NO vibration.
             // Keeping pressed (isRepeat == true): Light tick vibration on intermediate steps,
             // boundary haptic ONCE when hitting 0% or 100%, and STOP vibrating when held at limit.
@@ -308,45 +313,46 @@ fun PlayerScreen(
         remember(prefs) { prefs.observe(prefs.playerGesturesBrightnessRemember) }
             .collectAsState(initial = prefs.getValue(prefs.playerGesturesBrightnessRemember))
 
+    val savedBrightnessPref by
+        remember(prefs) { prefs.observe(prefs.playerBrightness) }
+            .collectAsState(initial = prefs.getValue(prefs.playerBrightness))
+
     val isVBAllowed = isGesturesMasterEnabled && isGesturesVBEnabled
     val isSeekAllowed = isGesturesMasterEnabled && isGesturesSeekEnabled
     val isZoomAllowed = isGesturesMasterEnabled && isGesturesZoomEnabled
     val isSeekTrickplayAllowed = isTrickplayEnabled && isGesturesSeekTrickplayEnabled
 
-    val initialBrightness = remember {
-        val rememberBrightness = prefs.getValue(prefs.playerGesturesBrightnessRemember)
-        val savedBrightness = prefs.getValue(prefs.playerBrightness)
-        if (rememberBrightness && savedBrightness >= 0f) {
-            savedBrightness
-        } else if (activity != null) {
-            val lp = activity.window.attributes
-            if (lp.screenBrightness >= 0f) {
-                lp.screenBrightness
-            } else {
-                try {
-                    Settings.System.getFloat(
-                        activity.contentResolver,
-                        Settings.System.SCREEN_BRIGHTNESS,
-                        128f,
-                    ) / 255f
-                } catch (_: Exception) {
-                    0.5f
+    val initialBrightness =
+        remember(isBrightnessRememberEnabled, savedBrightnessPref) {
+            if (isBrightnessRememberEnabled && savedBrightnessPref >= 0f) {
+                savedBrightnessPref
+            } else if (activity != null) {
+                val lp = activity.window.attributes
+                if (lp.screenBrightness >= 0f) {
+                    lp.screenBrightness
+                } else {
+                    try {
+                        Settings.System.getFloat(
+                            activity.contentResolver,
+                            Settings.System.SCREEN_BRIGHTNESS,
+                            128f,
+                        ) / 255f
+                    } catch (_: Exception) {
+                        0.5f
+                    }
                 }
+            } else {
+                0.5f
             }
-        } else {
-            0.5f
         }
-    }
     var brightnessLevel by remember { mutableFloatStateOf(initialBrightness) }
     var isBrightnessHudVisible by remember { mutableStateOf(false) }
     var brightnessJob by remember { mutableStateOf<Job?>(null) }
 
-    LaunchedEffect(Unit) {
-        val rememberBrightness = prefs.getValue(prefs.playerGesturesBrightnessRemember)
-        val savedBrightness = prefs.getValue(prefs.playerBrightness)
-        if (rememberBrightness && savedBrightness >= 0f && activity != null) {
+    LaunchedEffect(isBrightnessRememberEnabled, savedBrightnessPref, activity) {
+        if (isBrightnessRememberEnabled && savedBrightnessPref >= 0f && activity != null) {
             val lp = activity.window.attributes
-            lp.screenBrightness = savedBrightness.coerceIn(0.01f, 1f)
+            lp.screenBrightness = savedBrightnessPref.coerceIn(0.01f, 1f)
             activity.window.attributes = lp
         }
     }
@@ -514,15 +520,17 @@ fun PlayerScreen(
             label = "controlsScrimAlpha",
         )
 
+    val skipButtonDurationPref by
+        remember(prefs) { prefs.observe(prefs.playerMediaSegmentsSkipButtonDuration) }
+            .collectAsState(initial = prefs.getValue(prefs.playerMediaSegmentsSkipButtonDuration))
+
     val segment = uiState.currentSegment
     var isSkipButtonTimeoutExpired by remember(segment) { mutableStateOf(false) }
 
-    LaunchedEffect(segment) {
+    LaunchedEffect(segment, skipButtonDurationPref) {
         if (segment != null) {
             isSkipButtonTimeoutExpired = false
-            val durationSeconds =
-                appPreferences?.let { it.getValue(it.playerMediaSegmentsSkipButtonDuration) }
-                    ?: viewModel.segmentsSkipButtonDuration
+            val durationSeconds = skipButtonDurationPref
             if (durationSeconds > 0) {
                 delay((durationSeconds * 1000L).milliseconds)
                 isSkipButtonTimeoutExpired = true

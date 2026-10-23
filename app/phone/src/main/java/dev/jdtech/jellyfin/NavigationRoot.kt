@@ -39,12 +39,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -392,10 +394,12 @@ private fun MainNavigation(
         ) {
             NavigationSuiteScaffold(
                 navigationItems = {
+                    val haptics = LocalHapticFeedback.current
                     navigationItems.forEach { item ->
                         NavigationSuiteItem(
                             selected = topLevelRoute == item.route,
                             onClick = {
+                                haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
                                 if (topLevelRoute == item.route) {
                                     if (item.route == SearchRoute) {
                                         searchViewModel.onAction(SearchAction.OnTabReselected)

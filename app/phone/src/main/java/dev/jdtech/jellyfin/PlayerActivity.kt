@@ -16,6 +16,7 @@ import android.os.SystemClock
 import android.util.Rational
 import android.view.KeyEvent
 import android.view.WindowManager
+import android.view.WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
@@ -30,6 +31,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.media3.common.Player
+import androidx.media3.common.VideoSize
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaSession
 import androidx.media3.ui.AspectRatioFrameLayout
@@ -67,6 +69,17 @@ class PlayerActivity : AppCompatActivity() {
     private var isOrientationLockedState by mutableStateOf(false)
     private var currentVideoBounds: Rect? = null
 
+    private var savedCustomBrightness: Float = BRIGHTNESS_OVERRIDE_NONE
+
+    private var isPipGestureEnabled: Boolean = true
+    private var isGesturesVBEnabled: Boolean = true
+    private var isBrightnessRememberEnabled: Boolean = false
+    private var savedPlayerBrightness: Float = -1f
+    private var preferredOrientation: Constants.PlayerOrientation =
+        Constants.PlayerOrientation.SENSOR
+    private var preferredOrientationLast: Constants.PlayerOrientation =
+        Constants.PlayerOrientation.SENSOR
+
     private val playerListener =
         object : Player.Listener {
             override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -76,6 +89,10 @@ class PlayerActivity : AppCompatActivity() {
                     window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                 }
                 updatePipParams(isPlaying)
+            }
+
+            override fun onVideoSizeChanged(videoSize: VideoSize) {
+                updatePipParams()
             }
         }
 
@@ -87,10 +104,6 @@ class PlayerActivity : AppCompatActivity() {
             requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LOCKED
             isOrientationLockedState = true
         }
-        val preferredOrientation =
-            Constants.PlayerOrientation.fromValue(
-                appPreferences.getValue(appPreferences.playerOrientation)
-            )
         if (preferredOrientation == Constants.PlayerOrientation.REMEMBER) {
             val state =
                 if (isOrientationLockedState) {
@@ -106,50 +119,9 @@ class PlayerActivity : AppCompatActivity() {
         }
     }
 
-    private val isPipSupported by lazy {
-        if (!packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)) {
-            return@lazy false
-        }
-        val appOps = getSystemService(APP_OPS_SERVICE) as AppOpsManager?
-        appOps?.checkOpNoThrow(
-            AppOpsManager.OPSTR_PICTURE_IN_PICTURE,
-            Process.myUid(),
-            packageName,
-        ) == AppOpsManager.MODE_ALLOWED
-    }
-
     @SuppressLint("SourceLockedOrientationActivity")
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        WindowCompat.setDecorFitsSystemWindows(window, false)
-        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        volumeControlStream = AudioManager.STREAM_MUSIC
-
-        val defaultResizeMode =
-            Constants.PlayerResizeMode.fromValue(
-                appPreferences.getValue(appPreferences.playerDefaultResizeMode)
-            )
-        currentResizeMode =
-            when (defaultResizeMode) {
-                Constants.PlayerResizeMode.ZOOM -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-                Constants.PlayerResizeMode.STRETCH -> AspectRatioFrameLayout.RESIZE_MODE_FILL
-                Constants.PlayerResizeMode.FIT -> AspectRatioFrameLayout.RESIZE_MODE_FIT
-            }
-
-        if (appPreferences.getValue(appPreferences.playerGesturesBrightnessRemember)) {
-            val savedBrightness = appPreferences.getValue(appPreferences.playerBrightness)
-            if (savedBrightness >= 0f) {
-                val lp = window.attributes
-                lp.screenBrightness = savedBrightness.coerceIn(0.01f, 1f)
-                window.attributes = lp
-            }
-        }
-
-        val playerOrientation =
-            Constants.PlayerOrientation.fromValue(
-                appPreferences.getValue(appPreferences.playerOrientation)
-            )
-        when (playerOrientation) {
+    private fun applyOrientationPreference() {
+        when (preferredOrientation) {
             Constants.PlayerOrientation.SENSOR_LANDSCAPE -> {
                 requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
                 isOrientationLockedState = true
@@ -163,11 +135,7 @@ class PlayerActivity : AppCompatActivity() {
                 isOrientationLockedState = false
             }
             Constants.PlayerOrientation.REMEMBER -> {
-                val playerOrientationLast =
-                    Constants.PlayerOrientation.fromValue(
-                        appPreferences.getValue(appPreferences.playerOrientationLast)
-                    )
-                when (playerOrientationLast) {
+                when (preferredOrientationLast) {
                     Constants.PlayerOrientation.SENSOR_LANDSCAPE -> {
                         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
                         isOrientationLockedState = true
@@ -192,6 +160,26 @@ class PlayerActivity : AppCompatActivity() {
                 isOrientationLockedState = true
             }
         }
+    }
+
+    private val isPipSupported by lazy {
+        if (!packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)) {
+            return@lazy false
+        }
+        val appOps = getSystemService(APP_OPS_SERVICE) as AppOpsManager?
+        appOps?.checkOpNoThrow(
+            AppOpsManager.OPSTR_PICTURE_IN_PICTURE,
+            Process.myUid(),
+            packageName,
+        ) == AppOpsManager.MODE_ALLOWED
+    }
+
+    @SuppressLint("SourceLockedOrientationActivity")
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        volumeControlStream = AudioManager.STREAM_MUSIC
 
         isControlsLocked = false
         viewModel.player.addListener(playerListener)
@@ -202,6 +190,61 @@ class PlayerActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
+                launch {
+                    appPreferences.observe(appPreferences.playerPipGesture).collect {
+                        isPipGestureEnabled = it
+                        updatePipParams()
+                    }
+                }
+                launch {
+                    appPreferences.observe(appPreferences.playerGesturesVB).collect {
+                        isGesturesVBEnabled = it
+                    }
+                }
+                launch {
+                    appPreferences
+                        .observe(appPreferences.playerGesturesBrightnessRemember)
+                        .collect { isBrightnessRememberEnabled = it }
+                }
+                launch {
+                    appPreferences.observe(appPreferences.playerBrightness).collect {
+                        savedPlayerBrightness = it
+                        if (
+                            isBrightnessRememberEnabled &&
+                                savedPlayerBrightness >= 0f &&
+                                !isInPipMode
+                        ) {
+                            val lp = window.attributes
+                            lp.screenBrightness = savedPlayerBrightness.coerceIn(0.01f, 1f)
+                            window.attributes = lp
+                        }
+                    }
+                }
+                launch {
+                    appPreferences.observe(appPreferences.playerOrientation).collect {
+                        preferredOrientation = Constants.PlayerOrientation.fromValue(it)
+                        applyOrientationPreference()
+                    }
+                }
+                launch {
+                    appPreferences.observe(appPreferences.playerOrientationLast).collect {
+                        preferredOrientationLast = Constants.PlayerOrientation.fromValue(it)
+                    }
+                }
+                launch {
+                    appPreferences.observe(appPreferences.playerDefaultResizeMode).collect {
+                        val defaultResizeMode = Constants.PlayerResizeMode.fromValue(it)
+                        currentResizeMode =
+                            when (defaultResizeMode) {
+                                Constants.PlayerResizeMode.ZOOM ->
+                                    AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                                Constants.PlayerResizeMode.STRETCH ->
+                                    AspectRatioFrameLayout.RESIZE_MODE_FILL
+                                Constants.PlayerResizeMode.FIT ->
+                                    AspectRatioFrameLayout.RESIZE_MODE_FIT
+                            }
+                    }
+                }
                 launch {
                     viewModel.eventsChannelFlow.collect { event ->
                         when (event) {
@@ -323,7 +366,7 @@ class PlayerActivity : AppCompatActivity() {
         super.onUserLeaveHint()
         if (
             Build.VERSION.SDK_INT < Build.VERSION_CODES.S &&
-                appPreferences.getValue(appPreferences.playerPipGesture) &&
+                isPipGestureEnabled &&
                 viewModel.player.isPlaying &&
                 !isControlsLocked
         ) {
@@ -363,7 +406,11 @@ class PlayerActivity : AppCompatActivity() {
     }
 
     private fun pipParams(
-        enableAutoEnter: Boolean = viewModel.player.isPlaying
+        enableAutoEnter: Boolean =
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                isPipGestureEnabled &&
+                viewModel.player.isPlaying &&
+                !isControlsLocked
     ): PictureInPictureParams {
         val videoSize = viewModel.player.videoSize
         val videoWidth = if (videoSize.width > 0) videoSize.width else 16
@@ -427,7 +474,7 @@ class PlayerActivity : AppCompatActivity() {
         if (!isPipSupported) return
         val shouldAutoEnter =
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
-                appPreferences.getValue(appPreferences.playerPipGesture) &&
+                isPipGestureEnabled &&
                 isPlaying &&
                 !isControlsLocked
         try {
@@ -439,7 +486,7 @@ class PlayerActivity : AppCompatActivity() {
         if (!isPipSupported) return
         try {
             updatePipParams()
-            enterPictureInPictureMode(pipParams(enableAutoEnter = false))
+            enterPictureInPictureMode(pipParams())
         } catch (_: IllegalArgumentException) {}
     }
 
@@ -450,5 +497,25 @@ class PlayerActivity : AppCompatActivity() {
         super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
         viewModel.isInPictureInPictureMode = isInPictureInPictureMode
         isInPipMode = isInPictureInPictureMode
+
+        val lp = window.attributes
+        if (isInPictureInPictureMode) {
+            if (lp.screenBrightness >= 0f) {
+                savedCustomBrightness = lp.screenBrightness
+                lp.screenBrightness = BRIGHTNESS_OVERRIDE_NONE
+                window.attributes = lp
+            }
+        } else {
+            if (isGesturesVBEnabled && isBrightnessRememberEnabled) {
+                if (savedPlayerBrightness >= 0f) {
+                    lp.screenBrightness = savedPlayerBrightness.coerceIn(0.01f, 1f)
+                    window.attributes = lp
+                }
+            } else if (savedCustomBrightness >= 0f) {
+                lp.screenBrightness = savedCustomBrightness
+                window.attributes = lp
+                savedCustomBrightness = BRIGHTNESS_OVERRIDE_NONE
+            }
+        }
     }
 }

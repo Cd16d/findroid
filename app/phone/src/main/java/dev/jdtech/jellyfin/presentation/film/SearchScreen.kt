@@ -217,6 +217,7 @@ private fun SearchScreenLayout(
             focusRequester.requestFocus()
             queryTextFieldValue =
                 queryTextFieldValue.copy(selection = TextRange(0, queryTextFieldValue.text.length))
+            keyboardController?.show()
         }
     }
 
