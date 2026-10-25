@@ -203,7 +203,23 @@ private fun EntryProviderScope<NavKey>.tvEntries(
     onBack: () -> Unit,
 ) {
     entry<WelcomeRoute> {
-        WelcomeScreen(onContinueClick = dropUnlessResumed { navigate(ServersRoute) })
+        WelcomeScreen(
+            onContinueClick =
+                dropUnlessResumed {
+                    navigate(if (permissionApplicable) PermissionRoute else ServersRoute)
+                }
+        )
+    }
+    entry<PermissionRoute> {
+        PermissionScreen(
+            viewModel = permissionViewModel,
+            onDecided =
+                dropUnlessResumed {
+                    // Pop the permission entry so back from Servers returns to Welcome.
+                    goBack()
+                    navigate(ServersRoute)
+                },
+        )
     }
     entry<ServersRoute> {
         ServersScreen(

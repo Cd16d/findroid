@@ -71,7 +71,10 @@ constructor(
 
     private suspend fun getActors(item: FindroidShow): List<FindroidItemPerson> {
         return withContext(Dispatchers.Default) {
-            item.people.filter { it.type == PersonKind.ACTOR }
+            item.people
+                .filter { it.type == PersonKind.ACTOR }
+                // Jellyfin 12+ returns a person once per role, keep one card per role
+                .distinctBy { it.id to it.role }
         }
     }
 
@@ -83,7 +86,7 @@ constructor(
 
     private suspend fun getWriters(item: FindroidShow): List<FindroidItemPerson> {
         return withContext(Dispatchers.Default) {
-            item.people.filter { it.type == PersonKind.WRITER }
+            item.people.filter { it.type == PersonKind.WRITER }.distinctBy { it.id }
         }
     }
 
