@@ -21,7 +21,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -67,6 +66,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import dev.jdtech.jellyfin.core.R as CoreR
+import dev.jdtech.jellyfin.core.presentation.theme.CentralShapes
 import dev.jdtech.jellyfin.models.DownloadQualityPreset
 import dev.jdtech.jellyfin.models.DownloadQualityPresets
 import dev.jdtech.jellyfin.models.FindroidItem
@@ -435,7 +435,7 @@ fun DownloadPresetBottomSheetLayout(
             OutlinedButton(
                 onClick = onAddClick,
                 modifier = Modifier.defaultMinSize(minHeight = 32.dp),
-                shape = RoundedCornerShape(12.dp),
+                shape = CentralShapes.SmallCard,
                 border =
                     BorderStroke(
                         1.dp,
@@ -463,7 +463,7 @@ fun DownloadPresetBottomSheetLayout(
 
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
+            shape = CentralShapes.MediumCard,
             colors =
                 CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainer
@@ -487,7 +487,7 @@ fun DownloadPresetBottomSheetLayout(
                                     onCheckedChange = onDownloadExternalAudioChange,
                                     label = stringResource(CoreR.string.include_external_audio),
                                     subtitle = null,
-                                    shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
+                                    shape = CentralShapes.GroupTop,
                                 )
                                 HorizontalDivider(
                                     modifier = Modifier.padding(horizontal = 12.dp),
@@ -509,9 +509,7 @@ fun DownloadPresetBottomSheetLayout(
                                 Row(
                                     modifier =
                                         Modifier.fillMaxWidth()
-                                            .clip(
-                                                RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
-                                            )
+                                            .clip(CentralShapes.GroupTop)
                                             .clickable(role = Role.Button) {
                                                 audioExpanded = !audioExpanded
                                             }
@@ -687,7 +685,7 @@ fun DownloadPresetBottomSheetLayout(
                     checked = rememberSetting,
                     onCheckedChange = onRememberSettingChange,
                     label = stringResource(CoreR.string.download_preset_remember_setting),
-                    shape = RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp),
+                    shape = CentralShapes.GroupBottom,
                 )
             }
         }
@@ -697,7 +695,7 @@ fun DownloadPresetBottomSheetLayout(
         Button(
             onClick = onConfirm,
             modifier = Modifier.fillMaxWidth().height(52.dp),
-            shape = RoundedCornerShape(16.dp),
+            shape = CentralShapes.MediumCard,
         ) {
             Icon(
                 painter = painterResource(CoreR.drawable.ic_download),

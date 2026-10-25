@@ -71,6 +71,7 @@ fun VideoPlayerSeeker(
     contentProgress: Duration,
     contentDuration: Duration,
     modifier: Modifier = Modifier,
+    bufferedProgress: Duration = Duration.ZERO,
     chapters: List<PlayerChapter> = emptyList(),
     segments: List<FindroidSegment> = emptyList(),
     isScrubbing: Boolean = false,
@@ -360,9 +361,19 @@ fun VideoPlayerSeeker(
             } else {
                 0f
             }
+        val bufferedFraction =
+            if (durationMs > 0L) {
+                (bufferedProgress.inWholeMilliseconds.toFloat() / durationMs.toFloat()).coerceIn(
+                    0f,
+                    1f,
+                )
+            } else {
+                0f
+            }
 
         VideoPlayerSeekBar(
             progress = progressFraction,
+            bufferedProgress = bufferedFraction,
             onSeek = onSeek,
             state = state,
             durationMs = durationMs,

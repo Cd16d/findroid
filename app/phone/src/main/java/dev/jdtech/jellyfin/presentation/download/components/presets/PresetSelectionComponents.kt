@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.toggleable
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
@@ -33,6 +32,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -41,6 +42,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import dev.jdtech.jellyfin.core.R as CoreR
+import dev.jdtech.jellyfin.core.presentation.theme.CentralShapes
 import dev.jdtech.jellyfin.models.DownloadQualityPreset
 import dev.jdtech.jellyfin.models.DownloadQualityPresets
 import dev.jdtech.jellyfin.models.FindroidMediaStream
@@ -70,7 +72,7 @@ fun AudioTrackBadges(
         if (isDefault) {
             Spacer(modifier = Modifier.width(6.dp))
             Surface(
-                shape = RoundedCornerShape(4.dp),
+                shape = CentralShapes.Tiny,
                 color = MaterialTheme.colorScheme.surfaceContainerHighest,
             ) {
                 Text(
@@ -84,7 +86,7 @@ fun AudioTrackBadges(
         if (isExternal) {
             Spacer(modifier = Modifier.width(6.dp))
             Surface(
-                shape = RoundedCornerShape(4.dp),
+                shape = CentralShapes.Tiny,
                 color = MaterialTheme.colorScheme.secondaryContainer,
             ) {
                 Text(
@@ -172,7 +174,7 @@ fun PresetCard(
     Card(
         onClick = onSelect,
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        shape = CentralShapes.MediumCard,
         colors =
             CardDefaults.cardColors(
                 containerColor =
@@ -220,7 +222,7 @@ fun PresetCard(
                 }
 
                 Surface(
-                    shape = RoundedCornerShape(8.dp),
+                    shape = CentralShapes.Chip,
                     color =
                         when {
                             isSelected -> MaterialTheme.colorScheme.primaryContainer
@@ -353,7 +355,7 @@ fun CheckboxOptionRow(
     label: String,
     modifier: Modifier = Modifier,
     subtitle: String? = null,
-    shape: RoundedCornerShape = RoundedCornerShape(0.dp),
+    shape: Shape = RectangleShape,
 ) {
     Row(
         modifier =

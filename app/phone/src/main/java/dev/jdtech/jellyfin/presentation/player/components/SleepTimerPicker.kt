@@ -275,7 +275,6 @@ fun SleepTimerPicker(
                 title = endOfMediaTitle,
                 chips = emptyList(),
                 isSelected = isEndOfMediaSelected,
-                shape = MenuSingleShape,
                 onClick = { onSelectMode(SleepTimerMode.EndOfMedia) },
             )
         }
@@ -291,7 +290,6 @@ fun SleepTimerPicker(
                 title = title,
                 chips = emptyList(),
                 isSelected = isSelected,
-                shape = MenuSingleShape,
                 onClick = { onSelectMode(SleepTimerMode.Duration(minutes)) },
             )
         }

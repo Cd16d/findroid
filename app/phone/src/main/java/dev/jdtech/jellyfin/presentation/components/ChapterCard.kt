@@ -48,7 +48,6 @@ import dev.jdtech.jellyfin.player.core.presentation.getSegmentColor
 import dev.jdtech.jellyfin.player.core.presentation.labelRes
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 
-private val MenuSingleShape = CentralShapes.GroupSingle
 private val ChapterThumbShape = CentralShapes.SmallCard
 
 /**
@@ -143,7 +142,7 @@ fun ChapterCard(
 
     Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = MenuSingleShape,
+        shape = CentralShapes.GroupSingle,
         color = if (isCurrent) PlayerCardCurrent else PlayerCardBackground,
         border =
             if (isCurrent) BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary)

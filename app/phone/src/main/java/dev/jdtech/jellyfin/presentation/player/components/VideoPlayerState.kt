@@ -8,38 +8,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import dev.jdtech.jellyfin.player.core.domain.models.PlayerSidePanelType
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-
-/** Identifies the active sub-panel or bottom sheet displayed in the player. */
-enum class PlayerSidePanelType {
-    /** No panel or bottom sheet is open. */
-    NONE,
-
-    /** Audio track selection panel. */
-    AUDIO,
-
-    /** Subtitle track selection panel. */
-    SUBTITLES,
-
-    /** Main quick-settings navigation menu. */
-    SETTINGS,
-
-    /** Playback speed selection panel. */
-    SPEED,
-
-    /** Aspect ratio / video zoom mode selection panel. */
-    ASPECT_RATIO,
-
-    /** Chapters list panel. */
-    CHAPTERS,
-
-    /** Sleep timer configuration panel. */
-    SLEEP_TIMER,
-}
 
 /**
  * State holder managing player UI visibility, panel navigation, timeouts, and touch locking.

@@ -115,6 +115,7 @@ import dev.jdtech.jellyfin.models.FindroidEpisode
 import dev.jdtech.jellyfin.models.FindroidSegment
 import dev.jdtech.jellyfin.player.core.R as PlayerR
 import dev.jdtech.jellyfin.player.core.domain.models.PlayerChapter
+import dev.jdtech.jellyfin.player.core.domain.models.PlayerSidePanelType
 import dev.jdtech.jellyfin.player.local.mpv.updateMpvResizeMode
 import dev.jdtech.jellyfin.player.local.presentation.PlayerEvents
 import dev.jdtech.jellyfin.player.local.presentation.PlayerViewModel
@@ -124,7 +125,6 @@ import dev.jdtech.jellyfin.presentation.components.ProgressBadge
 import dev.jdtech.jellyfin.presentation.components.SpoilerMask
 import dev.jdtech.jellyfin.presentation.components.toScreensaverSlide
 import dev.jdtech.jellyfin.presentation.player.components.PlayerSidePanel
-import dev.jdtech.jellyfin.presentation.player.components.PlayerSidePanelType
 import dev.jdtech.jellyfin.presentation.player.components.TrickplayScrubber
 import dev.jdtech.jellyfin.presentation.player.components.VideoPlayerControlsLayout
 import dev.jdtech.jellyfin.presentation.player.components.VideoPlayerMediaButton
@@ -1084,7 +1084,7 @@ fun VideoPlayerControls(
                                         ?: stringResource(id = CoreR.string.seasons)
 
                                 Icon(
-                                    painter = painterResource(id = CoreR.drawable.ic_tv),
+                                    painter = painterResource(id = PlayerR.drawable.ic_tv),
                                     contentDescription = null,
                                     modifier = Modifier.size(18.dp),
                                     tint = Color.White.copy(alpha = 0.85f),
@@ -1401,7 +1401,7 @@ private fun GoToSeriesShelfCard(
             modifier = Modifier.fillMaxSize(),
         ) {
             Icon(
-                painter = painterResource(id = CoreR.drawable.ic_tv),
+                painter = painterResource(id = PlayerR.drawable.ic_tv),
                 contentDescription = null,
                 modifier = Modifier.size(32.dp),
             )

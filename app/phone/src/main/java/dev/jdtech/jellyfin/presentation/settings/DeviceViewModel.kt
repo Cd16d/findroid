@@ -1,12 +1,15 @@
 package dev.jdtech.jellyfin.presentation.settings
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.jdtech.jellyfin.repository.JellyfinRepository
 import dev.jdtech.jellyfin.settings.domain.AppPreferences
 import dev.jdtech.jellyfin.utils.DeviceCodecCapabilities
 import dev.jdtech.jellyfin.utils.DeviceCodecsOverview
+import dev.jdtech.jellyfin.utils.DeviceUtils
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -17,6 +20,7 @@ import timber.log.Timber
 class DeviceViewModel
 @Inject
 constructor(
+    @ApplicationContext private val context: Context,
     private val appPreferences: AppPreferences,
     private val repository: JellyfinRepository,
 ) : ViewModel() {
@@ -26,7 +30,7 @@ constructor(
     private val _deviceName =
         MutableStateFlow(
             appPreferences.getValue(appPreferences.customDeviceName).ifBlank {
-                codecsOverview.deviceName
+                repository.getDeviceName().ifBlank { DeviceUtils.getDeviceName(context) }
             }
         )
     val deviceName = _deviceName.asStateFlow()

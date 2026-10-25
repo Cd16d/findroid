@@ -73,6 +73,7 @@ fun VideoPlayerSeekBar(
     progress: Float,
     onSeek: (seekProgress: Float) -> Unit,
     modifier: Modifier = Modifier,
+    bufferedProgress: Float = 0f,
     state: VideoPlayerState? = null,
     durationMs: Long = 0L,
     chapters: List<PlayerChapter> = emptyList(),
@@ -370,6 +371,32 @@ fun VideoPlayerSeekBar(
                             topRightRadius = fullCornerRadius,
                             bottomRightRadius = fullCornerRadius,
                         )
+
+                        // Buffered progress on inactive slice
+                        val currentBufferMs =
+                            (bufferedProgress.coerceIn(0f, 1f) * safeDurationMs).toLong()
+                        if (currentBufferMs > startMs) {
+                            val sliceBufferRatio =
+                                ((minOf(endMs, currentBufferMs) - startMs).toFloat() /
+                                        sliceDuration)
+                                    .coerceIn(0f, 1f)
+                            val sliceBufferX = sliceStartX + sliceBufferRatio * sliceWidth
+                            val bufferedEnd = minOf(sliceEndX, sliceBufferX)
+                            if (bufferedEnd > inactiveStart) {
+                                val bufRightRadius =
+                                    if (bufferedEnd < sliceEndX - 1f) smallCornerRadius
+                                    else fullCornerRadius
+                                drawCustomRoundRect(
+                                    color = Color.White.copy(alpha = 0.40f),
+                                    topLeft = Offset(inactiveStart, yOffset - trackHeightPx / 2f),
+                                    size = Size(bufferedEnd - inactiveStart, trackHeightPx),
+                                    topLeftRadius = leftRadius,
+                                    bottomLeftRadius = leftRadius,
+                                    topRightRadius = bufRightRadius,
+                                    bottomRightRadius = bufRightRadius,
+                                )
+                            }
+                        }
                     }
 
                     // Active track portion (left of thumb gap)
@@ -433,6 +460,22 @@ fun VideoPlayerSeekBar(
                         topRightRadius = fullCornerRadius,
                         bottomRightRadius = fullCornerRadius,
                     )
+
+                    val bufferedX =
+                        (bufferedProgress.coerceIn(0f, 1f) * size.width).coerceAtMost(size.width)
+                    if (bufferedX > inactiveLimit) {
+                        val bufRightRadius =
+                            if (bufferedX < size.width - 1f) smallCornerRadius else fullCornerRadius
+                        drawCustomRoundRect(
+                            color = Color.White.copy(alpha = 0.40f),
+                            topLeft = Offset(inactiveLimit, yOffset - trackHeightPx / 2f),
+                            size = Size(bufferedX - inactiveLimit, trackHeightPx),
+                            topLeftRadius = smallCornerRadius,
+                            bottomLeftRadius = smallCornerRadius,
+                            topRightRadius = bufRightRadius,
+                            bottomRightRadius = bufRightRadius,
+                        )
+                    }
                 }
 
                 // Active track (left of thumb gap)

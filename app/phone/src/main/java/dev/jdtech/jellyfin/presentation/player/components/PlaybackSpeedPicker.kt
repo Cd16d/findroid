@@ -122,9 +122,9 @@ fun PlaybackSpeedPicker(
                 ),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        // Current speed readout (e.g. "1.00x")
+        // Current speed readout (e.g. "1.00×")
         Text(
-            text = String.format(Locale.US, "%.2fx", speedState),
+            text = String.format(Locale.US, "%.2f×", speedState),
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
             color = Color.White,
@@ -223,6 +223,9 @@ fun PlaybackSpeedPicker(
                         val thumbX = size.width * fraction.coerceIn(0f, 1f)
                         val thumbWidthPx = animatedThumbWidth.toPx()
                         val thumbGapPx = 4.dp.toPx()
+                        val centerGapPx = 4.dp.toPx()
+                        val centerLeft = centerX - centerGapPx / 2f
+                        val centerRight = centerX + centerGapPx / 2f
                         val halfTrack = trackHeight / 2f
                         val fullCornerRadius = CornerRadius(halfTrack, halfTrack)
                         val smallCornerRadius = CornerRadius(3.dp.toPx(), 3.dp.toPx())
@@ -237,86 +240,59 @@ fun PlaybackSpeedPicker(
                         val inactiveColor = Color.White.copy(alpha = 0.20f)
                         val activeColor = Color.White
 
-                        // Inactive track segments & Active track segment
+                        // 1. Left inactive track (from 0 to minOf(centerLeft, gapStart))
+                        val leftEnd = minOf(centerLeft, gapStart)
+                        if (leftEnd > 0f) {
+                            drawCustomRoundRect(
+                                color = inactiveColor,
+                                topLeft = Offset(0f, centerY - halfTrack),
+                                size = Size(leftEnd, trackHeight),
+                                topLeftRadius = fullCornerRadius,
+                                bottomLeftRadius = fullCornerRadius,
+                                topRightRadius = smallCornerRadius,
+                                bottomRightRadius = smallCornerRadius,
+                            )
+                        }
+
+                        // 2. Active track segment extending from center
                         if (thumbX >= centerX) {
-                            // 1. Left inactive track (from 0 to minOf(centerX, gapStart))
-                            val leftEnd = minOf(centerX, gapStart)
-                            if (leftEnd > 0f) {
-                                drawCustomRoundRect(
-                                    color = inactiveColor,
-                                    topLeft = Offset(0f, centerY - halfTrack),
-                                    size = Size(leftEnd, trackHeight),
-                                    topLeftRadius = fullCornerRadius,
-                                    bottomLeftRadius = fullCornerRadius,
-                                    topRightRadius = smallCornerRadius,
-                                    bottomRightRadius = smallCornerRadius,
-                                )
-                            }
-                            // 2. Active track (from centerX to gapStart, if gapStart > centerX)
-                            if (gapStart > centerX) {
+                            if (gapStart > centerRight) {
                                 drawCustomRoundRect(
                                     color = activeColor,
-                                    topLeft = Offset(centerX, centerY - halfTrack),
-                                    size = Size(gapStart - centerX, trackHeight),
+                                    topLeft = Offset(centerRight, centerY - halfTrack),
+                                    size = Size(gapStart - centerRight, trackHeight),
                                     topLeftRadius = smallCornerRadius,
                                     bottomLeftRadius = smallCornerRadius,
                                     topRightRadius = smallCornerRadius,
                                     bottomRightRadius = smallCornerRadius,
-                                )
-                            }
-                            // 3. Right inactive track (from maxOf(centerX, gapEnd) to size.width)
-                            val rightStart = maxOf(centerX, gapEnd)
-                            if (size.width > rightStart) {
-                                drawCustomRoundRect(
-                                    color = inactiveColor,
-                                    topLeft = Offset(rightStart, centerY - halfTrack),
-                                    size = Size(size.width - rightStart, trackHeight),
-                                    topLeftRadius = smallCornerRadius,
-                                    bottomLeftRadius = smallCornerRadius,
-                                    topRightRadius = fullCornerRadius,
-                                    bottomRightRadius = fullCornerRadius,
                                 )
                             }
                         } else {
-                            // thumbX < centerX
-                            // 1. Left inactive track (from 0 to minOf(centerX, gapStart))
-                            val leftEnd = minOf(centerX, gapStart)
-                            if (leftEnd > 0f) {
-                                drawCustomRoundRect(
-                                    color = inactiveColor,
-                                    topLeft = Offset(0f, centerY - halfTrack),
-                                    size = Size(leftEnd, trackHeight),
-                                    topLeftRadius = fullCornerRadius,
-                                    bottomLeftRadius = fullCornerRadius,
-                                    topRightRadius = smallCornerRadius,
-                                    bottomRightRadius = smallCornerRadius,
-                                )
-                            }
-                            // 2. Active track (from gapEnd to centerX, if gapEnd < centerX)
-                            if (gapEnd < centerX) {
+                            if (gapEnd < centerLeft) {
                                 drawCustomRoundRect(
                                     color = activeColor,
                                     topLeft = Offset(gapEnd, centerY - halfTrack),
-                                    size = Size(centerX - gapEnd, trackHeight),
+                                    size = Size(centerLeft - gapEnd, trackHeight),
                                     topLeftRadius = smallCornerRadius,
                                     bottomLeftRadius = smallCornerRadius,
                                     topRightRadius = smallCornerRadius,
                                     bottomRightRadius = smallCornerRadius,
                                 )
                             }
-                            // 3. Right inactive track (from maxOf(centerX, gapEnd) to size.width)
-                            val rightStart = maxOf(centerX, gapEnd)
-                            if (size.width > rightStart) {
-                                drawCustomRoundRect(
-                                    color = inactiveColor,
-                                    topLeft = Offset(rightStart, centerY - halfTrack),
-                                    size = Size(size.width - rightStart, trackHeight),
-                                    topLeftRadius = smallCornerRadius,
-                                    bottomLeftRadius = smallCornerRadius,
-                                    topRightRadius = fullCornerRadius,
-                                    bottomRightRadius = fullCornerRadius,
-                                )
-                            }
+                        }
+
+                        // 3. Right inactive track (from maxOf(centerRight, gapEnd) to size.width)
+                        val rightStart = maxOf(centerRight, gapEnd)
+                        if (size.width > rightStart) {
+                            drawCustomRoundRect(
+                                color = inactiveColor,
+                                topLeft = Offset(rightStart, centerY - halfTrack),
+                                size = Size(size.width - rightStart, trackHeight),
+                                topLeftRadius = smallCornerRadius,
+                                bottomLeftRadius = smallCornerRadius,
+                                topRightRadius = fullCornerRadius,
+                                bottomRightRadius = fullCornerRadius,
+                            )
                         }
                     }
                 },
@@ -366,9 +342,9 @@ fun PlaybackSpeedPicker(
                     val isSelected = abs(speedState - preset) < 0.01f
                     val label =
                         if (preset == 1.0f) {
-                            "1.0x"
+                            "1.0×"
                         } else {
-                            "${preset}x"
+                            "${preset}×"
                         }
                     val chips =
                         if (preset == 1.0f) {

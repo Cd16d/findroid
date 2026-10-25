@@ -65,9 +65,11 @@ class AppPreferences @Inject constructor(val sharedPreferences: SharedPreference
     val playerPlaybackSpeedRemember = Preference("pref_player_playback_speed_remember", false)
     val playerPlaybackSpeed = Preference("pref_player_playback_speed", 1.0f)
 
-    // Chromecast
+    // Transcoding & Quality
     val castEnabled = Preference("pref_cast_enabled", true)
     val castMaxBitrateKbps = Preference("pref_cast_max_bitrate_kbps", 120_000)
+    val playerRememberQuality = Preference("pref_player_remember_quality", false)
+    val playerDefaultQuality = Preference("pref_player_default_quality", "original")
 
     // Player - mpv
     val playerMpv = Preference("pref_player_mpv", false)

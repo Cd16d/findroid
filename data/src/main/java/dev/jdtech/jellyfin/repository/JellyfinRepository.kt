@@ -18,6 +18,7 @@ import java.util.UUID
 import kotlinx.coroutines.flow.Flow
 import org.jellyfin.sdk.model.api.BaseItemDto
 import org.jellyfin.sdk.model.api.BaseItemKind
+import org.jellyfin.sdk.model.api.DeviceProfile
 import org.jellyfin.sdk.model.api.ItemFields
 import org.jellyfin.sdk.model.api.ItemFilter
 import org.jellyfin.sdk.model.api.PlayMethod
@@ -221,8 +222,18 @@ interface JellyfinRepository {
         offline: Boolean = false,
     ): List<FindroidEpisode>
 
-    /** Retrieves media sources for a specific item. */
-    suspend fun getMediaSources(itemId: UUID, includePath: Boolean = false): List<FindroidSource>
+    /**
+     * Retrieves media sources for a specific item with optional bitrate and audio stream
+     * constraints.
+     */
+    suspend fun getMediaSources(
+        itemId: UUID,
+        includePath: Boolean = false,
+        maxStreamingBitrate: Int? = null,
+        audioStreamIndex: Int? = null,
+        deviceProfile: DeviceProfile? = null,
+        enableDirectPlay: Boolean = true,
+    ): List<FindroidSource>
 
     /** Retrieves the stream URL for a specific media source. */
     suspend fun getStreamUrl(itemId: UUID, mediaSourceId: String): String
@@ -279,6 +290,9 @@ interface JellyfinRepository {
     /** Returns the base URL of the active server connection. */
     fun getBaseUrl(): String
 
+    /** Returns the client device name known to the Jellyfin client or configured in preferences. */
+    fun getDeviceName(): String
+
     /** Updates the registered client device name on the server. */
     suspend fun updateDeviceName(name: String)
 
@@ -302,4 +316,8 @@ interface JellyfinRepository {
 
     /** Returns whether the server and client support transcoding. */
     suspend fun canTranscode(): Boolean
+
+    suspend fun getActiveTranscodingInfo(
+        playSessionId: String?
+    ): org.jellyfin.sdk.model.api.TranscodingInfo?
 }

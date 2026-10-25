@@ -31,6 +31,8 @@ data class Track(
     val isExternal: Boolean? = false,
     val isForced: Boolean? = false,
     val isHearingImpaired: Boolean? = false,
+    val isDefault: Boolean? = false,
+    val isOriginal: Boolean? = false,
     val channelLayout: String? = null,
     val channelCount: Int? = null,
     val type: Int = C.TRACK_TYPE_UNKNOWN,

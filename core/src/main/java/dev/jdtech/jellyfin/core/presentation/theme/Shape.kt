@@ -32,7 +32,6 @@ object CentralShapes {
     }
 
     val Dialog = RoundedCornerShape(28.dp)
-    val SheetTop = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
     val ExtraLargeCard = RoundedCornerShape(24.dp)
     val LargeCard = RoundedCornerShape(20.dp)
     val MediumCard = RoundedCornerShape(16.dp)

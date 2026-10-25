@@ -3,11 +3,13 @@ package dev.jdtech.jellyfin.player.core.domain.utils
 import android.content.Context
 import androidx.media3.common.C
 import androidx.media3.common.Tracks
+import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.models.FindroidMediaStream
 import dev.jdtech.jellyfin.player.core.R
 import dev.jdtech.jellyfin.player.core.domain.models.Track
 import dev.jdtech.jellyfin.player.core.domain.models.TrackDisplayInfo
 import java.util.Locale
+import org.jellyfin.sdk.model.api.MediaStream
 import org.jellyfin.sdk.model.api.MediaStreamType
 
 /**
@@ -15,21 +17,23 @@ import org.jellyfin.sdk.model.api.MediaStreamType
  * and display labels.
  */
 object TrackFormatter {
+    private val WHITESPACE_REGEX = Regex("\\s+")
+
     /** Formats a raw codec string into a human-readable display label. */
     fun formatCodec(codec: String?): String? {
         if (codec.isNullOrBlank()) return null
         val c = codec.lowercase(Locale.US)
         return when {
             c.contains("subrip") || c.contains("srt") -> "SubRip"
-            c.contains("ass") || c.contains("ssa") -> "ASS"
-            c.contains("pgs") -> "PGS"
+            c.contains("ass") || c.contains("ssa") || c.contains("substationalpha") -> "ASS"
+            c.contains("pgs") || c.contains("hdmv_pgs") -> "PGS"
             c.contains("vtt") || c.contains("webvtt") -> "VTT"
             c.contains("dts-hd ma") -> "DTS-HD MA"
             c.contains("dts-hd hra") -> "DTS-HD HRA"
             c.contains("dts-hd") || c.contains("dtshd") -> "DTS-HD"
             c.contains("dts:x") || c.contains("dtsx") -> "DTS:X"
-            c.contains("dts") -> "DTS"
-            c.contains("truehd") -> "TrueHD"
+            c.contains("dts") || c == "dca" -> "DTS"
+            c.contains("truehd") || c.contains("mlp") -> "TrueHD"
             c.contains("eac3") || c.contains("ec-3") || c.contains("e-ac-3") -> "E-AC-3"
             c.contains("ac3") || c.contains("ac-3") -> "AC-3"
             c.contains("flac") -> "FLAC"
@@ -39,6 +43,10 @@ object TrackFormatter {
             c.contains("vorbis") -> "Vorbis"
             c.contains("mp3") -> "MP3"
             c.contains("pcm") -> "PCM"
+            c.contains("hevc") || c.contains("h265") -> "HEVC"
+            c.contains("h264") || c.contains("avc") -> "AVC"
+            c.contains("av1") -> "AV1"
+            c.contains("dvd_subtitle") || c.contains("dvdsub") -> "DVD Subtitle"
             else -> codec.uppercase(Locale.US)
         }
     }
@@ -50,16 +58,14 @@ object TrackFormatter {
     fun formatChannelLayout(channelLayout: String? = null, channelCount: Int? = null): String? {
         if (!channelLayout.isNullOrBlank()) {
             val layout = channelLayout.trim().lowercase(Locale.US)
-            return when (layout) {
-                "stereo",
-                "2.0" -> "Stereo"
-                "mono",
-                "1.0" -> "Mono"
-                "5.1" -> "5.1"
-                "7.1" -> "7.1"
-                "2.1" -> "2.1"
-                "6.1" -> "6.1"
-                "atmos" -> "Atmos"
+            return when {
+                layout == "stereo" || layout == "2.0" -> "Stereo"
+                layout == "mono" || layout == "1.0" -> "Mono"
+                layout.startsWith("5.1") -> "5.1"
+                layout.startsWith("7.1") -> "7.1"
+                layout.startsWith("2.1") -> "2.1"
+                layout.startsWith("6.1") -> "6.1"
+                layout == "atmos" -> "Atmos"
                 else ->
                     channelLayout.replaceFirstChar {
                         if (it.isLowerCase()) it.titlecase(Locale.US) else it.toString()
@@ -69,7 +75,9 @@ object TrackFormatter {
         return when (channelCount) {
             1 -> "Mono"
             2 -> "Stereo"
+            3 -> "2.1"
             6 -> "5.1"
+            7 -> "6.1"
             8 -> "7.1"
             else -> if (channelCount != null && channelCount > 0) "$channelCount ch" else null
         }
@@ -98,6 +106,25 @@ object TrackFormatter {
             }
     }
 
+    /** Strips codec information from a track label string to avoid duplicate text. */
+    private fun stripCodec(label: String?, codec: String?): String? {
+        if (label.isNullOrBlank()) return null
+        val formattedCodec = formatCodec(codec)
+        val codecsToRemove =
+            listOfNotNull(formattedCodec, codec).filter { it.isNotBlank() }.distinct()
+
+        if (codecsToRemove.isEmpty()) return label.trim()
+
+        val pattern = codecsToRemove.joinToString("|") { Regex.escape(it) }
+        val regex = Regex("(?i)[(\\[\\-/\\s]*\\b($pattern)\\b[)\\]]*")
+
+        return label
+            .replace(regex, "")
+            .replace(WHITESPACE_REGEX, " ")
+            .trim('-', '(', ')', '[', ']', '/', ' ')
+            .takeIf { it.isNotBlank() }
+    }
+
     /**
      * Creates formatted track display information including localized names and status tags/chips
      * for UI display.
@@ -111,10 +138,11 @@ object TrackFormatter {
         trackType: Int = track.type,
     ): TrackDisplayInfo {
         val localizedLanguage = formatLanguageName(track.language, currentLocale)
+        val cleanLabel = stripCodec(track.label, track.codec)
         val baseName =
             localizedLanguage
                 ?: track.language?.takeIf { it.isNotBlank() && it != "und" }
-                ?: track.label?.takeIf { it.isNotBlank() }
+                ?: cleanLabel?.takeIf { it.isNotBlank() }
                 ?: context.getString(R.string.track_index, fallbackIndex)
 
         val isSubtitle =
@@ -132,10 +160,7 @@ object TrackFormatter {
                     track.label?.contains("forzat", ignoreCase = true) == true ||
                     track.label?.contains("forcé", ignoreCase = true) == true
             if (isForced) {
-                tags.add(
-                    if (currentLocale.language == "it") "Forzati"
-                    else context.getString(R.string.forced)
-                )
+                tags.add(context.getString(R.string.forced))
             }
 
             val isHearingImpaired =
@@ -145,17 +170,15 @@ object TrackFormatter {
                     track.label?.contains("non udenti", ignoreCase = true) == true ||
                     track.label?.contains("sordi", ignoreCase = true) == true
             if (isHearingImpaired) {
-                tags.add(
-                    if (currentLocale.language == "it") "SDH"
-                    else context.getString(R.string.hearing_impaired)
-                )
+                tags.add(context.getString(R.string.hearing_impaired))
             }
 
             val isOriginal =
-                track.label?.contains("original", ignoreCase = true) == true ||
+                track.isOriginal == true ||
+                    track.label?.contains("original", ignoreCase = true) == true ||
                     track.label?.contains("orig", ignoreCase = true) == true
             if (isOriginal) {
-                tags.add(if (currentLocale.language == "it") "Originale" else "Original")
+                tags.add("Original")
             }
 
             val formattedName =
@@ -166,6 +189,11 @@ object TrackFormatter {
                 }
 
             val chips = mutableListOf<String>()
+            val formattedCodec = formatCodec(track.codec)
+            if (!formattedCodec.isNullOrBlank()) {
+                chips.add(formattedCodec)
+            }
+
             if (displayExtraInfo) {
                 val isExternal =
                     track.isExternal == true ||
@@ -174,17 +202,35 @@ object TrackFormatter {
                 if (isExternal) {
                     chips.add(context.getString(R.string.external))
                 }
-
-                val formattedCodec = formatCodec(track.codec)
-                if (!formattedCodec.isNullOrBlank()) {
-                    chips.add(formattedCodec)
-                }
             }
 
             return TrackDisplayInfo(name = formattedName, chips = chips)
         }
 
+        val cleanCandidate = cleanLabel?.split('-', '(', '[', '/')?.firstOrNull()?.trim()
+        val candidateLanguage = formatLanguageName(cleanCandidate, currentLocale)
+        val audioName =
+            localizedLanguage
+                ?: candidateLanguage
+                ?: track.language?.takeIf { it.isNotBlank() && it != "und" }
+                ?: cleanCandidate?.takeIf { it.isNotBlank() }
+                ?: context.getString(R.string.track_index, fallbackIndex)
+
         val chips = mutableListOf<String>()
+        if (track.isDefault == true) {
+            chips.add(context.getString(CoreR.string.track_default))
+        }
+
+        val channelLayout = formatChannelLayout(track.channelLayout, track.channelCount)
+        if (channelLayout != null) {
+            chips.add(channelLayout)
+        }
+
+        val formattedCodec = formatCodec(track.codec)
+        if (!formattedCodec.isNullOrBlank()) {
+            chips.add(formattedCodec)
+        }
+
         if (displayExtraInfo) {
             val isExternal =
                 track.isExternal == true ||
@@ -193,28 +239,9 @@ object TrackFormatter {
             if (isExternal) {
                 chips.add(context.getString(R.string.external))
             }
-
-            val channelLayout = formatChannelLayout(track.channelLayout, track.channelCount)
-            if (channelLayout != null) {
-                chips.add(channelLayout)
-            }
-
-            val formattedCodec = formatCodec(track.codec)
-            if (!formattedCodec.isNullOrBlank()) {
-                chips.add(formattedCodec)
-            }
-        } else {
-            val channelLayout = formatChannelLayout(track.channelLayout, track.channelCount)
-            if (channelLayout != null) {
-                chips.add(channelLayout)
-            }
-            val formattedCodec = formatCodec(track.codec)
-            if (!formattedCodec.isNullOrBlank()) {
-                chips.add(formattedCodec)
-            }
         }
 
-        return TrackDisplayInfo(name = baseName, chips = chips)
+        return TrackDisplayInfo(name = audioName, chips = chips)
     }
 
     /** Converts an ExoPlayer [Tracks.Group] into a domain [Track] model. */
@@ -240,6 +267,10 @@ object TrackFormatter {
             format.id?.startsWith("external", ignoreCase = true) == true ||
                 label?.contains("external", ignoreCase = true) == true ||
                 label?.contains("estern", ignoreCase = true) == true
+        val isDefault =
+            (format.selectionFlags and C.SELECTION_FLAG_DEFAULT) != 0 ||
+                label?.contains("default", ignoreCase = true) == true ||
+                label?.contains("predefinit", ignoreCase = true) == true
         val rawCodec = format.codecs ?: format.sampleMimeType?.substringAfterLast("/")
 
         return Track(
@@ -252,6 +283,7 @@ object TrackFormatter {
             isExternal = isExternal,
             isForced = isForced,
             isHearingImpaired = isHearingImpaired,
+            isDefault = isDefault,
             channelCount = if (group.type == C.TRACK_TYPE_AUDIO) format.channelCount else null,
             type = group.type,
         )
@@ -277,23 +309,107 @@ object TrackFormatter {
 
     /** Converts a [FindroidMediaStream] into a domain [Track] model. */
     fun toTrack(stream: FindroidMediaStream): Track {
+        val isDefault =
+            stream.isDefault == true ||
+                stream.title.contains("default", ignoreCase = true) ||
+                stream.displayTitle?.contains("default", ignoreCase = true) == true ||
+                stream.displayTitle?.contains("predefinit", ignoreCase = true) == true
         return Track(
             id = stream.index ?: 0,
             label = stream.title.takeIf { it.isNotBlank() } ?: stream.displayTitle,
             language = stream.language,
             codec = stream.codec,
-            selected = stream.isDefault ?: false,
+            selected = false,
             supported = true,
             isExternal = stream.isExternal,
             isForced = stream.isForced,
             isHearingImpaired = stream.isHearingImpaired,
+            isDefault = isDefault,
+            isOriginal = stream.isOriginal,
             channelLayout = stream.channelLayout,
+            channelCount = stream.channels,
             type =
                 when (stream.type) {
                     MediaStreamType.AUDIO -> C.TRACK_TYPE_AUDIO
                     MediaStreamType.SUBTITLE -> C.TRACK_TYPE_TEXT
                     else -> C.TRACK_TYPE_UNKNOWN
                 },
+        )
+    }
+
+    /** Converts a Jellyfin SDK [MediaStream] into a domain [Track] model. */
+    fun toTrack(stream: MediaStream): Track {
+        val isDefault =
+            stream.isDefault ||
+                stream.title?.contains("default", ignoreCase = true) == true ||
+                stream.displayTitle?.contains("default", ignoreCase = true) == true ||
+                stream.displayTitle?.contains("predefinit", ignoreCase = true) == true
+        return Track(
+            id = stream.index,
+            label = stream.title?.takeIf { it.isNotBlank() } ?: stream.displayTitle,
+            language = stream.language,
+            codec = stream.codec,
+            selected = false,
+            supported = true,
+            isExternal = stream.isExternal,
+            isForced = stream.isForced,
+            isHearingImpaired = stream.isHearingImpaired,
+            isDefault = isDefault,
+            isOriginal = stream.isOriginal,
+            channelLayout = stream.channelLayout,
+            channelCount = stream.channels,
+            type =
+                when (stream.type) {
+                    MediaStreamType.AUDIO -> C.TRACK_TYPE_AUDIO
+                    MediaStreamType.SUBTITLE -> C.TRACK_TYPE_TEXT
+                    else -> C.TRACK_TYPE_UNKNOWN
+                },
+        )
+    }
+
+    /**
+     * Merges information from a Jellyfin [FindroidMediaStream] into a domain [Track] model,
+     * preferring API metadata when available.
+     */
+    fun mergeWithStream(track: Track, stream: FindroidMediaStream?): Track {
+        if (stream == null) return track
+        val streamTrack = toTrack(stream)
+        return track.copy(
+            label = track.label?.takeIf { it.isNotBlank() } ?: streamTrack.label,
+            language =
+                track.language?.takeIf { it.isNotBlank() && it != "und" } ?: streamTrack.language,
+            codec = streamTrack.codec?.takeIf { it.isNotBlank() } ?: track.codec,
+            isExternal = streamTrack.isExternal == true || track.isExternal == true,
+            isForced = streamTrack.isForced == true || track.isForced == true,
+            isHearingImpaired =
+                streamTrack.isHearingImpaired == true || track.isHearingImpaired == true,
+            isDefault = streamTrack.isDefault == true || track.isDefault == true,
+            isOriginal = streamTrack.isOriginal == true || track.isOriginal == true,
+            channelLayout = streamTrack.channelLayout ?: track.channelLayout,
+            channelCount = streamTrack.channelCount ?: track.channelCount,
+        )
+    }
+
+    /**
+     * Merges information from a Jellyfin SDK [MediaStream] into a domain [Track] model, preferring
+     * API metadata when available.
+     */
+    fun mergeWithStream(track: Track, stream: MediaStream?): Track {
+        if (stream == null) return track
+        val streamTrack = toTrack(stream)
+        return track.copy(
+            label = track.label?.takeIf { it.isNotBlank() } ?: streamTrack.label,
+            language =
+                track.language?.takeIf { it.isNotBlank() && it != "und" } ?: streamTrack.language,
+            codec = streamTrack.codec?.takeIf { it.isNotBlank() } ?: track.codec,
+            isExternal = streamTrack.isExternal == true || track.isExternal == true,
+            isForced = streamTrack.isForced == true || track.isForced == true,
+            isHearingImpaired =
+                streamTrack.isHearingImpaired == true || track.isHearingImpaired == true,
+            isDefault = streamTrack.isDefault == true || track.isDefault == true,
+            isOriginal = streamTrack.isOriginal == true || track.isOriginal == true,
+            channelLayout = streamTrack.channelLayout ?: track.channelLayout,
+            channelCount = streamTrack.channelCount ?: track.channelCount,
         )
     }
 }
@@ -304,3 +420,6 @@ fun Tracks.Group.toTrack(fallbackIndex: Int = 0): Track =
 
 /** Converts a [FindroidMediaStream] into a domain [Track] model. */
 fun FindroidMediaStream.toTrack(): Track = TrackFormatter.toTrack(this)
+
+/** Converts a Jellyfin SDK [MediaStream] into a domain [Track] model. */
+fun MediaStream.toTrack(): Track = TrackFormatter.toTrack(this)

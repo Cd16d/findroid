@@ -153,4 +153,22 @@
         <item>5</item>
         <item>8</item>
     </string-array>
+    <string-array name="player_default_qualities">
+        <item>Original (Direct Play)</item>
+        <item>Auto</item>
+        <item>4K</item>
+        <item>1080p</item>
+        <item>720p</item>
+        <item>360p</item>
+        <item>240p</item>
+    </string-array>
+    <string-array name="player_default_quality_values">
+        <item>original</item>
+        <item>auto</item>
+        <item>4k</item>
+        <item>1080p</item>
+        <item>720p</item>
+        <item>360p</item>
+        <item>240p</item>
+    </string-array>
 </resources>

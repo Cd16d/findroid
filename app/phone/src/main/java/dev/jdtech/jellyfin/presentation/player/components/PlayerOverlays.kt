@@ -55,6 +55,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
@@ -138,12 +139,13 @@ fun VolumeBrightnessOverlay(
             )
 
             // Numeric indicator at top (0 to 100, without percentage sign)
-            val isTopCoveredByFill = fillPercent > 0.88f
+            val textColorProgress = ((fillPercent - 0.83f) / (0.92f - 0.83f)).coerceIn(0f, 1f)
+            val textColor = lerp(Color.White, Color.Black, textColorProgress)
             Text(
                 text = level.toString(),
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Bold,
-                color = if (isTopCoveredByFill) Color.Black else Color.White,
+                color = textColor,
                 modifier = Modifier.align(Alignment.TopCenter).padding(top = 14.dp),
             )
 
@@ -170,13 +172,14 @@ fun VolumeBrightnessOverlay(
                     }
                 }
 
-            val isBottomCoveredByFill = fillPercent > 0.15f
+            val iconColorProgress = ((fillPercent - 0.06f) / (0.20f - 0.06f)).coerceIn(0f, 1f)
+            val iconTint = lerp(Color.White, Color.Black, iconColorProgress)
             Icon(
                 painter = painterResource(id = iconRes),
                 contentDescription = null,
                 modifier =
                     Modifier.align(Alignment.BottomCenter).padding(bottom = 12.dp).size(24.dp),
-                tint = if (isBottomCoveredByFill) Color.Black else Color.White,
+                tint = iconTint,
             )
         }
     }
@@ -647,62 +650,93 @@ fun ZoomFeedbackOverlay(
                 Modifier.align(Alignment.TopCenter)
                     .padding(top = insets.calculateTopPadding() + 20.dp),
         ) {
-            Box(
-                modifier =
-                    Modifier.clip(CircleShape)
-                        .background(PlayerSheetBackground.copy(alpha = 0.85f))
-                        .border(
-                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.25f)),
-                            shape = CircleShape,
-                        )
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Icon(
-                        painter = painterResource(id = CoreR.drawable.ic_aspect_ratio),
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp),
-                        tint = Color.White,
-                    )
-                    val labelRes =
-                        when (resizeMode) {
-                            AspectRatioFrameLayout.RESIZE_MODE_ZOOM ->
-                                PlayerR.string.aspect_ratio_zoom
+            val labelRes =
+                when (resizeMode) {
+                    AspectRatioFrameLayout.RESIZE_MODE_ZOOM -> PlayerR.string.aspect_ratio_zoom
 
-                            AspectRatioFrameLayout.RESIZE_MODE_FILL ->
-                                PlayerR.string.aspect_ratio_fill
+                    AspectRatioFrameLayout.RESIZE_MODE_FILL -> PlayerR.string.aspect_ratio_fill
 
-                            else -> PlayerR.string.aspect_ratio_fit
-                        }
-                    Text(
-                        text = stringResource(id = labelRes),
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White,
-                    )
+                    else -> PlayerR.string.aspect_ratio_fit
                 }
+            PlayerFeedbackPill(
+                text = stringResource(id = labelRes),
+                leadingIcon = PlayerR.drawable.ic_aspect_ratio,
+            )
+        }
+    }
+}
+
+/**
+ * Unified feedback pill badge displayed at the top of the video player (e.g. aspect ratio changes,
+ * quick speed indicator).
+ *
+ * @param text The text displayed inside the pill.
+ * @param modifier Optional [Modifier].
+ * @param leadingIcon Optional drawable resource ID for an icon before the text.
+ * @param trailingIcon Optional drawable resource ID for an icon after the text.
+ */
+@Composable
+fun PlayerFeedbackPill(
+    text: String,
+    modifier: Modifier = Modifier,
+    leadingIcon: Int? = null,
+    trailingIcon: Int? = null,
+) {
+    Box(
+        modifier =
+            modifier
+                .clip(CircleShape)
+                .background(PlayerSheetBackground.copy(alpha = 0.85f))
+                .border(
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.25f)),
+                    shape = CircleShape,
+                )
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            if (leadingIcon != null) {
+                Icon(
+                    painter = painterResource(id = leadingIcon),
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                    tint = Color.White,
+                )
+            }
+            Text(
+                text = text,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+            )
+            if (trailingIcon != null) {
+                Icon(
+                    painter = painterResource(id = trailingIcon),
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                    tint = Color.White,
+                )
             }
         }
     }
 }
 
 /**
- * Visual feedback overlay displayed when pressing and holding on the video to trigger 2x speed
+ * Visual feedback overlay displayed when pressing and holding on the video to trigger 2× speed
  * playback.
  *
  * @param visible Whether the overlay is visible.
  * @param modifier Optional [Modifier] applied to the overlay container.
- * @param speed Text representation of the active speed (e.g. "2x").
+ * @param speed Text representation of the active speed (e.g. "2×").
  */
 @Composable
 fun QuickSpeedOverlay(
     visible: Boolean,
     modifier: Modifier = Modifier,
-    speed: String = "2x",
+    speed: String = "2\u00D7",
 ) {
     AnimatedVisibility(
         visible = visible,
@@ -714,35 +748,10 @@ fun QuickSpeedOverlay(
                 scaleOut(animationSpec = tween(150), targetScale = 0.85f),
         modifier = modifier,
     ) {
-        Box(
-            modifier =
-                Modifier.clip(CircleShape)
-                    .background(PlayerSheetBackground.copy(alpha = 0.85f))
-                    .border(
-                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.25f)),
-                        shape = CircleShape,
-                    )
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                Text(
-                    text = speed,
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
-                )
-                Icon(
-                    painter = painterResource(id = CoreR.drawable.ic_fast_forward),
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp),
-                    tint = Color.White,
-                )
-            }
-        }
+        PlayerFeedbackPill(
+            text = speed,
+            trailingIcon = PlayerR.drawable.ic_speed_forward,
+        )
     }
 }
 

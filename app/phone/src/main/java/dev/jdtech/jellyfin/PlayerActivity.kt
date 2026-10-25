@@ -33,6 +33,7 @@ import androidx.media3.common.Player
 import androidx.media3.common.VideoSize
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaSession
+import androidx.media3.ui.PlayerView
 import dagger.hilt.android.AndroidEntryPoint
 import dev.jdtech.jellyfin.models.VolumeKeyEvent
 import dev.jdtech.jellyfin.player.local.presentation.PlayerEvents
@@ -65,7 +66,7 @@ class PlayerActivity : AppCompatActivity() {
     private var isInPipMode by mutableStateOf(false)
     private var currentResizeMode by mutableStateOf(Constants.PlayerResizeMode.FIT)
     private var isOrientationLockedState by mutableStateOf(false)
-    private var currentVideoBounds: Rect? = null
+    private var activePlayerView: PlayerView? = null
 
     private var savedCustomBrightness: Float = BRIGHTNESS_OVERRIDE_NONE
 
@@ -262,8 +263,8 @@ class PlayerActivity : AppCompatActivity() {
                     startFromBeginning = startFromBeginning,
                     onBack = { finishPlayback() },
                     onEnterPip = { pictureInPicture() },
-                    onVideoBoundsChanged = { rect ->
-                        currentVideoBounds = rect
+                    onPlayerViewAvailable = { playerView ->
+                        activePlayerView = playerView
                         updatePipParams()
                     },
                     isPipSupported = isPipSupported,
@@ -307,8 +308,8 @@ class PlayerActivity : AppCompatActivity() {
             viewModel.playWhenReady = viewModel.player.playWhenReady
             viewModel.player.playWhenReady = false
             viewModel.updatePlaybackProgress()
+            updatePipParams(false)
         }
-        updatePipParams(false)
     }
 
     override fun onStop() {
@@ -324,6 +325,7 @@ class PlayerActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         viewModel.player.removeListener(playerListener)
+        activePlayerView = null
     }
 
     private fun hideSystemUI() {
@@ -402,58 +404,35 @@ class PlayerActivity : AppCompatActivity() {
                 !isControlsLocked
     ): PictureInPictureParams {
         val videoSize = viewModel.player.videoSize
-        val videoWidth = if (videoSize.width > 0) videoSize.width else 16
-        val videoHeight = if (videoSize.height > 0) videoSize.height else 9
-
-        val rawRatio = videoWidth.toFloat() / videoHeight.toFloat()
-        val clampedRatio = rawRatio.coerceIn(1f / 2.39f, 2.39f)
-
         val aspectRatio =
-            if (rawRatio > 2.39f) {
-                Rational((videoHeight * 2.39f).toInt(), videoHeight)
-            } else if (rawRatio < 1f / 2.39f) {
-                Rational(videoWidth, (videoWidth * 2.39f).toInt())
+            if (videoSize.width > 0 && videoSize.height > 0) {
+                Rational(
+                    videoSize.width.coerceAtMost((videoSize.height * 2.39f).toInt()),
+                    videoSize.height.coerceAtMost((videoSize.width * 2.39f).toInt()),
+                )
             } else {
-                Rational(videoWidth, videoHeight)
+                Rational(16, 9)
             }
+
+        val sourceRectHint = Rect()
+        val surfaceView = activePlayerView?.videoSurfaceView
+        val targetView =
+            if (surfaceView != null && surfaceView.width > 0 && surfaceView.height > 0) {
+                surfaceView
+            } else {
+                activePlayerView ?: window.decorView
+            }
+        targetView.getGlobalVisibleRect(sourceRectHint)
 
         val builder = PictureInPictureParams.Builder().setAspectRatio(aspectRatio)
 
-        val decorView = window.decorView
-        val viewWidth = decorView.width.takeIf { it > 0 } ?: resources.displayMetrics.widthPixels
-        val viewHeight = decorView.height.takeIf { it > 0 } ?: resources.displayMetrics.heightPixels
-
-        val videoBounds = currentVideoBounds
-        val sourceRect =
-            if (videoBounds != null && videoBounds.width() > 0 && videoBounds.height() > 0) {
-                val boundsWidth = videoBounds.width()
-                val boundsHeight = videoBounds.height()
-                val boundsAspectRatio = boundsWidth.toFloat() / boundsHeight.toFloat()
-                if (boundsAspectRatio > clampedRatio) {
-                    val contentWidth = (boundsHeight * clampedRatio).toInt()
-                    val left = videoBounds.left + (boundsWidth - contentWidth) / 2
-                    Rect(left, videoBounds.top, left + contentWidth, videoBounds.bottom)
-                } else {
-                    val contentHeight = (boundsWidth / clampedRatio).toInt()
-                    val top = videoBounds.top + (boundsHeight - contentHeight) / 2
-                    Rect(videoBounds.left, top, videoBounds.right, top + contentHeight)
-                }
-            } else {
-                val viewAspectRatio = viewWidth.toFloat() / viewHeight.toFloat()
-                if (viewAspectRatio > clampedRatio) {
-                    val contentWidth = (viewHeight * clampedRatio).toInt()
-                    val left = (viewWidth - contentWidth) / 2
-                    Rect(left, 0, left + contentWidth, viewHeight)
-                } else {
-                    val contentHeight = (viewWidth / clampedRatio).toInt()
-                    val top = (viewHeight - contentHeight) / 2
-                    Rect(0, top, viewWidth, top + contentHeight)
-                }
-            }
-        builder.setSourceRectHint(sourceRect)
+        if (!sourceRectHint.isEmpty) {
+            builder.setSourceRectHint(sourceRectHint)
+        }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             builder.setAutoEnterEnabled(enableAutoEnter)
+            builder.setSeamlessResizeEnabled(true)
         }
 
         return builder.build()
@@ -474,7 +453,6 @@ class PlayerActivity : AppCompatActivity() {
     private fun pictureInPicture() {
         if (!isPipSupported) return
         try {
-            updatePipParams()
             enterPictureInPictureMode(pipParams())
         } catch (_: IllegalArgumentException) {}
     }

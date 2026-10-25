@@ -661,7 +661,7 @@ constructor(
                                             ),
                                     ),
                                     PreferenceGroup(
-                                        nameStringResource = R.string.subtitles,
+                                        nameStringResource = R.string.pref_player_playback_display,
                                         preferences =
                                             listOf(
                                                 PreferenceCategory(
@@ -729,6 +729,42 @@ constructor(
                                                 )
                                             ),
                                     ),
+                                    PreferenceGroup(
+                                        nameStringResource = R.string.pref_transcoding_title,
+                                        preferences =
+                                            listOf(
+                                                PreferenceIntInput(
+                                                    nameStringResource =
+                                                        R.string.pref_max_transcode_bitrate,
+                                                    descriptionStringRes =
+                                                        R.string.pref_max_transcode_bitrate_summary,
+                                                    backendPreference =
+                                                        appPreferences.castMaxBitrateKbps,
+                                                    suffixRes = R.string.kbps,
+                                                ),
+                                                PreferenceSwitch(
+                                                    nameStringResource =
+                                                        R.string.pref_player_remember_quality,
+                                                    descriptionStringRes =
+                                                        R.string
+                                                            .pref_player_remember_quality_summary,
+                                                    backendPreference =
+                                                        appPreferences.playerRememberQuality,
+                                                ),
+                                                PreferenceSelect(
+                                                    nameStringResource =
+                                                        R.string.pref_player_default_quality,
+                                                    descriptionStringRes =
+                                                        R.string
+                                                            .pref_player_default_quality_summary,
+                                                    backendPreference =
+                                                        appPreferences.playerDefaultQuality,
+                                                    options = R.array.player_default_qualities,
+                                                    optionValues =
+                                                        R.array.player_default_quality_values,
+                                                ),
+                                            ),
+                                    ),
                                     if (BuildConfig.FLAVOR == "proprietary")
                                         PreferenceGroup(
                                             nameStringResource =
@@ -742,16 +778,7 @@ constructor(
                                                             R.string.pref_cast_enabled_summary,
                                                         backendPreference =
                                                             appPreferences.castEnabled,
-                                                    ),
-                                                    PreferenceIntInput(
-                                                        nameStringResource =
-                                                            R.string.pref_cast_max_bitrate,
-                                                        backendPreference =
-                                                            appPreferences.castMaxBitrateKbps,
-                                                        suffixRes = R.string.kbps,
-                                                        dependencies =
-                                                            listOf(appPreferences.castEnabled),
-                                                    ),
+                                                    )
                                                 ),
                                         )
                                     else null,

@@ -910,37 +910,67 @@ class JellyfinRepositoryImpl(
             }
         }
 
-    override suspend fun getMediaSources(itemId: UUID, includePath: Boolean): List<FindroidSource> =
+    override suspend fun getMediaSources(
+        itemId: UUID,
+        includePath: Boolean,
+        maxStreamingBitrate: Int?,
+        audioStreamIndex: Int?,
+        deviceProfile: DeviceProfile?,
+        enableDirectPlay: Boolean,
+    ): List<FindroidSource> =
         withContext(Dispatchers.IO) {
-            val sources = mutableListOf<FindroidSource>()
-            sources.addAll(
-                jellyfinApi.mediaInfoApi
-                    .getPostedPlaybackInfo(
-                        itemId,
-                        PlaybackInfoDto(
-                            userId = jellyfinApi.userId!!,
-                            deviceProfile =
-                                DeviceProfile(
-                                    name = "Direct play all",
-                                    maxStaticBitrate = 1_000_000_000,
-                                    maxStreamingBitrate = 1_000_000_000,
-                                    codecProfiles = emptyList(),
-                                    containerProfiles = emptyList(),
-                                    directPlayProfiles = emptyList(),
-                                    transcodingProfiles = emptyList(),
-                                    subtitleProfiles =
-                                        listOf(
-                                            SubtitleProfile("srt", SubtitleDeliveryMethod.EXTERNAL),
-                                            SubtitleProfile("ass", SubtitleDeliveryMethod.EXTERNAL),
-                                        ),
-                                ),
-                            maxStreamingBitrate = 1_000_000_000,
-                        ),
+            val effectiveMaxBitrate = maxStreamingBitrate ?: 120_000_000
+            val effectiveProfile =
+                deviceProfile
+                    ?: DeviceProfile(
+                        name = "Findroid Player",
+                        maxStaticBitrate = 1_000_000_000,
+                        maxStreamingBitrate = effectiveMaxBitrate,
+                        codecProfiles = emptyList(),
+                        containerProfiles = emptyList(),
+                        directPlayProfiles = emptyList(),
+                        transcodingProfiles = emptyList(),
+                        subtitleProfiles =
+                            listOf(
+                                SubtitleProfile("srt", SubtitleDeliveryMethod.EXTERNAL),
+                                SubtitleProfile("ass", SubtitleDeliveryMethod.EXTERNAL),
+                                SubtitleProfile("vtt", SubtitleDeliveryMethod.EXTERNAL),
+                            ),
                     )
-                    .content
-                    .mediaSources
-                    .map { it.toFindroidSource(this@JellyfinRepositoryImpl, itemId, includePath) }
-            )
+            val sources = mutableListOf<FindroidSource>()
+            try {
+                val playbackInfo =
+                    jellyfinApi.mediaInfoApi
+                        .getPostedPlaybackInfo(
+                            itemId,
+                            PlaybackInfoDto(
+                                userId = jellyfinApi.userId!!,
+                                deviceProfile = effectiveProfile,
+                                maxStreamingBitrate = effectiveMaxBitrate,
+                                audioStreamIndex = audioStreamIndex,
+                                enableDirectPlay = enableDirectPlay,
+                                enableDirectStream = true,
+                                enableTranscoding = true,
+                                allowAudioStreamCopy = true,
+                                allowVideoStreamCopy = true,
+                            ),
+                        )
+                        .content
+                val playSessionId = playbackInfo.playSessionId
+                sources.addAll(
+                    playbackInfo.mediaSources.map {
+                        it.toFindroidSource(
+                            this@JellyfinRepositoryImpl,
+                            itemId,
+                            includePath,
+                            playSessionId = playSessionId,
+                            audioStreamIndex = audioStreamIndex,
+                        )
+                    }
+                )
+            } catch (e: Exception) {
+                Timber.e(e, "Error fetching posted playback info")
+            }
             val currentUserId = jellyfinApi.userId
             if (currentUserId != null && database.isItemDownloadedForUser(currentUserId, itemId)) {
                 sources.addAll(database.getSources(itemId).map { it.toFindroidSource(database) })
@@ -1006,6 +1036,14 @@ class JellyfinRepositoryImpl(
     override suspend fun postCapabilities() {
         Timber.d("Sending capabilities")
         withContext(Dispatchers.IO) {
+            val customName = appPreferences.getValue(appPreferences.customDeviceName)
+            if (customName.isNotBlank()) {
+                try {
+                    updateDeviceName(customName)
+                } catch (e: Exception) {
+                    Timber.w(e, "Could not sync custom device name on capabilities post")
+                }
+            }
             jellyfinApi.sessionApi.postCapabilities(
                 playableMediaTypes = listOf(MediaType.VIDEO),
                 supportedCommands =
@@ -1174,12 +1212,18 @@ class JellyfinRepositoryImpl(
 
     override fun getBaseUrl() = jellyfinApi.api.baseUrl.orEmpty()
 
+    override fun getDeviceName(): String {
+        val customName = appPreferences.getValue(appPreferences.customDeviceName)
+        if (customName.isNotBlank()) return customName
+        return jellyfinApi.jellyfin.deviceInfo?.name.orEmpty()
+    }
+
     override suspend fun updateDeviceName(name: String) {
         withContext(Dispatchers.IO) {
             jellyfinApi.jellyfin.deviceInfo?.id?.let { id ->
                 jellyfinApi.deviceApi.updateDeviceOptions(
                     id,
-                    DeviceOptionsDto(0, customName = name),
+                    DeviceOptionsDto(0, deviceId = id, customName = name),
                 )
             }
         }
@@ -1258,6 +1302,23 @@ class JellyfinRepositoryImpl(
                     (policy?.enableVideoPlaybackTranscoding != false)
             } catch (_: Exception) {
                 true
+            }
+        }
+
+    override suspend fun getActiveTranscodingInfo(
+        playSessionId: String?
+    ): org.jellyfin.sdk.model.api.TranscodingInfo? =
+        withContext(Dispatchers.IO) {
+            try {
+                val sessions =
+                    jellyfinApi.sessionApi
+                        .getSessions(deviceId = jellyfinApi.jellyfin.deviceInfo?.id)
+                        .content
+                sessions.firstOrNull { it.id == playSessionId }?.transcodingInfo
+                    ?: sessions.firstOrNull { it.transcodingInfo != null }?.transcodingInfo
+            } catch (e: Exception) {
+                Timber.e(e, "Error fetching active transcoding info")
+                null
             }
         }
 }

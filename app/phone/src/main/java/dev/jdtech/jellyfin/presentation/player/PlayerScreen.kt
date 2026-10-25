@@ -9,7 +9,7 @@ import android.provider.Settings
 import android.view.accessibility.CaptioningManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
@@ -21,11 +21,14 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.calculatePan
 import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -33,6 +36,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
@@ -41,6 +45,7 @@ import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -62,11 +67,12 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.boundsInWindow
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
@@ -89,6 +95,7 @@ import androidx.window.core.layout.WindowSizeClass
 import dev.jdtech.jellyfin.PlayerActivity
 import dev.jdtech.jellyfin.isControlsLocked
 import dev.jdtech.jellyfin.models.VolumeKeyEvent
+import dev.jdtech.jellyfin.player.core.domain.models.PlayerSidePanelType
 import dev.jdtech.jellyfin.player.local.mpv.updateMpvResizeMode
 import dev.jdtech.jellyfin.player.local.presentation.PlayerEvents
 import dev.jdtech.jellyfin.player.local.presentation.PlayerViewModel
@@ -97,7 +104,6 @@ import dev.jdtech.jellyfin.presentation.player.components.FloatingSkipButton
 import dev.jdtech.jellyfin.presentation.player.components.PlayerBottomSheet
 import dev.jdtech.jellyfin.presentation.player.components.PlayerCenterControls
 import dev.jdtech.jellyfin.presentation.player.components.PlayerSidePanel
-import dev.jdtech.jellyfin.presentation.player.components.PlayerSidePanelType
 import dev.jdtech.jellyfin.presentation.player.components.PlayerTopBar
 import dev.jdtech.jellyfin.presentation.player.components.QuickSpeedOverlay
 import dev.jdtech.jellyfin.presentation.player.components.ScreenLockOverlay
@@ -113,7 +119,6 @@ import dev.jdtech.jellyfin.settings.domain.AppPreferences
 import dev.jdtech.jellyfin.settings.domain.Constants.PlayerResizeMode
 import java.util.UUID
 import kotlin.math.abs
-import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 import kotlinx.coroutines.Job
@@ -163,8 +168,8 @@ fun PlayerScreen(
     onResizeModeChange: (PlayerResizeMode) -> Unit = {},
     onToggleOrientation: () -> Unit = {},
     isOrientationLocked: Boolean = false,
-    onVideoBoundsChanged: (android.graphics.Rect) -> Unit = {},
     volumeKeyEvents: Flow<VolumeKeyEvent> = emptyFlow(),
+    onPlayerViewAvailable: (PlayerView) -> Unit = {},
     appPreferences: AppPreferences? = null,
     viewModel: PlayerViewModel = hiltViewModel(),
 ) {
@@ -207,6 +212,7 @@ fun PlayerScreen(
     val haptics = rememberPlayerHaptics(enabled = hapticsEnabled)
 
     var currentPosition by remember { mutableLongStateOf(0L) }
+    var bufferedPosition by remember { mutableLongStateOf(0L) }
     var isPlaying by remember { mutableStateOf(viewModel.player.isPlaying) }
     var isBuffering by remember {
         mutableStateOf(viewModel.player.playbackState == Player.STATE_BUFFERING)
@@ -214,6 +220,7 @@ fun PlayerScreen(
     var videoAspectRatio by remember {
         mutableFloatStateOf(viewModel.player.videoSize.toAspectRatio())
     }
+    var lastAppliedResizeMode by remember { mutableStateOf<PlayerResizeMode?>(null) }
 
     var hasPreviousItem by remember { mutableStateOf(viewModel.player.hasPreviousMediaItem()) }
     var hasNextItem by remember { mutableStateOf(viewModel.player.hasNextMediaItem()) }
@@ -428,10 +435,12 @@ fun PlayerScreen(
                 override fun onIsPlayingChanged(playing: Boolean) {
                     isPlaying = playing
                     currentPosition = viewModel.player.currentPosition
+                    bufferedPosition = viewModel.player.bufferedPosition
                 }
 
                 override fun onPlaybackStateChanged(playbackState: Int) {
                     isBuffering = playbackState == Player.STATE_BUFFERING
+                    bufferedPosition = viewModel.player.bufferedPosition
                 }
 
                 override fun onVideoSizeChanged(videoSize: VideoSize) {
@@ -468,6 +477,7 @@ fun PlayerScreen(
         var tick = 0
         while (isPlaying) {
             currentPosition = viewModel.player.currentPosition
+            bufferedPosition = viewModel.player.bufferedPosition
             hasPreviousItem = viewModel.player.hasPreviousMediaItem()
             hasNextItem = viewModel.player.hasNextMediaItem()
             mediaItemCount = viewModel.player.mediaItemCount
@@ -478,12 +488,13 @@ fun PlayerScreen(
         }
     }
 
-    val panelDpAnimSpec = tween<Dp>(durationMillis = 350, easing = FastOutSlowInEasing)
+    val panelDpAnimSpec = tween<Dp>(durationMillis = 260, easing = LinearEasing)
     val panelSlideAnimSpec =
         tween<IntOffset>(
-            durationMillis = 350,
-            easing = FastOutSlowInEasing,
+            durationMillis = 260,
+            easing = LinearEasing,
         )
+    val panelFadeAnimSpec = tween<Float>(durationMillis = 260, easing = LinearEasing)
     val shouldShrinkVideo = isExpandedWidth && isPanelOpen && !isInPip
     val animSpec = if (isInPip) snap() else panelDpAnimSpec
     val videoPaddingEnd by
@@ -494,7 +505,7 @@ fun PlayerScreen(
         )
     val videoPaddingInset by
         animateDpAsState(
-            targetValue = if (shouldShrinkVideo) 32.dp else 0.dp,
+            targetValue = if (shouldShrinkVideo) 16.dp else 0.dp,
             animationSpec = animSpec,
             label = "videoPaddingInset",
         )
@@ -559,14 +570,29 @@ fun PlayerScreen(
             !isAnyScrubbing &&
             (videoPlayerState.controlsVisible || !isSkipButtonTimeoutExpired)
 
+    val isShrunkOrAnimating = shouldShrinkVideo || videoPaddingEnd > 0.dp
     val effectiveResizeMode =
-        if (isInPip || shouldShrinkVideo) AspectRatioFrameLayout.RESIZE_MODE_FIT
+        if (isInPip || isShrunkOrAnimating) AspectRatioFrameLayout.RESIZE_MODE_FIT
         else currentResizeMode.aspectRatioMode
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize().background(Color.Black)) {
         val screenWidth = maxWidth
         val insets = WindowInsets.safeDrawing.union(WindowInsets.displayCutout).asPaddingValues()
         val density = LocalDensity.current
+
+        val videoPaddingTop by
+            animateDpAsState(
+                targetValue = if (shouldShrinkVideo) insets.calculateTopPadding() + 60.dp else 0.dp,
+                animationSpec = animSpec,
+                label = "videoPaddingTop",
+            )
+        val videoPaddingBottom by
+            animateDpAsState(
+                targetValue =
+                    if (shouldShrinkVideo) insets.calculateBottomPadding() + 120.dp else 0.dp,
+                animationSpec = animSpec,
+                label = "videoPaddingBottom",
+            )
 
         val cardWidth = calculateTrickplayCardWidth(uiState.currentTrickplay, videoAspectRatio)
         val cardHalfWidth = cardWidth / 2
@@ -586,27 +612,53 @@ fun PlayerScreen(
                 (maxAvailableRight - cardWidth + 4.dp).coerceAtLeast(minAvailableLeft),
             )
 
-        // Video Player Container (with animated padding and corner radius when panel opens on
-        // tablet)
+        val trickplayBottomPadding by
+            animateDpAsState(
+                targetValue =
+                    if (shouldShrinkVideo) {
+                        insets.calculateBottomPadding() + 8.dp + 64.dp + 4.dp + 48.dp
+                    } else {
+                        insets.calculateBottomPadding() + 12.dp + 48.dp + videoPaddingInset
+                    },
+                animationSpec = tween(220),
+                label = "trickplayBottomPadding",
+            )
+
+        // Video Player Container (dynamically adapts with linear animated padding when side panel
+        // opens on tablet)
         BoxWithConstraints(
             modifier =
                 Modifier.fillMaxSize()
                     .padding(
-                        start = videoPaddingInset,
+                        start =
+                            if (shouldShrinkVideo) {
+                                videoPaddingInset + insets.calculateLeftPadding(LayoutDirection.Ltr)
+                            } else {
+                                0.dp
+                            },
                         end = videoPaddingEnd,
-                        top = videoPaddingInset,
-                        bottom = videoPaddingInset,
+                        top = videoPaddingTop,
+                        bottom = videoPaddingBottom,
                     ),
             contentAlignment = Alignment.Center,
         ) {
             val shouldApplyAspectRatio = shouldShrinkVideo || videoCornerRadius > 0.dp
+            val verticalSafetyPadding = if (shouldShrinkVideo) 12.dp else 0.dp
+            val horizontalSafetyPadding = if (shouldShrinkVideo) 12.dp else 0.dp
+            val safeMaxHeight = (maxHeight - (verticalSafetyPadding * 2)).coerceAtLeast(0.dp)
+            val safeMaxWidth = (maxWidth - (horizontalSafetyPadding * 2)).coerceAtLeast(0.dp)
             val (targetWidth, targetHeight) =
-                if (shouldApplyAspectRatio && videoAspectRatio > 0f && maxHeight.value > 0f) {
-                    val containerRatio = maxWidth.value / maxHeight.value
+                if (
+                    shouldApplyAspectRatio &&
+                        videoAspectRatio > 0f &&
+                        safeMaxHeight.value > 0f &&
+                        safeMaxWidth.value > 0f
+                ) {
+                    val containerRatio = safeMaxWidth.value / safeMaxHeight.value
                     if (containerRatio > videoAspectRatio) {
-                        (maxHeight * videoAspectRatio) to maxHeight
+                        (safeMaxHeight * videoAspectRatio) to safeMaxHeight
                     } else {
-                        maxWidth to (maxWidth / videoAspectRatio)
+                        safeMaxWidth to (safeMaxWidth / videoAspectRatio)
                     }
                 } else {
                     maxWidth to maxHeight
@@ -617,26 +669,20 @@ fun PlayerScreen(
                     Modifier.size(targetWidth, targetHeight)
                         .clip(RoundedCornerShape(videoCornerRadius))
                         .background(Color.Black)
-                        .onGloballyPositioned { coordinates ->
-                            val bounds = coordinates.boundsInWindow()
-                            onVideoBoundsChanged(
-                                android.graphics.Rect(
-                                    bounds.left.roundToInt(),
-                                    bounds.top.roundToInt(),
-                                    bounds.right.roundToInt(),
-                                    bounds.bottom.roundToInt(),
-                                )
-                            )
-                        }
             ) {
                 AndroidView(
                     factory = { ctx ->
                         PlayerView(ctx).also { playerView ->
+                            onPlayerViewAvailable(playerView)
+                            playerView.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
+                                onPlayerViewAvailable(playerView)
+                            }
                             playerView.useController = false
                             playerView.controllerAutoShow = false
                             playerView.player = viewModel.player
                             playerView.resizeMode = effectiveResizeMode
                             playerView.player?.updateMpvResizeMode(currentResizeMode)
+                            lastAppliedResizeMode = currentResizeMode
                             val captioningManager =
                                 ctx.getSystemService(Context.CAPTIONING_SERVICE)
                                     as? CaptioningManager
@@ -670,30 +716,170 @@ fun PlayerScreen(
                         }
                     },
                     update = { playerView ->
-                        playerView.resizeMode = effectiveResizeMode
-                        playerView.player?.updateMpvResizeMode(currentResizeMode)
+                        onPlayerViewAvailable(playerView)
+                        if (playerView.resizeMode != effectiveResizeMode) {
+                            playerView.resizeMode = effectiveResizeMode
+                        }
+                        if (lastAppliedResizeMode != currentResizeMode) {
+                            lastAppliedResizeMode = currentResizeMode
+                            playerView.player?.updateMpvResizeMode(currentResizeMode)
+                        }
                     },
-                    modifier =
-                        Modifier.fillMaxSize().onGloballyPositioned { coordinates ->
-                            val bounds = coordinates.boundsInWindow()
-                            onVideoBoundsChanged(
-                                android.graphics.Rect(
-                                    bounds.left.roundToInt(),
-                                    bounds.top.roundToInt(),
-                                    bounds.right.roundToInt(),
-                                    bounds.bottom.roundToInt(),
-                                )
-                            )
-                        },
+                    modifier = Modifier.fillMaxSize(),
+                )
+
+                if (shouldShrinkVideo) {
+                    Box(
+                        modifier =
+                            Modifier.fillMaxSize().clickable(
+                                indication = null,
+                                interactionSource = remember { MutableInteractionSource() },
+                            ) {
+                                videoPlayerState.sidePanelType = PlayerSidePanelType.NONE
+                                videoPlayerState.hideControls()
+                                openedPanelDirectly = false
+                            }
+                    )
+                }
+            }
+        }
+
+        // Top: Centered Title & Subtitle when side panel is open on tablet (no back button)
+        AnimatedVisibility(
+            visible = shouldShrinkVideo,
+            enter = fadeIn(panelFadeAnimSpec),
+            exit = fadeOut(tween(200, easing = LinearEasing)),
+            modifier =
+                Modifier.align(Alignment.TopStart)
+                    .fillMaxWidth()
+                    .padding(
+                        start =
+                            videoPaddingInset +
+                                insets.calculateLeftPadding(LayoutDirection.Ltr) +
+                                16.dp,
+                        end = videoPaddingEnd + 16.dp,
+                        top = insets.calculateTopPadding() + 8.dp,
+                    )
+                    .zIndex(5f),
+        ) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(
+                    text = uiState.currentItemTitle,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.Center,
+                )
+                if (!uiState.currentItemSubtitle.isNullOrBlank()) {
+                    Text(
+                        text = uiState.currentItemSubtitle.orEmpty(),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.White.copy(alpha = 0.75f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+            }
+        }
+
+        // Bottom: Seeker ABOVE buttons when side panel is open on tablet
+        AnimatedVisibility(
+            visible = shouldShrinkVideo,
+            enter = fadeIn(panelFadeAnimSpec),
+            exit = fadeOut(tween(200, easing = LinearEasing)),
+            modifier =
+                Modifier.align(Alignment.BottomStart)
+                    .fillMaxWidth()
+                    .padding(
+                        start =
+                            videoPaddingInset +
+                                insets.calculateLeftPadding(LayoutDirection.Ltr) +
+                                16.dp,
+                        end = videoPaddingEnd + 16.dp,
+                        bottom = insets.calculateBottomPadding() + 8.dp,
+                    )
+                    .zIndex(5f),
+        ) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                VideoPlayerSeeker(
+                    state = videoPlayerState,
+                    onSeek = { fraction ->
+                        val duration = viewModel.player.duration.coerceAtLeast(0L)
+                        val targetMs = (fraction * duration).toLong()
+                        currentPosition = targetMs
+                        viewModel.player.seekTo(targetMs)
+                    },
+                    contentProgress = currentPosition.milliseconds,
+                    contentDuration = viewModel.player.duration.coerceAtLeast(0L).milliseconds,
+                    bufferedProgress = bufferedPosition.milliseconds,
+                    chapters =
+                        if (uiState.showChapterMarkers) uiState.currentChapters else emptyList(),
+                    segments = if (uiState.showChapterMarkers) uiState.segments else emptyList(),
+                    isScrubbing = isSeekBarScrubbing,
+                    scrubPositionMs = seekBarScrubPositionMs,
+                    onScrubbingChanged = { scrubbing, posMs, touchX ->
+                        isSeekBarScrubbing = scrubbing
+                        seekBarScrubPositionMs = posMs
+                        seekBarTouchX = touchX
+                    },
+                    onOpenChapters = {
+                        openedPanelDirectly = true
+                        videoPlayerState.sidePanelType = PlayerSidePanelType.CHAPTERS
+                    },
+                    isPortrait = false,
+                    isCompactWidth = false,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+
+                val isEpisode = itemKind.equals("Episode", ignoreCase = true)
+                PlayerCenterControls(
+                    isPlaying = isPlaying,
+                    isBuffering = isBuffering,
+                    onPlayPause = {
+                        videoPlayerState.resetTimeout()
+                        if (isPlaying) viewModel.player.pause() else viewModel.player.play()
+                    },
+                    onSeekRelative = { deltaMs ->
+                        videoPlayerState.resetTimeout()
+                        val duration = viewModel.player.duration.coerceAtLeast(0L)
+                        val newPos =
+                            (viewModel.player.currentPosition + deltaMs).coerceIn(0L, duration)
+                        currentPosition = newPos
+                        viewModel.player.seekTo(newPos)
+                    },
+                    hasPreviousItem = hasPreviousItem,
+                    hasNextItem = hasNextItem,
+                    onPreviousItem =
+                        if (isEpisode) {
+                            {
+                                videoPlayerState.resetTimeout()
+                                viewModel.player.seekToPreviousMediaItem()
+                            }
+                        } else null,
+                    onNextItem =
+                        if (isEpisode) {
+                            {
+                                videoPlayerState.resetTimeout()
+                                viewModel.player.seekToNextMediaItem()
+                            }
+                        } else null,
+                    isPortrait = false,
                 )
             }
         }
 
         AnimatedVisibility(
-            visible =
-                (isBuffering || !uiState.fileLoaded) &&
-                    !isAnyScrubbing &&
-                    videoPlayerState.sidePanelType == PlayerSidePanelType.NONE,
+            visible = (isBuffering || !uiState.fileLoaded) && !isAnyScrubbing,
             enter = fadeIn(tween(200)),
             exit = fadeOut(tween(200)),
             modifier =
@@ -702,14 +888,14 @@ fun PlayerScreen(
                         start =
                             videoPaddingInset + insets.calculateLeftPadding(LayoutDirection.Ltr),
                         end = videoPaddingEnd + insets.calculateRightPadding(LayoutDirection.Ltr),
-                        top = videoPaddingInset + insets.calculateTopPadding(),
-                        bottom = videoPaddingInset + insets.calculateBottomPadding(),
+                        top = videoPaddingTop + insets.calculateTopPadding(),
+                        bottom = videoPaddingBottom + insets.calculateBottomPadding(),
                     )
                     .zIndex(6f),
         ) {
             CircularProgressIndicator(
                 color = MaterialTheme.colorScheme.primary,
-                strokeWidth = 4.dp,
+                strokeWidth = 6.dp,
                 modifier = Modifier.size(56.dp),
             )
         }
@@ -773,378 +959,409 @@ fun PlayerScreen(
                 }
             }
 
-            // Gesture Detection Overlay on the video area
-            Box(
-                modifier =
-                    Modifier.fillMaxSize()
-                        .padding(
-                            start = videoPaddingInset,
-                            end = videoPaddingEnd,
-                            top = videoPaddingInset,
-                            bottom = videoPaddingInset,
-                        )
-                        .pointerInput(videoPlayerState.isControlsLocked, isPanelOpen) {
-                            if (videoPlayerState.isControlsLocked) {
-                                detectTapGestures(
-                                    onTap = {
-                                        showUnlockButton = true
-                                        unlockJob?.cancel()
-                                        unlockJob = coroutineScope.launch {
-                                            delay(3000.milliseconds)
-                                            showUnlockButton = false
-                                        }
-                                    }
-                                )
-                            } else {
-                                detectTapGestures(
-                                    onTap = { offset ->
-                                        if (
-                                            currentShowDoubleTapLeft && offset.x < size.width * 0.4f
-                                        ) {
-                                            currentPerformSeekLeft()
-                                        } else if (
-                                            currentShowDoubleTapRight &&
-                                                offset.x > size.width * 0.6f
-                                        ) {
-                                            currentPerformSeekRight()
-                                        } else if (isPanelOpen) {
-                                            videoPlayerState.sidePanelType =
-                                                PlayerSidePanelType.NONE
-                                            videoPlayerState.hideControls()
-                                            openedPanelDirectly = false
-                                        } else {
-                                            videoPlayerState.toggleControls(autoHide = isPlaying)
-                                        }
-                                    },
-                                    onDoubleTap = { offset ->
-                                        if (isPanelOpen) {
-                                            videoPlayerState.sidePanelType =
-                                                PlayerSidePanelType.NONE
-                                            videoPlayerState.hideControls()
-                                            openedPanelDirectly = false
-                                        } else {
-                                            val videoScreenWidth = size.width
-                                            if (offset.x < videoScreenWidth * 0.4f) {
-                                                currentPerformSeekLeft()
-                                            } else if (offset.x > videoScreenWidth * 0.6f) {
-                                                currentPerformSeekRight()
-                                            } else {
-                                                // Center double tap: play / pause
-                                                if (!isBuffering) {
-                                                    haptics.confirm()
-                                                }
-                                                if (viewModel.player.isPlaying)
-                                                    viewModel.player.pause()
-                                                else viewModel.player.play()
-                                            }
-                                        }
-                                    },
-                                )
-                            }
-                        }
-                        .pointerInput(
-                            videoPlayerState.isControlsLocked,
-                            currentResizeMode,
-                            isPanelOpen,
-                            isGesturesMasterEnabled,
-                            isVBAllowed,
-                            isSeekAllowed,
-                            isZoomAllowed,
-                            isQuickSpeedAllowed,
-                        ) {
-                            if (
-                                !videoPlayerState.isControlsLocked &&
-                                    !isPanelOpen &&
-                                    isGesturesMasterEnabled
+            // Gesture Detection Overlay on the video area (only when not shrunk on tablet)
+            if (!shouldShrinkVideo) {
+                Box(
+                    modifier =
+                        Modifier.fillMaxSize()
+                            .padding(
+                                start = videoPaddingInset,
+                                end = videoPaddingEnd,
+                                top = videoPaddingInset,
+                                bottom = videoPaddingInset,
+                            )
+                            .pointerInput(
+                                videoPlayerState.isControlsLocked,
+                                isPanelOpen,
                             ) {
-                                awaitEachGesture {
-                                    val down = awaitFirstDown(requireUnconsumed = false)
-                                    val videoScreenWidth = size.width
-                                    val videoScreenHeight = size.height
-                                    val horizontalEdgeExclusionPx = 28.dp.toPx()
-                                    val verticalEdgeExclusionPx = 48.dp.toPx()
-                                    val isHorizontalEdgeTouch =
-                                        down.position.x < horizontalEdgeExclusionPx ||
-                                            down.position.x >
-                                                videoScreenWidth - horizontalEdgeExclusionPx
-                                    val isVerticalEdgeTouch =
-                                        down.position.y < verticalEdgeExclusionPx ||
-                                            down.position.y >
-                                                videoScreenHeight - verticalEdgeExclusionPx
-                                    val isRightSide = down.position.x > videoScreenWidth / 2f
-                                    var totalDragY = 0f
-                                    var totalDragX = 0f
-                                    var isVerticalDrag = false
-                                    var isHorizontalDrag = false
-                                    var isPinchGesture = false
-                                    var totalZoom = 1f
-                                    var startPosition = viewModel.player.currentPosition
-                                    var continuousVolume = 0f
-                                    var continuousBrightness = 0f
-                                    var lastSetVolumeInt = -1
-
-                                    var originalSpeed = viewModel.player.playbackParameters.speed
-                                    var quickSpeedTriggered = false
-                                    val quickSpeedJob =
-                                        if (
-                                            isQuickSpeedAllowed &&
-                                                !isHorizontalEdgeTouch &&
-                                                !isVerticalEdgeTouch
-                                        ) {
-                                            coroutineScope.launch {
-                                                delay(400.milliseconds)
-                                                quickSpeedTriggered = true
-                                                isQuickSpeedActive = true
-                                                haptics.tick()
-                                                originalSpeed =
-                                                    viewModel.player.playbackParameters.speed
-                                                viewModel.player.playbackParameters =
-                                                    PlaybackParameters(2.0f)
+                                if (videoPlayerState.isControlsLocked) {
+                                    detectTapGestures(
+                                        onTap = {
+                                            showUnlockButton = true
+                                            unlockJob?.cancel()
+                                            unlockJob = coroutineScope.launch {
+                                                delay(3000.milliseconds)
+                                                showUnlockButton = false
                                             }
-                                        } else null
-
-                                    while (true) {
-                                        val event = awaitPointerEvent()
-                                        val pressedChanges = event.changes.filter { it.pressed }
-                                        if (pressedChanges.isEmpty()) {
-                                            quickSpeedJob?.cancel()
-                                            if (quickSpeedTriggered) {
-                                                isQuickSpeedActive = false
-                                                viewModel.player.playbackParameters =
-                                                    PlaybackParameters(originalSpeed)
-                                            }
-                                            if (isHorizontalDrag) {
-                                                haptics.gestureEnd()
-                                                viewModel.player.seekTo(gestureScrubPositionMs)
-                                                isGestureScrubbing = false
-                                                gestureScrubDeltaMs = 0L
-                                            }
-                                            if (isVerticalDrag) {
-                                                isVerticalGestureActive = false
-                                            }
-                                            break
                                         }
-
-                                        if (pressedChanges.size >= 2) {
-                                            quickSpeedJob?.cancel()
-                                            if (quickSpeedTriggered) {
-                                                isQuickSpeedActive = false
-                                                viewModel.player.playbackParameters =
-                                                    PlaybackParameters(originalSpeed)
+                                    )
+                                } else {
+                                    detectTapGestures(
+                                        onTap = { offset ->
+                                            if (
+                                                currentShowDoubleTapLeft &&
+                                                    offset.x < size.width * 0.4f
+                                            ) {
+                                                currentPerformSeekLeft()
+                                            } else if (
+                                                currentShowDoubleTapRight &&
+                                                    offset.x > size.width * 0.6f
+                                            ) {
+                                                currentPerformSeekRight()
+                                            } else if (isPanelOpen) {
+                                                videoPlayerState.sidePanelType =
+                                                    PlayerSidePanelType.NONE
+                                                videoPlayerState.hideControls()
+                                                openedPanelDirectly = false
+                                            } else {
+                                                videoPlayerState.toggleControls(
+                                                    autoHide = isPlaying
+                                                )
                                             }
-                                            isPinchGesture = true
-                                            if (isHorizontalDrag) {
-                                                isGestureScrubbing = false
-                                                gestureScrubDeltaMs = 0L
-                                                isHorizontalDrag = false
-                                            }
-                                            if (isVerticalDrag) {
-                                                isVerticalGestureActive = false
-                                            }
-                                            isVerticalDrag = false
-
-                                            if (isZoomAllowed) {
-                                                val zoomChange = event.calculateZoom()
-                                                totalZoom *= zoomChange
-                                                event.changes.forEach { it.consume() }
-
-                                                if (totalZoom > 1.15f) {
-                                                    if (
-                                                        currentResizeMode != PlayerResizeMode.ZOOM
-                                                    ) {
-                                                        onResizeModeChange(PlayerResizeMode.ZOOM)
-                                                        totalZoom = 1f
-                                                        triggerPinchZoomFeedback()
+                                        },
+                                        onDoubleTap = { offset ->
+                                            if (isPanelOpen) {
+                                                videoPlayerState.sidePanelType =
+                                                    PlayerSidePanelType.NONE
+                                                videoPlayerState.hideControls()
+                                                openedPanelDirectly = false
+                                            } else {
+                                                val videoScreenWidth = size.width
+                                                if (offset.x < videoScreenWidth * 0.4f) {
+                                                    currentPerformSeekLeft()
+                                                } else if (offset.x > videoScreenWidth * 0.6f) {
+                                                    currentPerformSeekRight()
+                                                } else {
+                                                    // Center double tap: play / pause
+                                                    if (!isBuffering) {
+                                                        haptics.confirm()
                                                     }
-                                                } else if (totalZoom < 0.85f) {
-                                                    if (currentResizeMode != PlayerResizeMode.FIT) {
-                                                        onResizeModeChange(PlayerResizeMode.FIT)
-                                                        totalZoom = 1f
-                                                        triggerPinchZoomFeedback()
-                                                    }
+                                                    if (viewModel.player.isPlaying)
+                                                        viewModel.player.pause()
+                                                    else viewModel.player.play()
                                                 }
                                             }
-                                        } else if (!isPinchGesture) {
-                                            val dragChange = event.changes.firstOrNull() ?: break
-                                            if (dragChange.isConsumed) break
+                                        },
+                                    )
+                                }
+                            }
+                            .pointerInput(
+                                videoPlayerState.isControlsLocked,
+                                currentResizeMode,
+                                isPanelOpen,
+                                isGesturesMasterEnabled,
+                                isVBAllowed,
+                                isSeekAllowed,
+                                isZoomAllowed,
+                                isQuickSpeedAllowed,
+                            ) {
+                                if (
+                                    !videoPlayerState.isControlsLocked &&
+                                        !isPanelOpen &&
+                                        isGesturesMasterEnabled
+                                ) {
+                                    awaitEachGesture {
+                                        val down = awaitFirstDown(requireUnconsumed = false)
+                                        val videoScreenWidth = size.width
+                                        val videoScreenHeight = size.height
+                                        val horizontalEdgeExclusionPx = 28.dp.toPx()
+                                        val verticalEdgeExclusionPx = 48.dp.toPx()
+                                        val isHorizontalEdgeTouch =
+                                            down.position.x < horizontalEdgeExclusionPx ||
+                                                down.position.x >
+                                                    videoScreenWidth - horizontalEdgeExclusionPx
+                                        val isVerticalEdgeTouch =
+                                            down.position.y < verticalEdgeExclusionPx ||
+                                                down.position.y >
+                                                    videoScreenHeight - verticalEdgeExclusionPx
+                                        val isRightSide = down.position.x > videoScreenWidth / 2f
+                                        var totalDragY = 0f
+                                        var totalDragX = 0f
+                                        var isVerticalDrag = false
+                                        var isHorizontalDrag = false
+                                        var isPinchGesture = false
+                                        var totalZoom = 1f
+                                        var startPosition = viewModel.player.currentPosition
+                                        var continuousVolume = 0f
+                                        var continuousBrightness = 0f
+                                        var lastSetVolumeInt = -1
 
-                                            val pan = event.calculatePan()
-                                            totalDragY += pan.y
-                                            totalDragX += pan.x
+                                        var originalSpeed =
+                                            viewModel.player.playbackParameters.speed
+                                        var quickSpeedTriggered = false
+                                        val quickSpeedJob =
+                                            if (
+                                                isQuickSpeedAllowed &&
+                                                    !isHorizontalEdgeTouch &&
+                                                    !isVerticalEdgeTouch
+                                            ) {
+                                                coroutineScope.launch {
+                                                    delay(400.milliseconds)
+                                                    quickSpeedTriggered = true
+                                                    isQuickSpeedActive = true
+                                                    haptics.tick()
+                                                    originalSpeed =
+                                                        viewModel.player.playbackParameters.speed
+                                                    viewModel.player.playbackParameters =
+                                                        PlaybackParameters(2.0f)
+                                                }
+                                            } else null
 
-                                            if (!isVerticalDrag && !isHorizontalDrag) {
-                                                if (
-                                                    isVBAllowed &&
-                                                        !isHorizontalEdgeTouch &&
-                                                        !isVerticalEdgeTouch &&
-                                                        abs(totalDragY) > 20f &&
-                                                        abs(totalDragY) > abs(totalDragX) * 1.5f
-                                                ) {
-                                                    quickSpeedJob?.cancel()
-                                                    if (quickSpeedTriggered) {
-                                                        isQuickSpeedActive = false
-                                                        viewModel.player.playbackParameters =
-                                                            PlaybackParameters(originalSpeed)
+                                        while (true) {
+                                            val event = awaitPointerEvent()
+                                            val pressedChanges = event.changes.filter { it.pressed }
+                                            if (pressedChanges.isEmpty()) {
+                                                quickSpeedJob?.cancel()
+                                                if (quickSpeedTriggered) {
+                                                    isQuickSpeedActive = false
+                                                    viewModel.player.playbackParameters =
+                                                        PlaybackParameters(originalSpeed)
+                                                }
+                                                if (isHorizontalDrag) {
+                                                    haptics.gestureEnd()
+                                                    viewModel.player.seekTo(gestureScrubPositionMs)
+                                                    isGestureScrubbing = false
+                                                    gestureScrubDeltaMs = 0L
+                                                }
+                                                if (isVerticalDrag) {
+                                                    isVerticalGestureActive = false
+                                                }
+                                                break
+                                            }
+
+                                            if (pressedChanges.size >= 2) {
+                                                quickSpeedJob?.cancel()
+                                                if (quickSpeedTriggered) {
+                                                    isQuickSpeedActive = false
+                                                    viewModel.player.playbackParameters =
+                                                        PlaybackParameters(originalSpeed)
+                                                }
+                                                isPinchGesture = true
+                                                if (isHorizontalDrag) {
+                                                    isGestureScrubbing = false
+                                                    gestureScrubDeltaMs = 0L
+                                                    isHorizontalDrag = false
+                                                }
+                                                if (isVerticalDrag) {
+                                                    isVerticalGestureActive = false
+                                                }
+                                                isVerticalDrag = false
+
+                                                if (isZoomAllowed) {
+                                                    val zoomChange = event.calculateZoom()
+                                                    totalZoom *= zoomChange
+                                                    event.changes.forEach { it.consume() }
+
+                                                    if (totalZoom > 1.15f) {
+                                                        if (
+                                                            currentResizeMode !=
+                                                                PlayerResizeMode.ZOOM
+                                                        ) {
+                                                            onResizeModeChange(
+                                                                PlayerResizeMode.ZOOM
+                                                            )
+                                                            totalZoom = 1f
+                                                            triggerPinchZoomFeedback()
+                                                        }
+                                                    } else if (totalZoom < 0.85f) {
+                                                        if (
+                                                            currentResizeMode !=
+                                                                PlayerResizeMode.FIT
+                                                        ) {
+                                                            onResizeModeChange(PlayerResizeMode.FIT)
+                                                            totalZoom = 1f
+                                                            triggerPinchZoomFeedback()
+                                                        }
                                                     }
-                                                    isVerticalDrag = true
-                                                    isVerticalGestureActive = true
+                                                }
+                                            } else if (!isPinchGesture) {
+                                                val dragChange =
+                                                    event.changes.firstOrNull() ?: break
+                                                if (dragChange.isConsumed) break
+
+                                                val pan = event.calculatePan()
+                                                totalDragY += pan.y
+                                                totalDragX += pan.x
+
+                                                if (!isVerticalDrag && !isHorizontalDrag) {
+                                                    if (
+                                                        isVBAllowed &&
+                                                            !isHorizontalEdgeTouch &&
+                                                            !isVerticalEdgeTouch &&
+                                                            abs(totalDragY) > 20f &&
+                                                            abs(totalDragY) > abs(totalDragX) * 1.5f
+                                                    ) {
+                                                        quickSpeedJob?.cancel()
+                                                        if (quickSpeedTriggered) {
+                                                            isQuickSpeedActive = false
+                                                            viewModel.player.playbackParameters =
+                                                                PlaybackParameters(originalSpeed)
+                                                        }
+                                                        isVerticalDrag = true
+                                                        isVerticalGestureActive = true
+                                                        if (isRightSide) {
+                                                            val maxVol =
+                                                                audioManager.getStreamMaxVolume(
+                                                                    AudioManager.STREAM_MUSIC
+                                                                )
+                                                            val currentVol =
+                                                                audioManager.getStreamVolume(
+                                                                    AudioManager.STREAM_MUSIC
+                                                                )
+                                                            continuousVolume =
+                                                                if (isVolumeHudVisible) {
+                                                                    volumeLevel
+                                                                } else if (maxVol > 0) {
+                                                                    currentVol.toFloat() /
+                                                                        maxVol.toFloat()
+                                                                } else {
+                                                                    0f
+                                                                }
+                                                            lastSetVolumeInt = currentVol
+                                                            volumeLevel = continuousVolume
+                                                        } else {
+                                                            if (activity != null) {
+                                                                val lp = activity.window.attributes
+                                                                continuousBrightness =
+                                                                    if (lp.screenBrightness < 0f) {
+                                                                        try {
+                                                                            Settings.System
+                                                                                .getFloat(
+                                                                                    activity
+                                                                                        .contentResolver,
+                                                                                    Settings.System
+                                                                                        .SCREEN_BRIGHTNESS,
+                                                                                    128f,
+                                                                                ) / 255f
+                                                                        } catch (_: Exception) {
+                                                                            0.5f
+                                                                        }
+                                                                    } else {
+                                                                        brightnessLevel
+                                                                    }
+                                                                brightnessLevel =
+                                                                    continuousBrightness
+                                                            }
+                                                        }
+                                                    } else if (
+                                                        isSeekAllowed &&
+                                                            !isHorizontalEdgeTouch &&
+                                                            !isVerticalEdgeTouch &&
+                                                            abs(totalDragX) > 25f &&
+                                                            abs(totalDragX) > abs(totalDragY) * 1.5f
+                                                    ) {
+                                                        quickSpeedJob?.cancel()
+                                                        if (quickSpeedTriggered) {
+                                                            isQuickSpeedActive = false
+                                                            viewModel.player.playbackParameters =
+                                                                PlaybackParameters(originalSpeed)
+                                                        }
+                                                        isHorizontalDrag = true
+                                                        haptics.gestureStart()
+                                                        startPosition =
+                                                            viewModel.player.currentPosition
+                                                        isGestureScrubbing = true
+                                                    }
+                                                }
+
+                                                if (isVerticalDrag) {
+                                                    dragChange.consume()
+                                                    val deltaPercent =
+                                                        -pan.y / (size.height * 0.75f)
                                                     if (isRightSide) {
                                                         val maxVol =
                                                             audioManager.getStreamMaxVolume(
                                                                 AudioManager.STREAM_MUSIC
                                                             )
-                                                        val currentVol =
-                                                            audioManager.getStreamVolume(
-                                                                AudioManager.STREAM_MUSIC
-                                                            )
-                                                        continuousVolume =
-                                                            if (isVolumeHudVisible) {
-                                                                volumeLevel
-                                                            } else if (maxVol > 0) {
-                                                                currentVol.toFloat() /
-                                                                    maxVol.toFloat()
-                                                            } else {
-                                                                0f
-                                                            }
-                                                        lastSetVolumeInt = currentVol
-                                                        volumeLevel = continuousVolume
-                                                    } else {
-                                                        if (activity != null) {
-                                                            val lp = activity.window.attributes
-                                                            continuousBrightness =
-                                                                if (lp.screenBrightness < 0f) {
-                                                                    try {
-                                                                        Settings.System.getFloat(
-                                                                            activity
-                                                                                .contentResolver,
-                                                                            Settings.System
-                                                                                .SCREEN_BRIGHTNESS,
-                                                                            128f,
-                                                                        ) / 255f
-                                                                    } catch (_: Exception) {
-                                                                        0.5f
-                                                                    }
-                                                                } else {
-                                                                    brightnessLevel
-                                                                }
-                                                            brightnessLevel = continuousBrightness
-                                                        }
-                                                    }
-                                                } else if (
-                                                    isSeekAllowed &&
-                                                        !isHorizontalEdgeTouch &&
-                                                        !isVerticalEdgeTouch &&
-                                                        abs(totalDragX) > 25f &&
-                                                        abs(totalDragX) > abs(totalDragY) * 1.5f
-                                                ) {
-                                                    quickSpeedJob?.cancel()
-                                                    if (quickSpeedTriggered) {
-                                                        isQuickSpeedActive = false
-                                                        viewModel.player.playbackParameters =
-                                                            PlaybackParameters(originalSpeed)
-                                                    }
-                                                    isHorizontalDrag = true
-                                                    haptics.gestureStart()
-                                                    startPosition = viewModel.player.currentPosition
-                                                    isGestureScrubbing = true
-                                                }
-                                            }
-
-                                            if (isVerticalDrag) {
-                                                dragChange.consume()
-                                                val deltaPercent = -pan.y / (size.height * 0.75f)
-                                                if (isRightSide) {
-                                                    val maxVol =
-                                                        audioManager.getStreamMaxVolume(
-                                                            AudioManager.STREAM_MUSIC
-                                                        )
-                                                    val newContinuousVolume =
-                                                        (continuousVolume + deltaPercent).coerceIn(
-                                                            0f,
-                                                            1f,
-                                                        )
-                                                    if (
-                                                        (continuousVolume < 1f &&
-                                                            newContinuousVolume == 1f) ||
-                                                            (continuousVolume > 0f &&
-                                                                newContinuousVolume == 0f)
-                                                    ) {
-                                                        haptics.boundary()
-                                                    }
-                                                    continuousVolume = newContinuousVolume
-                                                    volumeLevel = continuousVolume
-                                                    val targetVol =
-                                                        kotlin.math
-                                                            .round(continuousVolume * maxVol)
-                                                            .toInt()
-                                                    if (targetVol != lastSetVolumeInt) {
-                                                        audioManager.setStreamVolume(
-                                                            AudioManager.STREAM_MUSIC,
-                                                            targetVol,
-                                                            0,
-                                                        )
-                                                        lastSetVolumeInt = targetVol
-                                                    }
-                                                    isVolumeHudVisible = true
-                                                    volumeJob?.cancel()
-                                                    volumeJob = coroutineScope.launch {
-                                                        delay(1200.milliseconds)
-                                                        isVolumeHudVisible = false
-                                                    }
-                                                } else {
-                                                    if (activity != null) {
-                                                        val newContinuousBrightness =
-                                                            (continuousBrightness + deltaPercent)
+                                                        val newContinuousVolume =
+                                                            (continuousVolume + deltaPercent)
                                                                 .coerceIn(
                                                                     0f,
                                                                     1f,
                                                                 )
                                                         if (
-                                                            (continuousBrightness < 1f &&
-                                                                newContinuousBrightness == 1f) ||
-                                                                (continuousBrightness > 0f &&
-                                                                    newContinuousBrightness == 0f)
+                                                            (continuousVolume < 1f &&
+                                                                newContinuousVolume == 1f) ||
+                                                                (continuousVolume > 0f &&
+                                                                    newContinuousVolume == 0f)
                                                         ) {
                                                             haptics.boundary()
                                                         }
-                                                        continuousBrightness =
-                                                            newContinuousBrightness
-                                                        val lp = activity.window.attributes
-                                                        lp.screenBrightness =
-                                                            continuousBrightness.coerceIn(0.01f, 1f)
-                                                        activity.window.attributes = lp
-                                                        brightnessLevel = continuousBrightness
-                                                        if (isBrightnessRememberEnabled) {
-                                                            prefs.setValue(
-                                                                prefs.playerBrightness,
-                                                                continuousBrightness,
+                                                        continuousVolume = newContinuousVolume
+                                                        volumeLevel = continuousVolume
+                                                        val targetVol =
+                                                            kotlin.math
+                                                                .round(continuousVolume * maxVol)
+                                                                .toInt()
+                                                        if (targetVol != lastSetVolumeInt) {
+                                                            audioManager.setStreamVolume(
+                                                                AudioManager.STREAM_MUSIC,
+                                                                targetVol,
+                                                                0,
                                                             )
+                                                            lastSetVolumeInt = targetVol
                                                         }
-                                                        isBrightnessHudVisible = true
-                                                        brightnessJob?.cancel()
-                                                        brightnessJob = coroutineScope.launch {
+                                                        isVolumeHudVisible = true
+                                                        volumeJob?.cancel()
+                                                        volumeJob = coroutineScope.launch {
                                                             delay(1200.milliseconds)
-                                                            isBrightnessHudVisible = false
+                                                            isVolumeHudVisible = false
+                                                        }
+                                                    } else {
+                                                        if (activity != null) {
+                                                            val newContinuousBrightness =
+                                                                (continuousBrightness +
+                                                                        deltaPercent)
+                                                                    .coerceIn(
+                                                                        0f,
+                                                                        1f,
+                                                                    )
+                                                            if (
+                                                                (continuousBrightness < 1f &&
+                                                                    newContinuousBrightness ==
+                                                                        1f) ||
+                                                                    (continuousBrightness > 0f &&
+                                                                        newContinuousBrightness ==
+                                                                            0f)
+                                                            ) {
+                                                                haptics.boundary()
+                                                            }
+                                                            continuousBrightness =
+                                                                newContinuousBrightness
+                                                            val lp = activity.window.attributes
+                                                            lp.screenBrightness =
+                                                                continuousBrightness.coerceIn(
+                                                                    0.01f,
+                                                                    1f,
+                                                                )
+                                                            activity.window.attributes = lp
+                                                            brightnessLevel = continuousBrightness
+                                                            if (isBrightnessRememberEnabled) {
+                                                                prefs.setValue(
+                                                                    prefs.playerBrightness,
+                                                                    continuousBrightness,
+                                                                )
+                                                            }
+                                                            isBrightnessHudVisible = true
+                                                            brightnessJob?.cancel()
+                                                            brightnessJob = coroutineScope.launch {
+                                                                delay(1200.milliseconds)
+                                                                isBrightnessHudVisible = false
+                                                            }
                                                         }
                                                     }
+                                                } else if (isHorizontalDrag) {
+                                                    dragChange.consume()
+                                                    val duration =
+                                                        viewModel.player.duration.coerceAtLeast(0L)
+                                                    val deltaMs =
+                                                        (totalDragX / size.width * 120_000L)
+                                                            .toLong()
+                                                    val targetPos =
+                                                        (startPosition + deltaMs).coerceIn(
+                                                            0L,
+                                                            duration,
+                                                        )
+                                                    gestureScrubPositionMs = targetPos
+                                                    gestureScrubDeltaMs = deltaMs
                                                 }
-                                            } else if (isHorizontalDrag) {
-                                                dragChange.consume()
-                                                val duration =
-                                                    viewModel.player.duration.coerceAtLeast(0L)
-                                                val deltaMs =
-                                                    (totalDragX / size.width * 120_000L).toLong()
-                                                val targetPos =
-                                                    (startPosition + deltaMs).coerceIn(0L, duration)
-                                                gestureScrubPositionMs = targetPos
-                                                gestureScrubDeltaMs = deltaMs
                                             }
                                         }
                                     }
                                 }
                             }
-                        }
-            )
+                )
+            }
 
             // Volume / Brightness HUD
             VolumeBrightnessOverlay(
@@ -1206,10 +1423,15 @@ fun PlayerScreen(
             )
 
             // Hold for 2x speed quick speed overlay
-            Box(modifier = Modifier.align(Alignment.TopCenter).padding(top = 48.dp).zIndex(10f)) {
+            Box(
+                modifier =
+                    Modifier.align(Alignment.TopCenter)
+                        .padding(top = insets.calculateTopPadding() + 20.dp)
+                        .zIndex(10f)
+            ) {
                 QuickSpeedOverlay(
                     visible = isQuickSpeedActive,
-                    speed = "2x",
+                    speed = "2\u00D7",
                 )
             }
 
@@ -1249,10 +1471,7 @@ fun PlayerScreen(
                     fadeOut(tween(150)) + scaleOut(targetScale = 0.9f, animationSpec = tween(150)),
                 modifier =
                     Modifier.align(Alignment.BottomStart)
-                        .padding(
-                            bottom =
-                                insets.calculateBottomPadding() + 12.dp + 48.dp + videoPaddingInset
-                        )
+                        .padding(bottom = trickplayBottomPadding)
                         .offset(x = clampedOffsetX)
                         .zIndex(7f),
             ) {
@@ -1335,8 +1554,8 @@ fun PlayerScreen(
                     videoPlayerState.controlsVisible &&
                         !videoPlayerState.isControlsLocked &&
                         !isPanelOpen,
-                enter = fadeIn(tween(220)),
-                exit = fadeOut(tween(180)),
+                enter = fadeIn(panelFadeAnimSpec),
+                exit = fadeOut(panelFadeAnimSpec),
                 modifier = Modifier.fillMaxSize().zIndex(4f),
             ) {
                 Box(
@@ -1345,8 +1564,8 @@ fun PlayerScreen(
                             .padding(
                                 start = videoPaddingInset,
                                 end = videoPaddingEnd,
-                                top = videoPaddingInset,
-                                bottom = videoPaddingInset,
+                                top = videoPaddingTop,
+                                bottom = videoPaddingBottom,
                             )
                             .clip(RoundedCornerShape(videoCornerRadius))
                             .background(
@@ -1457,6 +1676,7 @@ fun PlayerScreen(
                         },
                         contentProgress = currentPosition.milliseconds,
                         contentDuration = viewModel.player.duration.coerceAtLeast(0L).milliseconds,
+                        bufferedProgress = bufferedPosition.milliseconds,
                         chapters =
                             if (uiState.showChapterMarkers) uiState.currentChapters
                             else emptyList(),

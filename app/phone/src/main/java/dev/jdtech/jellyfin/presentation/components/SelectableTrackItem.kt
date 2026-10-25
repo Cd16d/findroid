@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -33,10 +32,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import dev.jdtech.jellyfin.core.R as CoreR
+import dev.jdtech.jellyfin.core.presentation.theme.CentralShapes
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 
-val TrackItemShape = RoundedCornerShape(24.dp)
-private val ChipShape = RoundedCornerShape(6.dp)
+val TrackItemShape = CentralShapes.GroupSingle
 
 /**
  * Selectable list row displaying track name, characteristic badges, checkmark indicator, and
@@ -150,7 +149,7 @@ fun SelectableTrackItem(
                     for (chip in chips) {
                         Box(
                             modifier =
-                                Modifier.clip(ChipShape)
+                                Modifier.clip(CentralShapes.Chip)
                                     .background(
                                         if (isSelected)
                                             MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)

@@ -15,24 +15,58 @@ data class FindroidSource(
     val size: Long,
     val mediaStreams: List<FindroidMediaStream>,
     val downloadId: Long? = null,
+    val supportsDirectPlay: Boolean = true,
+    val supportsDirectStream: Boolean = true,
+    val supportsTranscoding: Boolean = true,
+    val transcodingUrl: String? = null,
+    val playSessionId: String? = null,
+    val container: String? = null,
+    val bitrate: Int? = null,
 )
 
 suspend fun MediaSourceInfo.toFindroidSource(
     jellyfinRepository: JellyfinRepository,
     itemId: UUID,
     includePath: Boolean = false,
+    playSessionId: String? = null,
+    audioStreamIndex: Int? = null,
 ): FindroidSource {
+    val effectiveTranscodingUrl =
+        if (!transcodingUrl.isNullOrBlank() && audioStreamIndex != null) {
+            if (transcodingUrl!!.contains(Regex("(?i)AudioStreamIndex="))) {
+                transcodingUrl!!.replace(
+                    Regex("(?i)AudioStreamIndex=\\d+"),
+                    "AudioStreamIndex=$audioStreamIndex",
+                )
+            } else {
+                val sep = if (transcodingUrl!!.contains("?")) "&" else "?"
+                "$transcodingUrl${sep}AudioStreamIndex=$audioStreamIndex"
+            }
+        } else {
+            transcodingUrl
+        }
+
     val path =
-        when (protocol) {
-            MediaProtocol.FILE -> {
-                try {
-                    if (includePath) jellyfinRepository.getStreamUrl(itemId, id.orEmpty()) else ""
-                } catch (_: Exception) {
-                    ""
+        if (includePath) {
+            val transUrl = effectiveTranscodingUrl
+            if (!transUrl.isNullOrBlank()) {
+                val cleanPath = if (transUrl.startsWith("/")) transUrl else "/$transUrl"
+                jellyfinRepository.getBaseUrl().removeSuffix("/") + cleanPath
+            } else {
+                when (protocol) {
+                    MediaProtocol.FILE -> {
+                        try {
+                            jellyfinRepository.getStreamUrl(itemId, id.orEmpty())
+                        } catch (_: Exception) {
+                            ""
+                        }
+                    }
+                    MediaProtocol.HTTP -> this.path.orEmpty()
+                    else -> ""
                 }
             }
-            MediaProtocol.HTTP -> this.path.orEmpty()
-            else -> ""
+        } else {
+            ""
         }
     return FindroidSource(
         id = id.orEmpty(),
@@ -42,6 +76,13 @@ suspend fun MediaSourceInfo.toFindroidSource(
         size = size ?: 0,
         mediaStreams =
             mediaStreams?.map { it.toFindroidMediaStream(jellyfinRepository) } ?: emptyList(),
+        supportsDirectPlay = supportsDirectPlay,
+        supportsDirectStream = supportsDirectStream,
+        supportsTranscoding = supportsTranscoding,
+        transcodingUrl = effectiveTranscodingUrl,
+        playSessionId = playSessionId,
+        container = container,
+        bitrate = bitrate,
     )
 }
 

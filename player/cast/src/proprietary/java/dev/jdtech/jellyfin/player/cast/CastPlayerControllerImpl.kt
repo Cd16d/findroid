@@ -1,7 +1,6 @@
 package dev.jdtech.jellyfin.player.cast
 
 import android.content.Context
-import android.media.AudioManager
 import android.net.Uri
 import com.google.android.gms.cast.Cast
 import com.google.android.gms.cast.MediaError
@@ -24,12 +23,14 @@ import dev.jdtech.jellyfin.player.cast.models.CastConnectionState
 import dev.jdtech.jellyfin.player.cast.models.CastMediaItem
 import dev.jdtech.jellyfin.player.cast.models.CastPlaybackStatus
 import dev.jdtech.jellyfin.player.cast.models.CastPlayerState
+import dev.jdtech.jellyfin.player.core.domain.PlayMethodHelper
 import dev.jdtech.jellyfin.player.core.domain.PlaybackManager
 import dev.jdtech.jellyfin.player.core.domain.PlaylistManager
 import dev.jdtech.jellyfin.player.core.domain.models.PlayerItem
 import dev.jdtech.jellyfin.player.core.domain.models.PlayerMediaType
 import dev.jdtech.jellyfin.player.core.domain.models.Track
 import dev.jdtech.jellyfin.player.core.domain.utils.NetworkSpeedUtils.measureNetworkSpeed
+import dev.jdtech.jellyfin.player.core.domain.utils.StreamUtils
 import dev.jdtech.jellyfin.settings.domain.AppPreferences
 import dev.jdtech.jellyfin.utils.getTranslatablePartName
 import java.util.concurrent.ConcurrentHashMap
@@ -75,27 +76,6 @@ constructor(
     internal var mainDispatcher: CoroutineDispatcher = Dispatchers.Main.immediate
     internal var ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 
-    constructor(
-        context: Context,
-        jellyfinApi: JellyfinApi,
-        sessionManager: CastSessionManager,
-        playbackManager: PlaybackManager,
-        playlistManager: PlaylistManager,
-        appPreferences: AppPreferences,
-        mainDispatcher: CoroutineDispatcher,
-        ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
-    ) : this(
-        context,
-        jellyfinApi,
-        sessionManager,
-        playbackManager,
-        playlistManager,
-        appPreferences,
-    ) {
-        this.mainDispatcher = mainDispatcher
-        this.ioDispatcher = ioDispatcher
-    }
-
     private val _currentItem = MutableStateFlow<CastMediaItem?>(null)
     override val currentItem: StateFlow<CastMediaItem?> = _currentItem.asStateFlow()
 
@@ -127,10 +107,6 @@ constructor(
     private var audioTrackJob: Job? = null
     private var queueJob: Job? = null
 
-    private val audioManager: AudioManager? by lazy {
-        context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
-    }
-
     @Volatile private var isSessionRestored = false
     @Volatile private var isReporting = false
     @Volatile private var lastActiveItemId: Int = MediaQueueItem.INVALID_ITEM_ID
@@ -150,14 +126,6 @@ constructor(
 
     private val itemCache = ConcurrentHashMap<UUID, CastMediaItem>()
     private val itemDuration = ConcurrentHashMap<UUID, Long>()
-
-    private fun abandonAudioFocus() {
-        try {
-            @Suppress("DEPRECATION") audioManager?.abandonAudioFocus(null)
-        } catch (e: Exception) {
-            Timber.e(e, "Failed to abandon audio focus")
-        }
-    }
 
     private val remoteMediaClientCallback =
         object : RemoteMediaClient.Callback() {
@@ -217,7 +185,7 @@ constructor(
                         val previousUuid =
                             try {
                                 previousItemIdStr?.toUUID()
-                            } catch (e: Exception) {
+                            } catch (_: Exception) {
                                 null
                             } ?: lastActiveItemUuid
 
@@ -235,7 +203,7 @@ constructor(
                     lastActiveItemUuid =
                         try {
                             currentItemIdStr?.toUUID()
-                        } catch (e: Exception) {
+                        } catch (_: Exception) {
                             null
                         }
                 }
@@ -310,8 +278,6 @@ constructor(
 
                 if (state == CastConnectionState.CONNECTED && session != null) {
                     if (session != castSession) {
-                        abandonAudioFocus()
-
                         // Cleanup previous session
                         if (castSession != null) {
                             try {
@@ -421,6 +387,7 @@ constructor(
         return when (client.playerState) {
             MediaStatus.PLAYER_STATE_BUFFERING,
             MediaStatus.PLAYER_STATE_LOADING -> CastPlaybackStatus.BUFFERING
+
             MediaStatus.PLAYER_STATE_PLAYING -> CastPlaybackStatus.PLAYING
             MediaStatus.PLAYER_STATE_PAUSED -> CastPlaybackStatus.PAUSED
             MediaStatus.PLAYER_STATE_IDLE -> {
@@ -455,7 +422,6 @@ constructor(
             }
 
             CastPlaybackStatus.PLAYING -> {
-                abandonAudioFocus()
                 startReporting()
                 try {
                     remoteMediaClient?.removeProgressListener(remoteMediaClientProgressListener)
@@ -528,11 +494,11 @@ constructor(
                 }
 
             playMethod =
-                when {
-                    mediaSource?.supportsDirectPlay ?: false -> PlayMethod.DIRECT_PLAY
-                    mediaSource?.supportsDirectStream ?: false -> PlayMethod.DIRECT_STREAM
-                    else -> PlayMethod.TRANSCODE
-                }
+                PlayMethodHelper.determinePlayMethod(
+                    supportsDirectPlay = mediaSource?.supportsDirectPlay ?: false,
+                    enableDirectPlay = true,
+                    transcodingUrl = mediaSource?.transcodingUrl,
+                )
 
             scope.launch {
                 try {
@@ -645,7 +611,7 @@ constructor(
             val uuid =
                 try {
                     itemIdStr.toUUID()
-                } catch (e: Exception) {
+                } catch (_: Exception) {
                     null
                 }
             if (uuid != null && !itemCache.containsKey(uuid)) {
@@ -745,17 +711,12 @@ constructor(
                     Chromecast.deviceProfile
                 }
 
-            val settingBitrateKbps = appPreferences.getValue(appPreferences.castMaxBitrateKbps)
-            val settingBitrateBps =
-                (settingBitrateKbps * 1_000L).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
-            val currentMaxBitrate = maxBitrate
             val maxStreamingBitrate =
-                when {
-                    settingBitrateBps > 0 && currentMaxBitrate != null ->
-                        minOf(currentMaxBitrate, settingBitrateBps)
-                    settingBitrateBps > 0 -> settingBitrateBps
-                    else -> currentMaxBitrate
-                }
+                StreamUtils.computeEffectiveBitrate(
+                    settingMaxBitrateKbps =
+                        appPreferences.getValue(appPreferences.castMaxBitrateKbps),
+                    requestedBitrate = maxBitrate,
+                )
 
             try {
                 jellyfinApi.mediaInfoApi
@@ -859,40 +820,20 @@ constructor(
 
             val mediaSource = playbackInfo.mediaSources.firstOrNull() ?: return@withContext null
 
-            val (streamUrlOriginal, contentType) =
-                if (mediaSource.supportsDirectPlay) {
-                    val url =
-                        "$baseUrl/Videos/${item.itemId}/stream?static=true&MediaSourceId=${mediaSource.id}"
-                    val mimeType =
-                        mediaSource.container?.let { if (it.contains("/")) it else "video/$it" }
-                            ?: "video/mp4"
-                    url to mimeType
-                } else {
-                    val transcodingUrl = mediaSource.transcodingUrl
-                    val path =
-                        if (transcodingUrl != null) {
-                            if (transcodingUrl.startsWith("/")) transcodingUrl
-                            else "/$transcodingUrl"
-                        } else {
-                            "/Videos/${item.itemId}/stream?MediaSourceId=${mediaSource.id}"
-                        }
-                    val url = "$baseUrl$path"
-                    url to "application/x-mpegurl"
-                }
-
             val streamUrl =
-                if (audioStreamIndex != null) {
-                    if (streamUrlOriginal.contains("AudioStreamIndex=")) {
-                        streamUrlOriginal.replace(
-                            Regex("AudioStreamIndex=\\d+"),
-                            "AudioStreamIndex=$audioStreamIndex",
-                        )
-                    } else {
-                        val separator = if (streamUrlOriginal.contains("?")) "&" else "?"
-                        "$streamUrlOriginal${separator}AudioStreamIndex=$audioStreamIndex"
-                    }
+                StreamUtils.buildStreamUrl(
+                    baseUrl = baseUrl,
+                    itemId = item.itemId,
+                    mediaSourceId = mediaSource.id,
+                    transcodingUrl = mediaSource.transcodingUrl,
+                    audioStreamIndex = audioStreamIndex,
+                )
+            val contentType =
+                if (mediaSource.supportsDirectPlay && mediaSource.transcodingUrl.isNullOrBlank()) {
+                    mediaSource.container?.let { if (it.contains("/")) it else "video/$it" }
+                        ?: "video/mp4"
                 } else {
-                    streamUrlOriginal
+                    "application/x-mpegurl"
                 }
 
             Timber.d("Video url: $streamUrl")
@@ -990,9 +931,7 @@ constructor(
                         label = stream.title ?: stream.displayTitle,
                         language = stream.language,
                         codec = stream.codec,
-                        selected =
-                            if (audioStreamIndex != null) stream.index == audioStreamIndex
-                            else false,
+                        selected = audioStreamIndex != null && stream.index == audioStreamIndex,
                         supported = true,
                         isExternal = stream.isExternal,
                         isForced = stream.isForced,
@@ -1022,8 +961,6 @@ constructor(
         isReporting = false
         itemCache.clear()
         itemDuration.clear()
-
-        abandonAudioFocus()
 
         playJob?.cancel()
         playJob = scope.launch {
@@ -1186,7 +1123,6 @@ constructor(
 
     override fun play() {
         try {
-            abandonAudioFocus()
             remoteMediaClient?.play()
         } catch (e: Exception) {
             Timber.e(e, "Failed to play")

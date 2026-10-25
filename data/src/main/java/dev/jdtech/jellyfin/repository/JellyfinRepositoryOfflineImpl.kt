@@ -352,7 +352,14 @@ class JellyfinRepositoryOfflineImpl(
             items
         }
 
-    override suspend fun getMediaSources(itemId: UUID, includePath: Boolean): List<FindroidSource> =
+    override suspend fun getMediaSources(
+        itemId: UUID,
+        includePath: Boolean,
+        maxStreamingBitrate: Int?,
+        audioStreamIndex: Int?,
+        deviceProfile: org.jellyfin.sdk.model.api.DeviceProfile?,
+        enableDirectPlay: Boolean,
+    ): List<FindroidSource> =
         withContext(Dispatchers.IO) {
             val userId = jellyfinApi.userId
             if (userId != null && database.isItemDownloadedForUser(userId, itemId)) {
@@ -470,6 +477,10 @@ class JellyfinRepositoryOfflineImpl(
         return jellyfinApi.api.baseUrl.orEmpty()
     }
 
+    override fun getDeviceName(): String {
+        return appPreferences.getValue(appPreferences.customDeviceName)
+    }
+
     override suspend fun updateDeviceName(name: String) {}
 
     override suspend fun getUserConfiguration(): UserConfiguration? {
@@ -520,4 +531,8 @@ class JellyfinRepositoryOfflineImpl(
     }
 
     override suspend fun canTranscode(): Boolean = false
+
+    override suspend fun getActiveTranscodingInfo(
+        playSessionId: String?
+    ): org.jellyfin.sdk.model.api.TranscodingInfo? = null
 }

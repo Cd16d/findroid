@@ -174,8 +174,9 @@ class MPVPlayer(
         // Cache
         mpvLib.setOptionString("cache", "yes")
         mpvLib.setOptionString("cache-pause-initial", "yes")
-        mpvLib.setOptionString("demuxer-max-bytes", "64MiB")
-        mpvLib.setOptionString("demuxer-max-back-bytes", "32MiB")
+        mpvLib.setOptionString("demuxer-readahead-secs", "30")
+        mpvLib.setOptionString("demuxer-max-bytes", "150MiB")
+        mpvLib.setOptionString("demuxer-max-back-bytes", "50MiB")
 
         // Subs
         mpvLib.setOptionString("sub-scale-with-window", "yes")
@@ -624,7 +625,7 @@ class MPVPlayer(
              * @return The index of the period, or [C.INDEX_UNSET] if the period was not found.
              */
             override fun getIndexOfPeriod(uid: Any): Int {
-                return if (uid is Int) uid else C.INDEX_UNSET
+                return uid as? Int ?: C.INDEX_UNSET
             }
 
             /**
@@ -1033,18 +1034,16 @@ class MPVPlayer(
                     arrayOf(
                         /* command= */ "sub-add",
                         /* url= */ "${subtitle.uri}",
-                        /* flags= */ "async",
+                        /* flags= */ "auto",
                         /* title= */ "${subtitle.label}",
                         /* lang= */ "${subtitle.language}",
                     )
                 )
             }
             // Only set the playlist index when the index is not the currently playing item.
-            // Otherwise
-            // playback will be restarted.
+            // Otherwise, playback will be restarted.
             // This is a problem on initial load when the first item is still loading causing
-            // duplicate
-            // external subtitle entries.
+            // duplicate external subtitle entries.
             if (currentMediaItemIndex != index) {
                 mpvLib.command(arrayOf("playlist-play-index", "$index"))
             }
@@ -1124,10 +1123,10 @@ class MPVPlayer(
         // Overrides
         val notOverriddenTypes =
             mutableSetOf(MPVTrackType.VIDEO, MPVTrackType.AUDIO, MPVTrackType.SUBTITLE)
-        for (override in parameters.overrides) {
-            val trackType = MPVTrackType.fromMedia3TrackType(override.key.type)
+        for ((key) in parameters.overrides) {
+            val trackType = MPVTrackType.fromMedia3TrackType(key.type)
             notOverriddenTypes.remove(trackType)
-            val id = override.key.getFormat(0).id ?: continue
+            val id = key.getFormat(0).id ?: continue
 
             selectTrack(trackType, id)
         }
@@ -1377,6 +1376,12 @@ class MPVPlayer(
         val height = mpvLib.getPropertyInt("height")
         if (width == null || height == null) return VideoSize.UNKNOWN
         return VideoSize(width, height)
+    }
+
+    fun getDroppedFrames(): Long {
+        val drop = mpvLib.getPropertyInt("drop-frame-count") ?: 0
+        val voDrop = mpvLib.getPropertyInt("vo-drop-frame-count") ?: 0
+        return (drop + voDrop).toLong()
     }
 
     override fun getSurfaceSize(): Size {

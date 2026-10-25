@@ -22,6 +22,15 @@ data class FindroidMediaStream(
     val isDefault: Boolean?,
     val isForced: Boolean? = false,
     val isHearingImpaired: Boolean? = false,
+    val isOriginal: Boolean? = false,
+    val bitRate: Int? = null,
+    val bitDepth: Int? = null,
+    val frameRate: Float? = null,
+    val channels: Int? = null,
+    val sampleRate: Int? = null,
+    val profile: String? = null,
+    val level: Double? = null,
+    val pixelFormat: String? = null,
 )
 
 fun MediaStream.toFindroidMediaStream(jellyfinRepository: JellyfinRepository): FindroidMediaStream {
@@ -42,6 +51,15 @@ fun MediaStream.toFindroidMediaStream(jellyfinRepository: JellyfinRepository): F
         isDefault = isDefault,
         isForced = isForced,
         isHearingImpaired = isHearingImpaired,
+        isOriginal = isOriginal,
+        bitRate = bitRate,
+        bitDepth = bitDepth,
+        frameRate = realFrameRate ?: averageFrameRate,
+        channels = channels,
+        sampleRate = sampleRate,
+        profile = profile,
+        level = level,
+        pixelFormat = pixelFormat,
     )
 }
 
