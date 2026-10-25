@@ -27,10 +27,12 @@ import androidx.compose.ui.unit.dp
 import dev.jdtech.jellyfin.core.R
 import dev.jdtech.jellyfin.core.presentation.dummy.dummyEpisode
 import dev.jdtech.jellyfin.core.presentation.dummy.dummyMovie
+import dev.jdtech.jellyfin.core.presentation.dummy.dummySeason
 import dev.jdtech.jellyfin.core.presentation.dummy.dummyShow
 import dev.jdtech.jellyfin.models.FindroidEpisode
 import dev.jdtech.jellyfin.models.FindroidItem
 import dev.jdtech.jellyfin.models.FindroidMovie
+import dev.jdtech.jellyfin.models.FindroidSeason
 import dev.jdtech.jellyfin.models.FindroidShow
 import dev.jdtech.jellyfin.models.isDownloaded
 import dev.jdtech.jellyfin.presentation.components.SpoilerMask
@@ -107,7 +109,12 @@ fun ItemCard(
         }
         Spacer(modifier = Modifier.height(MaterialTheme.spacings.extraSmall))
         Text(
-            text = if (item is FindroidEpisode) item.seriesName else item.name,
+            text =
+                when (item) {
+                    is FindroidEpisode -> item.seriesName
+                    is FindroidSeason -> item.seriesName.ifBlank { item.name }
+                    else -> item.name
+                },
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.SemiBold,
             maxLines = 1,
@@ -122,6 +129,10 @@ fun ItemCard(
 
                     is FindroidShow -> {
                         getShowDateString(item)
+                    }
+
+                    is FindroidSeason -> {
+                        if (item.seriesName.isNotBlank()) item.name else ""
                     }
 
                     is FindroidEpisode -> {
@@ -179,4 +190,16 @@ private fun ItemCardPreviewEpisode() {
 @Composable
 private fun ItemCardPreviewEpisodeVertical() {
     FindroidTheme { ItemCard(item = dummyEpisode, direction = Direction.VERTICAL, onClick = {}) }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun ItemCardPreviewSeason() {
+    FindroidTheme { ItemCard(item = dummySeason, direction = Direction.HORIZONTAL, onClick = {}) }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun ItemCardPreviewSeasonVertical() {
+    FindroidTheme { ItemCard(item = dummySeason, direction = Direction.VERTICAL, onClick = {}) }
 }
