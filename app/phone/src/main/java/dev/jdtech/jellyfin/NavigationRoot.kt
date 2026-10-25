@@ -216,8 +216,6 @@ fun NavigationRoot(
         SetupNavigation(
             backStack = setupBackStack,
             entryDecorators = entryDecorators,
-            permissionViewModel = permissionViewModel,
-            permissionApplicable = permissionState.currentRequest != null,
         )
     }
 }
@@ -534,8 +532,6 @@ private fun MainNavigation(
 private fun SetupNavigation(
     backStack: NavBackStack<NavKey>,
     entryDecorators: List<NavEntryDecorator<NavKey>>,
-    permissionViewModel: PermissionViewModel,
-    permissionApplicable: Boolean,
 ) {
     val navigate: (NavKey) -> Unit = backStack::add
     val goBack: () -> Unit = { backStack.removeLastOrNull() }
@@ -548,8 +544,6 @@ private fun SetupNavigation(
             navigateOrReuse = navigateOrReuse,
             showBack = backStack.size > 1,
             onSetupComplete = {},
-            permissionViewModel = permissionViewModel,
-            permissionApplicable = permissionApplicable,
         )
     }
 
@@ -574,8 +568,6 @@ private fun EntryProviderScope<NavKey>.mainEntries(
         navigateOrReuse = navigator::navigateOrReuse,
         showBack = true,
         onSetupComplete = { navigator.navigateHome() },
-        permissionViewModel = permissionViewModel,
-        permissionApplicable = permissionApplicable,
     )
     entry<HomeRoute> {
         HomeScreen(

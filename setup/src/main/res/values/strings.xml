@@ -39,4 +39,10 @@
    <string name="add_server_address">Add server address</string>
    <string name="remove_server_address">Remove server address</string>
    <string name="remove_server_address_dialog_text">Are you sure you want to remove the server address %1$s</string>
+   <string name="permission_status_granted">Granted</string>
+   <string name="permission_status_denied">Denied</string>
+   <string name="permission_permanently_denied">Permission permanently denied. Please enable it in Settings.</string>
+   <string name="permission_btn_not_now">Not now</string>
+   <string name="permission_btn_open_settings">Open Settings</string>
+   <string name="permission_btn_grant">Grant Permission</string>
 </resources>

@@ -251,6 +251,9 @@ class AppPreferences @Inject constructor(val sharedPreferences: SharedPreference
     val sortBy = Preference("pref_sort_by", "SortName")
     val sortOrder = Preference("pref_sort_order", "Ascending")
 
+    // Permissions
+    val localNetworkPermissionDecided = Preference("pref_local_network_permission_decided", false)
+
     // Offline mode
     val offlineMode = Preference("pref_offline_mode", false)
 

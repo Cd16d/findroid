@@ -44,9 +44,11 @@ import dev.jdtech.jellyfin.presentation.settings.SettingsSubScreen
 import dev.jdtech.jellyfin.presentation.setup.addserver.AddServerScreen
 import dev.jdtech.jellyfin.presentation.setup.login.LoginScreen
 import dev.jdtech.jellyfin.presentation.setup.login.QuickConnectScreen
+import dev.jdtech.jellyfin.presentation.setup.permission.PermissionScreen
 import dev.jdtech.jellyfin.presentation.setup.servers.ServersScreen
 import dev.jdtech.jellyfin.presentation.setup.users.UsersScreen
 import dev.jdtech.jellyfin.presentation.setup.welcome.WelcomeScreen
+import dev.jdtech.jellyfin.setup.presentation.permission.PermissionViewModel
 import dev.jdtech.jellyfin.viewmodels.ScreensaverViewModel
 import java.util.UUID
 import kotlinx.coroutines.delay
@@ -139,6 +141,10 @@ fun NavigationRoot(
     val navigateOrReuse: (NavKey) -> Unit = backStack::navigateOrReuse
     val onBack: () -> Unit = { backStack.removeLastOrNull() }
 
+    val permissionViewModel: PermissionViewModel = hiltViewModel()
+    val permissionState by permissionViewModel.state.collectAsStateWithLifecycle()
+    val permissionApplicable = permissionState.currentRequest != null
+
     Box(
         modifier =
             Modifier.fillMaxSize().onPreviewKeyEvent { keyEvent ->
@@ -171,6 +177,8 @@ fun NavigationRoot(
                         navigateToMain = navigateToMain,
                         navigateOrReuse = navigateOrReuse,
                         onBack = onBack,
+                        permissionViewModel = permissionViewModel,
+                        permissionApplicable = permissionApplicable,
                     )
                 },
         )
@@ -201,6 +209,8 @@ private fun EntryProviderScope<NavKey>.tvEntries(
     navigateToMain: () -> Unit,
     navigateOrReuse: (NavKey) -> Unit,
     onBack: () -> Unit,
+    permissionViewModel: PermissionViewModel,
+    permissionApplicable: Boolean,
 ) {
     entry<WelcomeRoute> {
         WelcomeScreen(
@@ -216,7 +226,7 @@ private fun EntryProviderScope<NavKey>.tvEntries(
             onDecided =
                 dropUnlessResumed {
                     // Pop the permission entry so back from Servers returns to Welcome.
-                    goBack()
+                    onBack()
                     navigate(ServersRoute)
                 },
         )

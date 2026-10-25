@@ -1090,8 +1090,9 @@ constructor(
                                 }
                             },
                         )
-                )
-            )
+                    )
+            ),
+        )
 
     fun loadPreferences(indexes: List<Int> = emptyList(), deviceType: DeviceType) {
         viewModelScope.launch {

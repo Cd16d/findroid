@@ -215,4 +215,9 @@
     <string name="pref_player_controls_timeout_summary">Time before media player controls hide automatically</string>
     <string name="pref_player_playback_speed_remember">Remember playback speed</string>
     <string name="pref_player_playback_speed_remember_summary">Keep chosen playback speed across media playback</string>
+    <string name="permission_local_network">Local Network</string>
+    <string name="permission_local_network_summary">Allow discovering devices on your local network</string>
+    <string name="permission_local_network_rationale">Findroid requires local network permission to discover Jellyfin servers and Cast devices on your network.</string>
+    <string name="permission_status_granted">Granted</string>
+    <string name="permission_status_denied">Denied</string>
 </resources>
