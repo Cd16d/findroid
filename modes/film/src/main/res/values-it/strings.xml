@@ -4,4 +4,7 @@
     <string name="next_up">Prossimo Episodio</string>
     <string name="latest_library">Ultimi %1$s</string>
     <string name="search_placeholder">Cerca film e serie TV</string>
+    <string name="go_to_movies">Vai ai film</string>
+    <string name="go_to_shows">Vai alle serie TV</string>
+    <string name="go_to_library">Visualizza tutti %1$s</string>
 </resources>

@@ -2,6 +2,7 @@ package dev.jdtech.jellyfin.models
 
 import dev.jdtech.jellyfin.database.ServerDatabaseDao
 import dev.jdtech.jellyfin.repository.JellyfinRepository
+import java.time.LocalDateTime
 import java.util.UUID
 import org.jellyfin.sdk.model.api.BaseItemDto
 import org.jellyfin.sdk.model.api.PlayAccess
@@ -16,6 +17,8 @@ data class FindroidSeason(
     override val sources: List<FindroidSource>,
     val indexNumber: Int,
     val episodes: Collection<FindroidEpisode>,
+    val premiereDate: LocalDateTime? = null,
+    val productionYear: Int? = null,
     override val played: Boolean,
     override val favorite: Boolean,
     override val canPlay: Boolean,
@@ -34,6 +37,8 @@ fun BaseItemDto.toFindroidSeason(jellyfinRepository: JellyfinRepository): Findro
         name = name.orEmpty(),
         originalTitle = originalTitle,
         overview = overview.orEmpty(),
+        premiereDate = premiereDate,
+        productionYear = productionYear,
         played = userData?.played == true,
         favorite = userData?.isFavorite == true,
         canPlay = playAccess != PlayAccess.NONE,

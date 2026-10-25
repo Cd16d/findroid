@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
@@ -37,11 +36,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import dev.jdtech.jellyfin.core.R as CoreR
+import dev.jdtech.jellyfin.core.presentation.dummy.dummyUsers
+import dev.jdtech.jellyfin.core.presentation.theme.CentralShapes
 import dev.jdtech.jellyfin.models.User
 import dev.jdtech.jellyfin.models.getProfileImageModel
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
-import java.util.UUID
 
 @Composable
 fun AccountMenuChangeAccountSection(
@@ -54,12 +54,10 @@ fun AccountMenuChangeAccountSection(
     baseUrl: String,
     modifier: Modifier = Modifier,
 ) {
-    val singleShape = RoundedCornerShape(24.dp)
-    val topShape =
-        RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp, bottomStart = 4.dp, bottomEnd = 4.dp)
-    val bottomShape =
-        RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp, bottomStart = 24.dp, bottomEnd = 24.dp)
-    val middleShape = RoundedCornerShape(4.dp)
+    val singleShape = CentralShapes.GroupSingle
+    val topShape = CentralShapes.GroupTop
+    val bottomShape = CentralShapes.GroupBottom
+    val middleShape = CentralShapes.GroupMiddle
 
     Column(modifier = modifier) {
         Surface(
@@ -251,11 +249,7 @@ fun AccountMenuChangeAccountSectionPreview() {
     FindroidTheme {
         Surface {
             AccountMenuChangeAccountSection(
-                otherUsers =
-                    listOf(
-                        User(UUID.randomUUID(), "Jane", "server1"),
-                        User(UUID.randomUUID(), "Bob", "server1"),
-                    ),
+                otherUsers = dummyUsers,
                 isExpanded = true,
                 onToggleExpand = {},
                 onUserClick = {},

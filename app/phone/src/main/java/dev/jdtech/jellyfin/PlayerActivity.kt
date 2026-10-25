@@ -1,77 +1,170 @@
 package dev.jdtech.jellyfin
 
+import android.annotation.SuppressLint
 import android.app.AppOpsManager
 import android.app.PictureInPictureParams
 import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
 import android.content.res.Configuration
-import android.graphics.Color
 import android.graphics.Rect
 import android.media.AudioManager
 import android.os.Build
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.os.Process
+import android.os.SystemClock
 import android.util.Rational
-import android.view.SurfaceView
-import android.view.View
+import android.view.KeyEvent
 import android.view.WindowManager
-import android.widget.Button
-import android.widget.FrameLayout
-import android.widget.ImageButton
-import android.widget.ImageView
-import android.widget.Space
-import android.widget.TextView
+import android.view.WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
+import androidx.activity.compose.setContent
 import androidx.activity.viewModels
-import androidx.core.view.isVisible
+import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import androidx.media3.common.C
-import androidx.media3.ui.DefaultTimeBar
-import androidx.media3.ui.PlayerControlView
+import androidx.media3.common.Player
+import androidx.media3.common.VideoSize
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.session.MediaSession
 import androidx.media3.ui.PlayerView
 import dagger.hilt.android.AndroidEntryPoint
-import dev.jdtech.jellyfin.databinding.ActivityPlayerBinding
+import dev.jdtech.jellyfin.models.VolumeKeyEvent
 import dev.jdtech.jellyfin.player.local.presentation.PlayerEvents
 import dev.jdtech.jellyfin.player.local.presentation.PlayerViewModel
-import dev.jdtech.jellyfin.presentation.player.SpeedSelectionDialogFragment
-import dev.jdtech.jellyfin.presentation.player.TrackSelectionDialogFragment
+import dev.jdtech.jellyfin.presentation.player.PlayerScreen
+import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.settings.domain.AppPreferences
-import dev.jdtech.jellyfin.utils.PlayerGestureHelper
-import dev.jdtech.jellyfin.utils.PreviewScrubListener
+import dev.jdtech.jellyfin.settings.domain.Constants
 import java.util.UUID
 import javax.inject.Inject
-import kotlin.time.Duration.Companion.milliseconds
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
-import timber.log.Timber
 
 var isControlsLocked: Boolean = false
 
+@androidx.annotation.OptIn(UnstableApi::class)
 @AndroidEntryPoint
-class PlayerActivity : BasePlayerActivity() {
+class PlayerActivity : AppCompatActivity() {
 
     @Inject lateinit var appPreferences: AppPreferences
 
-    lateinit var binding: ActivityPlayerBinding
-    private var playerGestureHelper: PlayerGestureHelper? = null
-    override val viewModel: PlayerViewModel by viewModels()
-    private var previewScrubListener: PreviewScrubListener? = null
-    private var wasZoom: Boolean = false
-    private var skipButtonTimeoutExpired: Boolean = true
+    val viewModel: PlayerViewModel by viewModels()
 
-    private lateinit var skipSegmentButton: Button
+    private lateinit var mediaSession: MediaSession
+    private var wasPip: Boolean = false
+
+    private val volumeKeyEvents = MutableSharedFlow<VolumeKeyEvent>(extraBufferCapacity = 8)
+    private var lastVolumeKeyTime = 0L
+
+    private var isInPipMode by mutableStateOf(false)
+    private var currentResizeMode by mutableStateOf(Constants.PlayerResizeMode.FIT)
+    private var isOrientationLockedState by mutableStateOf(false)
+    private var activePlayerView: PlayerView? = null
+
+    private var savedCustomBrightness: Float = BRIGHTNESS_OVERRIDE_NONE
+
+    private var isPipGestureEnabled: Boolean = true
+    private var isGesturesVBEnabled: Boolean = true
+    private var isBrightnessRememberEnabled: Boolean = false
+    private var savedPlayerBrightness: Float = -1f
+    private var preferredOrientation: Constants.PlayerOrientation =
+        Constants.PlayerOrientation.SENSOR
+    private var preferredOrientationLast: Constants.PlayerOrientation =
+        Constants.PlayerOrientation.SENSOR
+
+    private val playerListener =
+        object : Player.Listener {
+            override fun onIsPlayingChanged(isPlaying: Boolean) {
+                if (isPlaying) {
+                    window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                } else {
+                    window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                }
+                updatePipParams(isPlaying)
+            }
+
+            override fun onVideoSizeChanged(videoSize: VideoSize) {
+                updatePipParams()
+            }
+        }
+
+    private fun toggleOrientationLock() {
+        if (isOrientationLockedState) {
+            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR
+            isOrientationLockedState = false
+        } else {
+            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LOCKED
+            isOrientationLockedState = true
+        }
+        if (preferredOrientation == Constants.PlayerOrientation.REMEMBER) {
+            val state =
+                if (isOrientationLockedState) {
+                    if (resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT) {
+                        Constants.PlayerOrientation.SENSOR_PORTRAIT.name.lowercase()
+                    } else {
+                        Constants.PlayerOrientation.SENSOR_LANDSCAPE.name.lowercase()
+                    }
+                } else {
+                    Constants.PlayerOrientation.SENSOR.name.lowercase()
+                }
+            appPreferences.setValue(appPreferences.playerOrientationLast, state)
+        }
+    }
+
+    @SuppressLint("SourceLockedOrientationActivity")
+    private fun applyOrientationPreference() {
+        when (preferredOrientation) {
+            Constants.PlayerOrientation.SENSOR_LANDSCAPE -> {
+                requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                isOrientationLockedState = true
+            }
+            Constants.PlayerOrientation.SENSOR_PORTRAIT -> {
+                requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
+                isOrientationLockedState = true
+            }
+            Constants.PlayerOrientation.SENSOR -> {
+                requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR
+                isOrientationLockedState = false
+            }
+            Constants.PlayerOrientation.REMEMBER -> {
+                when (preferredOrientationLast) {
+                    Constants.PlayerOrientation.SENSOR_LANDSCAPE -> {
+                        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                        isOrientationLockedState = true
+                    }
+                    Constants.PlayerOrientation.SENSOR_PORTRAIT -> {
+                        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
+                        isOrientationLockedState = true
+                    }
+                    Constants.PlayerOrientation.LOCKED -> {
+                        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LOCKED
+                        isOrientationLockedState = true
+                    }
+                    Constants.PlayerOrientation.SENSOR,
+                    Constants.PlayerOrientation.REMEMBER -> {
+                        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR
+                        isOrientationLockedState = false
+                    }
+                }
+            }
+            Constants.PlayerOrientation.LOCKED -> {
+                requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LOCKED
+                isOrientationLockedState = true
+            }
+        }
+    }
 
     private val isPipSupported by lazy {
-        // Check if device has PiP feature
         if (!packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)) {
             return@lazy false
         }
-
-        // Check if PiP is enabled for the app
         val appOps = getSystemService(APP_OPS_SERVICE) as AppOpsManager?
         appOps?.checkOpNoThrow(
             AppOpsManager.OPSTR_PICTURE_IN_PICTURE,
@@ -80,141 +173,68 @@ class PlayerActivity : BasePlayerActivity() {
         ) == AppOpsManager.MODE_ALLOWED
     }
 
-    private val handler = Handler(Looper.getMainLooper())
-    private val skipButtonTimeout = Runnable {
-        if (!binding.playerView.isControllerFullyVisible) {
-            skipSegmentButton.isVisible = false
-            skipButtonTimeoutExpired = true
-        }
-    }
-
+    @SuppressLint("SourceLockedOrientationActivity")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        val itemId = UUID.fromString(intent.extras!!.getString("itemId"))
-        val itemKind = intent.extras!!.getString("itemKind")
-        val startFromBeginning = intent.extras!!.getBoolean("startFromBeginning")
-
-        binding = ActivityPlayerBinding.inflate(layoutInflater)
-        setContentView(binding.root)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-
-        binding.playerView.player = viewModel.player
-        binding.playerView.setControllerVisibilityListener(
-            PlayerView.ControllerVisibilityListener { visibility ->
-                if (visibility == View.GONE) {
-                    hideSystemUI()
-                }
-            }
-        )
-
-        val playerControls = binding.playerView.findViewById<View>(R.id.player_controls)
-        val lockedControls = binding.playerView.findViewById<View>(R.id.locked_player_view)
+        volumeControlStream = AudioManager.STREAM_MUSIC
 
         isControlsLocked = false
+        viewModel.player.addListener(playerListener)
 
-        configureInsets(playerControls)
-        configureInsets(lockedControls)
-
-        if (appPreferences.getValue(appPreferences.playerGestures)) {
-            playerGestureHelper =
-                PlayerGestureHelper(
-                    appPreferences,
-                    this,
-                    binding.playerView,
-                    getSystemService(AUDIO_SERVICE) as AudioManager,
-                )
-        }
-
-        binding.playerView.findViewById<View>(R.id.back_button).setOnClickListener {
-            finishPlayback()
-        }
-
-        val videoNameTextView = binding.playerView.findViewById<TextView>(R.id.video_name)
-
-        val audioButton = binding.playerView.findViewById<ImageButton>(R.id.btn_audio_track)
-        val subtitleButton = binding.playerView.findViewById<ImageButton>(R.id.btn_subtitle)
-        val speedButton = binding.playerView.findViewById<ImageButton>(R.id.btn_speed)
-        skipSegmentButton = binding.playerView.findViewById(R.id.btn_skip_segment)
-        val pipButton = binding.playerView.findViewById<ImageButton>(R.id.btn_pip)
-        val lockButton = binding.playerView.findViewById<ImageButton>(R.id.btn_lockview)
-        val unlockButton = binding.playerView.findViewById<ImageButton>(R.id.btn_unlock)
+        val itemId = UUID.fromString(intent.extras!!.getString("itemId"))
+        val itemKind = intent.extras!!.getString("itemKind") ?: ""
+        val startFromBeginning = intent.extras!!.getBoolean("startFromBeginning", false)
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
-                    viewModel.uiState.collect { uiState ->
-                        Timber.d("$uiState")
-                        uiState.apply {
-                            // Title
-                            videoNameTextView.text = currentItemTitle
-
-                            // Media segment
-                            currentSegment?.let { segment ->
-                                // Skip Button - text
-                                skipSegmentButton.text = getString(currentSkipButtonStringRes)
-                                // Skip Button - visibility
-                                skipSegmentButton.isVisible = !isInPictureInPictureMode
-                                if (skipSegmentButton.isVisible) {
-                                    skipButtonTimeoutExpired = false
-                                    handler.removeCallbacks(skipButtonTimeout)
-                                    handler.postDelayed(
-                                        skipButtonTimeout,
-                                        viewModel.segmentsSkipButtonDuration * 1000,
-                                    )
-                                }
-                                // Skip Button - onClick
-                                skipSegmentButton.setOnClickListener {
-                                    viewModel.skipSegment(segment)
-                                    skipSegmentButton.isVisible = false
-                                }
-                            } ?: run { skipSegmentButton.isVisible = false }
-
-                            binding.playerView.setControllerVisibilityListener(
-                                PlayerView.ControllerVisibilityListener { visibility ->
-                                    if (skipButtonTimeoutExpired && currentSegment != null) {
-                                        skipSegmentButton.visibility = visibility
-                                    }
-                                }
-                            )
-
-                            // Trickplay
-                            previewScrubListener?.let { it.currentTrickplay = currentTrickplay }
-
-                            playerGestureHelper?.let { it.currentTrickplay = currentTrickplay }
-
-                            // Chapters
-                            val playerControlView =
-                                findViewById<PlayerControlView>(R.id.exo_controller)
-                            if (currentChapters.isNotEmpty()) {
-                                val numOfChapters = currentChapters.size
-                                playerControlView.setExtraAdGroupMarkers(
-                                    LongArray(numOfChapters) { index ->
-                                        currentChapters[index].startPosition
-                                    },
-                                    BooleanArray(numOfChapters) { false },
-                                )
-                            } else {
-                                playerControlView.setExtraAdGroupMarkers(null, null)
-                            }
-
-                            // File Loaded
-                            if (fileLoaded) {
-                                audioButton.isEnabled = true
-                                audioButton.imageAlpha = 255
-                                lockButton.isEnabled = true
-                                lockButton.imageAlpha = 255
-                                subtitleButton.isEnabled = true
-                                subtitleButton.imageAlpha = 255
-                                speedButton.isEnabled = true
-                                speedButton.imageAlpha = 255
-                                pipButton.isEnabled = true
-                                pipButton.imageAlpha = 255
-                            }
+                    appPreferences.observe(appPreferences.playerPipGesture).collect {
+                        isPipGestureEnabled = it
+                        updatePipParams()
+                    }
+                }
+                launch {
+                    appPreferences.observe(appPreferences.playerGesturesVB).collect {
+                        isGesturesVBEnabled = it
+                    }
+                }
+                launch {
+                    appPreferences
+                        .observe(appPreferences.playerGesturesBrightnessRemember)
+                        .collect { isBrightnessRememberEnabled = it }
+                }
+                launch {
+                    appPreferences.observe(appPreferences.playerBrightness).collect {
+                        savedPlayerBrightness = it
+                        if (
+                            isBrightnessRememberEnabled &&
+                                savedPlayerBrightness >= 0f &&
+                                !isInPipMode
+                        ) {
+                            val lp = window.attributes
+                            lp.screenBrightness = savedPlayerBrightness.coerceIn(0.01f, 1f)
+                            window.attributes = lp
                         }
                     }
                 }
-
+                launch {
+                    appPreferences.observe(appPreferences.playerOrientation).collect {
+                        preferredOrientation = Constants.PlayerOrientation.fromValue(it)
+                        applyOrientationPreference()
+                    }
+                }
+                launch {
+                    appPreferences.observe(appPreferences.playerOrientationLast).collect {
+                        preferredOrientationLast = Constants.PlayerOrientation.fromValue(it)
+                    }
+                }
+                launch {
+                    appPreferences.observe(appPreferences.playerDefaultResizeMode).collect {
+                        currentResizeMode = Constants.PlayerResizeMode.fromValue(it)
+                    }
+                }
                 launch {
                     viewModel.eventsChannelFlow.collect { event ->
                         when (event) {
@@ -227,110 +247,95 @@ class PlayerActivity : BasePlayerActivity() {
                                         WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
                                     )
                                 }
-
-                                if (appPreferences.getValue(appPreferences.playerPipGesture)) {
-                                    try {
-                                        setPictureInPictureParams(pipParams(event.isPlaying))
-                                    } catch (_: IllegalArgumentException) {}
-                                }
+                                updatePipParams(event.isPlaying)
                             }
-                        }
-                    }
-                }
-
-                launch {
-                    while (true) {
-                        viewModel.updatePlaybackProgress()
-                        delay(5000L.milliseconds)
-                    }
-                }
-
-                if (
-                    appPreferences.getValue(appPreferences.playerMediaSegmentsSkipButton) ||
-                        appPreferences.getValue(appPreferences.playerMediaSegmentsAutoSkip)
-                ) {
-                    launch {
-                        while (true) {
-                            viewModel.updateCurrentSegment()
-                            delay(1000L.milliseconds)
                         }
                     }
                 }
             }
         }
 
-        audioButton.isEnabled = false
-        audioButton.imageAlpha = 75
-
-        lockButton.isEnabled = false
-        lockButton.imageAlpha = 75
-
-        subtitleButton.isEnabled = false
-        subtitleButton.imageAlpha = 75
-
-        speedButton.isEnabled = false
-        speedButton.imageAlpha = 75
-
-        if (isPipSupported) {
-            pipButton.isEnabled = false
-            pipButton.imageAlpha = 75
-        } else {
-            val pipSpace = binding.playerView.findViewById<Space>(R.id.space_pip)
-            pipButton.isVisible = false
-            pipSpace.isVisible = false
+        setContent {
+            FindroidTheme(darkTheme = true) {
+                PlayerScreen(
+                    itemId = itemId,
+                    itemKind = itemKind,
+                    startFromBeginning = startFromBeginning,
+                    onBack = { finishPlayback() },
+                    onEnterPip = { pictureInPicture() },
+                    onPlayerViewAvailable = { playerView ->
+                        activePlayerView = playerView
+                        updatePipParams()
+                    },
+                    isPipSupported = isPipSupported,
+                    isInPictureInPictureMode = isInPipMode,
+                    resizeMode = currentResizeMode,
+                    onResizeModeChange = { currentResizeMode = it },
+                    onToggleOrientation = { toggleOrientationLock() },
+                    isOrientationLocked = isOrientationLockedState,
+                    volumeKeyEvents = volumeKeyEvents,
+                    appPreferences = appPreferences,
+                    viewModel = viewModel,
+                )
+            }
         }
-
-        audioButton.setOnClickListener {
-            TrackSelectionDialogFragment(C.TRACK_TYPE_AUDIO, viewModel)
-                .show(supportFragmentManager, "trackselectiondialog")
-        }
-
-        val exoPlayerControlView = findViewById<FrameLayout>(R.id.player_controls)
-        val lockedLayout = findViewById<FrameLayout>(R.id.locked_player_view)
-
-        lockButton.setOnClickListener {
-            exoPlayerControlView.visibility = View.GONE
-            lockedLayout.visibility = View.VISIBLE
-            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LOCKED
-            isControlsLocked = true
-        }
-
-        unlockButton.setOnClickListener {
-            exoPlayerControlView.visibility = View.VISIBLE
-            lockedLayout.visibility = View.GONE
-            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-            isControlsLocked = false
-        }
-
-        subtitleButton.setOnClickListener {
-            TrackSelectionDialogFragment(C.TRACK_TYPE_TEXT, viewModel)
-                .show(supportFragmentManager, "trackselectiondialog")
-        }
-
-        speedButton.setOnClickListener {
-            SpeedSelectionDialogFragment(viewModel)
-                .show(supportFragmentManager, "speedselectiondialog")
-        }
-
-        pipButton.setOnClickListener { pictureInPicture() }
-
-        // Set marker color
-        val timeBar = binding.playerView.findViewById<DefaultTimeBar>(R.id.exo_progress)
-        timeBar.setAdMarkerColor(Color.WHITE)
-
-        if (appPreferences.getValue(appPreferences.playerTrickplay)) {
-            val imagePreview = binding.playerView.findViewById<ImageView>(R.id.image_preview)
-            previewScrubListener = PreviewScrubListener(imagePreview, timeBar, viewModel.player)
-
-            timeBar.addListener(previewScrubListener!!)
-        }
-
-        viewModel.initializePlayer(
-            itemId = itemId,
-            itemKind = itemKind ?: "",
-            startFromBeginning = startFromBeginning,
-        )
         hideSystemUI()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        mediaSession = MediaSession.Builder(this, viewModel.player).build()
+    }
+
+    override fun onResume() {
+        super.onResume()
+
+        if (wasPip) {
+            wasPip = false
+        } else {
+            viewModel.player.playWhenReady = viewModel.playWhenReady
+        }
+        hideSystemUI()
+        updatePipParams()
+    }
+
+    override fun onPause() {
+        super.onPause()
+
+        if (isInPictureInPictureMode) {
+            wasPip = true
+        } else {
+            viewModel.playWhenReady = viewModel.player.playWhenReady
+            viewModel.player.playWhenReady = false
+            viewModel.updatePlaybackProgress()
+            updatePipParams(false)
+        }
+    }
+
+    override fun onStop() {
+        super.onStop()
+
+        mediaSession.release()
+
+        if (wasPip) {
+            finish()
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        viewModel.player.removeListener(playerListener)
+        activePlayerView = null
+    }
+
+    private fun hideSystemUI() {
+        WindowCompat.getInsetsController(window, window.decorView).apply {
+            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            hide(WindowInsetsCompat.Type.systemBars())
+        }
+
+        window.attributes.layoutInDisplayCutoutMode =
+            WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -339,7 +344,7 @@ class PlayerActivity : BasePlayerActivity() {
 
         val itemId = UUID.fromString(intent.extras!!.getString("itemId"))
         val itemKind = intent.extras!!.getString("itemKind")
-        val startFromBeginning = intent.extras!!.getBoolean("startFromBeginning")
+        val startFromBeginning = intent.extras!!.getBoolean("startFromBeginning", false)
 
         viewModel.initializePlayer(
             itemId = itemId,
@@ -352,7 +357,7 @@ class PlayerActivity : BasePlayerActivity() {
         super.onUserLeaveHint()
         if (
             Build.VERSION.SDK_INT < Build.VERSION_CODES.S &&
-                appPreferences.getValue(appPreferences.playerPipGesture) &&
+                isPipGestureEnabled &&
                 viewModel.player.isPlaying &&
                 !isControlsLocked
         ) {
@@ -361,72 +366,92 @@ class PlayerActivity : BasePlayerActivity() {
     }
 
     private fun finishPlayback() {
-        try {
-            viewModel.player.clearVideoSurfaceView(
-                binding.playerView.videoSurfaceView as SurfaceView
-            )
-        } catch (e: Exception) {
-            Timber.e(e)
-        }
-        handler.removeCallbacks(skipButtonTimeout)
+        viewModel.player.pause()
         finish()
     }
 
-    private fun pipParams(
-        enableAutoEnter: Boolean = viewModel.player.isPlaying
-    ): PictureInPictureParams {
-        val displayAspectRatio = Rational(binding.playerView.width, binding.playerView.height)
-
-        val aspectRatio =
-            binding.playerView.player?.videoSize?.let {
-                Rational(
-                    it.width.coerceAtMost((it.height * 2.39f).toInt()),
-                    it.height.coerceAtMost((it.width * 2.39f).toInt()),
-                )
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (!isInPipMode) {
+            val action = event.action
+            when (val keyCode = event.keyCode) {
+                KeyEvent.KEYCODE_VOLUME_UP,
+                KeyEvent.KEYCODE_VOLUME_DOWN -> {
+                    if (action == KeyEvent.ACTION_DOWN) {
+                        val isRepeat = event.repeatCount > 0
+                        val now = SystemClock.uptimeMillis()
+                        if (!isRepeat || now - lastVolumeKeyTime >= 50L) {
+                            lastVolumeKeyTime = now
+                            volumeKeyEvents.tryEmit(
+                                VolumeKeyEvent(
+                                    isUp = keyCode == KeyEvent.KEYCODE_VOLUME_UP,
+                                    isRepeat = isRepeat,
+                                )
+                            )
+                        }
+                    }
+                    return true
+                }
             }
+        }
+        return super.dispatchKeyEvent(event)
+    }
 
-        val sourceRectHint =
-            if (displayAspectRatio < aspectRatio!!) {
-                val space =
-                    ((binding.playerView.height -
-                            (binding.playerView.width.toFloat() / aspectRatio.toFloat())) / 2)
-                        .toInt()
-                Rect(
-                    0,
-                    space,
-                    binding.playerView.width,
-                    (binding.playerView.width.toFloat() / aspectRatio.toFloat()).toInt() + space,
+    private fun pipParams(
+        enableAutoEnter: Boolean =
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                isPipGestureEnabled &&
+                viewModel.player.isPlaying &&
+                !isControlsLocked
+    ): PictureInPictureParams {
+        val videoSize = viewModel.player.videoSize
+        val aspectRatio =
+            if (videoSize.width > 0 && videoSize.height > 0) {
+                Rational(
+                    videoSize.width.coerceAtMost((videoSize.height * 2.39f).toInt()),
+                    videoSize.height.coerceAtMost((videoSize.width * 2.39f).toInt()),
                 )
             } else {
-                val space =
-                    ((binding.playerView.width -
-                            (binding.playerView.height.toFloat() * aspectRatio.toFloat())) / 2)
-                        .toInt()
-                Rect(
-                    space,
-                    0,
-                    (binding.playerView.height.toFloat() * aspectRatio.toFloat()).toInt() + space,
-                    binding.playerView.height,
-                )
+                Rational(16, 9)
             }
 
-        val builder =
-            PictureInPictureParams.Builder()
-                .setAspectRatio(aspectRatio)
-                .setSourceRectHint(sourceRectHint)
+        val sourceRectHint = Rect()
+        val surfaceView = activePlayerView?.videoSurfaceView
+        val targetView =
+            if (surfaceView != null && surfaceView.width > 0 && surfaceView.height > 0) {
+                surfaceView
+            } else {
+                activePlayerView ?: window.decorView
+            }
+        targetView.getGlobalVisibleRect(sourceRectHint)
+
+        val builder = PictureInPictureParams.Builder().setAspectRatio(aspectRatio)
+
+        if (!sourceRectHint.isEmpty) {
+            builder.setSourceRectHint(sourceRectHint)
+        }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             builder.setAutoEnterEnabled(enableAutoEnter)
+            builder.setSeamlessResizeEnabled(true)
         }
 
         return builder.build()
     }
 
-    private fun pictureInPicture() {
-        if (!isPipSupported) {
-            return
-        }
+    fun updatePipParams(isPlaying: Boolean = viewModel.player.isPlaying) {
+        if (!isPipSupported) return
+        val shouldAutoEnter =
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                isPipGestureEnabled &&
+                isPlaying &&
+                !isControlsLocked
+        try {
+            setPictureInPictureParams(pipParams(enableAutoEnter = shouldAutoEnter))
+        } catch (_: IllegalArgumentException) {}
+    }
 
+    private fun pictureInPicture() {
+        if (!isPipSupported) return
         try {
             enterPictureInPictureMode(pipParams())
         } catch (_: IllegalArgumentException) {}
@@ -438,36 +463,25 @@ class PlayerActivity : BasePlayerActivity() {
     ) {
         super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
         viewModel.isInPictureInPictureMode = isInPictureInPictureMode
-        when (isInPictureInPictureMode) {
-            true -> {
-                binding.playerView.useController = false
-                skipSegmentButton.isVisible = false
+        isInPipMode = isInPictureInPictureMode
 
-                wasZoom = playerGestureHelper?.isZoomEnabled == true
-                playerGestureHelper?.updateZoomMode(false)
-
-                // Brightness mode Auto
-                window.attributes =
-                    window.attributes.apply {
-                        screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
-                    }
+        val lp = window.attributes
+        if (isInPictureInPictureMode) {
+            if (lp.screenBrightness >= 0f) {
+                savedCustomBrightness = lp.screenBrightness
+                lp.screenBrightness = BRIGHTNESS_OVERRIDE_NONE
+                window.attributes = lp
             }
-
-            false -> {
-                binding.playerView.useController = true
-                playerGestureHelper?.updateZoomMode(wasZoom)
-
-                // Override auto brightness
-                if (
-                    appPreferences.getValue(appPreferences.playerGesturesVB) &&
-                        appPreferences.getValue(appPreferences.playerGesturesBrightnessRemember)
-                ) {
-                    window.attributes =
-                        window.attributes.apply {
-                            screenBrightness =
-                                appPreferences.getValue(appPreferences.playerBrightness)
-                        }
+        } else {
+            if (isGesturesVBEnabled && isBrightnessRememberEnabled) {
+                if (savedPlayerBrightness >= 0f) {
+                    lp.screenBrightness = savedPlayerBrightness.coerceIn(0.01f, 1f)
+                    window.attributes = lp
                 }
+            } else if (savedCustomBrightness >= 0f) {
+                lp.screenBrightness = savedCustomBrightness
+                window.attributes = lp
+                savedCustomBrightness = BRIGHTNESS_OVERRIDE_NONE
             }
         }
     }

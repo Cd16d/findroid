@@ -21,7 +21,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -31,7 +30,10 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.OutlinedButton
 import androidx.tv.material3.Text
 import dev.jdtech.jellyfin.api.JellyfinApi
+import dev.jdtech.jellyfin.core.presentation.dummy.dummyDiscoveredServer
+import dev.jdtech.jellyfin.core.presentation.dummy.dummyServer
 import dev.jdtech.jellyfin.core.presentation.dummy.dummyUsers
+import dev.jdtech.jellyfin.core.presentation.theme.DisabledText
 import dev.jdtech.jellyfin.presentation.setup.components.UserItem
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
@@ -93,7 +95,7 @@ private fun UsersScreenLayout(state: UsersState, onAction: (UsersAction) -> Unit
             Text(
                 text = stringResource(SetupR.string.server_subtitle, state.serverName ?: ""),
                 style = MaterialTheme.typography.titleMedium,
-                color = Color(0xFFBDBDBD),
+                color = DisabledText,
             )
             Spacer(modifier = Modifier.height(MaterialTheme.spacings.large))
             if (state.users.isEmpty() && state.publicUsers.isEmpty()) {
@@ -141,9 +143,14 @@ private fun UsersScreenLayout(state: UsersState, onAction: (UsersAction) -> Unit
 private fun UsersScreenLayoutPreview() {
     FindroidTheme {
         UsersScreenLayout(
-            state = UsersState(users = dummyUsers, publicUsers = dummyUsers, serverName = "Demo"),
+            state =
+                UsersState(
+                    users = dummyUsers,
+                    publicUsers = dummyUsers,
+                    serverName = dummyServer.name,
+                ),
             onAction = {},
-            baseUrl = "https://demo.jellyfin.org/stable",
+            baseUrl = dummyDiscoveredServer.address,
         )
     }
 }
@@ -153,9 +160,9 @@ private fun UsersScreenLayoutPreview() {
 private fun UsersScreenLayoutPreviewNoUsers() {
     FindroidTheme {
         UsersScreenLayout(
-            state = UsersState(serverName = "Demo"),
+            state = UsersState(serverName = dummyServer.name),
             onAction = {},
-            baseUrl = "https://demo.jellyfin.org/stable",
+            baseUrl = dummyDiscoveredServer.address,
         )
     }
 }

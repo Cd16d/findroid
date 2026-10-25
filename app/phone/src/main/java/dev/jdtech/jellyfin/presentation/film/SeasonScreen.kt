@@ -48,6 +48,7 @@ import dev.jdtech.jellyfin.core.presentation.dummy.dummySeason
 import dev.jdtech.jellyfin.film.presentation.season.SeasonAction
 import dev.jdtech.jellyfin.film.presentation.season.SeasonState
 import dev.jdtech.jellyfin.film.presentation.season.SeasonViewModel
+import dev.jdtech.jellyfin.models.DownloadQualityPreset
 import dev.jdtech.jellyfin.models.FindroidItem
 import dev.jdtech.jellyfin.models.isDownloaded
 import dev.jdtech.jellyfin.player.cast.models.CastConnectionState
@@ -151,7 +152,7 @@ private fun SeasonScreenLayout(
     onRememberSettings: (presetId: String, downloadExternalAudio: Boolean) -> Unit = { _, _ -> },
     defaultStorageIndex: Int = -1,
     userCanTranscode: Boolean = true,
-    presets: List<dev.jdtech.jellyfin.models.DownloadQualityPreset> = emptyList(),
+    presets: List<DownloadQualityPreset> = emptyList(),
     navigateToDownloadPresets: () -> Unit = {},
 ) {
     val safePadding = rememberSafePadding()

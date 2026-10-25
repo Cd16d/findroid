@@ -1,24 +1,25 @@
 package dev.jdtech.jellyfin.presentation.components
 
+import android.content.res.Configuration
 import android.os.SystemClock
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.indication
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
@@ -30,6 +31,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
@@ -46,19 +48,26 @@ import androidx.compose.ui.input.pointer.positionChanged
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import kotlin.math.cos
-import kotlin.math.hypot
-import kotlin.math.max
-import kotlin.math.sin
-import kotlin.random.Random
+import dev.jdtech.jellyfin.core.presentation.components.SpoilerParticleOverlay
+import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+/**
+ * State object driving spoiler mask animations, touch holding progress, and reveal state.
+ *
+ * @param initialEnabled Initial state indicating whether spoiler mask protection is active.
+ * @param initialRevealed Initial state indicating whether content is revealed.
+ * @param onRevealChangeCallback Callback invoked when revealed status changes.
+ * @param coroutineScope Scope used for launching hold and return animations.
+ * @param hapticFeedback Haptic feedback handler for long press reveal event.
+ */
 @Stable
 class SpoilerState
 internal constructor(
@@ -159,6 +168,14 @@ internal constructor(
     }
 }
 
+/**
+ * Creates and remembers a [SpoilerState] instance across recompositions.
+ *
+ * @param enabled Whether spoiler protection is currently active.
+ * @param isRevealed Controlled revealed state.
+ * @param onRevealChange Callback invoked when revealed state transitions.
+ * @return Remembered [SpoilerState] instance.
+ */
 @Composable
 fun rememberSpoilerState(
     enabled: Boolean = true,
@@ -188,6 +205,13 @@ fun rememberSpoilerState(
     return state
 }
 
+/**
+ * Modifier detecting touch interactions for press-and-hold reveal gestures on spoiler cards.
+ *
+ * @param state State instance managing gesture feedback and progress.
+ * @param onClick Optional click listener invoked when card is tapped or already revealed.
+ * @return Modified layout with gesture detection attached.
+ */
 @Composable
 fun Modifier.spoilerCardGesture(
     state: SpoilerState,
@@ -269,6 +293,25 @@ fun Modifier.spoilerCardGesture(
         }
 }
 
+/**
+ * Interactive spoiler mask container that blurs underlying composable content until revealed.
+ *
+ * @param modifier Modifier applied to container. Defaults to [Modifier].
+ * @param enabled Whether spoiler protection is active. Defaults to `true`.
+ * @param shape Mask clipping shape. Defaults to [RectangleShape].
+ * @param initiallyRevealed Initial revealed state. Defaults to `false`.
+ * @param isRevealed Controlled revealed state if driven externally. Defaults to `null`.
+ * @param onRevealChange Callback when revealed state changes. Defaults to `null`.
+ * @param blurRadius Blur radius applied when content is masked. Defaults to `16.dp`.
+ * @param consumeClickOnMask Whether clicks on mask are consumed. Defaults to `true`.
+ * @param revealOnLongPress Whether long press reveals mask. Defaults to `true`.
+ * @param onTap Optional callback when tapped. Defaults to `null`.
+ * @param contentAlphaWhenMasked Content alpha when masked. Defaults to `1f`.
+ * @param state SpoilerState instance. Defaults to `null`.
+ * @param isTarget Optional target check lambda. Defaults to `null`.
+ * @param touchOffsetCorrection Optional offset correction. Defaults to `null`.
+ * @param content Composable content protected by spoiler mask.
+ */
 @Composable
 fun SpoilerMask(
     modifier: Modifier = Modifier,
@@ -409,252 +452,74 @@ fun SpoilerMask(
     }
 }
 
-private class Particle(
-    var x: Float = 0f,
-    var y: Float = 0f,
-    var vecX: Float = 0f,
-    var vecY: Float = 0f,
-    var velocity: Float = 0f,
-    var radiusDp: Float = 0.8f,
-    var lifeTime: Float = 1500f,
-    var currentTime: Float = 0f,
-    var alphaTier: Float = 0.6f,
-)
-
-private fun respawnParticle(
-    p: Particle,
-    width: Float,
-    height: Float,
-    random: Random,
-    density: Float,
-) {
-    p.x = random.nextFloat() * width
-    p.y = random.nextFloat() * height
-    val angle = random.nextFloat() * (2f * Math.PI.toFloat())
-    p.vecX = cos(angle)
-    p.vecY = sin(angle)
-    p.velocity = (8f + random.nextFloat() * 12f) * density
-    p.radiusDp = 0.65f + random.nextFloat() * 0.35f
-    p.lifeTime = 1000f + random.nextFloat() * 2000f
-    p.currentTime = random.nextFloat() * p.lifeTime
-    p.alphaTier =
-        when (random.nextInt(3)) {
-            0 -> 0.35f
-            1 -> 0.65f
-            else -> 1.0f
-        }
-}
-
-private const val MAX_PARTICLES = 2000
-
+@Preview(name = "Masked Text", showBackground = true)
 @Composable
-private fun SpoilerParticleOverlay(
-    revealProgress: Float,
-    holdProgress: Float,
-    holdCenter: Offset?,
-    tapOffset: Offset?,
-    touchOffset: Offset?,
-    isTextMask: Boolean,
-    particleColor: Color,
-    modifier: Modifier = Modifier,
-) {
-    val infiniteTransition = rememberInfiniteTransition(label = "spoilerSparkle")
-    val animClock by
-        infiniteTransition.animateFloat(
-            initialValue = 0f,
-            targetValue = 1000f,
-            animationSpec =
-                infiniteRepeatable(
-                    animation = tween(durationMillis = 100000, easing = LinearEasing),
-                    repeatMode = RepeatMode.Restart,
-                ),
-            label = "animClock",
-        )
-
-    val particles = remember { Array(MAX_PARTICLES) { Particle() } }
-
-    val state = remember {
-        object {
-            var lastTime = 0L
-            var lastW = 0f
-            var lastH = 0f
-            val random = Random(42)
+private fun SpoilerMaskPreview() {
+    FindroidTheme {
+        SpoilerMask(enabled = true) {
+            Text(
+                text = "Spoiler Content Text",
+                modifier = Modifier.padding(16.dp),
+            )
         }
     }
+}
 
-    Canvas(modifier = modifier) {
-        @Suppress("UNUSED_VARIABLE") val tick = animClock
-
-        val density = this.density
-        val w = size.width
-        val h = size.height
-        if (w <= 0f || h <= 0f) return@Canvas
-
-        val widthDp = w / density
-        val heightDp = h / density
-        val targetCount = particleCount(widthDp * heightDp).coerceAtMost(particles.size)
-
-        val now = SystemClock.uptimeMillis()
-        val dt = if (state.lastTime == 0L) 16L else (now - state.lastTime).coerceIn(1L, 40L)
-        state.lastTime = now
-
-        if (state.lastW != w || state.lastH != h) {
-            state.lastW = w
-            state.lastH = h
-            for (i in 0 until targetCount) {
-                respawnParticle(particles[i], w, h, state.random, density)
-            }
-        }
-
-        if (!isTextMask) {
-            drawRect(color = Color.Black.copy(alpha = 0.22f * (1f - revealProgress)))
-        }
-
-        val centerRaw = holdCenter ?: tapOffset ?: touchOffset ?: Offset(w / 2f, h / 2f)
-        val center = Offset(centerRaw.x.coerceIn(0f, w), centerRaw.y.coerceIn(0f, h))
-        val maxRadius =
-            hypot(
-                max(center.x, w - center.x),
-                max(center.y, h - center.y),
+@Preview(name = "Revealed State", showBackground = true)
+@Composable
+private fun SpoilerMaskRevealedPreview() {
+    FindroidTheme {
+        SpoilerMask(
+            enabled = true,
+            initiallyRevealed = true,
+        ) {
+            Text(
+                text = "Revealed Spoiler Content",
+                modifier = Modifier.padding(16.dp),
             )
-        val holdMaxDist = 280.dp.toPx()
-        val holdRadius = holdMaxDist * holdProgress
-        val revealRadius = maxRadius * revealProgress
-        val effectiveRadius = max(holdRadius, revealRadius)
-        val waveBand = 72.dp.toPx()
+        }
+    }
+}
 
-        for (i in 0 until targetCount) {
-            val p = particles[i]
-            p.currentTime += dt
-            if (p.currentTime >= p.lifeTime || p.x < 0f || p.x > w || p.y < 0f || p.y > h) {
-                p.x = state.random.nextFloat() * w
-                p.y = state.random.nextFloat() * h
-                val angle = state.random.nextFloat() * (2f * Math.PI.toFloat())
-                p.vecX = cos(angle)
-                p.vecY = sin(angle)
-                p.velocity = (8f + state.random.nextFloat() * 12f) * density
-                p.radiusDp = 0.65f + state.random.nextFloat() * 0.35f
-                p.lifeTime = 1000f + state.random.nextFloat() * 2000f
-                p.currentTime = 0f
-                p.alphaTier =
-                    when (state.random.nextInt(3)) {
-                        0 -> 0.35f
-                        1 -> 0.65f
-                        else -> 1.0f
-                    }
-            } else {
-                val hdt = p.velocity * (dt / 500f)
-                p.x += p.vecX * hdt
-                p.y += p.vecY * hdt
-            }
-
-            val lifeRatio = (p.currentTime / p.lifeTime).coerceIn(0f, 1f)
-            val lifeFade =
-                if (lifeRatio < 0.15f) {
-                    lifeRatio / 0.15f
-                } else if (lifeRatio > 0.85f) {
-                    (1f - lifeRatio) / 0.15f
-                } else {
-                    1f
-                }
-
-            var drawX = p.x
-            var drawY = p.y
-            var drawAlpha = p.alphaTier * lifeFade
-
-            if (effectiveRadius > 0f) {
-                val dx = p.x - center.x
-                val dy = p.y - center.y
-                val dist = hypot(dx, dy)
-                val safeDist = dist.coerceAtLeast(0.5f)
-                val dirX = dx / safeDist
-                val dirY = dy / safeDist
-
-                val tangentX = -dirY
-                val tangentY = dirX
-
-                if (dist < effectiveRadius) {
-                    val depth = effectiveRadius - dist
-                    val dissolveFactor = (1f - depth / (waveBand * 0.65f)).coerceIn(0f, 1f)
-
-                    val push = dissolveFactor * (waveBand * 0.35f)
-                    val swirl =
-                        sin(p.currentTime * 0.003f + i * 0.3f) * (waveBand * 0.15f) * dissolveFactor
-                    drawX = p.x + dirX * push + tangentX * swirl
-                    drawY = p.y + dirY * push + tangentY * swirl
-
-                    drawAlpha *= dissolveFactor * dissolveFactor
-                } else if (dist < effectiveRadius + waveBand) {
-                    val bandProgress = (dist - effectiveRadius) / waveBand
-                    val waveIntensity = (1f - bandProgress).coerceIn(0f, 1f)
-                    val smoothFactor = waveIntensity * waveIntensity
-
-                    val push = smoothFactor * (waveBand * 0.45f)
-                    val swirl =
-                        sin(p.currentTime * 0.003f + i * 0.3f) * (waveBand * 0.2f) * smoothFactor
-
-                    drawX = p.x + dirX * push + tangentX * swirl
-                    drawY = p.y + dirY * push + tangentY * swirl
-
-                    drawAlpha *= (0.4f + 0.6f * bandProgress)
-                }
-            } else if (touchOffset != null) {
-                val tdx = drawX - touchOffset.x
-                val tdy = drawY - touchOffset.y
-                val tdist = hypot(tdx, tdy)
-                val repelRadius = 42.dp.toPx()
-                if (tdist < repelRadius) {
-                    val repelFactor = 1f - (tdist / repelRadius)
-                    val repelPush = repelFactor * 26.dp.toPx()
-                    val safeTDist = tdist.coerceAtLeast(1f)
-                    drawX += (tdx / safeTDist) * repelPush
-                    drawY += (tdy / safeTDist) * repelPush
-                }
-            }
-
-            if (drawX !in 0f..w || drawY < 0f || drawY > h) {
-                continue
-            }
-
-            val globalHoldFade =
-                if (holdProgress < 0.25f) {
-                    1f
-                } else {
-                    (1f - (holdProgress - 0.25f) / 0.75f).coerceIn(0f, 1f)
-                }
-            drawAlpha = (drawAlpha * (1f - revealProgress) * globalHoldFade).coerceIn(0f, 1f)
-            if (drawAlpha > 0.05f) {
-                drawCircle(
-                    color = particleColor.copy(alpha = drawAlpha),
-                    radius = p.radiusDp * density,
-                    center = Offset(drawX, drawY),
+@Preview(
+    name = "Dark Mode",
+    showBackground = true,
+    uiMode = Configuration.UI_MODE_NIGHT_YES,
+)
+@Composable
+private fun SpoilerMaskDarkModePreview() {
+    FindroidTheme(darkTheme = true) {
+        Surface {
+            SpoilerMask(enabled = true) {
+                Text(
+                    text = "Dark Mode Spoiler Text",
+                    modifier = Modifier.padding(16.dp),
                 )
             }
         }
     }
 }
 
-private fun particleCount(areaDp: Float): Int {
-    return when {
-        areaDp < 500f -> 10
-        areaDp < 1_000f -> 25
-        areaDp < 2_500f -> 50
-        areaDp < 5_000f -> 85
-        areaDp < 8_000f -> 125
-        areaDp < 11_000f -> 165
-        areaDp < 14_500f -> 210
-        areaDp < 19_000f -> 270
-        areaDp < 24_000f -> 340
-        areaDp < 30_000f -> 430
-        areaDp < 37_000f -> 530
-        areaDp < 45_000f -> 640
-        areaDp < 54_000f -> 770
-        areaDp < 64_000f -> 910
-        areaDp < 75_000f -> 1060
-        areaDp < 88_000f -> 1230
-        areaDp < 102_000f -> 1410
-        areaDp < 118_000f -> 1600
-        areaDp < 136_000f -> 1800
-        else -> MAX_PARTICLES
+@Preview(name = "Image Card", showBackground = true)
+@Composable
+private fun SpoilerMaskImageCardPreview() {
+    FindroidTheme {
+        SpoilerMask(
+            enabled = true,
+            shape = RoundedCornerShape(8.dp),
+        ) {
+            Box(
+                modifier =
+                    Modifier.padding(8.dp)
+                        .size(width = 200.dp, height = 120.dp)
+                        .background(MaterialTheme.colorScheme.primaryContainer),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = "Episode Thumbnail",
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+            }
+        }
     }
 }

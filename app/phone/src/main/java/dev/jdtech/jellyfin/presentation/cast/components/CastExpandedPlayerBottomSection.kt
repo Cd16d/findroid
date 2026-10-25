@@ -13,13 +13,34 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import dev.jdtech.jellyfin.models.FindroidSegment
 import dev.jdtech.jellyfin.player.cast.models.CastPlaybackStatus
 import dev.jdtech.jellyfin.player.cast.presentation.CastPlayerViewModel
+import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 
+/**
+ * Bottom control section of expanded Google Cast player.
+ *
+ * @param uiState Cast player UI state model.
+ * @param isScrubbing Whether seeker bar is being dragged.
+ * @param scrubPosition Current scrub drag position in ms.
+ * @param onScrubStart Callback when scrub drag starts.
+ * @param onScrubStop Callback when scrub drag stops.
+ * @param onPlay Callback to resume playback.
+ * @param onPause Callback to pause playback.
+ * @param onPlayPreviousItem Callback to play previous item.
+ * @param onPlayNextItem Callback to play next item.
+ * @param onSkipSegment Callback to skip segment.
+ * @param onVolumeChange Callback when volume slider moves.
+ * @param onClickAudio Callback when audio track button is tapped.
+ * @param onClickSubtitle Callback when subtitle track button is tapped.
+ * @param modifier Modifier applied to column layout. Defaults to [Modifier].
+ * @param onOpenChapters Optional callback to open chapter selector. Defaults to `null`.
+ */
 @Composable
-fun PlayerBottomSection(
+fun CastExpandedPlayerBottomSection(
     uiState: CastPlayerViewModel.UiState,
     isScrubbing: Boolean,
     scrubPosition: Float,
@@ -34,6 +55,7 @@ fun PlayerBottomSection(
     onClickAudio: () -> Unit,
     onClickSubtitle: () -> Unit,
     modifier: Modifier = Modifier,
+    onOpenChapters: (() -> Unit)? = null,
 ) {
     val playerState = uiState.playerState
     val segment = uiState.currentSegment
@@ -59,6 +81,8 @@ fun PlayerBottomSection(
             chapters = chapters,
             onScrubStart = onScrubStart,
             onScrubStop = onScrubStop,
+            segments = if (segment != null) listOf(segment) else emptyList(),
+            onOpenChapters = onOpenChapters,
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -90,6 +114,7 @@ fun PlayerBottomSection(
 @Composable
 private fun CastPlayerTitles(uiState: CastPlayerViewModel.UiState) {
     val titleInfo = uiState.currentItemTitle
+
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         if (titleInfo.seriesName != null) {
             Text(
@@ -120,5 +145,27 @@ private fun CastPlayerTitles(uiState: CastPlayerViewModel.UiState) {
                 textAlign = TextAlign.Center,
             )
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun CastExpandedPlayerBottomSectionPreview() {
+    FindroidTheme {
+        CastExpandedPlayerBottomSection(
+            uiState = CastPlayerViewModel.UiState(),
+            isScrubbing = false,
+            scrubPosition = 0f,
+            onScrubStart = {},
+            onScrubStop = {},
+            onPlay = {},
+            onPause = {},
+            onPlayPreviousItem = {},
+            onPlayNextItem = {},
+            onSkipSegment = {},
+            onVolumeChange = {},
+            onClickAudio = {},
+            onClickSubtitle = {},
+        )
     }
 }

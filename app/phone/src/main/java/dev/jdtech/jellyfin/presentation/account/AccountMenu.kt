@@ -69,6 +69,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.window.core.layout.WindowSizeClass
 import coil3.compose.AsyncImage
 import dev.jdtech.jellyfin.core.R as CoreR
+import dev.jdtech.jellyfin.core.presentation.dummy.dummyUser
+import dev.jdtech.jellyfin.core.presentation.dummy.dummyUsers
 import dev.jdtech.jellyfin.film.presentation.account.AccountAction
 import dev.jdtech.jellyfin.film.presentation.account.AccountEvent
 import dev.jdtech.jellyfin.film.presentation.account.AccountViewModel
@@ -82,7 +84,6 @@ import dev.jdtech.jellyfin.presentation.account.components.QuickConnectBottomShe
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
 import dev.jdtech.jellyfin.presentation.utils.LocalOfflineMode
-import java.util.UUID
 import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.delay
 
@@ -539,26 +540,9 @@ fun AccountMenuContentExpandedPreview() {
                     tonalElevation = 6.dp,
                 ) {
                     AccountMenuContent(
-                        userName = "Joe",
+                        userName = dummyUser.name,
                         userImageUrl = null,
-                        otherUsers =
-                            listOf(
-                                User(
-                                    id = UUID.randomUUID(),
-                                    name = "Jane",
-                                    serverId = "server1",
-                                ),
-                                User(
-                                    id = UUID.randomUUID(),
-                                    name = "Bob",
-                                    serverId = "server1",
-                                ),
-                                User(
-                                    id = UUID.randomUUID(),
-                                    name = "Alice",
-                                    serverId = "server1",
-                                ),
-                            ),
+                        otherUsers = dummyUsers,
                         isAccountListExpanded = true,
                         baseUrl = "",
                         isTablet = isTablet,
@@ -587,26 +571,9 @@ fun AccountMenuContentPreview() {
         CompositionLocalProvider(LocalOfflineMode provides false) {
             Surface(color = MaterialTheme.colorScheme.primaryContainer) {
                 AccountMenuContent(
-                    userName = "Joe",
+                    userName = dummyUser.name,
                     userImageUrl = null,
-                    otherUsers =
-                        listOf(
-                            User(
-                                id = UUID.randomUUID(),
-                                name = "Jane",
-                                serverId = "server1",
-                            ),
-                            User(
-                                id = UUID.randomUUID(),
-                                name = "Bob",
-                                serverId = "server1",
-                            ),
-                            User(
-                                id = UUID.randomUUID(),
-                                name = "Alice",
-                                serverId = "server1",
-                            ),
-                        ),
+                    otherUsers = dummyUsers,
                     isAccountListExpanded = false,
                     baseUrl = "",
                     isTablet = false,
@@ -635,26 +602,9 @@ fun AccountMenuContentDarkPreview() {
         CompositionLocalProvider(LocalOfflineMode provides false) {
             Surface(color = MaterialTheme.colorScheme.primaryContainer) {
                 AccountMenuContent(
-                    userName = "Joe",
+                    userName = dummyUser.name,
                     userImageUrl = null,
-                    otherUsers =
-                        listOf(
-                            User(
-                                id = UUID.randomUUID(),
-                                name = "Jane",
-                                serverId = "server1",
-                            ),
-                            User(
-                                id = UUID.randomUUID(),
-                                name = "Bob",
-                                serverId = "server1",
-                            ),
-                            User(
-                                id = UUID.randomUUID(),
-                                name = "Alice",
-                                serverId = "server1",
-                            ),
-                        ),
+                    otherUsers = dummyUsers,
                     isAccountListExpanded = false,
                     baseUrl = "",
                     isTablet = false,
@@ -683,16 +633,9 @@ fun AccountMenuContentOfflinePreview() {
         CompositionLocalProvider(LocalOfflineMode provides true) {
             Surface(color = MaterialTheme.colorScheme.primaryContainer) {
                 AccountMenuContent(
-                    userName = "Joe",
+                    userName = dummyUser.name,
                     userImageUrl = null,
-                    otherUsers =
-                        listOf(
-                            User(
-                                id = UUID.randomUUID(),
-                                name = "Jane",
-                                serverId = "server1",
-                            )
-                        ),
+                    otherUsers = dummyUsers,
                     isAccountListExpanded = false,
                     baseUrl = "",
                     isTablet = false,

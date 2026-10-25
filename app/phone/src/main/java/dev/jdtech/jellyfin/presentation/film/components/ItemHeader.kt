@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -32,17 +33,32 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.ColorPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import dev.jdtech.jellyfin.core.R as CoreR
+import dev.jdtech.jellyfin.core.presentation.dummy.dummyMovie
 import dev.jdtech.jellyfin.models.FindroidEpisode
 import dev.jdtech.jellyfin.models.FindroidItem
 import dev.jdtech.jellyfin.models.FindroidSeason
+import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
 import dev.jdtech.jellyfin.presentation.utils.parallaxLayoutModifier
 import dev.jdtech.jellyfin.utils.toBlurHashPainter
 import dev.jdtech.jellyfin.utils.toOptimizedImageUri
 
+/**
+ * Parallax header image banner for media detail screens with optional logo, spoiler masking, and
+ * blurhash placeholder.
+ *
+ * @param item Media item model containing backdrop/poster images.
+ * @param scrollState ScrollState of parent scroll container to drive parallax effect.
+ * @param showLogo Whether to overlay the media item logo. Defaults to `false`.
+ * @param hideEpisodeSpoilers Whether episode spoiler protection is active. Defaults to `false`.
+ * @param isRevealed Whether spoiler protection is currently revealed. Defaults to `false`.
+ * @param onRevealChange Callback when spoiler revealed state changes. Defaults to `null`.
+ * @param content Additional overlay composable content inside header banner. Defaults to `{}`.
+ */
 @Composable
 fun ItemHeader(
     item: FindroidItem,
@@ -261,5 +277,16 @@ private fun ItemHeaderBase(
                 tint = Color.White.copy(alpha = 0.25f),
             )
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun ItemHeaderPreview() {
+    FindroidTheme {
+        ItemHeader(
+            item = dummyMovie,
+            scrollState = rememberScrollState(),
+        )
     }
 }

@@ -45,9 +45,11 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.OutlinedButton
 import androidx.tv.material3.Text
 import dev.jdtech.jellyfin.core.R
+import dev.jdtech.jellyfin.core.presentation.dummy.dummyServer
 import dev.jdtech.jellyfin.models.UiText
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
+import dev.jdtech.jellyfin.setup.R as SetupR
 import dev.jdtech.jellyfin.setup.presentation.login.LoginAction
 import dev.jdtech.jellyfin.setup.presentation.login.LoginEvent
 import dev.jdtech.jellyfin.setup.presentation.login.LoginState
@@ -112,14 +114,14 @@ private fun LoginScreenLayout(
             modifier = Modifier.fillMaxWidth().align(Alignment.Center),
         ) {
             Text(
-                text = stringResource(id = dev.jdtech.jellyfin.setup.R.string.login),
+                text = stringResource(id = SetupR.string.login),
                 style = MaterialTheme.typography.displayMedium,
             )
             Spacer(modifier = Modifier.height(MaterialTheme.spacings.small))
             Text(
                 text =
                     stringResource(
-                        dev.jdtech.jellyfin.setup.R.string.server_subtitle,
+                        SetupR.string.server_subtitle,
                         state.serverName ?: "",
                     ),
                 style = MaterialTheme.typography.titleMedium,
@@ -134,14 +136,7 @@ private fun LoginScreenLayout(
                     )
                 },
                 onValueChange = { username = it },
-                label = {
-                    Text(
-                        text =
-                            stringResource(
-                                id = dev.jdtech.jellyfin.setup.R.string.edit_text_username_hint
-                            )
-                    )
-                },
+                label = { Text(text = stringResource(id = SetupR.string.edit_text_username_hint)) },
                 singleLine = true,
                 keyboardOptions =
                     KeyboardOptions(
@@ -163,14 +158,7 @@ private fun LoginScreenLayout(
                     )
                 },
                 onValueChange = { password = it },
-                label = {
-                    Text(
-                        text =
-                            stringResource(
-                                id = dev.jdtech.jellyfin.setup.R.string.edit_text_password_hint
-                            )
-                    )
-                },
+                label = { Text(text = stringResource(id = SetupR.string.edit_text_password_hint)) },
                 singleLine = true,
                 keyboardOptions =
                     KeyboardOptions(
@@ -208,10 +196,7 @@ private fun LoginScreenLayout(
                             )
                         }
                         Text(
-                            text =
-                                stringResource(
-                                    id = dev.jdtech.jellyfin.setup.R.string.login_btn_login
-                                ),
+                            text = stringResource(id = SetupR.string.login_btn_login),
                             modifier = Modifier.align(Alignment.Center),
                         )
                     }
@@ -228,7 +213,7 @@ private fun LoginScreenLayout(
                             modifier = Modifier.weight(1f).padding(horizontal = 12.dp)
                         )
                         Text(
-                            text = stringResource(dev.jdtech.jellyfin.setup.R.string.or),
+                            text = stringResource(SetupR.string.or),
                             color = DividerDefaults.color,
                             style = MaterialTheme.typography.bodySmall,
                         )
@@ -255,10 +240,7 @@ private fun LoginScreenLayout(
                                         if (state.quickConnectCode != null) {
                                             state.quickConnectCode!!
                                         } else {
-                                            stringResource(
-                                                dev.jdtech.jellyfin.setup.R.string
-                                                    .login_btn_quick_connect
-                                            )
+                                            stringResource(SetupR.string.login_btn_quick_connect)
                                         },
                                     modifier = Modifier.align(Alignment.Center),
                                 )
@@ -284,7 +266,7 @@ private fun LoginScreenLayout(
 private fun LoginScreenLayoutPreview() {
     FindroidTheme {
         LoginScreenLayout(
-            state = LoginState(serverName = "Demo Server", quickConnectEnabled = true),
+            state = LoginState(serverName = dummyServer.name, quickConnectEnabled = true),
             onAction = {},
         )
     }
@@ -297,7 +279,7 @@ private fun LoginScreenLayoutPreviewError() {
         LoginScreenLayout(
             state =
                 LoginState(
-                    serverName = "Demo Server",
+                    serverName = dummyServer.name,
                     error = UiText.DynamicString("Invalid username or password"),
                 ),
             onAction = {},

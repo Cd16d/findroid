@@ -12,6 +12,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.jdtech.jellyfin.settings.BuildConfig
 import dev.jdtech.jellyfin.settings.R
 import dev.jdtech.jellyfin.settings.domain.AppPreferences
+import dev.jdtech.jellyfin.settings.domain.Constants
 import dev.jdtech.jellyfin.settings.presentation.enums.DeviceType
 import dev.jdtech.jellyfin.settings.presentation.models.PreferenceAppLanguage
 import dev.jdtech.jellyfin.settings.presentation.models.PreferenceCategory
@@ -20,6 +21,7 @@ import dev.jdtech.jellyfin.settings.presentation.models.PreferenceGroup
 import dev.jdtech.jellyfin.settings.presentation.models.PreferenceIntInput
 import dev.jdtech.jellyfin.settings.presentation.models.PreferenceLongInput
 import dev.jdtech.jellyfin.settings.presentation.models.PreferenceMultiSelect
+import dev.jdtech.jellyfin.settings.presentation.models.PreferenceSegmentConfig
 import dev.jdtech.jellyfin.settings.presentation.models.PreferenceSelect
 import dev.jdtech.jellyfin.settings.presentation.models.PreferenceStepper
 import dev.jdtech.jellyfin.settings.presentation.models.PreferenceStorageInfo
@@ -39,6 +41,13 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 
+/**
+ * ViewModel managing settings state, navigation events, and preference persistence.
+ *
+ * @param appPreferences Preferences repository.
+ * @param context Application context.
+ * @param savedStateHandle Saved state handle for instance state preservation.
+ */
 @HiltViewModel
 class SettingsViewModel
 @Inject
@@ -48,28 +57,6 @@ constructor(
     private val savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
     internal var ioDispatcher: CoroutineDispatcher = Dispatchers.IO
-
-    constructor(
-        appPreferences: AppPreferences,
-        context: Context,
-    ) : this(
-        appPreferences = appPreferences,
-        context = context,
-        savedStateHandle = SavedStateHandle(),
-    )
-
-    constructor(
-        appPreferences: AppPreferences,
-        context: Context,
-        savedStateHandle: SavedStateHandle,
-        ioDispatcher: CoroutineDispatcher,
-    ) : this(
-        appPreferences = appPreferences,
-        context = context,
-        savedStateHandle = savedStateHandle,
-    ) {
-        this.ioDispatcher = ioDispatcher
-    }
 
     private val _state = MutableStateFlow(SettingsState())
     val state = _state.asStateFlow()
@@ -160,7 +147,10 @@ constructor(
                                                         viewModelScope.launch {
                                                             eventsChannel.send(
                                                                 SettingsEvent.UpdateTheme(
-                                                                    value ?: "system"
+                                                                    value
+                                                                        ?: Constants.Theme.SYSTEM
+                                                                            .name
+                                                                            .lowercase()
                                                                 )
                                                             )
                                                         }
@@ -210,6 +200,14 @@ constructor(
                                                         R.string.tv_show_logos_summary,
                                                     supportedDeviceTypes = listOf(DeviceType.TV),
                                                     backendPreference = appPreferences.tvShowLogos,
+                                                ),
+                                                PreferenceSwitch(
+                                                    nameStringResource = R.string.tv_screensaver,
+                                                    descriptionStringRes =
+                                                        R.string.tv_screensaver_summary,
+                                                    supportedDeviceTypes = listOf(DeviceType.TV),
+                                                    backendPreference =
+                                                        appPreferences.tvScreensaver,
                                                 ),
                                             ),
                                     ),
@@ -313,56 +311,73 @@ constructor(
                             },
                             nestedPreferenceGroups =
                                 listOfNotNull(
-                                    if (BuildConfig.FLAVOR == "proprietary")
-                                        PreferenceGroup(
-                                            nameStringResource =
-                                                R.string.settings_category_chromecast,
-                                            preferences =
-                                                listOf(
-                                                    PreferenceSwitch(
-                                                        nameStringResource =
-                                                            R.string.pref_cast_enabled,
-                                                        descriptionStringRes =
-                                                            R.string.pref_cast_enabled_summary,
-                                                        backendPreference =
-                                                            appPreferences.castEnabled,
-                                                    ),
-                                                    PreferenceIntInput(
-                                                        nameStringResource =
-                                                            R.string.pref_cast_max_bitrate,
-                                                        backendPreference =
-                                                            appPreferences.castMaxBitrateKbps,
-                                                        suffixRes = R.string.kbps,
-                                                        dependencies =
-                                                            listOf(appPreferences.castEnabled),
-                                                    ),
-                                                ),
-                                        )
-                                    else null,
                                     PreferenceGroup(
+                                        nameStringResource = R.string.playback,
                                         preferences =
                                             listOf(
-                                                PreferenceCategory(
-                                                    nameStringResource = R.string.subtitles,
+                                                PreferenceSelect(
+                                                    nameStringResource =
+                                                        R.string.pref_player_orientation,
+                                                    supportedDeviceTypes = listOf(DeviceType.PHONE),
+                                                    backendPreference =
+                                                        appPreferences.playerOrientation,
+                                                    options = R.array.player_orientation,
+                                                    optionValues =
+                                                        R.array.player_orientation_values,
+                                                ),
+                                                PreferenceSelect(
+                                                    nameStringResource =
+                                                        R.string.pref_player_default_resize_mode,
                                                     descriptionStringRes =
-                                                        R.string.subtitles_summary,
-                                                    iconDrawableId = R.drawable.ic_closed_caption,
-                                                    onClick = {
-                                                        viewModelScope.launch {
-                                                            eventsChannel.send(
-                                                                SettingsEvent.LaunchIntent(
-                                                                    Intent(
-                                                                        Settings
-                                                                            .ACTION_CAPTIONING_SETTINGS
-                                                                    )
-                                                                )
-                                                            )
-                                                        }
-                                                    },
-                                                )
-                                            )
+                                                        R.string
+                                                            .pref_player_default_resize_mode_summary,
+                                                    backendPreference =
+                                                        appPreferences.playerDefaultResizeMode,
+                                                    options = R.array.player_resize_modes,
+                                                    optionValues =
+                                                        R.array.player_resize_mode_values,
+                                                ),
+                                                PreferenceSwitch(
+                                                    nameStringResource =
+                                                        R.string.pref_player_autoplay_next,
+                                                    descriptionStringRes =
+                                                        R.string.pref_player_autoplay_next_summary,
+                                                    backendPreference =
+                                                        appPreferences.playerAutoplayNext,
+                                                ),
+                                                PreferenceSwitch(
+                                                    nameStringResource =
+                                                        R.string
+                                                            .pref_player_playback_speed_remember,
+                                                    descriptionStringRes =
+                                                        R.string
+                                                            .pref_player_playback_speed_remember_summary,
+                                                    backendPreference =
+                                                        appPreferences.playerPlaybackSpeedRemember,
+                                                ),
+                                                PreferenceLongInput(
+                                                    nameStringResource =
+                                                        R.string.pref_player_controls_timeout,
+                                                    descriptionStringRes =
+                                                        R.string
+                                                            .pref_player_controls_timeout_summary,
+                                                    backendPreference =
+                                                        appPreferences.playerControlsTimeout,
+                                                    suffixRes = R.string.seconds,
+                                                ),
+                                                PreferenceSwitch(
+                                                    nameStringResource =
+                                                        R.string.pref_player_haptics,
+                                                    descriptionStringRes =
+                                                        R.string.pref_player_haptics_summary,
+                                                    supportedDeviceTypes = listOf(DeviceType.PHONE),
+                                                    backendPreference =
+                                                        appPreferences.playerHaptics,
+                                                ),
+                                            ),
                                     ),
                                     PreferenceGroup(
+                                        nameStringResource = R.string.pref_player_backend,
                                         preferences =
                                             listOf(
                                                 PreferenceSelect(
@@ -425,7 +440,8 @@ constructor(
                                                                                 appPreferences
                                                                                     .playerMpvAo,
                                                                             options =
-                                                                                R.array.mpv_aos,
+                                                                                R.array
+                                                                                    .mpv_ao_options,
                                                                             optionValues =
                                                                                 R.array.mpv_aos,
                                                                         ),
@@ -480,7 +496,7 @@ constructor(
                                                             ),
                                                         ),
                                                 ),
-                                            )
+                                            ),
                                     ),
                                     PreferenceGroup(
                                         nameStringResource = R.string.gestures,
@@ -539,6 +555,18 @@ constructor(
                                                 ),
                                                 PreferenceSwitch(
                                                     nameStringResource =
+                                                        R.string.player_gestures_quick_speed,
+                                                    descriptionStringRes =
+                                                        R.string
+                                                            .player_gestures_quick_speed_summary,
+                                                    dependencies =
+                                                        listOf(appPreferences.playerGestures),
+                                                    supportedDeviceTypes = listOf(DeviceType.PHONE),
+                                                    backendPreference =
+                                                        appPreferences.playerGesturesQuickSpeed,
+                                                ),
+                                                PreferenceSwitch(
+                                                    nameStringResource =
                                                         R.string.player_brightness_remember,
                                                     dependencies =
                                                         listOf(
@@ -550,23 +578,6 @@ constructor(
                                                         appPreferences
                                                             .playerGesturesBrightnessRemember,
                                                 ),
-                                                PreferenceSwitch(
-                                                    nameStringResource =
-                                                        R.string.player_start_maximized,
-                                                    descriptionStringRes =
-                                                        R.string.player_start_maximized_summary,
-                                                    dependencies =
-                                                        listOf(appPreferences.playerGestures),
-                                                    supportedDeviceTypes = listOf(DeviceType.PHONE),
-                                                    backendPreference =
-                                                        appPreferences.playerGesturesStartMaximized,
-                                                ),
-                                            ),
-                                    ),
-                                    PreferenceGroup(
-                                        nameStringResource = R.string.seeking,
-                                        preferences =
-                                            listOf(
                                                 PreferenceLongInput(
                                                     nameStringResource =
                                                         R.string.seek_back_increment,
@@ -581,81 +592,46 @@ constructor(
                                                         appPreferences.playerSeekForwardInc,
                                                     suffixRes = R.string.ms,
                                                 ),
-                                                PreferenceSwitch(
-                                                    nameStringResource =
-                                                        R.string.pref_player_chapter_markers,
-                                                    descriptionStringRes =
-                                                        R.string
-                                                            .pref_player_chapter_markers_summary,
-                                                    backendPreference =
-                                                        appPreferences.playerChapterMarkers,
-                                                ),
                                             ),
                                     ),
                                     PreferenceGroup(
                                         nameStringResource = R.string.media_segments,
                                         preferences =
                                             listOf(
-                                                PreferenceSwitch(
+                                                PreferenceSegmentConfig(
                                                     nameStringResource =
-                                                        R.string
-                                                            .pref_player_media_segments_skip_button,
-                                                    descriptionStringRes =
-                                                        R.string
-                                                            .pref_player_media_segments_skip_button_summary,
-                                                    backendPreference =
-                                                        appPreferences
-                                                            .playerMediaSegmentsSkipButton,
+                                                        R.string.media_segments_type_intro,
+                                                    segmentType =
+                                                        Constants.MediaSegmentType.INTRO.name,
                                                 ),
-                                                PreferenceMultiSelect(
+                                                PreferenceSegmentConfig(
                                                     nameStringResource =
-                                                        R.string
-                                                            .pref_player_media_segments_skip_button_type,
-                                                    dependencies =
-                                                        listOf(
-                                                            appPreferences
-                                                                .playerMediaSegmentsSkipButton
-                                                        ),
-                                                    backendPreference =
-                                                        appPreferences
-                                                            .playerMediaSegmentsSkipButtonType,
-                                                    options = R.array.media_segments_type,
-                                                    optionValues =
-                                                        R.array.media_segments_type_values,
+                                                        R.string.media_segments_type_outro,
+                                                    segmentType =
+                                                        Constants.MediaSegmentType.OUTRO.name,
                                                 ),
-                                                PreferenceLongInput(
+                                                PreferenceSegmentConfig(
                                                     nameStringResource =
-                                                        R.string
-                                                            .pref_player_media_segments_skip_button_duration,
-                                                    dependencies =
-                                                        listOf(
-                                                            appPreferences
-                                                                .playerMediaSegmentsSkipButton
-                                                        ),
-                                                    backendPreference =
-                                                        appPreferences
-                                                            .playerMediaSegmentsSkipButtonDuration,
-                                                    suffixRes = R.string.seconds,
+                                                        R.string.media_segments_type_recap,
+                                                    segmentType =
+                                                        Constants.MediaSegmentType.RECAP.name,
                                                 ),
-                                                PreferenceSwitch(
+                                                PreferenceSegmentConfig(
                                                     nameStringResource =
-                                                        R.string
-                                                            .pref_player_media_segments_auto_skip,
-                                                    descriptionStringRes =
-                                                        R.string
-                                                            .pref_player_media_segments_auto_skip_summary,
-                                                    backendPreference =
-                                                        appPreferences.playerMediaSegmentsAutoSkip,
+                                                        R.string.media_segments_type_preview,
+                                                    segmentType =
+                                                        Constants.MediaSegmentType.PREVIEW.name,
+                                                ),
+                                                PreferenceSegmentConfig(
+                                                    nameStringResource =
+                                                        R.string.media_segments_type_commercial,
+                                                    segmentType =
+                                                        Constants.MediaSegmentType.COMMERCIAL.name,
                                                 ),
                                                 PreferenceSelect(
                                                     nameStringResource =
                                                         R.string
                                                             .pref_player_media_segments_auto_skip_mode,
-                                                    dependencies =
-                                                        listOf(
-                                                            appPreferences
-                                                                .playerMediaSegmentsAutoSkip
-                                                        ),
                                                     supportedDeviceTypes = listOf(DeviceType.PHONE),
                                                     backendPreference =
                                                         appPreferences
@@ -664,21 +640,14 @@ constructor(
                                                     optionValues =
                                                         R.array.media_segments_auto_skip_values,
                                                 ),
-                                                PreferenceMultiSelect(
+                                                PreferenceLongInput(
                                                     nameStringResource =
                                                         R.string
-                                                            .pref_player_media_segments_auto_skip_type,
-                                                    dependencies =
-                                                        listOf(
-                                                            appPreferences
-                                                                .playerMediaSegmentsAutoSkip
-                                                        ),
+                                                            .pref_player_media_segments_skip_button_duration,
                                                     backendPreference =
                                                         appPreferences
-                                                            .playerMediaSegmentsAutoSkipType,
-                                                    options = R.array.media_segments_type,
-                                                    optionValues =
-                                                        R.array.media_segments_type_values,
+                                                            .playerMediaSegmentsSkipButtonDuration,
+                                                    suffixRes = R.string.seconds,
                                                 ),
                                                 PreferenceLongInput(
                                                     nameStringResource =
@@ -692,9 +661,36 @@ constructor(
                                             ),
                                     ),
                                     PreferenceGroup(
-                                        nameStringResource = R.string.trickplay,
+                                        nameStringResource = R.string.pref_player_playback_display,
                                         preferences =
                                             listOf(
+                                                PreferenceCategory(
+                                                    nameStringResource = R.string.subtitles,
+                                                    descriptionStringRes =
+                                                        R.string.subtitles_summary,
+                                                    iconDrawableId = R.drawable.ic_closed_caption,
+                                                    onClick = {
+                                                        viewModelScope.launch {
+                                                            eventsChannel.send(
+                                                                SettingsEvent.LaunchIntent(
+                                                                    Intent(
+                                                                        Settings
+                                                                            .ACTION_CAPTIONING_SETTINGS
+                                                                    )
+                                                                )
+                                                            )
+                                                        }
+                                                    },
+                                                ),
+                                                PreferenceSwitch(
+                                                    nameStringResource =
+                                                        R.string.pref_player_chapter_markers,
+                                                    descriptionStringRes =
+                                                        R.string
+                                                            .pref_player_chapter_markers_summary,
+                                                    backendPreference =
+                                                        appPreferences.playerChapterMarkers,
+                                                ),
                                                 PreferenceSwitch(
                                                     nameStringResource =
                                                         R.string.pref_player_trickplay,
@@ -733,6 +729,59 @@ constructor(
                                                 )
                                             ),
                                     ),
+                                    PreferenceGroup(
+                                        nameStringResource = R.string.pref_transcoding_title,
+                                        preferences =
+                                            listOf(
+                                                PreferenceIntInput(
+                                                    nameStringResource =
+                                                        R.string.pref_max_transcode_bitrate,
+                                                    descriptionStringRes =
+                                                        R.string.pref_max_transcode_bitrate_summary,
+                                                    backendPreference =
+                                                        appPreferences.castMaxBitrateKbps,
+                                                    suffixRes = R.string.kbps,
+                                                ),
+                                                PreferenceSwitch(
+                                                    nameStringResource =
+                                                        R.string.pref_player_remember_quality,
+                                                    descriptionStringRes =
+                                                        R.string
+                                                            .pref_player_remember_quality_summary,
+                                                    backendPreference =
+                                                        appPreferences.playerRememberQuality,
+                                                ),
+                                                PreferenceSelect(
+                                                    nameStringResource =
+                                                        R.string.pref_player_default_quality,
+                                                    descriptionStringRes =
+                                                        R.string
+                                                            .pref_player_default_quality_summary,
+                                                    backendPreference =
+                                                        appPreferences.playerDefaultQuality,
+                                                    options = R.array.player_default_qualities,
+                                                    optionValues =
+                                                        R.array.player_default_quality_values,
+                                                ),
+                                            ),
+                                    ),
+                                    if (BuildConfig.FLAVOR == "proprietary")
+                                        PreferenceGroup(
+                                            nameStringResource =
+                                                R.string.settings_category_chromecast,
+                                            preferences =
+                                                listOf(
+                                                    PreferenceSwitch(
+                                                        nameStringResource =
+                                                            R.string.pref_cast_enabled,
+                                                        descriptionStringRes =
+                                                            R.string.pref_cast_enabled_summary,
+                                                        backendPreference =
+                                                            appPreferences.castEnabled,
+                                                    )
+                                                ),
+                                        )
+                                    else null,
                                 ),
                         )
                     )
@@ -1115,15 +1164,10 @@ constructor(
                                 preferenceGroup.preferences
                                     .filter { it.supportedDeviceTypes.contains(deviceType) }
                                     .filter { preference ->
-                                        if (
-                                            preference is PreferenceSelect &&
-                                                preference.backendPreference ==
-                                                    appPreferences.defaultDownloadStorageIndex
-                                        ) {
+                                        !(preference is PreferenceSelect &&
+                                            preference.backendPreference ==
+                                                appPreferences.defaultDownloadStorageIndex) ||
                                             storageDevices.size > 1
-                                        } else {
-                                            true
-                                        }
                                     }
                                     .map { preference ->
                                         when (preference) {
@@ -1230,6 +1274,42 @@ constructor(
                                                         ),
                                                 )
                                             }
+                                            is PreferenceSegmentConfig -> {
+                                                preference.copy(
+                                                    action =
+                                                        appPreferences.getSegmentAction(
+                                                            preference.segmentType
+                                                        ),
+                                                    color =
+                                                        appPreferences.getSegmentColor(
+                                                            preference.segmentType
+                                                        ),
+                                                    onActionChange = { action ->
+                                                        appPreferences.setSegmentAction(
+                                                            preference.segmentType,
+                                                            action,
+                                                        )
+                                                        loadPreferences(
+                                                            savedStateHandle.get<List<Int>>(
+                                                                "indexes"
+                                                            ) ?: emptyList(),
+                                                            deviceType,
+                                                        )
+                                                    },
+                                                    onColorChange = { color ->
+                                                        appPreferences.setSegmentColor(
+                                                            preference.segmentType,
+                                                            color,
+                                                        )
+                                                        loadPreferences(
+                                                            savedStateHandle.get<List<Int>>(
+                                                                "indexes"
+                                                            ) ?: emptyList(),
+                                                            deviceType,
+                                                        )
+                                                    },
+                                                )
+                                            }
                                             is PreferenceStorageInfo -> {
                                                 preference.copy(storages = storageDevices)
                                             }
@@ -1286,6 +1366,16 @@ constructor(
                             action.preference.backendPreference,
                             action.preference.value,
                         )
+                    is PreferenceSegmentConfig -> {
+                        appPreferences.setSegmentAction(
+                            action.preference.segmentType,
+                            action.preference.action,
+                        )
+                        appPreferences.setSegmentColor(
+                            action.preference.segmentType,
+                            action.preference.color,
+                        )
+                    }
                 }
             }
             else -> Unit

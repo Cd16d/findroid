@@ -6,6 +6,7 @@ import dev.jdtech.jellyfin.api.JellyfinApi
 import dev.jdtech.jellyfin.database.ServerDatabaseDao
 import dev.jdtech.jellyfin.models.FindroidCollection
 import dev.jdtech.jellyfin.models.FindroidEpisode
+import dev.jdtech.jellyfin.models.FindroidImages
 import dev.jdtech.jellyfin.models.FindroidItem
 import dev.jdtech.jellyfin.models.FindroidMovie
 import dev.jdtech.jellyfin.models.FindroidPart
@@ -29,6 +30,8 @@ import java.util.UUID
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.withContext
 import org.jellyfin.sdk.model.api.BaseItemDto
 import org.jellyfin.sdk.model.api.BaseItemKind
@@ -36,7 +39,9 @@ import org.jellyfin.sdk.model.api.ItemFields
 import org.jellyfin.sdk.model.api.ItemFilter
 import org.jellyfin.sdk.model.api.PlayMethod
 import org.jellyfin.sdk.model.api.PublicSystemInfo
+import org.jellyfin.sdk.model.api.SeriesStatus
 import org.jellyfin.sdk.model.api.UserConfiguration
+import org.jellyfin.sdk.model.api.VideoType
 
 class JellyfinRepositoryOfflineImpl(
     private val context: Context,
@@ -111,11 +116,16 @@ class JellyfinRepositoryOfflineImpl(
         sortOrder: SortOrder,
         filters: List<ItemFilter>?,
     ): Flow<PagingData<FindroidItem>> {
-        TODO("Not yet implemented")
+        return flowOf(PagingData.empty())
     }
 
     override suspend fun getPerson(personId: UUID): FindroidPerson {
-        TODO("Not yet implemented")
+        return FindroidPerson(
+            id = personId,
+            name = "",
+            overview = "",
+            images = FindroidImages(),
+        )
     }
 
     override suspend fun getPersonItems(
@@ -123,12 +133,115 @@ class JellyfinRepositoryOfflineImpl(
         includeTypes: List<BaseItemKind>?,
         recursive: Boolean,
     ): List<FindroidItem> {
-        TODO("Not yet implemented")
+        return emptyList()
     }
 
     override suspend fun getFavoriteItems(): List<FindroidItem> {
-        TODO("Not yet implemented")
+        return emptyList()
     }
+
+    override suspend fun getAvailableContentTypes(): List<BaseItemKind> =
+        listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES, BaseItemKind.EPISODE)
+
+    override suspend fun getAvailableVideoQualities(): List<String> =
+        listOf("SD", "HD", "4K", "3D", "HAS_SUBTITLES")
+
+    override suspend fun getAvailableItemFilters(): List<ItemFilter> =
+        listOf(
+            ItemFilter.IS_UNPLAYED,
+            ItemFilter.IS_PLAYED,
+            ItemFilter.IS_FAVORITE,
+            ItemFilter.IS_RESUMABLE,
+        )
+
+    override suspend fun getAvailableSeriesStatuses(): List<SeriesStatus> =
+        listOf(
+            SeriesStatus.CONTINUING,
+            SeriesStatus.ENDED,
+            SeriesStatus.UNRELEASED,
+        )
+
+    override suspend fun getAvailableFeatures(): List<String> =
+        listOf(
+            "HAS_SUBTITLES",
+            "HAS_TRAILER",
+            "HAS_EXTRA",
+            "HAS_THEME_SONG",
+            "HAS_THEME_VIDEO",
+        )
+
+    override suspend fun getGenres(includeItemTypes: List<BaseItemKind>?): List<String> =
+        emptyList()
+
+    override suspend fun getTags(includeItemTypes: List<BaseItemKind>?): List<String> = emptyList()
+
+    override suspend fun getStudios(includeItemTypes: List<BaseItemKind>?): List<String> =
+        emptyList()
+
+    override suspend fun getOfficialRatings(includeItemTypes: List<BaseItemKind>?): List<String> =
+        emptyList()
+
+    override suspend fun getYears(includeItemTypes: List<BaseItemKind>?): List<Int> = emptyList()
+
+    override suspend fun getAudioLanguages(includeItemTypes: List<BaseItemKind>?): List<String> =
+        emptyList()
+
+    override suspend fun getSubtitleLanguages(includeItemTypes: List<BaseItemKind>?): List<String> =
+        emptyList()
+
+    override suspend fun getSearchItemsFiltered(
+        query: String,
+        includeItemTypes: List<BaseItemKind>?,
+        seriesStatuses: List<SeriesStatus>?,
+        genres: List<String>?,
+        tags: List<String>?,
+        officialRatings: List<String>?,
+        years: List<Int>?,
+        studios: List<String>?,
+        audioLanguages: List<String>?,
+        subtitleLanguages: List<String>?,
+        filters: List<ItemFilter>?,
+        is3D: Boolean?,
+        hasSubtitles: Boolean?,
+        is4K: Boolean?,
+        isHD: Boolean?,
+        videoTypes: List<VideoType>?,
+        hasTrailer: Boolean?,
+        hasSpecialFeatures: Boolean?,
+        hasThemeSong: Boolean?,
+        hasThemeVideo: Boolean?,
+        minCommunityRating: Double?,
+        startIndex: Int?,
+        limit: Int?,
+    ): List<FindroidItem> = getSearchItems(query)
+
+    override fun getSearchItemsFilteredPaging(
+        query: String,
+        includeItemTypes: List<BaseItemKind>?,
+        seriesStatuses: List<SeriesStatus>?,
+        genres: List<String>?,
+        tags: List<String>?,
+        officialRatings: List<String>?,
+        years: List<Int>?,
+        studios: List<String>?,
+        audioLanguages: List<String>?,
+        subtitleLanguages: List<String>?,
+        filters: List<ItemFilter>?,
+        is3D: Boolean?,
+        hasSubtitles: Boolean?,
+        is4K: Boolean?,
+        isHD: Boolean?,
+        videoTypes: List<VideoType>?,
+        hasTrailer: Boolean?,
+        hasSpecialFeatures: Boolean?,
+        hasThemeSong: Boolean?,
+        hasThemeVideo: Boolean?,
+        minCommunityRating: Double?,
+    ): Flow<PagingData<FindroidItem>> = flow { emit(PagingData.from(getSearchItems(query))) }
+
+    override suspend fun getRandomItem(): FindroidItem? = null
+
+    override suspend fun getSearchSuggestions(): List<String> = emptyList()
 
     override suspend fun getSearchItems(query: String): List<FindroidItem> {
         return withContext(Dispatchers.IO) {
@@ -239,7 +352,14 @@ class JellyfinRepositoryOfflineImpl(
             items
         }
 
-    override suspend fun getMediaSources(itemId: UUID, includePath: Boolean): List<FindroidSource> =
+    override suspend fun getMediaSources(
+        itemId: UUID,
+        includePath: Boolean,
+        maxStreamingBitrate: Int?,
+        audioStreamIndex: Int?,
+        deviceProfile: org.jellyfin.sdk.model.api.DeviceProfile?,
+        enableDirectPlay: Boolean,
+    ): List<FindroidSource> =
         withContext(Dispatchers.IO) {
             val userId = jellyfinApi.userId
             if (userId != null && database.isItemDownloadedForUser(userId, itemId)) {
@@ -250,7 +370,7 @@ class JellyfinRepositoryOfflineImpl(
         }
 
     override suspend fun getStreamUrl(itemId: UUID, mediaSourceId: String): String {
-        TODO("Not yet implemented")
+        return ""
     }
 
     override suspend fun getSegments(itemId: UUID): List<FindroidSegment> =
@@ -357,9 +477,11 @@ class JellyfinRepositoryOfflineImpl(
         return jellyfinApi.api.baseUrl.orEmpty()
     }
 
-    override suspend fun updateDeviceName(name: String) {
-        TODO("Not yet implemented")
+    override fun getDeviceName(): String {
+        return appPreferences.getValue(appPreferences.customDeviceName)
     }
+
+    override suspend fun updateDeviceName(name: String) {}
 
     override suspend fun getUserConfiguration(): UserConfiguration? {
         return null
@@ -409,4 +531,8 @@ class JellyfinRepositoryOfflineImpl(
     }
 
     override suspend fun canTranscode(): Boolean = false
+
+    override suspend fun getActiveTranscodingInfo(
+        playSessionId: String?
+    ): org.jellyfin.sdk.model.api.TranscodingInfo? = null
 }

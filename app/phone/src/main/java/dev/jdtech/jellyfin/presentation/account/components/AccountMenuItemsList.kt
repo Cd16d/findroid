@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
@@ -21,6 +20,7 @@ import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import dev.jdtech.jellyfin.core.R as CoreR
+import dev.jdtech.jellyfin.core.presentation.theme.CentralShapes
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.utils.LocalOfflineMode
 
@@ -33,22 +33,10 @@ fun AccountMenuItemsList(
     onNavigateToKofi: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val topShape =
-        RoundedCornerShape(
-            topStart = 24.dp,
-            topEnd = 24.dp,
-            bottomStart = 4.dp,
-            bottomEnd = 4.dp,
-        )
-    val bottomShape =
-        RoundedCornerShape(
-            topStart = 4.dp,
-            topEnd = 4.dp,
-            bottomStart = 24.dp,
-            bottomEnd = 24.dp,
-        )
-    val middleShape = RoundedCornerShape(4.dp)
-    val singleShape = RoundedCornerShape(24.dp)
+    val topShape = CentralShapes.GroupTop
+    val bottomShape = CentralShapes.GroupBottom
+    val middleShape = CentralShapes.GroupMiddle
+    val singleShape = CentralShapes.GroupSingle
 
     val isOffline = LocalOfflineMode.current
 

@@ -20,6 +20,98 @@ constructor(
     private val repository: JellyfinRepository,
     private val downloadQueue: dagger.Lazy<DownloadQueue>,
 ) {
+    @Volatile private var activeItemId: UUID? = null
+    @Volatile private var activeMediaSourceId: String? = null
+    @Volatile private var activePlaySessionId: String? = null
+    @Volatile private var activePlayMethod: PlayMethod = PlayMethod.DIRECT_PLAY
+    @Volatile private var isSessionActive: Boolean = false
+
+    val isReporting: Boolean
+        get() = isSessionActive
+
+    val currentPlaySessionId: String?
+        get() = activePlaySessionId
+
+    val currentPlayMethod: PlayMethod
+        get() = activePlayMethod
+
+    /**
+     * Starts a new managed playback session. If an existing session is running, it is automatically
+     * reported as stopped before starting the new session.
+     */
+    suspend fun startSession(
+        itemId: UUID,
+        positionMs: Long? = null,
+        playMethod: PlayMethod = PlayMethod.DIRECT_PLAY,
+        mediaSourceId: String? = null,
+        playSessionId: String? = null,
+        previousDurationMs: Long? = null,
+    ) {
+        if (isSessionActive && activeItemId != null) {
+            reportStop(
+                itemId = activeItemId!!,
+                positionMs = positionMs ?: 0L,
+                durationMs = previousDurationMs ?: 1L,
+                mediaSourceId = activeMediaSourceId,
+                playSessionId = activePlaySessionId,
+            )
+        }
+        activeItemId = itemId
+        activeMediaSourceId = mediaSourceId
+        activePlaySessionId = playSessionId
+        activePlayMethod = playMethod
+        isSessionActive = true
+
+        reportStart(
+            itemId = itemId,
+            positionMs = positionMs,
+            playMethod = playMethod,
+            mediaSourceId = mediaSourceId,
+            playSessionId = playSessionId,
+        )
+    }
+
+    /** Reports periodic progress using active session parameters. */
+    suspend fun reportProgress(
+        positionMs: Long,
+        isPaused: Boolean,
+    ) {
+        val itemId = activeItemId ?: return
+        if (!isSessionActive) return
+        reportProgress(
+            itemId = itemId,
+            positionMs = positionMs,
+            isPaused = isPaused,
+            playMethod = activePlayMethod,
+            mediaSourceId = activeMediaSourceId,
+            playSessionId = activePlaySessionId,
+        )
+    }
+
+    /** Stops the active playback session and resets session tracking. */
+    suspend fun stopSession(
+        positionMs: Long,
+        durationMs: Long,
+    ) {
+        val itemId = activeItemId ?: return
+        if (!isSessionActive) return
+        reportStop(
+            itemId = itemId,
+            positionMs = positionMs,
+            durationMs = durationMs,
+            mediaSourceId = activeMediaSourceId,
+            playSessionId = activePlaySessionId,
+        )
+        isSessionActive = false
+        activeItemId = null
+        activeMediaSourceId = null
+        activePlaySessionId = null
+    }
+
+    fun updateActivePlayMethod(playMethod: PlayMethod) {
+        activePlayMethod = playMethod
+    }
+
     /**
      * Reports that playback has started for a specific item.
      *
@@ -70,7 +162,12 @@ constructor(
         mediaSourceId: String? = null,
         playSessionId: String? = null,
     ) {
-        require(positionMs >= 0) { "positionMs must be non-negative: $positionMs" }
+        if (positionMs < 0) {
+            Timber.w(
+                "Skipping playback progress report for item $itemId: invalid positionMs: $positionMs"
+            )
+            return
+        }
         try {
             repository.postPlaybackProgress(
                 itemId = itemId,
@@ -103,7 +200,12 @@ constructor(
         mediaSourceId: String? = null,
         playSessionId: String? = null,
     ) {
-        require(positionMs >= 0) { "positionMs must be non-negative: $positionMs" }
+        if (positionMs < 0) {
+            Timber.w(
+                "Skipping playback progress report for item $itemId: invalid positionMs: $positionMs"
+            )
+            return
+        }
         if (durationMs == C.TIME_UNSET || durationMs <= 0L) {
             Timber.w("Skipping playback stop report for item ${itemId}: invalid duration.")
             return

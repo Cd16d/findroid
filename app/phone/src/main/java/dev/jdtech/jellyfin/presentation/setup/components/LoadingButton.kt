@@ -18,8 +18,8 @@ import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 fun LoadingButton(
     text: String,
     onClick: () -> Unit,
-    isLoading: Boolean = false,
     modifier: Modifier = Modifier,
+    isLoading: Boolean = false,
 ) {
     Box {
         if (isLoading) {

@@ -45,17 +45,30 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.C
 import androidx.window.core.layout.WindowSizeClass
+import dev.jdtech.jellyfin.core.presentation.dummy.dummyEpisode
+import dev.jdtech.jellyfin.core.presentation.dummy.dummyMovie
 import dev.jdtech.jellyfin.models.FindroidSegment
 import dev.jdtech.jellyfin.player.cast.presentation.CastPlayerViewModel
 import dev.jdtech.jellyfin.player.core.R as PlayerCoreR
 import dev.jdtech.jellyfin.player.core.domain.models.Track
+import dev.jdtech.jellyfin.presentation.cast.components.CastChaptersDialog
+import dev.jdtech.jellyfin.presentation.cast.components.CastExpandedPlayerBottomSection
 import dev.jdtech.jellyfin.presentation.cast.components.CastTrackSelectionDialog
-import dev.jdtech.jellyfin.presentation.cast.components.PlayerBottomSection
 import dev.jdtech.jellyfin.presentation.cast.components.PlayerTopSection
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.utils.rememberSafePadding
 import kotlinx.coroutines.flow.distinctUntilChanged
 
+/**
+ * Main Composable for the expanded Google Cast player sheet/panel.
+ *
+ * @param onDeviceClick Callback when the connected device button is clicked.
+ * @param onClose Callback when the expanded player is closed.
+ * @param modifier Modifier applied to the outer layout. Defaults to [Modifier].
+ * @param onDismissStarted Callback when bottom sheet dismiss animation starts.
+ * @param onDismissCanceled Callback when bottom sheet dismiss animation is canceled.
+ * @param viewModel ViewModel backing the Cast player state. Defaults to hiltViewModel().
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CastExpandedPlayer(
@@ -78,20 +91,13 @@ fun CastExpandedPlayer(
     val actions =
         remember(viewModel, onDeviceClick, onClose) {
             CastPlayerActions(
-                onPlay = { viewModel.playerController.play() },
-                onPause = { viewModel.playerController.pause() },
-                onSeek = { viewModel.playerController.seekTo(it) },
-                onPlayPreviousItem = {
-                    val playerState = viewModel.uiState.value.playerState
-                    if (!playerState.hasPreviousItem || playerState.currentPosition > 5000) {
-                        viewModel.playerController.seekTo(0)
-                    } else {
-                        viewModel.playPreviousItem()
-                    }
-                },
+                onPlay = { viewModel.play() },
+                onPause = { viewModel.pause() },
+                onSeek = { viewModel.seekTo(it) },
+                onPlayPreviousItem = { viewModel.rewindOrPlayPreviousItem() },
                 onPlayNextItem = { viewModel.playNextItem() },
                 onSkipSegment = { viewModel.skipSegment(it) },
-                onVolumeChange = { viewModel.playerController.setVolume(it) },
+                onVolumeChange = { viewModel.setVolume(it) },
                 onAudioTrackSelected = { viewModel.onAudioTrackSelected(it) },
                 onSubtitleTrackSelected = { viewModel.onSubtitleTrackSelected(it) },
                 onDeviceClick = onDeviceClick,
@@ -180,6 +186,10 @@ data class CastPlayerActions(
     val onClose: () -> Unit,
 )
 
+/**
+ * Internal layout container for the expanded Cast player, supporting both vertical phone bottom
+ * sheets and expanded side-sheets.
+ */
 @Composable
 private fun CastExpandedPlayerLayout(
     isExpandedScreen: Boolean,
@@ -190,6 +200,7 @@ private fun CastExpandedPlayerLayout(
     var isScrubbing by remember { mutableStateOf(false) }
     var scrubPosition by remember { mutableFloatStateOf(0f) }
     var showTrackSelection by remember { mutableStateOf(false) }
+    var showChaptersSelection by remember { mutableStateOf(false) }
     var trackType by remember { mutableIntStateOf(C.TRACK_TYPE_AUDIO) }
 
     val configuration = LocalConfiguration.current
@@ -224,7 +235,9 @@ private fun CastExpandedPlayerLayout(
             trackType = C.TRACK_TYPE_TEXT
         }
     }
+    val onOpenChapters: () -> Unit = remember { { showChaptersSelection = true } }
     val onDismissTrackSelection: () -> Unit = remember { { showTrackSelection = false } }
+    val onDismissChaptersSelection: () -> Unit = remember { { showChaptersSelection = false } }
     val onSetTrack: (Track?) -> Unit =
         remember(actions) {
             { track ->
@@ -267,7 +280,7 @@ private fun CastExpandedPlayerLayout(
                         modifier = Modifier.weight(1f).fillMaxHeight(),
                     )
 
-                    PlayerBottomSection(
+                    CastExpandedPlayerBottomSection(
                         uiState = uiState,
                         isScrubbing = isScrubbing,
                         scrubPosition = scrubPosition,
@@ -282,6 +295,7 @@ private fun CastExpandedPlayerLayout(
                         onClickAudio = onClickAudio,
                         onClickSubtitle = onClickSubtitle,
                         modifier = Modifier.weight(1f),
+                        onOpenChapters = onOpenChapters,
                     )
                 }
             } else {
@@ -296,7 +310,7 @@ private fun CastExpandedPlayerLayout(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                PlayerBottomSection(
+                CastExpandedPlayerBottomSection(
                     uiState = uiState,
                     isScrubbing = isScrubbing,
                     scrubPosition = scrubPosition,
@@ -310,6 +324,7 @@ private fun CastExpandedPlayerLayout(
                     onVolumeChange = actions.onVolumeChange,
                     onClickAudio = onClickAudio,
                     onClickSubtitle = onClickSubtitle,
+                    onOpenChapters = onOpenChapters,
                 )
                 Spacer(modifier = Modifier.height(48.dp))
             }
@@ -322,6 +337,18 @@ private fun CastExpandedPlayerLayout(
             onSetTrack = onSetTrack,
             onDismiss = onDismissTrackSelection,
             displayExtraInfo = uiState.displayExtraInfo,
+            modifier = Modifier.padding(bottom = safePadding.bottom),
+        )
+
+        CastChaptersDialog(
+            visible = showChaptersSelection,
+            chapters = uiState.currentChapters,
+            currentPositionMs = uiState.playerState.currentPosition,
+            durationMs = uiState.playerState.duration,
+            segments = uiState.segments,
+            trickplay = uiState.currentTrickplay,
+            onChapterSelected = { startTimeMs -> actions.onSeek(startTimeMs) },
+            onDismiss = onDismissChaptersSelection,
             modifier = Modifier.padding(bottom = safePadding.bottom),
         )
     }
@@ -406,9 +433,9 @@ private fun mockUiStateEpisode() =
     CastPlayerViewModel.UiState(
         currentItemTitle =
             CastPlayerViewModel.CurrentItemTitle(
-                seriesName = "Series Name",
+                seriesName = dummyEpisode.seriesName,
                 episodeInfo = "S01E01",
-                title = "Episode Title",
+                title = dummyEpisode.name,
             ),
         currentItemPoster = null,
         isMovie = false,
@@ -423,7 +450,7 @@ private fun mockUiStateEpisode() =
 
 private fun mockUiStateMovie() =
     CastPlayerViewModel.UiState(
-        currentItemTitle = CastPlayerViewModel.CurrentItemTitle(title = "Title"),
+        currentItemTitle = CastPlayerViewModel.CurrentItemTitle(title = dummyMovie.name),
         currentItemPoster = null,
         isMovie = true,
         defaultAspectRatio = 2f / 3f,

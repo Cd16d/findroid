@@ -43,7 +43,10 @@ class MainActivity : AppCompatActivity() {
 
             FindroidTheme(dynamicColor = state.isDynamicColors) {
                 if (!state.isLoading) {
-                    CompositionLocalProvider(LocalOfflineMode provides state.isOfflineMode) {
+                    CompositionLocalProvider(
+                        LocalOfflineMode provides state.isOfflineMode,
+                        LocalVolumeKeyEvents provides viewModel.volumeKeyEvents,
+                    ) {
                         NavigationRoot(
                             hasServers = state.hasServers,
                             hasCurrentServer = state.hasCurrentServer,
@@ -72,5 +75,39 @@ class MainActivity : AppCompatActivity() {
         super.onDestroy()
 
         castSessionManager.release()
+    }
+
+    private var lastVolumeDownTime = 0L
+
+    override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
+        if (viewModel.isCastPlayerOpen.value) {
+            val action = event.action
+            val keyCode = event.keyCode
+            when (keyCode) {
+                android.view.KeyEvent.KEYCODE_VOLUME_UP -> {
+                    if (action == android.view.KeyEvent.ACTION_DOWN) {
+                        val isRepeat = event.repeatCount > 0
+                        val now = android.os.SystemClock.uptimeMillis()
+                        if (!isRepeat || now - lastVolumeDownTime >= 50L) {
+                            lastVolumeDownTime = now
+                            viewModel.emitVolumeKeyEvent(isUp = true, isRepeat = isRepeat)
+                        }
+                    }
+                    return true
+                }
+                android.view.KeyEvent.KEYCODE_VOLUME_DOWN -> {
+                    if (action == android.view.KeyEvent.ACTION_DOWN) {
+                        val isRepeat = event.repeatCount > 0
+                        val now = android.os.SystemClock.uptimeMillis()
+                        if (!isRepeat || now - lastVolumeDownTime >= 50L) {
+                            lastVolumeDownTime = now
+                            viewModel.emitVolumeKeyEvent(isUp = false, isRepeat = isRepeat)
+                        }
+                    }
+                    return true
+                }
+            }
+        }
+        return super.dispatchKeyEvent(event)
     }
 }

@@ -5,17 +5,16 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DividerDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.util.fastForEachIndexed
+import androidx.compose.ui.unit.dp
+import dev.jdtech.jellyfin.core.presentation.theme.CentralShapes
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
 import dev.jdtech.jellyfin.settings.R as SettingsR
@@ -27,12 +26,22 @@ import dev.jdtech.jellyfin.settings.presentation.models.PreferenceGroup
 import dev.jdtech.jellyfin.settings.presentation.models.PreferenceIntInput
 import dev.jdtech.jellyfin.settings.presentation.models.PreferenceLongInput
 import dev.jdtech.jellyfin.settings.presentation.models.PreferenceMultiSelect
+import dev.jdtech.jellyfin.settings.presentation.models.PreferenceSegmentConfig
 import dev.jdtech.jellyfin.settings.presentation.models.PreferenceSelect
 import dev.jdtech.jellyfin.settings.presentation.models.PreferenceStepper
 import dev.jdtech.jellyfin.settings.presentation.models.PreferenceStorageInfo
 import dev.jdtech.jellyfin.settings.presentation.models.PreferenceSwitch
 import dev.jdtech.jellyfin.settings.presentation.settings.SettingsAction
 
+private fun getItemShape(index: Int, total: Int): Shape = CentralShapes.getGroupShape(index, total)
+
+/**
+ * Container component that displays a group of settings preferences inside rounded cards.
+ *
+ * @param group Group model containing a header title and list of preference items.
+ * @param onAction Callback triggered when user updates or interacts with a preference item.
+ * @param modifier Optional modifier applied to the card container layout. Defaults to [Modifier].
+ */
 @Composable
 fun SettingsGroupCard(
     group: PreferenceGroup,
@@ -48,93 +57,110 @@ fun SettingsGroupCard(
             )
             Spacer(modifier.height(MaterialTheme.spacings.small))
         }
-        Card(
-            modifier = modifier,
-            colors =
-                CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer
-                ),
-        ) {
-            group.preferences.fastForEachIndexed { index, preference ->
-                when (preference) {
-                    is PreferenceCategory ->
-                        SettingsCategoryCard(
-                            preference = preference,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    is PreferenceSwitch ->
-                        SettingsSwitchCard(
-                            preference = preference,
-                            onClick = {
-                                onAction(
-                                    SettingsAction.OnUpdate(
-                                        preference.copy(value = !preference.value)
+        Column(modifier = modifier) {
+            val total = group.preferences.size
+            group.preferences.forEachIndexed { index, preference ->
+                Surface(
+                    shape = getItemShape(index, total),
+                    color = MaterialTheme.colorScheme.surfaceContainer,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    when (preference) {
+                        is PreferenceCategory ->
+                            SettingsCategoryCard(
+                                preference = preference,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        is PreferenceSwitch ->
+                            SettingsSwitchCard(
+                                preference = preference,
+                                onClick = {
+                                    onAction(
+                                        SettingsAction.OnUpdate(
+                                            preference.copy(value = !preference.value)
+                                        )
                                     )
-                                )
-                                preference.onClick(preference)
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    is PreferenceSelect ->
-                        SettingsSelectCard(
-                            preference = preference,
-                            onUpdate = { value ->
-                                onAction(SettingsAction.OnUpdate(preference.copy(value = value)))
-                                preference.onUpdate(value)
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    is PreferenceMultiSelect ->
-                        SettingsMultiSelectCard(
-                            preference = preference,
-                            onUpdate = { value ->
-                                onAction(SettingsAction.OnUpdate(preference.copy(value = value)))
-                                preference.onUpdate(value)
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    is PreferenceIntInput ->
-                        SettingsIntInputCard(
-                            preference = preference,
-                            onUpdate = { value ->
-                                onAction(SettingsAction.OnUpdate(preference.copy(value = value)))
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    is PreferenceLongInput ->
-                        SettingsLongInputCard(
-                            preference = preference,
-                            onUpdate = { value ->
-                                onAction(SettingsAction.OnUpdate(preference.copy(value = value)))
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    is PreferenceAppLanguage ->
-                        SettingsAppLanguageCard(
-                            preference = preference,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    is PreferenceFileEdit ->
-                        SettingsFileEditCard(
-                            preference = preference,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    is PreferenceStepper ->
-                        SettingsStepperCard(
-                            preference = preference,
-                            onUpdate = { value ->
-                                onAction(SettingsAction.OnUpdate(preference.copy(value = value)))
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    is PreferenceStorageInfo ->
-                        SettingsStorageInfoCard(
-                            preference = preference,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
+                                    preference.onClick(preference)
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        is PreferenceSelect ->
+                            SettingsSelectCard(
+                                preference = preference,
+                                onUpdate = { value ->
+                                    onAction(
+                                        SettingsAction.OnUpdate(preference.copy(value = value))
+                                    )
+                                    preference.onUpdate(value)
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        is PreferenceMultiSelect ->
+                            SettingsMultiSelectCard(
+                                preference = preference,
+                                onUpdate = { value ->
+                                    onAction(
+                                        SettingsAction.OnUpdate(preference.copy(value = value))
+                                    )
+                                    preference.onUpdate(value)
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        is PreferenceIntInput ->
+                            SettingsIntInputCard(
+                                preference = preference,
+                                onUpdate = { value ->
+                                    onAction(
+                                        SettingsAction.OnUpdate(preference.copy(value = value))
+                                    )
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        is PreferenceLongInput ->
+                            SettingsLongInputCard(
+                                preference = preference,
+                                onUpdate = { value ->
+                                    onAction(
+                                        SettingsAction.OnUpdate(preference.copy(value = value))
+                                    )
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        is PreferenceAppLanguage ->
+                            SettingsAppLanguageCard(
+                                preference = preference,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        is PreferenceFileEdit ->
+                            SettingsFileEditCard(
+                                preference = preference,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        is PreferenceStepper ->
+                            SettingsStepperCard(
+                                preference = preference,
+                                onUpdate = { value ->
+                                    onAction(
+                                        SettingsAction.OnUpdate(preference.copy(value = value))
+                                    )
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        is PreferenceStorageInfo ->
+                            SettingsStorageInfoCard(
+                                preference = preference,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        is PreferenceSegmentConfig ->
+                            SettingsSegmentConfigCard(
+                                preference = preference,
+                                onUpdate = { value -> onAction(SettingsAction.OnUpdate(value)) },
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                    }
                 }
                 if (index < group.preferences.lastIndex) {
-                    HorizontalDivider(color = DividerDefaults.color.copy(alpha = 0.2f))
+                    Spacer(modifier = Modifier.height(2.dp))
                 }
             }
         }
@@ -174,7 +200,7 @@ private fun SettingsGroupCardPreview() {
                                 nameStringResource = SettingsR.string.pref_player_mpv_ao,
                                 dependencies = listOf(Preference("", false)),
                                 backendPreference = Preference("", ""),
-                                options = SettingsR.array.mpv_aos,
+                                options = SettingsR.array.mpv_ao_options,
                                 optionValues = SettingsR.array.mpv_aos,
                             ),
                         ),

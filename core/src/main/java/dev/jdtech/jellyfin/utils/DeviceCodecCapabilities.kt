@@ -3,6 +3,14 @@ package dev.jdtech.jellyfin.utils
 import android.media.MediaCodecList
 import android.media.MediaFormat
 import android.os.Build
+import org.jellyfin.sdk.model.api.CodecType
+import org.jellyfin.sdk.model.api.DeviceProfile
+import org.jellyfin.sdk.model.api.DlnaProfileType
+import org.jellyfin.sdk.model.api.EncodingContext
+import org.jellyfin.sdk.model.api.MediaStreamProtocol
+import org.jellyfin.sdk.model.api.ProfileConditionValue
+import org.jellyfin.sdk.model.api.SubtitleDeliveryMethod
+import org.jellyfin.sdk.model.deviceprofile.buildDeviceProfile
 
 data class CodecInfo(
     val id: String,
@@ -128,19 +136,22 @@ object DeviceCodecCapabilities {
 
     /** Comma-separated audio codecs for Jellyfin transcode/stream request */
     fun getSupportedAudioCodecsForJellyfin(): String {
-        val supported = mutableListOf("aac")
-        val overview = getDeviceCodecs()
-        for (codec in overview.audioCodecs) {
-            if (codec.isSupported) {
-                when (codec.name) {
-                    "MP3" -> supported.add("mp3")
-                    "Opus" -> supported.add("opus")
-                    "FLAC" -> supported.add("flac")
-                    "AC-3" -> supported.add("ac3")
-                    "E-AC-3" -> supported.add("eac3")
-                }
-            }
-        }
+        val supported =
+            mutableListOf(
+                "aac",
+                "mp3",
+                "opus",
+                "flac",
+                "vorbis",
+                "ac3",
+                "eac3",
+                "alac",
+                "pcm",
+                "wav",
+                "dts",
+                "dtshd",
+                "truehd",
+            )
         return supported.distinct().joinToString(",")
     }
 
@@ -187,5 +198,70 @@ object DeviceCodecCapabilities {
                 else -> return false
             }
         return overview.audioCodecs.firstOrNull { it.name == targetName }?.isSupported ?: false
+    }
+
+    /**
+     * Builds a [DeviceProfile] representing this Android device's hardware decoders and streaming
+     * capabilities.
+     *
+     * @param maxBitrate Target maximum streaming bitrate in bits per second.
+     * @param maxHeight Optional video height limit constraint (for resolution-capped transcoding).
+     * @param maxWidth Optional video width limit constraint.
+     */
+    fun createDeviceProfile(
+        maxBitrate: Int = 120_000_000,
+        maxHeight: Int? = null,
+        maxWidth: Int? = null,
+    ): DeviceProfile {
+        val supportedVideo = getSupportedVideoCodecsForJellyfin()
+        val supportedAudio = getSupportedAudioCodecsForJellyfin()
+
+        return buildDeviceProfile {
+            name = "Findroid Android Device"
+            maxStreamingBitrate = maxBitrate
+            maxStaticBitrate = maxBitrate
+
+            if (maxHeight != null || maxWidth != null) {
+                codecProfile {
+                    type = CodecType.VIDEO
+                    conditions {
+                        if (maxHeight != null && maxHeight > 0) {
+                            lowerThanOrEquals(ProfileConditionValue.HEIGHT, maxHeight)
+                        }
+                        if (maxWidth != null && maxWidth > 0) {
+                            lowerThanOrEquals(ProfileConditionValue.WIDTH, maxWidth)
+                        }
+                    }
+                }
+            }
+
+            directPlayProfile {
+                container("mp4", "m4v", "mkv", "webm", "ts")
+                type = DlnaProfileType.VIDEO
+                videoCodec(supportedVideo)
+                audioCodec(supportedAudio)
+            }
+
+            transcodingProfile {
+                container = "ts"
+                type = DlnaProfileType.VIDEO
+                if (isVideoCodecSupported("hevc")) {
+                    videoCodec("hevc", "h264")
+                } else {
+                    videoCodec("h264")
+                }
+                audioCodec("aac", "mp3", "ac3", "eac3", "opus")
+                protocol = MediaStreamProtocol.HLS
+                context = EncodingContext.STREAMING
+                minSegments = 2
+                breakOnNonKeyFrames = true
+                maxAudioChannels = "6"
+            }
+
+            subtitleProfile("srt", SubtitleDeliveryMethod.EXTERNAL)
+            subtitleProfile("ass", SubtitleDeliveryMethod.EXTERNAL)
+            subtitleProfile("vtt", SubtitleDeliveryMethod.EXTERNAL)
+            subtitleProfile("vtt", SubtitleDeliveryMethod.EMBED)
+        }
     }
 }

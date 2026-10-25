@@ -23,6 +23,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import dev.jdtech.jellyfin.core.R as CoreR
+import dev.jdtech.jellyfin.core.presentation.dummy.dummyUser
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 
 @Composable
@@ -74,7 +75,7 @@ fun AccountMenuProfileSectionPreview() {
     FindroidTheme {
         Surface {
             AccountMenuProfileSection(
-                userName = "Joe",
+                userName = dummyUser.name,
                 userImageUrl = null,
                 modifier = Modifier.padding(16.dp),
             )

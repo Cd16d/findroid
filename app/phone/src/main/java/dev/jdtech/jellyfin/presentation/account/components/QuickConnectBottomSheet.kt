@@ -49,6 +49,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import dev.jdtech.jellyfin.core.R as CoreR
+import dev.jdtech.jellyfin.core.presentation.theme.PaletteGreen
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
 import kotlin.math.roundToInt
@@ -184,7 +185,7 @@ fun QuickConnectCodeInput(
 
                         val targetBackgroundColor =
                             when {
-                                isSuccess -> Color(0xFF4CAF50).copy(alpha = 0.2f)
+                                isSuccess -> PaletteGreen.copy(alpha = 0.2f)
                                 isError -> MaterialTheme.colorScheme.errorContainer
                                 else -> MaterialTheme.colorScheme.surfaceVariant
                             }
@@ -193,7 +194,7 @@ fun QuickConnectCodeInput(
 
                         val targetTextColor =
                             when {
-                                isSuccess && char != null -> Color(0xFF4CAF50)
+                                isSuccess && char != null -> PaletteGreen
                                 isError && char != null -> MaterialTheme.colorScheme.error
                                 char != null -> MaterialTheme.colorScheme.onSurface
                                 else ->

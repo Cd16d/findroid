@@ -15,16 +15,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DividerDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -46,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.jdtech.jellyfin.core.R as CoreR
+import dev.jdtech.jellyfin.core.presentation.theme.CentralShapes
 import dev.jdtech.jellyfin.core.presentation.theme.EmeraldGreen
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
@@ -119,12 +117,10 @@ fun DeviceScreenContent(
             // Group 1: Device Information
             item(key = "device_info_group") {
                 Column(modifier = Modifier.widthIn(max = 640.dp)) {
-                    Card(
+                    Surface(
+                        shape = CentralShapes.GroupSingle,
+                        color = MaterialTheme.colorScheme.surfaceContainer,
                         modifier = Modifier.fillMaxWidth(),
-                        colors =
-                            CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainer
-                            ),
                     ) {
                         Row(
                             modifier =
@@ -137,7 +133,7 @@ fun DeviceScreenContent(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween,
                         ) {
-                            Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
+                            Column(modifier = Modifier.weight(1f)) {
                                 Text(
                                     text = stringResource(SettingsR.string.device_name_title),
                                     style = MaterialTheme.typography.titleMedium,
@@ -149,12 +145,6 @@ fun DeviceScreenContent(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
-                            Icon(
-                                painter = painterResource(CoreR.drawable.ic_arrow_right),
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(20.dp),
-                            )
                         }
                     }
                 }
@@ -163,12 +153,12 @@ fun DeviceScreenContent(
             // Group 2: Supported Video Codecs (Collapsible)
             item(key = "video_codecs_group") {
                 Column(modifier = Modifier.widthIn(max = 640.dp)) {
-                    Card(
+                    Surface(
+                        shape =
+                            if (videoExpanded) CentralShapes.GroupTop
+                            else CentralShapes.GroupSingle,
+                        color = MaterialTheme.colorScheme.surfaceContainer,
                         modifier = Modifier.fillMaxWidth(),
-                        colors =
-                            CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainer
-                            ),
                     ) {
                         Row(
                             modifier =
@@ -206,17 +196,27 @@ fun DeviceScreenContent(
                                 modifier = Modifier.size(24.dp),
                             )
                         }
+                    }
 
-                        AnimatedVisibility(visible = videoExpanded) {
-                            Column {
-                                HorizontalDivider(color = DividerDefaults.color.copy(alpha = 0.2f))
-                                overview.videoCodecs.forEachIndexed { index, codec ->
-                                    CodecItemRow(codec = codec)
-                                    if (index < overview.videoCodecs.lastIndex) {
-                                        HorizontalDivider(
-                                            color = DividerDefaults.color.copy(alpha = 0.2f)
-                                        )
+                    AnimatedVisibility(visible = videoExpanded) {
+                        Column {
+                            Spacer(modifier = Modifier.height(2.dp))
+                            overview.videoCodecs.forEachIndexed { index, codec ->
+                                val shape =
+                                    if (index == overview.videoCodecs.lastIndex) {
+                                        CentralShapes.GroupBottom
+                                    } else {
+                                        CentralShapes.GroupMiddle
                                     }
+                                Surface(
+                                    shape = shape,
+                                    color = MaterialTheme.colorScheme.surfaceContainer,
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    CodecItemRow(codec = codec)
+                                }
+                                if (index < overview.videoCodecs.lastIndex) {
+                                    Spacer(modifier = Modifier.height(2.dp))
                                 }
                             }
                         }
@@ -227,12 +227,12 @@ fun DeviceScreenContent(
             // Group 3: Supported Audio Codecs (Collapsible)
             item(key = "audio_codecs_group") {
                 Column(modifier = Modifier.widthIn(max = 640.dp)) {
-                    Card(
+                    Surface(
+                        shape =
+                            if (audioExpanded) CentralShapes.GroupTop
+                            else CentralShapes.GroupSingle,
+                        color = MaterialTheme.colorScheme.surfaceContainer,
                         modifier = Modifier.fillMaxWidth(),
-                        colors =
-                            CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainer
-                            ),
                     ) {
                         Row(
                             modifier =
@@ -270,17 +270,27 @@ fun DeviceScreenContent(
                                 modifier = Modifier.size(24.dp),
                             )
                         }
+                    }
 
-                        AnimatedVisibility(visible = audioExpanded) {
-                            Column {
-                                HorizontalDivider(color = DividerDefaults.color.copy(alpha = 0.2f))
-                                overview.audioCodecs.forEachIndexed { index, codec ->
-                                    CodecItemRow(codec = codec)
-                                    if (index < overview.audioCodecs.lastIndex) {
-                                        HorizontalDivider(
-                                            color = DividerDefaults.color.copy(alpha = 0.2f)
-                                        )
+                    AnimatedVisibility(visible = audioExpanded) {
+                        Column {
+                            Spacer(modifier = Modifier.height(2.dp))
+                            overview.audioCodecs.forEachIndexed { index, codec ->
+                                val shape =
+                                    if (index == overview.audioCodecs.lastIndex) {
+                                        CentralShapes.GroupBottom
+                                    } else {
+                                        CentralShapes.GroupMiddle
                                     }
+                                Surface(
+                                    shape = shape,
+                                    color = MaterialTheme.colorScheme.surfaceContainer,
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    CodecItemRow(codec = codec)
+                                }
+                                if (index < overview.audioCodecs.lastIndex) {
+                                    Spacer(modifier = Modifier.height(2.dp))
                                 }
                             }
                         }

@@ -3,9 +3,10 @@ package dev.jdtech.jellyfin.viewmodels
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dev.jdtech.jellyfin.presentation.components.ScreensaverSlide
+import dev.jdtech.jellyfin.presentation.components.toScreensaverSlide
 import dev.jdtech.jellyfin.repository.JellyfinRepository
-import dev.jdtech.jellyfin.ui.components.ScreensaverSlide
-import dev.jdtech.jellyfin.ui.components.toScreensaverSlide
+import dev.jdtech.jellyfin.settings.domain.AppPreferences
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -13,12 +14,19 @@ import kotlinx.coroutines.launch
 import timber.log.Timber
 
 @HiltViewModel
-class ScreensaverViewModel @Inject constructor(private val repository: JellyfinRepository) :
-    ViewModel() {
+class ScreensaverViewModel
+@Inject
+constructor(
+    private val repository: JellyfinRepository,
+    private val appPreferences: AppPreferences,
+) : ViewModel() {
     private val _slides = MutableStateFlow<List<ScreensaverSlide>>(emptyList())
     val slides = _slides.asStateFlow()
 
+    val isScreensaverEnabled = appPreferences.observe(appPreferences.tvScreensaver)
+
     fun loadSlides() {
+        if (!appPreferences.getValue(appPreferences.tvScreensaver)) return
         if (_slides.value.isNotEmpty()) return
         viewModelScope.launch {
             try {

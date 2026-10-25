@@ -45,12 +45,26 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
+import dev.jdtech.jellyfin.LocalVolumeKeyEvents
 import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.player.cast.presentation.CastPlayerViewModel
 import dev.jdtech.jellyfin.player.core.domain.models.Track
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
+import kotlin.math.ceil
+import kotlin.math.floor
+import kotlin.math.roundToInt
 
+/**
+ * Audio track, subtitle track, and volume control bar for expanded Google Cast player.
+ *
+ * @param uiState Cast player UI state model.
+ * @param volume Current volume level (0.0 to 1.0).
+ * @param onVolumeChange Callback when volume slider is adjusted.
+ * @param onClickAudio Callback when audio track button is tapped.
+ * @param onClickSubtitle Callback when subtitle track button is tapped.
+ * @param modifier Modifier applied to layout. Defaults to [Modifier].
+ */
 @Composable
 fun CastTrackVolumeControls(
     uiState: CastPlayerViewModel.UiState,
@@ -106,12 +120,12 @@ fun CastTrackVolumeControls(
                     ),
                 interactionSource = audioInteractionSource,
                 colors = buttonColors,
-                modifier = Modifier.size(48.dp),
+                modifier = Modifier.size(40.dp),
             ) {
                 Icon(
-                    painter = painterResource(CoreR.drawable.ic_speaker),
+                    painter = painterResource(CoreR.drawable.ic_audio),
                     contentDescription = stringResource(CoreR.string.audio),
-                    modifier = Modifier.size(24.dp),
+                    modifier = Modifier.size(20.dp),
                 )
             }
             FilledIconButton(
@@ -126,12 +140,12 @@ fun CastTrackVolumeControls(
                     ),
                 interactionSource = subtitlesInteractionSource,
                 colors = buttonColors,
-                modifier = Modifier.size(48.dp),
+                modifier = Modifier.size(40.dp),
             ) {
                 Icon(
                     painter = painterResource(CoreR.drawable.ic_closed_caption),
                     contentDescription = stringResource(CoreR.string.subtitle),
-                    modifier = Modifier.size(24.dp),
+                    modifier = Modifier.size(20.dp),
                 )
             }
         }
@@ -155,6 +169,14 @@ private object VolumeSliderDefaults {
     val ThumbTrackGapSize: Dp = 6.dp
 }
 
+/**
+ * Custom volume slider with inset icon and haptic feedback.
+ *
+ * @param volume Current volume fraction from 0.0 to 1.0.
+ * @param onValueChange Callback when volume value changes.
+ * @param modifier Modifier applied to slider. Defaults to [Modifier].
+ * @param isMuted Whether audio is currently muted. Defaults to false.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VolumeSlider(
@@ -169,10 +191,33 @@ fun VolumeSlider(
     val isPressed by sliderInteractionSource.collectIsPressedAsState()
     val isDragged by sliderInteractionSource.collectIsDraggedAsState()
     val hapticFeedback = LocalHapticFeedback.current
+    val volumeKeyEvents = LocalVolumeKeyEvents.current
 
     LaunchedEffect(safeVolume) {
         if (!isPressed && !isDragged) {
             localVolume = safeVolume
+        }
+    }
+
+    LaunchedEffect(volumeKeyEvents) {
+        volumeKeyEvents.collect { event ->
+            val isUp = event.isUp
+            val step = 0.05f
+            val currentBase = localVolume
+            val newLevel =
+                if (isUp) {
+                    val next = (floor((currentBase + 0.001f) / step) * step) + step
+                    next.coerceIn(0f, 1f)
+                } else {
+                    val next = (ceil((currentBase - 0.001f) / step) * step) - step
+                    next.coerceIn(0f, 1f)
+                }
+            val cleanLevel = (newLevel * 100f).roundToInt() / 100f
+            localVolume = cleanLevel
+            onValueChange(cleanLevel)
+            if (cleanLevel == 0f || cleanLevel == 1f) {
+                hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+            }
         }
     }
 

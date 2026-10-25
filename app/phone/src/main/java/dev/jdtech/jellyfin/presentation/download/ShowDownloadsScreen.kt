@@ -650,8 +650,8 @@ private fun ShowDownloadsScreenLayout(
 private fun ShowDownloadsScreenLayoutPreview() {
     FindroidTheme {
         ShowDownloadsScreenLayout(
-            showId = UUID.randomUUID(),
-            showTitle = "Oshi no Ko",
+            showId = dummyEpisode.seriesId,
+            showTitle = dummyEpisode.seriesName,
             state =
                 ShowDownloadsState(
                     seasonGroups =

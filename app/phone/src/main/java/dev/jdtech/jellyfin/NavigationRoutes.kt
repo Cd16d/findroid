@@ -20,6 +20,8 @@ import kotlinx.serialization.Serializable
 
 @Serializable data object MediaRoute : NavKey
 
+@Serializable data object SearchRoute : NavKey
+
 @Serializable data object DownloadsRoute : NavKey
 
 @Serializable

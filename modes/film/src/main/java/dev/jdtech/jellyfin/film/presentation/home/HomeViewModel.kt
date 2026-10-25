@@ -8,6 +8,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.jdtech.jellyfin.database.ServerDatabaseDao
 import dev.jdtech.jellyfin.film.R as FilmR
 import dev.jdtech.jellyfin.models.CollectionType
+import dev.jdtech.jellyfin.models.FindroidShow
 import dev.jdtech.jellyfin.models.HomeItem
 import dev.jdtech.jellyfin.models.HomeSection
 import dev.jdtech.jellyfin.models.UiText
@@ -18,12 +19,20 @@ import dev.jdtech.jellyfin.utils.toView
 import java.util.UUID
 import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
+/**
+ * ViewModel responsible for loading, mapping, and state management of the home screen layout.
+ * Fetches media sections (suggestions, continue watching, next up, and library views) concurrently
+ * based on user preferences and Jellyfin server capabilities.
+ */
 @HiltViewModel
 class HomeViewModel
 @Inject
@@ -33,14 +42,13 @@ constructor(
     val appPreferences: AppPreferences,
     val database: ServerDatabaseDao,
 ) : ViewModel() {
-    private val _state = MutableStateFlow(HomeState())
+    private val _state =
+        MutableStateFlow(cachedHomeState?.copy(isLoading = true) ?: HomeState(isLoading = true))
     val state = _state.asStateFlow()
 
     private val uuidSuggestions = UUID.fromString("31e47044-9b79-4bb0-99d0-0e477ed65420")
-    private val uuidContinueWatching =
-        UUID(4937169328197226115, -4704919157662094443) // 44845958-8326-4e83-beb4-c4f42e9eeb95
-    private val uuidNextUp =
-        UUID(1783371395749072194, -6164625418200444295) // 18bfced5-f237-4d42-aa72-d9d7fed19279
+    private val uuidContinueWatching = UUID.fromString("44845958-8326-4e83-beb4-c4f42e9eeb95")
+    private val uuidNextUp = UUID.fromString("18bfced5-f237-4d42-aa72-d9d7fed19279")
 
     private val uiTextContinueWatching = UiText.StringResource(FilmR.string.continue_watching)
     private val uiTextNextUp = UiText.StringResource(FilmR.string.next_up)
@@ -73,113 +81,120 @@ constructor(
             }
             try {
                 appPreferences.getValue(appPreferences.currentServer)?.let { serverId ->
-                    loadServerName(serverId)
-                    loadUserImage(serverId)
+                    val server = database.getServer(serverId)
+                    val user = database.getServerCurrentUser(serverId)
+                    val baseUrl = repository.getBaseUrl()
+                    val imageUrl = user?.getProfileImageModel(context, baseUrl)
+                    _state.update {
+                        it.copy(
+                            server = server ?: it.server,
+                            userImageUrl = imageUrl ?: it.userImageUrl,
+                        )
+                    }
                 }
 
-                loadSuggestions(forceRefreshSuggestions)
-                loadResumeItems()
-                loadNextUpItems()
-                loadViews()
+                coroutineScope {
+                    // Concurrently fetch each configured home screen section
+                    val suggestionsDeferred = async { fetchSuggestions(forceRefreshSuggestions) }
+                    val resumeDeferred = async { fetchResumeItems() }
+                    val nextUpDeferred = async { fetchNextUpItems() }
+                    val viewsDeferred = async { fetchViews() }
+
+                    val suggestions = suggestionsDeferred.await()
+                    val resume = resumeDeferred.await()
+                    val nextUp = nextUpDeferred.await()
+                    val views = viewsDeferred.await()
+
+                    // Map fetched section items into the unified HomeState
+                    _state.update {
+                        it.copy(
+                            suggestionsSection = suggestions,
+                            resumeSection = resume,
+                            nextUpSection = nextUp,
+                            views = views,
+                            isLoading = false,
+                            error = null,
+                        )
+                    }
+                    cachedHomeState = _state.value
+                }
             } catch (e: Exception) {
-                _state.emit(_state.value.copy(error = e))
+                Timber.e(e, "Failed to load home data")
+                _state.update { it.copy(error = e, isLoading = false) }
             }
-            _state.emit(_state.value.copy(isLoading = false))
         }
     }
 
-    private suspend fun loadServerName(serverId: String) {
-        val server = database.getServer(serverId)
-        if (server != null) {
-            _state.emit(_state.value.copy(server = server))
-        }
-    }
-
-    private suspend fun loadUserImage(serverId: String) {
-        val user = database.getServerCurrentUser(serverId)
-        val baseUrl = repository.getBaseUrl()
-        val imageUrl = user?.getProfileImageModel(context, baseUrl)
-        _state.emit(_state.value.copy(userImageUrl = imageUrl))
-    }
-
-    private suspend fun loadSuggestions(forceRefresh: Boolean = false) {
-        Timber.i("Loading suggestions")
+    private suspend fun fetchSuggestions(forceRefresh: Boolean = false): HomeItem.Suggestions? {
+        Timber.i("Fetching suggestions")
         if (!appPreferences.getValue(appPreferences.homeSuggestions)) {
-            _state.emit(_state.value.copy(suggestionsSection = null))
-            return
+            return null
         }
 
         val items = repository.getSuggestions(forceRefresh)
 
-        val section =
-            if (items.isEmpty()) {
-                null
-            } else {
-                HomeItem.Suggestions(id = uuidSuggestions, items = items)
-            }
-
-        _state.emit(_state.value.copy(suggestionsSection = section))
+        return if (items.isEmpty()) {
+            null
+        } else {
+            HomeItem.Suggestions(id = uuidSuggestions, items = items)
+        }
     }
 
-    private suspend fun loadResumeItems() {
-        Timber.i("Loading resume items")
+    private suspend fun fetchResumeItems(): HomeItem.Section? {
+        Timber.i("Fetching resume items")
         if (!appPreferences.getValue(appPreferences.homeContinueWatching)) {
-            _state.emit(_state.value.copy(resumeSection = null))
-            return
+            return null
         }
 
         val resumeItems = repository.getResumeItems()
 
-        val section =
-            if (resumeItems.isEmpty()) {
-                null
-            } else {
-                HomeItem.Section(
-                    HomeSection(uuidContinueWatching, uiTextContinueWatching, resumeItems)
-                )
-            }
-
-        _state.emit(_state.value.copy(resumeSection = section))
+        return if (resumeItems.isEmpty()) {
+            null
+        } else {
+            HomeItem.Section(HomeSection(uuidContinueWatching, uiTextContinueWatching, resumeItems))
+        }
     }
 
-    private suspend fun loadNextUpItems() {
-        Timber.i("Loading next up items")
+    private suspend fun fetchNextUpItems(): HomeItem.Section? {
+        Timber.i("Fetching next up items")
         if (!appPreferences.getValue(appPreferences.homeNextUp)) {
-            _state.emit(_state.value.copy(nextUpSection = null))
-            return
+            return null
         }
 
         val nextUpItems = repository.getNextUp()
 
-        val section =
-            if (nextUpItems.isEmpty()) {
-                null
-            } else {
-                HomeItem.Section(HomeSection(uuidNextUp, uiTextNextUp, nextUpItems))
-            }
-
-        _state.emit(_state.value.copy(nextUpSection = section))
+        return if (nextUpItems.isEmpty()) {
+            null
+        } else {
+            HomeItem.Section(HomeSection(uuidNextUp, uiTextNextUp, nextUpItems))
+        }
     }
 
-    private suspend fun loadViews() {
-        Timber.i("Loading views")
-        val items =
-            if (appPreferences.getValue(appPreferences.homeLatest)) {
-                repository
-                    .getUserViews()
-                    .filter { view ->
-                        CollectionType.fromString(view.collectionType?.serialName) in
-                            CollectionType.supported
-                    }
-                    .map { view -> view to repository.getLatestMedia(view.id) }
-                    .filter { (_, latest) -> latest.isNotEmpty() }
-                    .map { (view, latest) -> view.toView(latest) }
-                    .map { HomeItem.ViewItem(it) }
-            } else {
-                emptyList()
+    private suspend fun fetchViews(): List<HomeItem.ViewItem> {
+        Timber.i("Fetching views")
+        if (!appPreferences.getValue(appPreferences.homeLatest)) {
+            return emptyList()
+        }
+        // Filter user library views down to only supported collection types (e.g. movies, tv shows)
+        val supportedViews =
+            repository.getUserViews().filter { view ->
+                CollectionType.fromString(view.collectionType?.serialName) in
+                    CollectionType.supported
             }
-
-        _state.emit(_state.value.copy(views = items))
+        // Concurrently fetch latest media items for each supported library view
+        return coroutineScope {
+            supportedViews
+                .map { view ->
+                    async {
+                        val latest = repository.getLatestMedia(view.id)
+                        view to latest
+                    }
+                }
+                .awaitAll()
+        }
+            // Exclude empty view categories and map remaining views to HomeItem.ViewItem wrappers
+            .filter { (_, latest) -> latest.isNotEmpty() }
+            .map { (view, latest) -> HomeItem.ViewItem(view.toView(latest)) }
     }
 
     fun onAction(action: HomeAction) {
@@ -189,5 +204,11 @@ constructor(
             }
             else -> Unit
         }
+    }
+
+    suspend fun getShow(showId: UUID): FindroidShow = repository.getShow(showId)
+
+    companion object {
+        private var cachedHomeState: HomeState? = null
     }
 }

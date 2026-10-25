@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.jdtech.jellyfin.core.R as CoreR
+import dev.jdtech.jellyfin.core.presentation.dummy.dummyServer
 import dev.jdtech.jellyfin.presentation.setup.components.LoadingButton
 import dev.jdtech.jellyfin.presentation.setup.components.RootLayout
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
@@ -269,7 +270,7 @@ private fun AddServerScreenLayoutPreview() {
         LoginScreenLayout(
             state =
                 LoginState(
-                    serverName = "Demo Server",
+                    serverName = dummyServer.name,
                     quickConnectEnabled = true,
                     disclaimer = "Sample disclaimer",
                 ),

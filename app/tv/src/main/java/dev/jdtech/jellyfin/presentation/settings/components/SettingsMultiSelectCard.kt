@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -27,6 +26,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import dev.jdtech.jellyfin.core.R as CoreR
+import dev.jdtech.jellyfin.core.presentation.theme.CentralShapes
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
 import dev.jdtech.jellyfin.settings.R as SettingsR
@@ -57,7 +57,7 @@ fun SettingsMultiSelectCard(
     Surface(
         onClick = onClick,
         enabled = preference.enabled,
-        shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(10.dp)),
+        shape = ClickableSurfaceDefaults.shape(shape = CentralShapes.ItemCard),
         colors =
             ClickableSurfaceDefaults.colors(
                 containerColor = MaterialTheme.colorScheme.surface,
@@ -67,7 +67,7 @@ fun SettingsMultiSelectCard(
         border =
             ClickableSurfaceDefaults.border(
                 focusedBorder =
-                    Border(BorderStroke(4.dp, Color.White), shape = RoundedCornerShape(10.dp))
+                    Border(BorderStroke(4.dp, Color.White), shape = CentralShapes.ItemCard)
             ),
         scale = ClickableSurfaceScale.None,
         modifier = modifier.fillMaxWidth(),
@@ -111,7 +111,7 @@ private fun SettingsMultiSelectCardPreview() {
             preference =
                 PreferenceMultiSelect(
                     nameStringResource = SettingsR.string.settings_preferred_audio_language,
-                    iconDrawableId = SettingsR.drawable.ic_speaker,
+                    iconDrawableId = SettingsR.drawable.ic_audio,
                     backendPreference = Preference("", emptySet()),
                     options = SettingsR.array.languages,
                     optionValues = SettingsR.array.languages_values,

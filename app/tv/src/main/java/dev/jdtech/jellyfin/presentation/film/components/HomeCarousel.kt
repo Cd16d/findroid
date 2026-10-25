@@ -5,7 +5,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,11 +14,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -46,15 +45,31 @@ import androidx.tv.material3.Glow
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import dev.jdtech.jellyfin.core.presentation.dummy.dummyMovies
+import dev.jdtech.jellyfin.core.presentation.theme.CentralShapes
 import dev.jdtech.jellyfin.models.FindroidItem
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
+import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.delay
 
+/**
+ * TV top hero carousel component displaying rotating media highlights.
+ *
+ * @param items List of media items displayed in carousel.
+ * @param onDetails Callback executed to open item details screen.
+ * @param modifier Optional modifier applied to carousel surface. Defaults to [Modifier].
+ * @param isActive Whether carousel auto-rotation is active. Defaults to `true`.
+ * @param showLogo Whether to display media logo image over backdrop. Defaults to `false`.
+ * @param playFocusRequester Optional FocusRequester for carousel focus delegation.
+ * @param upFocusRequester Optional FocusRequester directed on D-pad up navigation.
+ * @param downFocusRequester Optional FocusRequester directed on D-pad down navigation.
+ * @param onFocusChanged Optional callback triggered when carousel focus state changes.
+ */
 @Composable
 fun HomeCarousel(
     items: List<FindroidItem>,
     onDetails: (FindroidItem) -> Unit,
     modifier: Modifier = Modifier,
+    isActive: Boolean = true,
     showLogo: Boolean = false,
     playFocusRequester: FocusRequester? = null,
     upFocusRequester: FocusRequester? = null,
@@ -65,6 +80,7 @@ fun HomeCarousel(
 
     var activeIndex by rememberSaveable { mutableIntStateOf(0) }
     var isFocused by remember { mutableStateOf(false) }
+    var lastInteractionTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
 
     LaunchedEffect(items) {
         if (activeIndex >= items.size && items.isNotEmpty()) {
@@ -72,65 +88,71 @@ fun HomeCarousel(
         }
     }
 
-    LaunchedEffect(activeIndex, items.size) {
-        if (items.size > 1) {
-            delay(5000L)
+    LaunchedEffect(isActive, activeIndex, items.size, lastInteractionTime) {
+        if (isActive && items.size > 1) {
+            delay(6000L.milliseconds)
             activeIndex = (activeIndex + 1) % items.size
         }
     }
 
     Surface(
-        onClick = { onDetails(items[activeIndex]) },
-        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(20.dp)),
-        border =
-            ClickableSurfaceDefaults.border(
-                focusedBorder =
-                    Border(BorderStroke(3.dp, Color.White), shape = RoundedCornerShape(20.dp))
-            ),
+        onClick = { onDetails(items.getOrElse(activeIndex) { items.first() }) },
+        shape = ClickableSurfaceDefaults.shape(CentralShapes.LargeCard),
+        border = ClickableSurfaceDefaults.border(Border.None),
         scale = ClickableSurfaceScale.None,
-        glow =
-            ClickableSurfaceDefaults.glow(
-                focusedGlow =
-                    Glow(
-                        elevationColor = Color.White.copy(alpha = 0.35f),
-                        elevation = 16.dp,
-                    )
+        glow = ClickableSurfaceDefaults.glow(Glow.None),
+        colors =
+            ClickableSurfaceDefaults.colors(
+                containerColor = Color.Transparent,
+                focusedContainerColor = Color.Transparent,
+                pressedContainerColor = Color.Transparent,
             ),
         modifier =
             modifier
                 .padding(horizontal = 24.dp)
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(20.dp))
-                .let { mod ->
-                    var m = mod
-                    if (playFocusRequester != null) m = m.focusRequester(playFocusRequester)
+                .clip(CentralShapes.LargeCard)
+                .then(
+                    if (playFocusRequester != null) Modifier.focusRequester(playFocusRequester)
+                    else Modifier
+                )
+                .then(
                     if (upFocusRequester != null || downFocusRequester != null) {
-                        m = m.focusProperties {
+                        Modifier.focusProperties {
                             if (upFocusRequester != null) up = upFocusRequester
                             if (downFocusRequester != null) down = downFocusRequester
                         }
-                    }
-                    m
-                }
+                    } else Modifier
+                )
                 .onFocusChanged {
                     if (isFocused != it.isFocused) {
                         isFocused = it.isFocused
+                        lastInteractionTime = System.currentTimeMillis()
                         onFocusChanged?.invoke(it.isFocused)
                     }
                 }
                 .onPreviewKeyEvent { keyEvent ->
                     when (keyEvent.type) {
                         KeyEventType.KeyDown -> {
+                            lastInteractionTime = System.currentTimeMillis()
                             when (keyEvent.key) {
                                 Key.DirectionLeft -> {
-                                    activeIndex =
-                                        if (activeIndex > 0) activeIndex - 1 else items.size - 1
+                                    if (items.size > 1) {
+                                        activeIndex = (activeIndex - 1 + items.size) % items.size
+                                    }
+                                    try {
+                                        playFocusRequester?.requestFocus()
+                                    } catch (_: Exception) {}
                                     true
                                 }
 
                                 Key.DirectionRight -> {
-                                    activeIndex =
-                                        if (activeIndex < items.size - 1) activeIndex + 1 else 0
+                                    if (items.size > 1) {
+                                        activeIndex = (activeIndex + 1) % items.size
+                                    }
+                                    try {
+                                        playFocusRequester?.requestFocus()
+                                    } catch (_: Exception) {}
                                     true
                                 }
 
@@ -160,10 +182,11 @@ fun HomeCarousel(
                 },
                 label = "carouselSlide",
             ) { targetIndex ->
-                val currentItem = items.getOrNull(targetIndex) ?: items[0]
+                val currentItem = items.getOrElse(targetIndex) { items.first() }
                 HomeCarouselItem(
                     item = currentItem,
                     showLogo = showLogo,
+                    isFocused = isFocused,
                 )
             }
 
@@ -174,13 +197,13 @@ fun HomeCarousel(
                 modifier = Modifier.align(Alignment.BottomEnd).padding(end = 28.dp, bottom = 18.dp),
             ) {
                 repeat(items.size) { index ->
-                    val isActive = activeIndex == index
+                    val isIndicatorActive = activeIndex == index
                     Box(
                         modifier =
-                            Modifier.size(if (isActive) 10.dp else 6.dp)
+                            Modifier.size(if (isIndicatorActive) 10.dp else 6.dp)
                                 .clip(CircleShape)
                                 .background(
-                                    if (isActive) MaterialTheme.colorScheme.primary
+                                    if (isIndicatorActive) MaterialTheme.colorScheme.primary
                                     else Color.White.copy(alpha = 0.4f)
                                 )
                     )

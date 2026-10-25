@@ -23,6 +23,7 @@ import coil3.svg.SvgDecoder
 import com.google.android.material.color.DynamicColors
 import dagger.hilt.android.HiltAndroidApp
 import dev.jdtech.jellyfin.settings.domain.AppPreferences
+import dev.jdtech.jellyfin.settings.domain.Constants
 import dev.jdtech.jellyfin.work.MpvCleanupWorker
 import dev.jdtech.jellyfin.work.SyncWorker
 import javax.inject.Inject
@@ -50,12 +51,12 @@ class BaseApplication : Application(), Configuration.Provider, SingletonImageLoa
         }
 
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+            val currentTheme = appPreferences.getTheme()
             val mode =
-                when (appPreferences.getValue(appPreferences.theme)) {
-                    "system" -> AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
-                    "light" -> AppCompatDelegate.MODE_NIGHT_NO
-                    "dark" -> AppCompatDelegate.MODE_NIGHT_YES
-                    else -> AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
+                when (currentTheme) {
+                    Constants.Theme.SYSTEM -> AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
+                    Constants.Theme.LIGHT -> AppCompatDelegate.MODE_NIGHT_NO
+                    Constants.Theme.DARK -> AppCompatDelegate.MODE_NIGHT_YES
                 }
             AppCompatDelegate.setDefaultNightMode(mode)
         }

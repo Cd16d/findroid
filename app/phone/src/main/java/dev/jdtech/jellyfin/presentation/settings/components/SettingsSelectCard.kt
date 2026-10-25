@@ -27,6 +27,13 @@ import dev.jdtech.jellyfin.settings.R as SettingsR
 import dev.jdtech.jellyfin.settings.domain.models.Preference
 import dev.jdtech.jellyfin.settings.presentation.models.PreferenceSelect
 
+/**
+ * Settings card item for single-selection preferences.
+ *
+ * @param preference Single-select preference configuration model.
+ * @param onUpdate Callback invoked when the selected option changes.
+ * @param modifier Optional modifier applied to card layout. Defaults to [Modifier].
+ */
 @Composable
 fun SettingsSelectCard(
     preference: PreferenceSelect,
@@ -124,7 +131,7 @@ private fun SettingsSelectCardPreview() {
             preference =
                 PreferenceSelect(
                     nameStringResource = SettingsR.string.settings_preferred_audio_language,
-                    iconDrawableId = CoreR.drawable.ic_speaker,
+                    iconDrawableId = CoreR.drawable.ic_audio,
                     backendPreference = Preference("", ""),
                     options = SettingsR.array.languages,
                     optionValues = SettingsR.array.languages_values,

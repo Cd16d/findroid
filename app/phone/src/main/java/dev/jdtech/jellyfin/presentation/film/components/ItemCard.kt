@@ -43,6 +43,18 @@ import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
 import dev.jdtech.jellyfin.utils.getShowDateString
 
+/**
+ * Standard media card component presenting item artwork, title, subtitle, and badges.
+ *
+ * @param item The [FindroidItem] to display (movie, show, season, episode).
+ * @param direction Layout orientation: [Direction.HORIZONTAL] for backdrop cards or
+ *   [Direction.VERTICAL] for poster cards.
+ * @param onClick Callback triggered when tapping the card.
+ * @param modifier Optional [Modifier] applied to the card column.
+ * @param hideEpisodeSpoilers When enabled, blurs unwatched episode artwork and obscures
+ *   descriptions.
+ * @param showParentTitle When true, displays series parent titles for season and episode items.
+ */
 @Composable
 fun ItemCard(
     item: FindroidItem,
@@ -50,6 +62,7 @@ fun ItemCard(
     onClick: (FindroidItem) -> Unit,
     modifier: Modifier = Modifier,
     hideEpisodeSpoilers: Boolean = false,
+    showParentTitle: Boolean = true,
 ) {
     val width =
         when (direction) {
@@ -108,46 +121,63 @@ fun ItemCard(
             }
         }
         Spacer(modifier = Modifier.height(MaterialTheme.spacings.extraSmall))
+        val titleText =
+            when {
+                showParentTitle && item is FindroidEpisode -> item.seriesName
+                showParentTitle && item is FindroidSeason -> item.seriesName.ifBlank { item.name }
+                else -> item.name
+            }
+        val subtitleText =
+            when (item) {
+                is FindroidMovie -> {
+                    item.premiereDate?.year.toString()
+                }
+
+                is FindroidShow -> {
+                    getShowDateString(item)
+                }
+
+                is FindroidSeason -> {
+                    val year = item.premiereDate?.year ?: item.productionYear
+                    val seasonLabel =
+                        if (
+                            showParentTitle &&
+                                item.seriesName.isNotBlank() &&
+                                !item.name.equals(item.seriesName, ignoreCase = true)
+                        ) {
+                            item.name
+                        } else {
+                            item.name
+                        }
+                    if (year != null && year > 0) {
+                        "$year - $seasonLabel"
+                    } else {
+                        seasonLabel
+                    }
+                }
+
+                is FindroidEpisode -> {
+                    stringResource(
+                        id = R.string.episode_name_extended,
+                        item.parentIndexNumber,
+                        item.indexNumber,
+                        item.name,
+                    )
+                }
+
+                else -> {
+                    ""
+                }
+            }
         Text(
-            text =
-                when (item) {
-                    is FindroidEpisode -> item.seriesName
-                    is FindroidSeason -> item.seriesName.ifBlank { item.name }
-                    else -> item.name
-                },
+            text = titleText,
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.SemiBold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
         Text(
-            text =
-                when (item) {
-                    is FindroidMovie -> {
-                        item.premiereDate?.year.toString()
-                    }
-
-                    is FindroidShow -> {
-                        getShowDateString(item)
-                    }
-
-                    is FindroidSeason -> {
-                        if (item.seriesName.isNotBlank()) item.name else ""
-                    }
-
-                    is FindroidEpisode -> {
-                        stringResource(
-                            id = R.string.episode_name_extended,
-                            item.parentIndexNumber,
-                            item.indexNumber,
-                            item.name,
-                        )
-                    }
-
-                    else -> {
-                        ""
-                    }
-                },
+            text = subtitleText,
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f),
             maxLines = 1,
@@ -195,11 +225,12 @@ private fun ItemCardPreviewEpisodeVertical() {
 @Preview(showBackground = true)
 @Composable
 private fun ItemCardPreviewSeason() {
-    FindroidTheme { ItemCard(item = dummySeason, direction = Direction.HORIZONTAL, onClick = {}) }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun ItemCardPreviewSeasonVertical() {
-    FindroidTheme { ItemCard(item = dummySeason, direction = Direction.VERTICAL, onClick = {}) }
+    FindroidTheme {
+        ItemCard(
+            item = dummySeason,
+            direction = Direction.VERTICAL,
+            onClick = {},
+            showParentTitle = false,
+        )
+    }
 }

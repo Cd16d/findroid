@@ -40,6 +40,7 @@ import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
 import dev.jdtech.jellyfin.presentation.utils.plus
 import dev.jdtech.jellyfin.settings.R as SettingsR
+import dev.jdtech.jellyfin.settings.domain.Constants
 import dev.jdtech.jellyfin.settings.presentation.enums.DeviceType
 import dev.jdtech.jellyfin.settings.presentation.models.PreferenceCategory
 import dev.jdtech.jellyfin.settings.presentation.models.PreferenceGroup
@@ -82,24 +83,21 @@ fun SettingsScreen(
             is SettingsEvent.NavigateToDownloadPresets -> navigateToDownloadPresets()
             is SettingsEvent.UpdateTheme -> {
                 val uiModeManager = context.getSystemService(UiModeManager::class.java)
+                val updatedTheme = Constants.Theme.fromValue(event.theme)
                 val nightMode =
-                    when (event.theme) {
-                        "system" ->
+                    when (updatedTheme) {
+                        Constants.Theme.SYSTEM ->
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
                                 UiModeManager.MODE_NIGHT_AUTO
                             else AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
-                        "light" ->
+                        Constants.Theme.LIGHT ->
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
                                 UiModeManager.MODE_NIGHT_NO
                             else AppCompatDelegate.MODE_NIGHT_NO
-                        "dark" ->
+                        Constants.Theme.DARK ->
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
                                 UiModeManager.MODE_NIGHT_YES
                             else AppCompatDelegate.MODE_NIGHT_YES
-                        else ->
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
-                                UiModeManager.MODE_NIGHT_AUTO
-                            else AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
                     }
 
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {

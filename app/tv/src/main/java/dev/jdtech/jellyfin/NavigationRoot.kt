@@ -1,6 +1,5 @@
 package dev.jdtech.jellyfin
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -32,9 +31,14 @@ import androidx.navigation3.ui.NavDisplay
 import dev.jdtech.jellyfin.models.FindroidSeason
 import dev.jdtech.jellyfin.navigation.navigateOrReuse
 import dev.jdtech.jellyfin.navigation.resumedAction
+import dev.jdtech.jellyfin.presentation.components.AppScreensaver
+import dev.jdtech.jellyfin.presentation.components.KeepScreenOn
 import dev.jdtech.jellyfin.presentation.film.LibraryScreen
+import dev.jdtech.jellyfin.presentation.film.MovieScreen
 import dev.jdtech.jellyfin.presentation.film.SeasonScreen
 import dev.jdtech.jellyfin.presentation.film.ShowScreen
+import dev.jdtech.jellyfin.presentation.main.MainScreen
+import dev.jdtech.jellyfin.presentation.player.PlayerScreen
 import dev.jdtech.jellyfin.presentation.settings.SettingsScreen
 import dev.jdtech.jellyfin.presentation.settings.SettingsSubScreen
 import dev.jdtech.jellyfin.presentation.setup.addserver.AddServerScreen
@@ -43,10 +47,6 @@ import dev.jdtech.jellyfin.presentation.setup.login.QuickConnectScreen
 import dev.jdtech.jellyfin.presentation.setup.servers.ServersScreen
 import dev.jdtech.jellyfin.presentation.setup.users.UsersScreen
 import dev.jdtech.jellyfin.presentation.setup.welcome.WelcomeScreen
-import dev.jdtech.jellyfin.ui.MainScreen
-import dev.jdtech.jellyfin.ui.MovieScreen
-import dev.jdtech.jellyfin.ui.PlayerScreen
-import dev.jdtech.jellyfin.ui.components.AppScreensaver
 import dev.jdtech.jellyfin.viewmodels.ScreensaverViewModel
 import java.util.UUID
 import kotlinx.coroutines.delay
@@ -94,28 +94,42 @@ fun NavigationRoot(
 
     val screensaverViewModel: ScreensaverViewModel = hiltViewModel()
     val screensaverSlides by screensaverViewModel.slides.collectAsStateWithLifecycle()
+    val isScreensaverEnabled by
+        screensaverViewModel.isScreensaverEnabled.collectAsStateWithLifecycle(initialValue = true)
 
     var lastInteractionTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var isScreensaverVisible by remember { mutableStateOf(false) }
+    var isDismissingScreensaver by remember { mutableStateOf(false) }
 
-    LaunchedEffect(setupComplete) {
-        if (setupComplete) {
+    LaunchedEffect(setupComplete, isScreensaverEnabled) {
+        if (setupComplete && isScreensaverEnabled) {
             screensaverViewModel.loadSlides()
         }
     }
 
-    LaunchedEffect(isPlayerScreen) {
-        while (true) {
-            delay(1000L)
-            if (!isPlayerScreen && !isScreensaverVisible && screensaverSlides.isNotEmpty()) {
-                if (System.currentTimeMillis() - lastInteractionTime >= 60_000L) {
-                    isScreensaverVisible = true
-                }
-            }
+    LaunchedEffect(
+        lastInteractionTime,
+        isPlayerScreen,
+        isScreensaverVisible,
+        isScreensaverEnabled,
+        screensaverSlides.isNotEmpty(),
+    ) {
+        if (
+            isScreensaverEnabled &&
+                !isPlayerScreen &&
+                !isScreensaverVisible &&
+                screensaverSlides.isNotEmpty()
+        ) {
+            delay(60_000L)
+            isScreensaverVisible = true
+        } else if (!isScreensaverEnabled) {
+            isScreensaverVisible = false
         }
     }
 
-    BackHandler(enabled = isScreensaverVisible) { isScreensaverVisible = false }
+    if (isScreensaverEnabled && isScreensaverVisible && !isPlayerScreen) {
+        KeepScreenOn()
+    }
 
     val navigate: (NavKey) -> Unit = backStack::add
     val navigateToMain: () -> Unit = {
@@ -132,6 +146,13 @@ fun NavigationRoot(
                 if (isScreensaverVisible) {
                     if (keyEvent.type == KeyEventType.KeyDown) {
                         isScreensaverVisible = false
+                        isDismissingScreensaver = true
+                    }
+                    return@onPreviewKeyEvent true
+                }
+                if (isDismissingScreensaver) {
+                    if (keyEvent.type == KeyEventType.KeyUp) {
+                        isDismissingScreensaver = false
                     }
                     return@onPreviewKeyEvent true
                 }
@@ -155,7 +176,7 @@ fun NavigationRoot(
         )
 
         AnimatedVisibility(
-            visible = isScreensaverVisible && !isPlayerScreen,
+            visible = isScreensaverEnabled && isScreensaverVisible && !isPlayerScreen,
             enter = fadeIn(animationSpec = tween(600)),
             exit = fadeOut(animationSpec = tween(300)),
             modifier = Modifier.fillMaxSize().zIndex(999f),
@@ -319,7 +340,7 @@ private fun EntryProviderScope<NavKey>.tvEntries(
                     navigate(
                         PlayerRoute(
                             itemId = itemId.toString(),
-                            itemKind = BaseItemKind.SEASON.serialName,
+                            itemKind = BaseItemKind.EPISODE.serialName,
                         )
                     )
                 },

@@ -1,8 +1,6 @@
 package dev.jdtech.jellyfin.player.cast.presentation
 
 import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -25,28 +23,31 @@ import dev.jdtech.jellyfin.player.core.domain.models.Trickplay
 import dev.jdtech.jellyfin.player.core.domain.utils.SegmentUtils
 import dev.jdtech.jellyfin.player.core.domain.utils.SegmentUtils.getSegments
 import dev.jdtech.jellyfin.player.core.domain.utils.SegmentUtils.getSkipButtonTextStringId
+import dev.jdtech.jellyfin.player.core.domain.utils.fetchTrickplay
 import dev.jdtech.jellyfin.repository.JellyfinRepository
 import dev.jdtech.jellyfin.settings.domain.AppPreferences
 import dev.jdtech.jellyfin.settings.domain.Constants
 import dev.jdtech.jellyfin.utils.getTranslatablePartName
 import java.util.UUID
 import javax.inject.Inject
-import kotlin.math.ceil
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import timber.log.Timber
 
+/** ViewModel managing state and playback controls for Google Cast media sessions. */
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class CastPlayerViewModel
 @Inject
@@ -81,12 +82,14 @@ constructor(
         this.defaultDispatcher = defaultDispatcher
     }
 
+    /** Title and subtitle information for the currently playing media item. */
     data class CurrentItemTitle(
         val seriesName: String? = null,
         val episodeInfo: String? = null,
         val title: String,
     )
 
+    /** UI state for the Cast player expanded interface. */
     data class UiState(
         val connectionState: CastConnectionState = CastConnectionState.DISCONNECTED,
         val playerState: CastPlayerState = CastPlayerState(),
@@ -101,6 +104,7 @@ constructor(
         val currentSkipButtonStringRes: Int = R.string.player_controls_skip_intro,
         val currentTrickplay: Trickplay? = null,
         val currentChapters: List<PlayerChapter> = emptyList(),
+        val segments: List<FindroidSegment> = emptyList(),
         val fileLoaded: Boolean = false,
         val audioTracks: List<Track> = emptyList(),
         val subtitleTracks: List<Track> = emptyList(),
@@ -143,7 +147,7 @@ constructor(
         }
         private set
 
-    private var trickplayJob: Job? = null
+    private var activeSegment: FindroidSegment? = null
 
     // Segments preferences
     private val segmentsSkipButton: Boolean
@@ -195,11 +199,38 @@ constructor(
                 Timber.d("CurrentItem: $item")
             }
             .launchIn(viewModelScope)
+
+        combine(
+                playerController.currentItem.map { it?.item },
+                appPreferences.observe(appPreferences.playerTrickplay),
+            ) { item, isTrickplayEnabled ->
+                if (isTrickplayEnabled && item != null) item else null
+            }
+            .distinctUntilChanged()
+            .flatMapLatest { item ->
+                flow {
+                    if (item != null) {
+                        val trickplay = fetchTrickplay(repository, item, defaultDispatcher)
+                        emit(trickplay)
+                    } else {
+                        emit(null)
+                    }
+                }
+            }
+            .onEach { trickplay ->
+                val oldTrickplay = _uiState.value.currentTrickplay
+                if (oldTrickplay != trickplay) {
+                    oldTrickplay?.images?.forEach { it.recycle() }
+                    _uiState.update { it.copy(currentTrickplay = trickplay) }
+                }
+            }
+            .launchIn(viewModelScope)
     }
 
     /** Handles the transition when a new media item starts playing. */
     private suspend fun onMediaItemTransition(item: PlayerItem) {
         Timber.d("Cast MediaItem transition: ${item.itemId}")
+        clearActiveSegment()
         currentItemId = item.itemId
         savedStateHandle[KEY_CURRENT_ITEM_ID] = item.itemId.toString()
         val isMovie = item.mediaType == PlayerMediaType.MOVIE
@@ -267,12 +298,9 @@ constructor(
             )
         }
 
-        currentMediaItemSegments = getSegments(item.itemId, repository)
-
-        trickplayJob?.cancel()
-        if (appPreferences.getValue(appPreferences.playerTrickplay)) {
-            trickplayJob = viewModelScope.launch(defaultDispatcher) { getTrickplay(item) }
-        }
+        currentMediaItemSegments =
+            getSegments(item.itemId, repository) { appPreferences.getSegmentColor(it.name) }
+        _uiState.update { it.copy(segments = currentMediaItemSegments) }
     }
 
     /**
@@ -281,22 +309,28 @@ constructor(
      * the UI state to show a "Skip" button if the segment type matches the user's preferences.
      */
     private fun updateCurrentSegment(positionMs: Long) {
-        if (currentMediaItemSegments.isEmpty()) return
+        if (currentMediaItemSegments.isEmpty()) {
+            clearActiveSegment()
+            return
+        }
 
         val currentSegment = currentMediaItemSegments.find { segment ->
             positionMs in segment.startTicks..<(segment.endTicks - 100L)
         }
 
         if (currentSegment == null) {
+            activeSegment = null
             if (_uiState.value.currentSegment != null) {
                 _uiState.update { it.copy(currentSegment = null) }
             }
             return
         }
 
-        if (_uiState.value.currentSegment == currentSegment) {
+        if (currentSegment == activeSegment) {
             return
         }
+
+        activeSegment = currentSegment
 
         Timber.tag("SegmentInfo").d("currentSegment: %s", currentSegment)
 
@@ -308,13 +342,18 @@ constructor(
         val segmentsSkipButtonTypes =
             appPreferences.getValue(appPreferences.playerMediaSegmentsSkipButtonType)
 
-        if (
-            segmentsAutoSkip &&
-                segmentsAutoSkipTypes.contains(currentSegment.type.toString()) &&
-                segmentsAutoSkipMode == Constants.PlayerMediaSegmentsAutoSkip.ALWAYS
-        ) {
+        val isAutoSkipConfigured =
+            segmentsAutoSkip && segmentsAutoSkipTypes.contains(currentSegment.type.toString())
+        val isSkipButtonConfigured =
+            segmentsSkipButton && segmentsSkipButtonTypes.contains(currentSegment.type.toString())
+
+        val autoSkipMode = Constants.PlayerMediaSegmentsAutoSkip.fromValue(segmentsAutoSkipMode)
+        if (isAutoSkipConfigured && autoSkipMode == Constants.PlayerMediaSegmentsAutoSkip.ALWAYS) {
             skipSegment(currentSegment)
-        } else if (segmentsSkipButtonTypes.contains(currentSegment.type.toString())) {
+        } else if (
+            isSkipButtonConfigured ||
+                (isAutoSkipConfigured && autoSkipMode == Constants.PlayerMediaSegmentsAutoSkip.PIP)
+        ) {
             _uiState.update {
                 it.copy(
                     currentSegment = currentSegment,
@@ -330,6 +369,10 @@ constructor(
         }
 
         Timber.d("Updated current segment: ${_uiState.value.currentSegment?.type}")
+    }
+
+    private fun clearActiveSegment() {
+        activeSegment = null
     }
 
     fun play() {
@@ -371,6 +414,7 @@ constructor(
      * segment's end boundary.
      */
     fun skipSegment(segment: FindroidSegment) {
+        clearActiveSegment()
         if (shouldSkipToNextEpisode(segment)) {
             playNextItem()
         } else {
@@ -422,8 +466,7 @@ constructor(
      * disconnects.
      */
     private fun onMediaItemCleared() {
-        trickplayJob?.cancel()
-        trickplayJob = null
+        clearActiveSegment()
         currentItemId = null
         savedStateHandle.remove<String>(KEY_CURRENT_ITEM_ID)
         currentMediaItemSegments = emptyList()
@@ -440,6 +483,7 @@ constructor(
                 currentSkipButtonStringRes = R.string.player_controls_skip_intro,
                 currentTrickplay = null,
                 currentChapters = emptyList(),
+                segments = emptyList(),
                 fileLoaded = false,
                 audioTracks = emptyList(),
                 subtitleTracks = emptyList(),
@@ -462,85 +506,10 @@ constructor(
         )
     }
 
-    /**
-     * Downloads trickplay (BIF/Thumbnail) data for scrubbing previews, slices the sprite sheet into
-     * individual bitmaps, and updates the UI state so the seek bar can show thumbnails.
-     */
-    private suspend fun getTrickplay(item: PlayerItem) {
-        val trickplayInfo = item.trickplayInfo ?: return
-        withContext(defaultDispatcher) {
-            val tilesPerSheet = trickplayInfo.tileWidth * trickplayInfo.tileHeight
-            if (tilesPerSheet <= 0) return@withContext
-            val sheetCount =
-                ceil(trickplayInfo.thumbnailCount.toDouble().div(tilesPerSheet)).toInt()
-            val bitmaps = mutableListOf<Bitmap>()
-            var success = false
-
-            try {
-                for (i in 0 until sheetCount) {
-                    if (bitmaps.size >= trickplayInfo.thumbnailCount) break
-                    coroutineContext.ensureActive()
-                    val byteArray =
-                        repository.getTrickplayData(item.itemId, trickplayInfo.width, i) ?: continue
-                    coroutineContext.ensureActive()
-                    val fullBitmap =
-                        BitmapFactory.decodeByteArray(byteArray, 0, byteArray.size) ?: continue
-                    try {
-                        for (offsetY in
-                            0..<trickplayInfo.height * trickplayInfo.tileHeight step
-                                trickplayInfo.height) {
-                            for (offsetX in
-                                0..<trickplayInfo.width * trickplayInfo.tileWidth step
-                                    trickplayInfo.width) {
-                                coroutineContext.ensureActive()
-                                if (bitmaps.size < trickplayInfo.thumbnailCount) {
-                                    val bitmap =
-                                        Bitmap.createBitmap(
-                                            fullBitmap,
-                                            offsetX,
-                                            offsetY,
-                                            trickplayInfo.width,
-                                            trickplayInfo.height,
-                                        )
-                                    bitmaps.add(bitmap)
-                                } else {
-                                    break
-                                }
-                            }
-                            if (bitmaps.size >= trickplayInfo.thumbnailCount) break
-                        }
-                    } finally {
-                        fullBitmap.recycle()
-                    }
-                }
-
-                coroutineContext.ensureActive()
-                if (currentItemId == item.itemId) {
-                    val oldTrickplay = _uiState.value.currentTrickplay
-                    oldTrickplay?.images?.forEach { it.recycle() }
-                    _uiState.update {
-                        it.copy(currentTrickplay = Trickplay(trickplayInfo.interval, bitmaps))
-                    }
-                    success = true
-                }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Throwable) {
-                Timber.e(e, "Failed to decode trickplay thumbnails")
-            } finally {
-                if (!success) {
-                    bitmaps.forEach { it.recycle() }
-                    bitmaps.clear()
-                }
-            }
-        }
-    }
-
     override fun onCleared() {
-        trickplayJob?.cancel()
+        clearActiveSegment()
         val oldTrickplay = _uiState.value.currentTrickplay
         oldTrickplay?.images?.forEach { it.recycle() }
-        super.onCleared()
     }
 
     companion object {

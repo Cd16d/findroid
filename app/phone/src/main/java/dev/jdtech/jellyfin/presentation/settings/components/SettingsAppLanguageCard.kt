@@ -20,10 +20,21 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.net.toUri
+import dev.jdtech.jellyfin.core.R as CoreR
+import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
 import dev.jdtech.jellyfin.settings.presentation.models.Preference
+import dev.jdtech.jellyfin.settings.presentation.models.PreferenceAppLanguage
 
+/**
+ * Settings card item displaying current app language and launching system locale preferences when
+ * clicked.
+ *
+ * @param preference Language preference model.
+ * @param modifier Optional modifier applied to card surface. Defaults to [Modifier].
+ */
 @Composable
 fun SettingsAppLanguageCard(preference: Preference, modifier: Modifier = Modifier) {
     val context = LocalContext.current
@@ -65,5 +76,20 @@ fun SettingsAppLanguageCard(preference: Preference, modifier: Modifier = Modifie
                 Text(text = currentValue, style = MaterialTheme.typography.bodyMedium)
             }
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun SettingsAppLanguageCardPreview() {
+    FindroidTheme {
+        SettingsAppLanguageCard(
+            preference =
+                PreferenceAppLanguage(
+                    nameStringResource = CoreR.string.app_name,
+                    descriptionStringRes = null,
+                    iconDrawableId = null,
+                )
+        )
     }
 }

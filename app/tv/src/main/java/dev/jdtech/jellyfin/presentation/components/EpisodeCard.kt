@@ -1,0 +1,118 @@
+package dev.jdtech.jellyfin.presentation.components
+
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.tv.material3.Border
+import androidx.tv.material3.ClickableSurfaceDefaults
+import androidx.tv.material3.ClickableSurfaceScale
+import androidx.tv.material3.MaterialTheme
+import androidx.tv.material3.Surface
+import androidx.tv.material3.Text
+import dev.jdtech.jellyfin.core.R as CoreR
+import dev.jdtech.jellyfin.core.presentation.dummy.dummyEpisode
+import dev.jdtech.jellyfin.core.presentation.theme.CentralShapes
+import dev.jdtech.jellyfin.models.FindroidEpisode
+import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
+import dev.jdtech.jellyfin.presentation.theme.spacings
+
+/**
+ * Horizontal TV episode card component displaying thumbnail poster, episode title, and synopsis.
+ *
+ * @param episode Episode item model.
+ * @param onClick Callback executed on card click.
+ * @param hideEpisodeSpoilers Whether to hide episode thumbnails/titles to prevent spoilers.
+ */
+@Composable
+fun EpisodeCard(
+    episode: FindroidEpisode,
+    onClick: (FindroidEpisode) -> Unit,
+    hideEpisodeSpoilers: Boolean = false,
+) {
+    val isEpisodeSpoiler = hideEpisodeSpoilers && !episode.played
+    val hasBlurHash =
+        episode.images.backdrop?.blurHash != null || episode.images.primary?.blurHash != null
+
+    Surface(
+        onClick = { onClick(episode) },
+        shape = ClickableSurfaceDefaults.shape(shape = CentralShapes.ItemCard),
+        colors =
+            ClickableSurfaceDefaults.colors(
+                containerColor = Color.Transparent,
+                focusedContainerColor = Color.Transparent,
+            ),
+        border =
+            ClickableSurfaceDefaults.border(
+                focusedBorder =
+                    Border(BorderStroke(4.dp, Color.White), shape = CentralShapes.ItemCard)
+            ),
+        scale = ClickableSurfaceScale.None,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(modifier = Modifier.padding(MaterialTheme.spacings.small)) {
+            Box(modifier = Modifier.width(160.dp)) {
+                SpoilerMask(
+                    enabled = isEpisodeSpoiler,
+                    shape = CentralShapes.ItemCard,
+                    blurRadius = if (hasBlurHash) 4.dp else 16.dp,
+                ) {
+                    ItemPoster(
+                        item = episode,
+                        direction = Direction.HORIZONTAL,
+                        modifier = Modifier.clip(CentralShapes.ItemCard),
+                        blurOnly = isEpisodeSpoiler,
+                    )
+                }
+                ProgressBadge(
+                    item = episode,
+                    modifier =
+                        Modifier.align(Alignment.TopEnd)
+                            .padding(PaddingValues(MaterialTheme.spacings.small)),
+                )
+            }
+            Spacer(modifier = Modifier.width(MaterialTheme.spacings.medium))
+            Column {
+                Text(
+                    text =
+                        stringResource(
+                            id = CoreR.string.episode_name,
+                            episode.indexNumber,
+                            episode.name,
+                        ),
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Spacer(modifier = Modifier.height(MaterialTheme.spacings.extraSmall))
+                Text(
+                    text = episode.overview,
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 4,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+    }
+}
+
+@Preview(device = "id:tv_1080p")
+@Composable
+private fun EpisodeCardPreview() {
+    FindroidTheme { EpisodeCard(episode = dummyEpisode, onClick = {}) }
+}

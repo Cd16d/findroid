@@ -32,9 +32,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import dev.jdtech.jellyfin.core.R as CoreR
+import dev.jdtech.jellyfin.core.presentation.dummy.dummyServer
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
-import dev.jdtech.jellyfin.presentation.utils.LocalOfflineMode
 
 @Composable
 fun HomeHeader(
@@ -45,12 +45,9 @@ fun HomeHeader(
     onServerClick: () -> Unit,
     onErrorClick: () -> Unit,
     onRetryClick: () -> Unit,
-    onSearchClick: () -> Unit,
     onUserClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val isOfflineMode = LocalOfflineMode.current
-
     Row(
         modifier = modifier.fillMaxWidth().height(56.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -130,26 +127,6 @@ fun HomeHeader(
                 }
             }
 
-            if (!isOfflineMode) {
-                Surface(
-                    onClick = onSearchClick,
-                    modifier = Modifier.fillMaxHeight().aspectRatio(1f),
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Icon(
-                            painter = painterResource(CoreR.drawable.ic_search),
-                            contentDescription = null,
-                        )
-                    }
-                }
-            }
-
             Surface(
                 onClick = onUserClick,
                 modifier = Modifier.fillMaxHeight().aspectRatio(1f),
@@ -184,14 +161,13 @@ fun HomeHeader(
 private fun HomeHeaderLoadingPreview() {
     FindroidTheme {
         HomeHeader(
-            serverName = "Jellyfin",
+            serverName = dummyServer.name,
             userImageUrl = null,
             isLoading = true,
             isError = false,
             onServerClick = {},
             onErrorClick = {},
             onRetryClick = {},
-            onSearchClick = {},
             onUserClick = {},
         )
     }
@@ -202,14 +178,13 @@ private fun HomeHeaderLoadingPreview() {
 private fun HomeHeaderErrorPreview() {
     FindroidTheme {
         HomeHeader(
-            serverName = "Jellyfin",
+            serverName = dummyServer.name,
             userImageUrl = null,
             isLoading = false,
             isError = true,
             onServerClick = {},
             onErrorClick = {},
             onRetryClick = {},
-            onSearchClick = {},
             onUserClick = {},
         )
     }
