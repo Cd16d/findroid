@@ -324,7 +324,6 @@ class DownloadPumpService : Service() {
     }
 
     private fun ensureNotificationChannel() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val nm = getSystemService<NotificationManager>() ?: return
         if (nm.getNotificationChannel(CHANNEL_ID) != null) return
         val channel =
@@ -339,11 +338,7 @@ class DownloadPumpService : Service() {
     }
 
     private fun stopForegroundCompat() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            stopForeground(STOP_FOREGROUND_REMOVE)
-        } else {
-            @Suppress("DEPRECATION") stopForeground(true)
-        }
+        stopForeground(STOP_FOREGROUND_REMOVE)
     }
 
     override fun onTimeout(startId: Int, fgsType: Int) {
@@ -369,11 +364,7 @@ class DownloadPumpService : Service() {
         fun start(context: Context) {
             val intent = Intent(context, DownloadPumpService::class.java)
             try {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    context.startForegroundService(intent)
-                } else {
-                    context.startService(intent)
-                }
+                context.startForegroundService(intent)
             } catch (e: Exception) {
                 Timber.e(e, "Failed to start DownloadPumpService")
             }
