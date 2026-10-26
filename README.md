@@ -13,7 +13,7 @@
 > This repository contains a Beta release designed to test potential new features, updated user interfaces, and architectural redesigns for Findroid.
 >
 > 🤖 **AI Assistance Disclaimer:**
-> Artificial Intelligence tools were utilized during the development, refactoring, and documentation of these new features. While all code has undergone static analysis, formatting checks (`ktfmt`), and automated build verifications, unexpected issues may arise. If you encounter any bugs, please report them directly to the [GitHub repository issue tracker](https://github.com/jarnedemeulemeester/findroid/issues).
+> Artificial Intelligence tools were utilized during the development, refactoring, and documentation of these new features. While all code has undergone static analysis, formatting checks (`ktfmt`), and automated build verifications, unexpected issues may arise. If you encounter any bugs, please report them directly to the [GitHub repository issue tracker](https://github.com/Cd16d/findroid/issues).
 
 Findroid is third-party Android application for Jellyfin that provides a native user interface to browse and play movies and series.
 
@@ -71,6 +71,7 @@ I am developing this application in my spare time.
   - Dedicated TV video player controls layout with D-Pad scrubbing, chapter pills, and settings panel
   - TV screensaver
   - Quick connect screen as default login
+- **Transcode support**
 - **Advanced Search & Filtering**
   - Added Search screen
   - Filter chips and bottom sheet
