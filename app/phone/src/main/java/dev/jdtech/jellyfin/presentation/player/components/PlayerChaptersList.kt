@@ -26,7 +26,7 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.delay
 
 /**
- * Chapters navigation list with thumbnail previews and segment badges for phone bottom sheet.
+ * Chapters navigation list with thumbnail previews for phone bottom sheet.
  *
  * @param viewModel Active [PlayerViewModel].
  */
@@ -74,14 +74,10 @@ internal fun PhoneChaptersList(viewModel: PlayerViewModel) {
     LazyColumn(state = listState, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         itemsIndexed(chapters) { index, chapter ->
             val isCurrent = index == currentChapterIndex
-            val nextChapterStart = chapters.getOrNull(index + 1)?.startPosition ?: Long.MAX_VALUE
             ChapterCard(
                 chapter = chapter,
                 index = index,
                 isCurrent = isCurrent,
-                nextChapterStart = nextChapterStart,
-                segments = uiState.segments,
-                durationMs = viewModel.player.duration.coerceAtLeast(0L),
                 trickplay = trickplay,
                 onClick = {
                     currentPosition = chapter.startPosition
@@ -93,7 +89,7 @@ internal fun PhoneChaptersList(viewModel: PlayerViewModel) {
 }
 
 /**
- * Chapters navigation list with thumbnail previews and segment badges for tablet side panel.
+ * Chapters navigation list with thumbnail previews for tablet side panel.
  *
  * @param viewModel Active [PlayerViewModel].
  */
@@ -114,9 +110,6 @@ private fun PhoneChaptersListPreview() {
                 chapter = PlayerChapter(name = "Chapter 1: Arrival", startPosition = 0L),
                 index = 0,
                 isCurrent = true,
-                nextChapterStart = 180_000L,
-                segments = emptyList(),
-                durationMs = 2_400_000L,
                 trickplay = null,
                 onClick = {},
             )
@@ -124,9 +117,6 @@ private fun PhoneChaptersListPreview() {
                 chapter = PlayerChapter(name = "Chapter 2: Discovery", startPosition = 180_000L),
                 index = 1,
                 isCurrent = false,
-                nextChapterStart = 600_000L,
-                segments = emptyList(),
-                durationMs = 2_400_000L,
                 trickplay = null,
                 onClick = {},
             )
@@ -146,9 +136,6 @@ private fun TabletChaptersListPreview() {
                 chapter = PlayerChapter(name = "Intro", startPosition = 0L),
                 index = 0,
                 isCurrent = true,
-                nextChapterStart = 120_000L,
-                segments = emptyList(),
-                durationMs = 3_600_000L,
                 trickplay = null,
                 onClick = {},
             )
@@ -157,9 +144,6 @@ private fun TabletChaptersListPreview() {
                     PlayerChapter(name = "Prologue - The Beginning", startPosition = 120_000L),
                 index = 1,
                 isCurrent = false,
-                nextChapterStart = 600_000L,
-                segments = emptyList(),
-                durationMs = 3_600_000L,
                 trickplay = null,
                 onClick = {},
             )

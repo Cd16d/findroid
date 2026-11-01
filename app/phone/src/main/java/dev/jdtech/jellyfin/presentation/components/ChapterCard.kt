@@ -36,32 +36,24 @@ import androidx.compose.ui.unit.dp
 import dev.jdtech.jellyfin.core.presentation.theme.CentralShapes
 import dev.jdtech.jellyfin.core.presentation.theme.PlayerCardBackground
 import dev.jdtech.jellyfin.core.presentation.theme.PlayerCardCurrent
-import dev.jdtech.jellyfin.models.FindroidSegment
 import dev.jdtech.jellyfin.player.core.R as PlayerR
 import dev.jdtech.jellyfin.player.core.domain.models.PlayerChapter
 import dev.jdtech.jellyfin.player.core.domain.models.Trickplay
 import dev.jdtech.jellyfin.player.core.domain.models.intervalMs
-import dev.jdtech.jellyfin.player.core.presentation.findChapterSegment
-import dev.jdtech.jellyfin.player.core.presentation.findChapterSegmentType
 import dev.jdtech.jellyfin.player.core.presentation.formatDuration
-import dev.jdtech.jellyfin.player.core.presentation.getSegmentColor
-import dev.jdtech.jellyfin.player.core.presentation.labelRes
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 
 private val ChapterThumbShape = CentralShapes.SmallCard
 
 /**
- * Shared chapter item card with preview thumbnail, segment border tint, segment badge, and current
- * playback selection indicator.
+ * Shared chapter item card with preview thumbnail, title, timestamp, and current playback selection
+ * indicator.
  *
  * @param chapter Chapter model containing name and start position.
  * @param index Chapter index in media track.
  * @param isCurrent Whether chapter is currently active.
  * @param onClick Callback when chapter card is tapped.
  * @param modifier Optional modifier applied to row. Defaults to [Modifier].
- * @param nextChapterStart Next chapter start timestamp in Ms. Defaults to [Long.MAX_VALUE].
- * @param segments List of media segments. Defaults to `emptyList()`.
- * @param durationMs Total media duration in Ms. Defaults to `0L`.
  * @param trickplay Trickplay model for thumbnail extraction. Defaults to `null`.
  */
 @Composable
@@ -71,37 +63,10 @@ fun ChapterCard(
     isCurrent: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    nextChapterStart: Long = Long.MAX_VALUE,
-    segments: List<FindroidSegment> = emptyList(),
-    durationMs: Long = 0L,
     trickplay: Trickplay? = null,
 ) {
     val startTimeMs = chapter.startPosition
     val formattedTime = formatDuration(startTimeMs)
-
-    val matchedSegment =
-        findChapterSegment(
-            chapter = chapter,
-            nextChapterStart = nextChapterStart,
-            segments = segments,
-            durationMs = durationMs.coerceAtLeast(0L),
-        )
-    val segmentType =
-        matchedSegment?.type
-            ?: findChapterSegmentType(
-                chapter = chapter,
-                nextChapterStart = nextChapterStart,
-                segments = segments,
-                durationMs = durationMs.coerceAtLeast(0L),
-            )
-
-    val segmentColor =
-        when (val matchedColor = matchedSegment?.color) {
-            0L -> getSegmentColor(segmentType)
-            null -> getSegmentColor(segmentType)
-            else -> Color(matchedColor)
-        }
-    val segmentLabel = segmentType?.labelRes?.let { stringResource(it) }
 
     val chapterTitle =
         chapter.name?.takeIf { it.isNotBlank() }
@@ -133,12 +98,7 @@ fun ChapterCard(
             }
         }
 
-    val thumbBorder =
-        if (segmentColor != null) {
-            BorderStroke(1.5.dp, segmentColor)
-        } else {
-            BorderStroke(1.dp, Color.White.copy(alpha = 0.12f))
-        }
+    val thumbBorder = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f))
 
     Surface(
         modifier = modifier.fillMaxWidth(),
@@ -156,7 +116,7 @@ fun ChapterCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            // Chapter Thumbnail with Dynamic Aspect Ratio and Segment Border
+            // Chapter Thumbnail with Dynamic Aspect Ratio
             val hasServerImage = !chapter.imageUri.isNullOrBlank() && !isImageError
             Box(
                 modifier =
@@ -192,35 +152,14 @@ fun ChapterCard(
             }
 
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Text(
-                        text = chapterTitle,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Medium,
-                        color = Color.White,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false),
-                    )
-                    if (segmentColor != null && segmentLabel != null) {
-                        Box(
-                            modifier =
-                                Modifier.clip(CentralShapes.Tiny)
-                                    .background(segmentColor.copy(alpha = 0.2f))
-                                    .padding(horizontal = 6.dp, vertical = 2.dp)
-                        ) {
-                            Text(
-                                text = segmentLabel,
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = segmentColor,
-                            )
-                        }
-                    }
-                }
+                Text(
+                    text = chapterTitle,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Medium,
+                    color = Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = formattedTime,

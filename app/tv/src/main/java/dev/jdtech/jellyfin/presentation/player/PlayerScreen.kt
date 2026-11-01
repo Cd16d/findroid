@@ -219,6 +219,7 @@ fun PlayerScreen(
     val videoPlayerState = rememberVideoPlayerState(hideSeconds = hideSeconds)
 
     var currentPosition by remember { mutableLongStateOf(0L) }
+    var bufferedPosition by remember { mutableLongStateOf(0L) }
     var isPlaying by remember { mutableStateOf(viewModel.player.isPlaying) }
     var isBuffering by remember {
         mutableStateOf(viewModel.player.playbackState == Player.STATE_BUFFERING)
@@ -233,10 +234,12 @@ fun PlayerScreen(
                 override fun onIsPlayingChanged(playing: Boolean) {
                     isPlaying = playing
                     currentPosition = viewModel.player.currentPosition
+                    bufferedPosition = viewModel.player.bufferedPosition
                 }
 
                 override fun onPlaybackStateChanged(playbackState: Int) {
                     isBuffering = playbackState == Player.STATE_BUFFERING
+                    bufferedPosition = viewModel.player.bufferedPosition
                 }
 
                 override fun onVideoSizeChanged(videoSize: VideoSize) {
@@ -249,12 +252,15 @@ fun PlayerScreen(
         onDispose { viewModel.player.removeListener(listener) }
     }
 
-    LaunchedEffect(isPlaying) {
+    LaunchedEffect(Unit) {
         var tick = 0
-        while (isPlaying) {
+        while (true) {
             currentPosition = viewModel.player.currentPosition
-            if (tick % 3 == 0) viewModel.updateCurrentSegment()
-            if (tick % 16 == 0 && tick > 0) viewModel.updatePlaybackProgress()
+            bufferedPosition = viewModel.player.bufferedPosition
+            if (isPlaying) {
+                if (tick % 3 == 0) viewModel.updateCurrentSegment()
+                if (tick % 16 == 0 && tick > 0) viewModel.updatePlaybackProgress()
+            }
             tick++
             delay(300.milliseconds)
         }
@@ -732,6 +738,7 @@ fun PlayerScreen(
                         isPlaying = isPlaying,
                         isBuffering = isBuffering,
                         contentCurrentPosition = currentPosition,
+                        contentBufferedPosition = bufferedPosition,
                         player = viewModel.player,
                         state = videoPlayerState,
                         playPauseFocusRequester = playPauseFocusRequester,
@@ -802,6 +809,7 @@ fun VideoPlayerControls(
     isPlaying: Boolean,
     isBuffering: Boolean = false,
     contentCurrentPosition: Long,
+    contentBufferedPosition: Long = 0L,
     player: Player,
     state: VideoPlayerState,
     playPauseFocusRequester: FocusRequester,
@@ -880,6 +888,7 @@ fun VideoPlayerControls(
                 onSeek = onSeek ?: { player.seekTo((safeDurationMs * it).toLong()) },
                 contentProgress = safeProgressMs.milliseconds,
                 contentDuration = safeDurationMs.milliseconds,
+                bufferedProgress = contentBufferedPosition.milliseconds,
                 chapters = chapters,
                 segments = segments,
                 isScrubbing = isScrubbing,

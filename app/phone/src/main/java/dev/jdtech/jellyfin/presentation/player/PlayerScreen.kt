@@ -473,16 +473,18 @@ fun PlayerScreen(
         onDispose { viewModel.player.removeListener(listener) }
     }
 
-    LaunchedEffect(isPlaying) {
+    LaunchedEffect(Unit) {
         var tick = 0
-        while (isPlaying) {
+        while (true) {
             currentPosition = viewModel.player.currentPosition
             bufferedPosition = viewModel.player.bufferedPosition
             hasPreviousItem = viewModel.player.hasPreviousMediaItem()
             hasNextItem = viewModel.player.hasNextMediaItem()
             mediaItemCount = viewModel.player.mediaItemCount
-            if (tick % 3 == 0) viewModel.updateCurrentSegment()
-            if (tick % 16 == 0 && tick > 0) viewModel.updatePlaybackProgress()
+            if (isPlaying) {
+                if (tick % 3 == 0) viewModel.updateCurrentSegment()
+                if (tick % 16 == 0 && tick > 0) viewModel.updatePlaybackProgress()
+            }
             tick++
             delay(300.milliseconds)
         }

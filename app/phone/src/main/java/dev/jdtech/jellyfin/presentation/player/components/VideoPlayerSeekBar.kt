@@ -26,8 +26,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
@@ -35,9 +39,9 @@ import androidx.compose.ui.unit.dp
 import dev.jdtech.jellyfin.models.FindroidSegment
 import dev.jdtech.jellyfin.models.FindroidSegmentType
 import dev.jdtech.jellyfin.player.core.domain.models.PlayerChapter
-import dev.jdtech.jellyfin.player.core.presentation.calculateBarSlices
 import dev.jdtech.jellyfin.player.core.presentation.calculateProgressFromX
 import dev.jdtech.jellyfin.player.core.presentation.drawCustomRoundRect
+import dev.jdtech.jellyfin.player.core.presentation.getSegmentColor
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 
 private fun getM3SegmentFraction(phase: Float, startPhase: Float, endPhase: Float): Float {
@@ -47,15 +51,23 @@ private fun getM3SegmentFraction(phase: Float, startPhase: Float, endPhase: Floa
     return FastOutSlowInEasing.transform(fraction)
 }
 
+/** Represents a chapter interval slice along the timeline. */
+private data class ChapterSlice(
+    val startMs: Long,
+    val endMs: Long,
+    val title: String? = null,
+)
+
 /**
  * Interactive timeline progress bar with chapter slicing, segment color accents, dynamic touch
- * expansion, and scrub position tracking.
+ * expansion, and scrub position tracking based on Material 3 Expressive guidelines.
  *
  * @param progress Current playback completion ratio between 0.0f and 1.0f.
  * @param onSeek Callback invoked when the user commits a seek gesture, passing target progress
  *   fraction.
  * @param state Active [VideoPlayerState] instance.
  * @param modifier Optional [Modifier] applied to the canvas.
+ * @param bufferedProgress Fraction of media buffered between 0.0f and 1.0f.
  * @param durationMs Total media duration in milliseconds.
  * @param chapters List of [PlayerChapter] markers used to split the bar into visual chapter slices.
  * @param segments List of [FindroidSegment] intervals used to tint segment slices (intro, outro,
@@ -147,12 +159,47 @@ fun VideoPlayerSeekBar(
 
     val haptics = rememberPlayerHaptics()
     val currentChapters by rememberUpdatedState(chapters)
+    val slicePath = remember { Path() }
 
     val safeDurationMs = if (durationMs > 0L) durationMs else 0L
 
-    val slices =
-        remember(safeDurationMs, chapters, segments) {
-            calculateBarSlices(safeDurationMs, chapters, segments)
+    val chapterSlices =
+        remember(safeDurationMs, chapters) {
+            if (safeDurationMs <= 0L) {
+                emptyList()
+            } else {
+                val validChapters =
+                    chapters
+                        .filter { it.startPosition in 0..safeDurationMs }
+                        .sortedBy { it.startPosition }
+                        .distinctBy { it.startPosition }
+
+                if (validChapters.isEmpty()) {
+                    listOf(ChapterSlice(0L, safeDurationMs))
+                } else {
+                    val cuts = mutableListOf<Long>()
+                    if (validChapters.first().startPosition > 0L) {
+                        cuts.add(0L)
+                    }
+                    for (ch in validChapters) {
+                        cuts.add(ch.startPosition)
+                    }
+                    if (cuts.last() < safeDurationMs) {
+                        cuts.add(safeDurationMs)
+                    }
+                    val chapterMap = validChapters.associateBy { it.startPosition }
+                    val result = mutableListOf<ChapterSlice>()
+                    for (i in 0 until cuts.size - 1) {
+                        val start = cuts[i]
+                        val end = cuts[i + 1]
+                        if (end > start) {
+                            val chName = chapterMap[start]?.name
+                            result.add(ChapterSlice(start, end, chName))
+                        }
+                    }
+                    if (result.isEmpty()) listOf(ChapterSlice(0L, safeDurationMs)) else result
+                }
+            }
         }
 
     Canvas(
@@ -232,9 +279,9 @@ fun VideoPlayerSeekBar(
         val thumbGap = animatedThumbGap.toPx()
         val thumbWidthPx = animatedThumbWidth.toPx()
         val fullCornerRadius = CornerRadius(trackHeightPx / 2f, trackHeightPx / 2f)
-        val smallCornerRadius = CornerRadius(2.5.dp.toPx(), 2.5.dp.toPx())
+        val innerCornerRadius = CornerRadius(3.dp.toPx(), 3.dp.toPx())
         val gapPx = 3.dp.toPx()
-        val numSlices = slices.size
+        val numSlices = chapterSlices.size
         val totalGapsPx = if (numSlices > 1) (numSlices - 1) * gapPx else 0f
         val trackAvailableWidth = (size.width - totalGapsPx).coerceAtLeast(0f)
 
@@ -252,11 +299,11 @@ fun VideoPlayerSeekBar(
                 0L
             }
 
-        // Calculate thumb center X
+        // Compute thumb X position mapped across chapter gaps
         var thumbX = size.width * currentProgressFraction
-        if (slices.isNotEmpty() && safeDurationMs > 0L) {
+        if (chapterSlices.isNotEmpty() && safeDurationMs > 0L) {
             var runningX = 0f
-            for ((startMs, endMs) in slices) {
+            for ((startMs, endMs) in chapterSlices) {
                 val sliceDuration = (endMs - startMs).coerceAtLeast(1L)
                 val sliceFraction = sliceDuration.toFloat() / safeDurationMs
                 val sliceWidth = sliceFraction * trackAvailableWidth
@@ -277,229 +324,447 @@ fun VideoPlayerSeekBar(
         val activeLimit = (thumbLeft - thumbGap).coerceAtLeast(0f)
         val inactiveLimit = (thumbRight + thumbGap).coerceAtMost(size.width)
 
-        if (slices.isNotEmpty() && safeDurationMs > 0L) {
-            if (isBuffering) {
-                // Background track for all slices
-                var currentX = 0f
-                for ((startMs, endMs, _, _, color) in slices) {
-                    val sliceDuration = (endMs - startMs).coerceAtLeast(1L)
-                    val sliceFraction = sliceDuration.toFloat() / safeDurationMs
-                    val sliceWidth = sliceFraction * trackAvailableWidth
-                    val sliceStartX = currentX
-                    val sliceEndX = sliceStartX + sliceWidth
+        val bufferedMs = (bufferedProgress.coerceIn(0f, 1f) * safeDurationMs).toLong()
 
-                    val segmentColor = color
-                    val trackBgColor =
-                        segmentColor?.copy(alpha = 0.35f) ?: Color.White.copy(alpha = 0.20f)
+        // Helper to resolve segment color for a segment object
+        fun getSegmentColorFor(seg: FindroidSegment): Color {
+            return when (val colorVal = seg.color) {
+                0L -> getSegmentColor(seg.type) ?: primaryColor
+                null -> getSegmentColor(seg.type) ?: primaryColor
+                else -> Color(colorVal)
+            }
+        }
 
-                    drawCustomRoundRect(
-                        color = trackBgColor,
-                        topLeft = Offset(sliceStartX, yOffset - trackHeightPx / 2f),
-                        size = Size(sliceWidth, trackHeightPx),
-                        topLeftRadius = fullCornerRadius,
-                        bottomLeftRadius = fullCornerRadius,
-                        topRightRadius = fullCornerRadius,
-                        bottomRightRadius = fullCornerRadius,
+        if (chapterSlices.isNotEmpty() && safeDurationMs > 0L) {
+            var sliceX = 0f
+            for (i in chapterSlices.indices) {
+                val slice = chapterSlices[i]
+                val sliceDuration = (slice.endMs - slice.startMs).coerceAtLeast(1L)
+                val sliceFraction = sliceDuration.toFloat() / safeDurationMs
+                val sliceWidth = sliceFraction * trackAvailableWidth
+                val sliceStartX = sliceX
+                val sliceEndX = sliceStartX + sliceWidth
+
+                val isFirstSlice = i == 0
+                val isLastSlice = i == chapterSlices.size - 1
+
+                val leftRadius = if (isFirstSlice) fullCornerRadius else innerCornerRadius
+                val rightRadius = if (isLastSlice) fullCornerRadius else innerCornerRadius
+
+                slicePath.reset()
+                slicePath.addRoundRect(
+                    RoundRect(
+                        rect =
+                            Rect(
+                                left = sliceStartX,
+                                top = yOffset - trackHeightPx / 2f,
+                                right = sliceEndX,
+                                bottom = yOffset + trackHeightPx / 2f,
+                            ),
+                        topLeft = leftRadius,
+                        bottomLeft = leftRadius,
+                        topRight = rightRadius,
+                        bottomRight = rightRadius,
                     )
-                    currentX = sliceEndX + gapPx
-                }
+                )
 
-                // Material 3 Indeterminate solid loading segments across slices
-                for ((tail, head) in indeterminateRanges) {
-                    if (head <= tail) continue
-                    val segStartX = tail * size.width
-                    val segEndX = head * size.width
-                    var sliceX = 0f
-                    for ((startMs, endMs, _, _, color) in slices) {
-                        val sliceDuration = (endMs - startMs).coerceAtLeast(1L)
-                        val sliceFraction = sliceDuration.toFloat() / safeDurationMs
-                        val sliceWidth = sliceFraction * trackAvailableWidth
-                        val sliceStartX = sliceX
-                        val sliceEndX = sliceStartX + sliceWidth
-                        val segmentColor = color
-                        val trackFgColor = segmentColor ?: primaryColor
+                clipPath(slicePath) {
+                    if (isBuffering) {
+                        // 1. Base unplayed chapter track background
+                        drawCustomRoundRect(
+                            color = Color.White.copy(alpha = 0.20f),
+                            topLeft = Offset(sliceStartX, yOffset - trackHeightPx / 2f),
+                            size = Size(sliceWidth, trackHeightPx),
+                            topLeftRadius = leftRadius,
+                            bottomLeftRadius = leftRadius,
+                            topRightRadius = rightRadius,
+                            bottomRightRadius = rightRadius,
+                        )
 
-                        val activeStart = maxOf(sliceStartX, segStartX)
-                        val activeEnd = minOf(sliceEndX, segEndX)
-                        if (activeEnd > activeStart) {
-                            val leftRadius =
-                                if (activeStart <= sliceStartX + 1f) fullCornerRadius
-                                else smallCornerRadius
-                            val rightRadius =
-                                if (activeEnd >= sliceEndX - 1f) fullCornerRadius
-                                else smallCornerRadius
+                        // 2. Unplayed Segment overlays on top
+                        for (seg in segments) {
+                            val segStartMs = maxOf(slice.startMs, seg.startTicks)
+                            val segEndMs = minOf(slice.endMs, seg.endTicks)
+                            if (segEndMs > segStartMs) {
+                                val startRatio =
+                                    ((segStartMs - slice.startMs).toFloat() / sliceDuration)
+                                        .coerceIn(0f, 1f)
+                                val endRatio =
+                                    ((segEndMs - slice.startMs).toFloat() / sliceDuration).coerceIn(
+                                        0f,
+                                        1f,
+                                    )
+
+                                val segStartX = sliceStartX + startRatio * sliceWidth
+                                val segEndX = sliceStartX + endRatio * sliceWidth
+                                val segColor = getSegmentColorFor(seg)
+
+                                val segLeftRad =
+                                    if (segStartMs == 0L && isFirstSlice) fullCornerRadius
+                                    else innerCornerRadius
+                                val segRightRad =
+                                    if (segEndMs == safeDurationMs && isLastSlice) fullCornerRadius
+                                    else innerCornerRadius
+
+                                drawCustomRoundRect(
+                                    color = segColor.copy(alpha = 0.35f),
+                                    topLeft = Offset(segStartX, yOffset - trackHeightPx / 2f),
+                                    size = Size(segEndX - segStartX, trackHeightPx),
+                                    topLeftRadius = segLeftRad,
+                                    bottomLeftRadius = segLeftRad,
+                                    topRightRadius = segRightRad,
+                                    bottomRightRadius = segRightRad,
+                                )
+                            }
+                        }
+
+                        // 3. Material 3 Indeterminate loading shimmer
+                        for ((tail, head) in indeterminateRanges) {
+                            if (head <= tail) continue
+                            val segStartX = tail * size.width
+                            val segEndX = head * size.width
+
+                            val activeStart = maxOf(sliceStartX, segStartX)
+                            val activeEnd = minOf(sliceEndX, segEndX)
+                            if (activeEnd > activeStart) {
+                                drawCustomRoundRect(
+                                    color = primaryColor,
+                                    topLeft = Offset(activeStart, yOffset - trackHeightPx / 2f),
+                                    size = Size(activeEnd - activeStart, trackHeightPx),
+                                    topLeftRadius = innerCornerRadius,
+                                    bottomLeftRadius = innerCornerRadius,
+                                    topRightRadius = innerCornerRadius,
+                                    bottomRightRadius = innerCornerRadius,
+                                )
+                            }
+                        }
+                    } else {
+                        // --- NORMAL PLAYBACK / SCRUBBING ---
+
+                        // 1. Base unplayed chapter track (inactive portion right of thumb gap)
+                        val inactiveStart = maxOf(sliceStartX, inactiveLimit)
+                        if (sliceEndX > inactiveStart) {
+                            val inactLeftRad =
+                                if (inactiveStart <= sliceStartX + 1f && isFirstSlice)
+                                    fullCornerRadius
+                                else innerCornerRadius
+
                             drawCustomRoundRect(
-                                color = trackFgColor,
+                                color = Color.White.copy(alpha = 0.20f),
+                                topLeft = Offset(inactiveStart, yOffset - trackHeightPx / 2f),
+                                size = Size(sliceEndX - inactiveStart, trackHeightPx),
+                                topLeftRadius = inactLeftRad,
+                                bottomLeftRadius = inactLeftRad,
+                                topRightRadius = rightRadius,
+                                bottomRightRadius = rightRadius,
+                            )
+
+                            // 2. Unplayed Segment overlays on top of unplayed track
+                            for (seg in segments) {
+                                val segStartMs = maxOf(slice.startMs, seg.startTicks)
+                                val segEndMs = minOf(slice.endMs, seg.endTicks)
+                                if (segEndMs > segStartMs) {
+                                    val startRatio =
+                                        ((segStartMs - slice.startMs).toFloat() / sliceDuration)
+                                            .coerceIn(0f, 1f)
+                                    val endRatio =
+                                        ((segEndMs - slice.startMs).toFloat() / sliceDuration)
+                                            .coerceIn(0f, 1f)
+
+                                    val segStartX = sliceStartX + startRatio * sliceWidth
+                                    val segEndX = sliceStartX + endRatio * sliceWidth
+                                    val segColor = getSegmentColorFor(seg)
+
+                                    val inactSegStart = maxOf(segStartX, inactiveLimit)
+                                    if (segEndX > inactSegStart) {
+                                        val segLeftRad =
+                                            if (
+                                                inactSegStart <= sliceStartX + 1f &&
+                                                    segStartMs == 0L &&
+                                                    isFirstSlice
+                                            )
+                                                fullCornerRadius
+                                            else innerCornerRadius
+                                        val segRightRad =
+                                            if (
+                                                segEndX >= sliceEndX - 1f &&
+                                                    segEndMs == safeDurationMs &&
+                                                    isLastSlice
+                                            )
+                                                fullCornerRadius
+                                            else innerCornerRadius
+
+                                        drawCustomRoundRect(
+                                            color = segColor.copy(alpha = 0.35f),
+                                            topLeft =
+                                                Offset(inactSegStart, yOffset - trackHeightPx / 2f),
+                                            size = Size(segEndX - inactSegStart, trackHeightPx),
+                                            topLeftRadius = segLeftRad,
+                                            bottomLeftRadius = segLeftRad,
+                                            topRightRadius = segRightRad,
+                                            bottomRightRadius = segRightRad,
+                                        )
+                                    }
+                                }
+                            }
+
+                            // 3. Buffered progress overlay on inactive track
+                            if (bufferedMs > slice.startMs) {
+                                val bufRatio =
+                                    ((minOf(slice.endMs, bufferedMs) - slice.startMs).toFloat() /
+                                            sliceDuration)
+                                        .coerceIn(0f, 1f)
+                                val bufX = sliceStartX + bufRatio * sliceWidth
+                                val bufEnd = minOf(sliceEndX, bufX)
+                                if (bufEnd > inactiveStart) {
+                                    val bufRightRad =
+                                        if (bufEnd >= sliceEndX - 1f && isLastSlice)
+                                            fullCornerRadius
+                                        else innerCornerRadius
+
+                                    drawCustomRoundRect(
+                                        color = Color.White.copy(alpha = 0.35f),
+                                        topLeft =
+                                            Offset(inactiveStart, yOffset - trackHeightPx / 2f),
+                                        size = Size(bufEnd - inactiveStart, trackHeightPx),
+                                        topLeftRadius = inactLeftRad,
+                                        bottomLeftRadius = inactLeftRad,
+                                        topRightRadius = bufRightRad,
+                                        bottomRightRadius = bufRightRad,
+                                    )
+
+                                    // Buffered Segment overlay
+                                    for (seg in segments) {
+                                        val segStartMs = maxOf(slice.startMs, seg.startTicks)
+                                        val segEndMs =
+                                            minOf(minOf(slice.endMs, bufferedMs), seg.endTicks)
+                                        if (segEndMs > segStartMs) {
+                                            val startRatio =
+                                                ((segStartMs - slice.startMs).toFloat() /
+                                                        sliceDuration)
+                                                    .coerceIn(0f, 1f)
+                                            val endRatio =
+                                                ((segEndMs - slice.startMs).toFloat() /
+                                                        sliceDuration)
+                                                    .coerceIn(0f, 1f)
+
+                                            val segStartX = sliceStartX + startRatio * sliceWidth
+                                            val segEndX = sliceStartX + endRatio * sliceWidth
+                                            val segColor = getSegmentColorFor(seg)
+
+                                            val inactSegBufStart = maxOf(segStartX, inactiveLimit)
+                                            val inactSegBufEnd = minOf(segEndX, bufEnd)
+                                            if (inactSegBufEnd > inactSegBufStart) {
+                                                val segLeftRad =
+                                                    if (
+                                                        inactSegBufStart <= sliceStartX + 1f &&
+                                                            segStartMs == 0L &&
+                                                            isFirstSlice
+                                                    )
+                                                        fullCornerRadius
+                                                    else innerCornerRadius
+                                                val segRightRad =
+                                                    if (
+                                                        inactSegBufEnd >= sliceEndX - 1f &&
+                                                            segEndMs == safeDurationMs &&
+                                                            isLastSlice
+                                                    )
+                                                        fullCornerRadius
+                                                    else innerCornerRadius
+
+                                                drawCustomRoundRect(
+                                                    color = segColor.copy(alpha = 0.55f),
+                                                    topLeft =
+                                                        Offset(
+                                                            inactSegBufStart,
+                                                            yOffset - trackHeightPx / 2f,
+                                                        ),
+                                                    size =
+                                                        Size(
+                                                            inactSegBufEnd - inactSegBufStart,
+                                                            trackHeightPx,
+                                                        ),
+                                                    topLeftRadius = segLeftRad,
+                                                    bottomLeftRadius = segLeftRad,
+                                                    topRightRadius = segRightRad,
+                                                    bottomRightRadius = segRightRad,
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // 4. Played active chapter track (left of thumb gap)
+                        val activeStart = sliceStartX
+                        val activeEnd = minOf(sliceEndX, activeLimit)
+                        if (activeEnd > activeStart) {
+                            val actRightRad =
+                                if (activeEnd >= sliceEndX - 1f && isLastSlice) fullCornerRadius
+                                else innerCornerRadius
+
+                            drawCustomRoundRect(
+                                color = primaryColor,
                                 topLeft = Offset(activeStart, yOffset - trackHeightPx / 2f),
                                 size = Size(activeEnd - activeStart, trackHeightPx),
                                 topLeftRadius = leftRadius,
                                 bottomLeftRadius = leftRadius,
-                                topRightRadius = rightRadius,
-                                bottomRightRadius = rightRadius,
+                                topRightRadius = actRightRad,
+                                bottomRightRadius = actRightRad,
                             )
-                        }
-                        sliceX = sliceEndX + gapPx
-                    }
-                }
-            } else {
-                // Inactive and Active portions of slices
-                var sliceX = 0f
-                for ((startMs, endMs, _, _, color) in slices) {
-                    val sliceDuration = (endMs - startMs).coerceAtLeast(1L)
-                    val sliceFraction = sliceDuration.toFloat() / safeDurationMs
-                    val sliceWidth = sliceFraction * trackAvailableWidth
-                    val sliceStartX = sliceX
-                    val sliceEndX = sliceStartX + sliceWidth
 
-                    val segmentColor = color
-                    val trackBgColor =
-                        segmentColor?.copy(alpha = 0.35f) ?: Color.White.copy(alpha = 0.20f)
-                    val trackFgColor = segmentColor ?: primaryColor
+                            // 5. Played Segment overlays on top of played active track (full 1.0f
+                            // opacity)
+                            for (seg in segments) {
+                                val segStartMs = maxOf(slice.startMs, seg.startTicks)
+                                val segEndMs = minOf(slice.endMs, seg.endTicks)
+                                if (segEndMs > segStartMs) {
+                                    val startRatio =
+                                        ((segStartMs - slice.startMs).toFloat() / sliceDuration)
+                                            .coerceIn(0f, 1f)
+                                    val endRatio =
+                                        ((segEndMs - slice.startMs).toFloat() / sliceDuration)
+                                            .coerceIn(0f, 1f)
 
-                    // Inactive track portion (right of thumb gap)
-                    val inactiveStart = maxOf(sliceStartX, inactiveLimit)
-                    if (sliceEndX > inactiveStart) {
-                        val leftRadius =
-                            if (inactiveStart > sliceStartX + 1f) smallCornerRadius
-                            else fullCornerRadius
-                        drawCustomRoundRect(
-                            color = trackBgColor,
-                            topLeft = Offset(inactiveStart, yOffset - trackHeightPx / 2f),
-                            size = Size(sliceEndX - inactiveStart, trackHeightPx),
-                            topLeftRadius = leftRadius,
-                            bottomLeftRadius = leftRadius,
-                            topRightRadius = fullCornerRadius,
-                            bottomRightRadius = fullCornerRadius,
-                        )
+                                    val segStartX = sliceStartX + startRatio * sliceWidth
+                                    val segEndX = sliceStartX + endRatio * sliceWidth
+                                    val segColor = getSegmentColorFor(seg)
 
-                        // Buffered progress on inactive slice
-                        val currentBufferMs =
-                            (bufferedProgress.coerceIn(0f, 1f) * safeDurationMs).toLong()
-                        if (currentBufferMs > startMs) {
-                            val sliceBufferRatio =
-                                ((minOf(endMs, currentBufferMs) - startMs).toFloat() /
-                                        sliceDuration)
-                                    .coerceIn(0f, 1f)
-                            val sliceBufferX = sliceStartX + sliceBufferRatio * sliceWidth
-                            val bufferedEnd = minOf(sliceEndX, sliceBufferX)
-                            if (bufferedEnd > inactiveStart) {
-                                val bufRightRadius =
-                                    if (bufferedEnd < sliceEndX - 1f) smallCornerRadius
-                                    else fullCornerRadius
-                                drawCustomRoundRect(
-                                    color = Color.White.copy(alpha = 0.40f),
-                                    topLeft = Offset(inactiveStart, yOffset - trackHeightPx / 2f),
-                                    size = Size(bufferedEnd - inactiveStart, trackHeightPx),
-                                    topLeftRadius = leftRadius,
-                                    bottomLeftRadius = leftRadius,
-                                    topRightRadius = bufRightRadius,
-                                    bottomRightRadius = bufRightRadius,
-                                )
+                                    val actSegStart = maxOf(segStartX, activeStart)
+                                    val actSegEnd = minOf(segEndX, activeEnd)
+                                    if (actSegEnd > actSegStart) {
+                                        val segLeftRad =
+                                            if (
+                                                actSegStart <= sliceStartX + 1f &&
+                                                    segStartMs == 0L &&
+                                                    isFirstSlice
+                                            )
+                                                fullCornerRadius
+                                            else innerCornerRadius
+                                        val segRightRad =
+                                            if (
+                                                actSegEnd >= sliceEndX - 1f &&
+                                                    segEndMs == safeDurationMs &&
+                                                    isLastSlice
+                                            )
+                                                fullCornerRadius
+                                            else innerCornerRadius
+
+                                        drawCustomRoundRect(
+                                            color = segColor,
+                                            topLeft =
+                                                Offset(actSegStart, yOffset - trackHeightPx / 2f),
+                                            size = Size(actSegEnd - actSegStart, trackHeightPx),
+                                            topLeftRadius = segLeftRad,
+                                            bottomLeftRadius = segLeftRad,
+                                            topRightRadius = segRightRad,
+                                            bottomRightRadius = segRightRad,
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
-
-                    // Active track portion (left of thumb gap)
-                    val activeStart = sliceStartX
-                    val activeEnd = minOf(sliceEndX, activeLimit)
-                    if (activeEnd > activeStart) {
-                        val rightRadius =
-                            if (activeEnd < sliceEndX) smallCornerRadius else fullCornerRadius
-                        drawCustomRoundRect(
-                            color = trackFgColor,
-                            topLeft = Offset(activeStart, yOffset - trackHeightPx / 2f),
-                            size = Size(activeEnd - activeStart, trackHeightPx),
-                            topLeftRadius = fullCornerRadius,
-                            bottomLeftRadius = fullCornerRadius,
-                            topRightRadius = rightRadius,
-                            bottomRightRadius = rightRadius,
-                        )
-                    }
-                    sliceX = sliceEndX + gapPx
                 }
+
+                sliceX = sliceEndX + gapPx
             }
         } else {
-            if (isBuffering) {
-                // Draw continuous background track
-                drawCustomRoundRect(
-                    color = Color.White.copy(alpha = 0.20f),
-                    topLeft = Offset(0f, yOffset - trackHeightPx / 2f),
-                    size = Size(size.width, trackHeightPx),
-                    topLeftRadius = fullCornerRadius,
-                    bottomLeftRadius = fullCornerRadius,
-                    topRightRadius = fullCornerRadius,
-                    bottomRightRadius = fullCornerRadius,
+            // Fallback continuous track when duration is zero or unknown
+            slicePath.reset()
+            slicePath.addRoundRect(
+                RoundRect(
+                    rect =
+                        Rect(
+                            left = 0f,
+                            top = yOffset - trackHeightPx / 2f,
+                            right = size.width,
+                            bottom = yOffset + trackHeightPx / 2f,
+                        ),
+                    cornerRadius = fullCornerRadius,
                 )
+            )
 
-                // Material 3 Indeterminate solid loading segments
-                for ((tail, head) in indeterminateRanges) {
-                    if (head <= tail) continue
-                    val segStartX = tail * size.width
-                    val segEndX = head * size.width
-                    if (segEndX > segStartX) {
-                        drawCustomRoundRect(
-                            color = primaryColor,
-                            topLeft = Offset(segStartX, yOffset - trackHeightPx / 2f),
-                            size = Size(segEndX - segStartX, trackHeightPx),
-                            topLeftRadius = fullCornerRadius,
-                            bottomLeftRadius = fullCornerRadius,
-                            topRightRadius = fullCornerRadius,
-                            bottomRightRadius = fullCornerRadius,
-                        )
-                    }
-                }
-            } else {
-                // Inactive track (right of thumb gap)
-                if (inactiveLimit < size.width) {
+            clipPath(slicePath) {
+                if (isBuffering) {
                     drawCustomRoundRect(
                         color = Color.White.copy(alpha = 0.20f),
-                        topLeft = Offset(inactiveLimit, yOffset - trackHeightPx / 2f),
-                        size = Size(size.width - inactiveLimit, trackHeightPx),
-                        topLeftRadius = smallCornerRadius,
-                        bottomLeftRadius = smallCornerRadius,
+                        topLeft = Offset(0f, yOffset - trackHeightPx / 2f),
+                        size = Size(size.width, trackHeightPx),
+                        topLeftRadius = fullCornerRadius,
+                        bottomLeftRadius = fullCornerRadius,
                         topRightRadius = fullCornerRadius,
                         bottomRightRadius = fullCornerRadius,
                     )
 
-                    val bufferedX =
-                        (bufferedProgress.coerceIn(0f, 1f) * size.width).coerceAtMost(size.width)
-                    if (bufferedX > inactiveLimit) {
-                        val bufRightRadius =
-                            if (bufferedX < size.width - 1f) smallCornerRadius else fullCornerRadius
+                    for ((tail, head) in indeterminateRanges) {
+                        if (head <= tail) continue
+                        val segStartX = tail * size.width
+                        val segEndX = head * size.width
+                        if (segEndX > segStartX) {
+                            drawCustomRoundRect(
+                                color = primaryColor,
+                                topLeft = Offset(segStartX, yOffset - trackHeightPx / 2f),
+                                size = Size(segEndX - segStartX, trackHeightPx),
+                                topLeftRadius = innerCornerRadius,
+                                bottomLeftRadius = innerCornerRadius,
+                                topRightRadius = innerCornerRadius,
+                                bottomRightRadius = innerCornerRadius,
+                            )
+                        }
+                    }
+                } else {
+                    if (inactiveLimit < size.width) {
                         drawCustomRoundRect(
-                            color = Color.White.copy(alpha = 0.40f),
+                            color = Color.White.copy(alpha = 0.20f),
                             topLeft = Offset(inactiveLimit, yOffset - trackHeightPx / 2f),
-                            size = Size(bufferedX - inactiveLimit, trackHeightPx),
-                            topLeftRadius = smallCornerRadius,
-                            bottomLeftRadius = smallCornerRadius,
-                            topRightRadius = bufRightRadius,
-                            bottomRightRadius = bufRightRadius,
+                            size = Size(size.width - inactiveLimit, trackHeightPx),
+                            topLeftRadius = innerCornerRadius,
+                            bottomLeftRadius = innerCornerRadius,
+                            topRightRadius = fullCornerRadius,
+                            bottomRightRadius = fullCornerRadius,
+                        )
+
+                        val bufferedX =
+                            (bufferedProgress.coerceIn(0f, 1f) * size.width).coerceAtMost(
+                                size.width
+                            )
+                        if (bufferedX > inactiveLimit) {
+                            val bufRightRadius =
+                                if (bufferedX < size.width - 1f) innerCornerRadius
+                                else fullCornerRadius
+                            drawCustomRoundRect(
+                                color = Color.White.copy(alpha = 0.40f),
+                                topLeft = Offset(inactiveLimit, yOffset - trackHeightPx / 2f),
+                                size = Size(bufferedX - inactiveLimit, trackHeightPx),
+                                topLeftRadius = innerCornerRadius,
+                                bottomLeftRadius = innerCornerRadius,
+                                topRightRadius = bufRightRadius,
+                                bottomRightRadius = bufRightRadius,
+                            )
+                        }
+                    }
+
+                    if (activeLimit > 0f) {
+                        drawCustomRoundRect(
+                            color = primaryColor,
+                            topLeft = Offset(0f, yOffset - trackHeightPx / 2f),
+                            size = Size(activeLimit, trackHeightPx),
+                            topLeftRadius = fullCornerRadius,
+                            bottomLeftRadius = fullCornerRadius,
+                            topRightRadius = innerCornerRadius,
+                            bottomRightRadius = innerCornerRadius,
                         )
                     }
-                }
-
-                // Active track (left of thumb gap)
-                if (activeLimit > 0f) {
-                    drawCustomRoundRect(
-                        color = primaryColor,
-                        topLeft = Offset(0f, yOffset - trackHeightPx / 2f),
-                        size = Size(activeLimit, trackHeightPx),
-                        topLeftRadius = fullCornerRadius,
-                        bottomLeftRadius = fullCornerRadius,
-                        topRightRadius = smallCornerRadius,
-                        bottomRightRadius = smallCornerRadius,
-                    )
                 }
             }
         }
 
         // Draw Thumb cursor bar (hidden during buffering)
         if (thumbAlpha > 0.01f) {
-            val activeSlice = slices.firstOrNull { currentPlayMs in it.startMs..it.endMs }
-            val activeSegmentColor = activeSlice?.color
-            val thumbColor = activeSegmentColor ?: primaryColor
             drawRoundRect(
-                color = thumbColor.copy(alpha = thumbAlpha),
+                color = primaryColor.copy(alpha = thumbAlpha),
                 topLeft = Offset(thumbLeft, yOffset - thumbHeight / 2f),
                 size = Size(thumbWidthPx, thumbHeight),
                 cornerRadius = CornerRadius(thumbWidthPx / 2f, thumbWidthPx / 2f),
@@ -532,6 +797,7 @@ private fun VideoPlayerSeekBarWithSegmentsPreview() {
             onSeek = {},
             state = state,
             durationMs = 1_800_000L,
+            bufferedProgress = 0.5f,
             chapters =
                 listOf(
                     PlayerChapter(name = "Intro", startPosition = 0L),
@@ -543,8 +809,8 @@ private fun VideoPlayerSeekBarWithSegmentsPreview() {
                 listOf(
                     FindroidSegment(
                         type = FindroidSegmentType.INTRO,
-                        startTicks = 60_000L,
-                        endTicks = 180_000L,
+                        startTicks = 90_000L,
+                        endTicks = 250_000L,
                     ),
                     FindroidSegment(
                         type = FindroidSegmentType.OUTRO,

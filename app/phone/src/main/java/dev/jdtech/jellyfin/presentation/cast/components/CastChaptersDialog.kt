@@ -23,7 +23,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
@@ -82,8 +81,7 @@ import kotlin.math.roundToInt
  * @param onChapterSelected Callback when a chapter is selected with its start position in ms.
  * @param onDismiss Callback when dialog is dismissed.
  * @param modifier Modifier applied to the dialog surface. Defaults to [Modifier].
- * @param segments Optional list of segments (e.g. intro/outro) to highlight. Defaults to empty
- *   list.
+ * @param segments Optional list of segments. Defaults to empty list.
  * @param durationMs Total item duration in milliseconds. Defaults to 0.
  */
 @Composable
@@ -308,15 +306,10 @@ fun CastChaptersDialog(
                         ) {
                             itemsIndexed(chapters) { index, chapter ->
                                 val isCurrent = index == currentChapterIndex
-                                val nextChapterStart =
-                                    chapters.getOrNull(index + 1)?.startPosition ?: Long.MAX_VALUE
                                 ChapterCard(
                                     chapter = chapter,
                                     index = index,
                                     isCurrent = isCurrent,
-                                    nextChapterStart = nextChapterStart,
-                                    segments = segments,
-                                    durationMs = durationMs,
                                     trickplay = trickplay,
                                     onClick = {
                                         onChapterSelected(chapter.startPosition)

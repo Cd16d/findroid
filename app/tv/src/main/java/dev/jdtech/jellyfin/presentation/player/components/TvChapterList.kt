@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -51,16 +50,11 @@ import coil3.compose.AsyncImage
 import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.core.presentation.theme.PlayerTvSidePanelContainer
 import dev.jdtech.jellyfin.core.presentation.theme.PlayerTvSidePanelUnselected
-import dev.jdtech.jellyfin.models.FindroidSegmentType
 import dev.jdtech.jellyfin.player.core.R as PlayerR
 import dev.jdtech.jellyfin.player.core.domain.models.PlayerChapter
 import dev.jdtech.jellyfin.player.core.domain.models.Trickplay
 import dev.jdtech.jellyfin.player.core.domain.models.intervalMs
 import dev.jdtech.jellyfin.player.core.domain.utils.ChapterUtils
-import dev.jdtech.jellyfin.player.core.presentation.findChapterSegment
-import dev.jdtech.jellyfin.player.core.presentation.findChapterSegmentType
-import dev.jdtech.jellyfin.player.core.presentation.getSegmentColor
-import dev.jdtech.jellyfin.player.core.presentation.labelRes
 import dev.jdtech.jellyfin.player.local.presentation.PlayerViewModel
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import kotlin.time.Duration.Companion.milliseconds
@@ -127,37 +121,12 @@ internal fun ChapterList(
                 key = { index, chapter -> "${chapter.startPosition}_$index" },
             ) { index, chapter ->
                 val isCurrent = index == currentChapterIndex
-                val nextChapterStart =
-                    chapters.getOrNull(index + 1)?.startPosition ?: Long.MAX_VALUE
-                val matchedSegment =
-                    findChapterSegment(
-                        chapter = chapter,
-                        nextChapterStart = nextChapterStart,
-                        segments = uiState.segments,
-                        durationMs = viewModel.player.duration.coerceAtLeast(0L),
-                    )
-                val segmentType =
-                    matchedSegment?.type
-                        ?: findChapterSegmentType(
-                            chapter = chapter,
-                            nextChapterStart = nextChapterStart,
-                            segments = uiState.segments,
-                            durationMs = viewModel.player.duration.coerceAtLeast(0L),
-                        )
-                val segmentColor =
-                    when (val matchedColor = matchedSegment?.color) {
-                        0L -> getSegmentColor(segmentType)
-                        null -> getSegmentColor(segmentType)
-                        else -> Color(matchedColor)
-                    }
 
                 ChapterItem(
                     chapter = chapter,
                     chapterIndex = index,
                     isCurrent = isCurrent,
                     trickplay = uiState.currentTrickplay,
-                    segmentType = segmentType,
-                    customSegmentColor = segmentColor,
                     onClick = {
                         viewModel.player.seekTo(chapter.startPosition)
                         onClose()
@@ -175,7 +144,7 @@ internal fun ChapterList(
 }
 
 /**
- * Focusable chapter item card with thumbnail preview and segment indicator for TV.
+ * Focusable chapter item card with thumbnail preview for TV.
  *
  * @param chapter Chapter metadata.
  * @param chapterIndex Zero-based chapter index.
@@ -183,8 +152,6 @@ internal fun ChapterList(
  * @param onClick Callback when selecting this chapter.
  * @param trickplay Optional trickplay thumbnail dataset.
  * @param modifier Optional [Modifier] applied to the item surface.
- * @param segmentType Optional chapter segment type (e.g. Intro, Outro).
- * @param customSegmentColor Optional custom tint color for the segment.
  */
 @Composable
 internal fun ChapterItem(
@@ -194,10 +161,7 @@ internal fun ChapterItem(
     onClick: () -> Unit,
     trickplay: Trickplay?,
     modifier: Modifier = Modifier,
-    segmentType: FindroidSegmentType? = null,
-    customSegmentColor: Color? = null,
 ) {
-    val segmentLabel = segmentType?.labelRes?.let { stringResource(it) }
     val chapterName =
         chapter.name?.takeIf { it.isNotBlank() }
             ?: stringResource(id = PlayerR.string.chapter_title, chapterIndex + 1)
@@ -242,15 +206,13 @@ internal fun ChapterItem(
             }
         }
 
-    val segmentColor = customSegmentColor ?: segmentType?.let { getSegmentColor(it) }
-
     val itemColors =
         ClickableSurfaceDefaults.colors(
             containerColor =
                 if (isCurrent) {
-                    segmentColor?.copy(alpha = 0.25f) ?: PlayerTvSidePanelUnselected
+                    PlayerTvSidePanelUnselected
                 } else {
-                    segmentColor?.copy(alpha = 0.12f) ?: PlayerTvSidePanelContainer
+                    PlayerTvSidePanelContainer
                 },
             focusedContainerColor = Color.White,
             contentColor = Color.White,
@@ -306,11 +268,7 @@ internal fun ChapterItem(
                     Box(
                         modifier =
                             Modifier.fillMaxSize()
-                                .background(
-                                    (segmentColor ?: MaterialTheme.colorScheme.primary).copy(
-                                        alpha = 0.25f
-                                    )
-                                )
+                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.25f))
                     )
                 }
             }
@@ -322,34 +280,13 @@ internal fun ChapterItem(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.Center,
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Text(
-                        text = chapterName,
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false),
-                    )
-                    if (segmentColor != null && segmentLabel != null) {
-                        Box(
-                            modifier =
-                                Modifier.clip(RoundedCornerShape(4.dp))
-                                    .background(segmentColor.copy(alpha = 0.2f))
-                                    .padding(horizontal = 6.dp, vertical = 2.dp)
-                        ) {
-                            Text(
-                                text = segmentLabel,
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = segmentColor,
-                            )
-                        }
-                    }
-                }
+                Text(
+                    text = chapterName,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = timestampString,
