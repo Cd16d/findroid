@@ -62,6 +62,7 @@ I am developing this application in my spare time.
 
 - **Phone Player Redesign**
   - Modern Jetpack Compose player UI with custom progress bar
+  - Ambient mode background effect
   - Sleep timer picker
   - Playback speed selector
   - Aspect ratio selector
