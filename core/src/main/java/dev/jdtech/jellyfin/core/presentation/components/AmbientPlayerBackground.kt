@@ -36,17 +36,24 @@ import androidx.core.graphics.createBitmap
 import kotlin.coroutines.resume
 import kotlin.math.abs
 import kotlin.time.Duration.Companion.milliseconds
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 
 private const val INNER_WIDTH = 16
 private const val INNER_HEIGHT = 12
 private const val BORDER_PX = 3
 private const val PAUSE_BETWEEN_CAPTURES_MS = 1000L
-private const val MORPH_DURATION_MS = 800
+private const val PLAYBACK_MORPH_DURATION_MS = 800
+private const val BORDER_TOGGLE_MORPH_DURATION_MS = 150
+private const val FRAME_TIMEOUT_MS = 300L
 
 /**
  * YouTube-style ambient background component that captures tiny frames from the video's
@@ -59,6 +66,8 @@ private const val MORPH_DURATION_MS = 800
  * @param ambientAlpha Alpha multiplier for the ambient glow overlay.
  * @param currentPositionMs Current playback position to trigger immediate capture on seek.
  * @param isPanelOpen Whether the side panel is currently open.
+ * @param applyBlackBorder Whether to append a dark border padding around captured frames to ensure
+ *   edge falloff when shrunk.
  */
 @Composable
 fun AmbientPlayerBackground(
@@ -74,16 +83,19 @@ fun AmbientPlayerBackground(
     val enabledAlpha by
         animateFloatAsState(
             targetValue = if (enabled) ambientAlpha else 0f,
-            animationSpec = tween(durationMillis = 750, easing = LinearEasing),
+            animationSpec = tween(durationMillis = 500, easing = LinearEasing),
             label = "ambientEnabledAlpha",
         )
 
     if (playerView == null || (enabledAlpha <= 0f && !enabled)) return
 
     val currentIsPlaying by rememberUpdatedState(isPlaying)
+    val currentApplyBlackBorder by rememberUpdatedState(applyBlackBorder)
+    var lastBorderState by remember { mutableStateOf(applyBlackBorder) }
     var previousImageBitmap by remember { mutableStateOf<ImageBitmap?>(null) }
     var currentImageBitmap by remember { mutableStateOf<ImageBitmap?>(null) }
     val transitionProgress = remember { Animatable(1f) }
+    val captureMutex = remember { Mutex() }
 
     var copyHandler by remember { mutableStateOf<Handler?>(null) }
 
@@ -96,87 +108,100 @@ fun AmbientPlayerBackground(
         }
     }
 
-    suspend fun captureAndUpdateFrame(isStateChange: Boolean = false) {
-        val handler = copyHandler ?: return
-        val surfaceView = findSurfaceView(playerView)
-        if (
-            surfaceView != null &&
-                surfaceView.holder.surface.isValid &&
-                surfaceView.width > 0 &&
-                surfaceView.height > 0
-        ) {
-            val captured = requestTinyFrame(surfaceView, handler)
-            if (captured != null) {
-                val newImage =
-                    withContext(Dispatchers.Default) {
-                        val framed = if (applyBlackBorder) addBlackBorder(captured) else captured
-                        val processedBitmap = softBlurTinyBitmap(framed)
-                        if (framed != processedBitmap) framed.recycle()
-                        processedBitmap.asImageBitmap()
+    suspend fun captureAndUpdateFrame() {
+        if (!captureMutex.tryLock()) return
+        try {
+            val handler = copyHandler ?: return
+            val surfaceView = findSurfaceView(playerView)
+            if (
+                surfaceView != null &&
+                    surfaceView.holder.surface.isValid &&
+                    surfaceView.width > 0 &&
+                    surfaceView.height > 0
+            ) {
+                val captured = requestTinyFrame(surfaceView, handler)
+                if (captured != null) {
+                    val isBorderToggle = currentApplyBlackBorder != lastBorderState
+                    lastBorderState = currentApplyBlackBorder
+
+                    val animDuration =
+                        if (isBorderToggle) BORDER_TOGGLE_MORPH_DURATION_MS
+                        else PLAYBACK_MORPH_DURATION_MS
+
+                    val newImage =
+                        withContext(Dispatchers.Default) {
+                            val framed =
+                                if (currentApplyBlackBorder) addBlackBorder(captured) else captured
+                            val processedBitmap = softBlurTinyBitmap(framed)
+                            if (framed != processedBitmap) framed.recycle()
+                            processedBitmap.asImageBitmap()
+                        }
+
+                    val oldImage = currentImageBitmap
+                    previousImageBitmap = oldImage
+                    currentImageBitmap = newImage
+
+                    if (oldImage == null) {
+                        transitionProgress.snapTo(1f)
+                        previousImageBitmap = null
+                    } else {
+                        transitionProgress.snapTo(0f)
+                        try {
+                            transitionProgress.animateTo(
+                                targetValue = 1f,
+                                animationSpec =
+                                    tween(
+                                        durationMillis = animDuration,
+                                        easing = LinearEasing,
+                                    ),
+                            )
+                        } catch (_: CancellationException) {
+                            transitionProgress.snapTo(1f)
+                        } finally {
+                            previousImageBitmap = null
+                        }
                     }
+                }
+            }
+        } finally {
+            captureMutex.unlock()
+        }
+    }
 
-                previousImageBitmap = currentImageBitmap
-                currentImageBitmap = newImage
+    // Unified LaunchedEffect handling startup, border changes, seek polling, and periodic captures
+    LaunchedEffect(playerView, enabled, isPlaying, applyBlackBorder) {
+        if (!enabled) return@LaunchedEffect
 
-                if (previousImageBitmap == null || isStateChange) {
-                    transitionProgress.snapTo(1f)
-                    previousImageBitmap = null
-                } else {
-                    transitionProgress.snapTo(0f)
-                    transitionProgress.animateTo(
-                        targetValue = 1f,
-                        animationSpec =
-                            tween(durationMillis = MORPH_DURATION_MS, easing = LinearEasing),
-                    )
-                    previousImageBitmap = null
+        // Immediate frame capture on enable or border state change (e.g. side panel toggle), even
+        // if paused
+
+        // if paused
+        captureAndUpdateFrame()
+
+        coroutineScope {
+            // Observe position seeks (>1500ms jump)
+            launch {
+                var lastPos = currentPositionMs
+                snapshotFlow { currentPositionMs }
+                    .collect { pos ->
+                        if (abs(pos - lastPos) > 1500L) {
+                            lastPos = pos
+                            // Give ExoPlayer / mpv decoder 120ms to render the seeked keyframe onto
+                            //                            captureAndUpdateFrame()
+                        } else {
+                            lastPos = pos
+                        }
+                    }
+            }
+
+            // Periodic sampling ticker loop
+            while (isActive) {
+                delay(PAUSE_BETWEEN_CAPTURES_MS.milliseconds)
+                if (currentIsPlaying) {
+                    captureAndUpdateFrame()
                 }
             }
         }
-    }
-
-    LaunchedEffect(applyBlackBorder) {
-        if (enabled) {
-            captureAndUpdateFrame(isStateChange = true)
-        }
-    }
-
-    LaunchedEffect(playerView, enabled, isPlaying) {
-        if (!enabled) return@LaunchedEffect
-
-        // Poll rapidly at 100ms intervals on startup until first frame is successfully captured
-        // (max 30 retries)
-        var startupAttempts = 0
-        while (isActive && currentImageBitmap == null && startupAttempts < 30) {
-            if (currentIsPlaying) {
-                captureAndUpdateFrame(isStateChange = true)
-            }
-            if (currentImageBitmap == null) {
-                startupAttempts++
-                delay(100.milliseconds)
-            }
-        }
-
-        // Regular capture loop during playback
-        while (isActive) {
-            delay(PAUSE_BETWEEN_CAPTURES_MS.milliseconds)
-            if (currentIsPlaying) {
-                captureAndUpdateFrame()
-            }
-        }
-    }
-
-    LaunchedEffect(enabled) {
-        if (!enabled) return@LaunchedEffect
-        var lastPos = currentPositionMs
-        snapshotFlow { currentPositionMs }
-            .collect { pos ->
-                if (abs(pos - lastPos) > 1500L) {
-                    lastPos = pos
-                    captureAndUpdateFrame(isStateChange = true)
-                } else {
-                    lastPos = pos
-                }
-            }
     }
 
     Box(modifier = modifier) {
@@ -197,7 +222,6 @@ fun AmbientPlayerBackground(
                             }
                         )
             ) {
-                // 1. Draw previous frame at 100% opacity
                 if (prev != null) {
                     drawImage(
                         image = prev,
@@ -209,7 +233,6 @@ fun AmbientPlayerBackground(
                     )
                 }
 
-                // 2. Draw current frame on top with alpha = progress to prevent dark flash
                 if (curr != null) {
                     drawImage(
                         image = curr,
@@ -241,38 +264,41 @@ private fun findSurfaceView(view: View): SurfaceView? {
 private suspend fun requestTinyFrame(
     surfaceView: SurfaceView,
     handler: Handler,
-): Bitmap? = suspendCancellableCoroutine { cont ->
-    val bitmap = createBitmap(INNER_WIDTH, INNER_HEIGHT)
-    cont.invokeOnCancellation {
-        if (!bitmap.isRecycled) {
-            bitmap.recycle()
-        }
-    }
-    try {
-        PixelCopy.request(
-            surfaceView,
-            bitmap,
-            { result ->
-                if (cont.isActive) {
-                    if (result == PixelCopy.SUCCESS) {
-                        cont.resume(bitmap)
-                    } else {
-                        bitmap.recycle()
-                        cont.resume(null)
-                    }
-                } else {
+): Bitmap? =
+    withTimeoutOrNull(FRAME_TIMEOUT_MS.milliseconds) {
+        suspendCancellableCoroutine { cont ->
+            val bitmap = createBitmap(INNER_WIDTH, INNER_HEIGHT)
+            cont.invokeOnCancellation {
+                if (!bitmap.isRecycled) {
                     bitmap.recycle()
                 }
-            },
-            handler,
-        )
-    } catch (_: Exception) {
-        bitmap.recycle()
-        if (cont.isActive) {
-            cont.resume(null)
+            }
+            try {
+                PixelCopy.request(
+                    surfaceView,
+                    bitmap,
+                    { result ->
+                        if (cont.isActive) {
+                            if (result == PixelCopy.SUCCESS) {
+                                cont.resume(bitmap)
+                            } else {
+                                bitmap.recycle()
+                                cont.resume(null)
+                            }
+                        } else {
+                            bitmap.recycle()
+                        }
+                    },
+                    handler,
+                )
+            } catch (_: Exception) {
+                bitmap.recycle()
+                if (cont.isActive) {
+                    cont.resume(null)
+                }
+            }
         }
     }
-}
 
 /**
  * Adds a black border around the source bitmap so that subsequent blur operations naturally blend
