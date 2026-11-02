@@ -416,13 +416,36 @@ class PlayerActivity : AppCompatActivity() {
 
         val sourceRectHint = Rect()
         val surfaceView = activePlayerView?.videoSurfaceView
-        val targetView =
-            if (surfaceView != null && surfaceView.width > 0 && surfaceView.height > 0) {
-                surfaceView
+        val viewToMeasure = surfaceView ?: activePlayerView ?: window.decorView
+        val fullRect = Rect()
+        viewToMeasure.getGlobalVisibleRect(fullRect)
+
+        if (!fullRect.isEmpty && fullRect.width() > 0 && fullRect.height() > 0) {
+            val aspect = aspectRatio.toFloat()
+            val fullWidth = fullRect.width()
+            val fullHeight = fullRect.height()
+            val fullAspect = fullWidth.toFloat() / fullHeight.toFloat()
+
+            if (fullAspect > aspect) {
+                val targetWidth = (fullHeight * aspect).toInt()
+                val leftOffset = fullRect.left + (fullWidth - targetWidth) / 2
+                sourceRectHint.set(
+                    leftOffset,
+                    fullRect.top,
+                    leftOffset + targetWidth,
+                    fullRect.bottom,
+                )
             } else {
-                activePlayerView ?: window.decorView
+                val targetHeight = (fullWidth / aspect).toInt()
+                val topOffset = fullRect.top + (fullHeight - targetHeight) / 2
+                sourceRectHint.set(
+                    fullRect.left,
+                    topOffset,
+                    fullRect.right,
+                    topOffset + targetHeight,
+                )
             }
-        targetView.getGlobalVisibleRect(sourceRectHint)
+        }
 
         val builder = PictureInPictureParams.Builder().setAspectRatio(aspectRatio)
 

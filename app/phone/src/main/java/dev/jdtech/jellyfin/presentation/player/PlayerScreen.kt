@@ -80,7 +80,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.zIndex
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -185,12 +184,7 @@ fun PlayerScreen(
             .collectAsState(initial = prefs.getValue(prefs.playerDefaultResizeMode))
     val defaultResizeMode =
         remember(defaultResizeModePref) { PlayerResizeMode.fromValue(defaultResizeModePref) }
-    val currentResizeMode =
-        if (viewModel.isMpv && (resizeMode ?: defaultResizeMode) == PlayerResizeMode.FILL) {
-            PlayerResizeMode.FIT
-        } else {
-            resizeMode ?: defaultResizeMode
-        }
+    val currentResizeMode = resizeMode ?: defaultResizeMode
     val activity = context as? Activity
     val configuration = LocalConfiguration.current
     val isPortrait = configuration.orientation == Configuration.ORIENTATION_PORTRAIT
@@ -500,7 +494,7 @@ fun PlayerScreen(
     }
 
     val shouldShrinkVideo = isExpandedWidth && isPanelOpen && !isInPip
-    val panelProgress by
+    val panelProgressState =
         animateFloatAsState(
             targetValue = if (shouldShrinkVideo) 1f else 0f,
             animationSpec =
@@ -518,9 +512,9 @@ fun PlayerScreen(
             easing = FastOutSlowInEasing,
         )
 
-    val videoPaddingEnd = 432.dp * panelProgress
-    val videoCornerRadius = 24.dp * panelProgress
-    val videoPaddingInset = 16.dp * panelProgress
+    val videoPaddingEnd = 432.dp * panelProgressState.value
+    val videoCornerRadius = 24.dp * panelProgressState.value
+    val videoPaddingInset = 16.dp * panelProgressState.value
 
     LaunchedEffect(isInPip) {
         if (isInPip && videoPlayerState.isPanelOpen) {
@@ -576,7 +570,8 @@ fun PlayerScreen(
             !isAnyScrubbing &&
             (videoPlayerState.controlsVisible || !isSkipButtonTimeoutExpired)
 
-    val isShrunkOrAnimating = shouldShrinkVideo || videoPaddingEnd > 0.dp
+    val isShrunkOrAnimating =
+        isExpandedWidth && (isPanelOpen || panelProgressState.value > 0f) && !isInPip
     val effectiveResizeMode =
         if (isInPip || isShrunkOrAnimating) AspectRatioFrameLayout.RESIZE_MODE_FIT
         else currentResizeMode.aspectRatioMode
@@ -591,7 +586,6 @@ fun PlayerScreen(
         val topInset = insets.calculateTopPadding()
         val bottomInset = insets.calculateBottomPadding()
 
-        val leftColumnWidth = screenWidth - videoPaddingEnd
         val minTitleTopPadding = topInset + 24.dp
         val titleContentHeight = if (!uiState.currentItemSubtitle.isNullOrBlank()) 52.dp else 32.dp
         val reservedTopHeight = minTitleTopPadding + titleContentHeight + 16.dp
@@ -600,43 +594,91 @@ fun PlayerScreen(
         val controllerContentHeight = 112.dp
         val reservedBottomHeight = bottomControllerPadding + controllerContentHeight + 48.dp
 
-        val shrunkMaxVideoWidth = (screenWidth - 432.dp - 32.dp).coerceAtLeast(0.dp)
-        val shrunkMaxVideoHeight =
-            (screenHeight - reservedTopHeight - reservedBottomHeight).coerceAtLeast(0.dp)
+        val maxHorizontalInset = maxOf(leftInset, rightInset)
 
-        val effectiveMaxWidth = lerp(screenWidth, shrunkMaxVideoWidth, panelProgress)
-        val effectiveMaxHeight = lerp(screenHeight, shrunkMaxVideoHeight, panelProgress)
-
-        val (targetWidth, targetHeight) =
-            if (panelProgress > 0f) {
-                if (
-                    videoAspectRatio > 0f &&
-                        effectiveMaxWidth.value > 0f &&
-                        effectiveMaxHeight.value > 0f
-                ) {
-                    val containerRatio = effectiveMaxWidth.value / effectiveMaxHeight.value
+        val (shrunkVideoWidth, shrunkVideoHeight) =
+            remember(
+                screenWidth,
+                screenHeight,
+                videoAspectRatio,
+                reservedTopHeight,
+                reservedBottomHeight,
+            ) {
+                val maxW = (screenWidth - 432.dp - 32.dp).coerceAtLeast(0.dp)
+                val maxH =
+                    (screenHeight - reservedTopHeight - reservedBottomHeight).coerceAtLeast(0.dp)
+                if (videoAspectRatio > 0f && maxW.value > 0f && maxH.value > 0f) {
+                    val containerRatio = maxW.value / maxH.value
                     if (containerRatio > videoAspectRatio) {
-                        (effectiveMaxHeight * videoAspectRatio) to effectiveMaxHeight
+                        (maxH * videoAspectRatio) to maxH
                     } else {
-                        effectiveMaxWidth to (effectiveMaxWidth / videoAspectRatio)
+                        maxW to (maxW / videoAspectRatio)
                     }
                 } else {
-                    effectiveMaxWidth to effectiveMaxHeight
+                    maxW to maxH
                 }
-            } else {
-                screenWidth to screenHeight
             }
 
-        val shrunkVideoCenterY = reservedTopHeight + (shrunkMaxVideoHeight / 2)
-        val videoCenterY = lerp(screenHeight / 2, shrunkVideoCenterY, panelProgress)
-        val videoTop = videoCenterY - (targetHeight / 2)
+        val (fullVideoWidth, fullVideoHeight) =
+            remember(screenWidth, screenHeight, videoAspectRatio, currentResizeMode) {
+                when (currentResizeMode) {
+                    PlayerResizeMode.FILL -> screenWidth to screenHeight
+                    PlayerResizeMode.ZOOM -> {
+                        if (
+                            videoAspectRatio > 0f &&
+                                screenWidth.value > 0f &&
+                                screenHeight.value > 0f
+                        ) {
+                            val containerRatio = screenWidth.value / screenHeight.value
+                            if (containerRatio > videoAspectRatio) {
+                                screenWidth to (screenWidth / videoAspectRatio)
+                            } else {
+                                (screenHeight * videoAspectRatio) to screenHeight
+                            }
+                        } else {
+                            screenWidth to screenHeight
+                        }
+                    }
+                    PlayerResizeMode.FIT -> {
+                        if (
+                            videoAspectRatio > 0f &&
+                                screenWidth.value > 0f &&
+                                screenHeight.value > 0f
+                        ) {
+                            val containerRatio = screenWidth.value / screenHeight.value
+                            if (containerRatio > videoAspectRatio) {
+                                (screenHeight * videoAspectRatio) to screenHeight
+                            } else {
+                                screenWidth to (screenWidth / videoAspectRatio)
+                            }
+                        } else {
+                            screenWidth to screenHeight
+                        }
+                    }
+                }
+            }
+
+        val targetWidth = if (isShrunkOrAnimating) shrunkVideoWidth else screenWidth
+        val targetHeight = if (isShrunkOrAnimating) shrunkVideoHeight else screenHeight
+
+        val shrunkVideoCenterY =
+            reservedTopHeight +
+                ((screenHeight - reservedTopHeight - reservedBottomHeight).coerceAtLeast(0.dp) / 2)
+        val shrunkCenterX = (screenWidth - 432.dp) / 2
+        val shrunkCenterY = shrunkVideoCenterY
+
+        val fullCenterX = screenWidth / 2
+        val fullCenterY = screenHeight / 2
+
+        val targetCenterX = if (isShrunkOrAnimating) shrunkCenterX else fullCenterX
+        val targetCenterY = if (isShrunkOrAnimating) shrunkCenterY else fullCenterY
+
+        val videoTop = targetCenterY - (targetHeight / 2)
 
         val titleTopPadding = maxOf(minTitleTopPadding, (videoTop - titleContentHeight) / 2)
 
         val ambientWidth = targetWidth + 600.dp
         val ambientHeight = targetHeight + 600.dp
-        val ambientOffsetX = (leftColumnWidth / 2) - (screenWidth / 2)
-        val ambientOffsetY = videoCenterY - (screenHeight / 2)
 
         val cardWidth = calculateTrickplayCardWidth(uiState.currentTrickplay, videoAspectRatio)
         val cardHalfWidth = cardWidth / 2
@@ -667,22 +709,47 @@ fun PlayerScreen(
                 !isInPip &&
                 (isPanelOpen || currentResizeMode == PlayerResizeMode.FIT)
 
+        val startScaleX =
+            if (shrunkVideoWidth.value > 0f) fullVideoWidth.value / shrunkVideoWidth.value else 1f
+        val startScaleY =
+            if (shrunkVideoHeight.value > 0f) fullVideoHeight.value / shrunkVideoHeight.value
+            else 1f
+        val startTransX = with(density) { (fullCenterX - shrunkCenterX).toPx() }
+        val startTransY = with(density) { (fullCenterY - shrunkCenterY).toPx() }
+
         if (!isInPip) {
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center,
             ) {
-                AmbientPlayerBackground(
-                    playerView = capturedPlayerView,
-                    isPlaying = isPlaying,
-                    enabled = isAmbientActive,
-                    currentPositionMs = currentPosition,
-                    isPanelOpen = isPanelOpen,
-                    applyBlackBorder = shouldShrinkVideo,
+                Box(
                     modifier =
                         Modifier.requiredSize(ambientWidth, ambientHeight)
-                            .offset(x = ambientOffsetX, y = ambientOffsetY),
-                )
+                            .offset(
+                                x = targetCenterX - fullCenterX,
+                                y = targetCenterY - fullCenterY,
+                            )
+                            .graphicsLayer {
+                                val p = panelProgressState.value
+                                if (isShrunkOrAnimating) {
+                                    scaleX = startScaleX + (1f - startScaleX) * p
+                                    scaleY = startScaleY + (1f - startScaleY) * p
+                                    translationX = startTransX * (1f - p)
+                                    translationY = startTransY * (1f - p)
+                                }
+                            },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    AmbientPlayerBackground(
+                        playerView = capturedPlayerView,
+                        isPlaying = isPlaying,
+                        enabled = isAmbientActive,
+                        currentPositionMs = currentPosition,
+                        isPanelOpen = isPanelOpen,
+                        applyBlackBorder = shouldShrinkVideo,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
             }
         }
 
@@ -691,14 +758,28 @@ fun PlayerScreen(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center,
         ) {
+            val currentRadius = 24.dp * panelProgressState.value
             Box(
                 modifier =
                     Modifier.size(targetWidth, targetHeight)
                         .offset(
-                            x = (leftColumnWidth / 2) - (screenWidth / 2),
-                            y = videoCenterY - (screenHeight / 2),
+                            x = targetCenterX - fullCenterX,
+                            y = targetCenterY - fullCenterY,
                         )
-                        .clip(RoundedCornerShape(videoCornerRadius))
+                        .graphicsLayer {
+                            val p = panelProgressState.value
+                            if (isShrunkOrAnimating) {
+                                scaleX = startScaleX + (1f - startScaleX) * p
+                                scaleY = startScaleY + (1f - startScaleY) * p
+                                translationX = startTransX * (1f - p)
+                                translationY = startTransY * (1f - p)
+                            }
+                        }
+                        .then(
+                            if (currentRadius > 0.dp)
+                                Modifier.clip(RoundedCornerShape(currentRadius))
+                            else Modifier
+                        )
             ) {
                 AndroidView(
                     factory = { ctx ->
@@ -783,6 +864,10 @@ fun PlayerScreen(
             }
         }
 
+        val shrunkStartPadding = maxHorizontalInset + 16.dp
+        val shrunkEndPadding =
+            if (isExpandedWidth) 432.dp + maxHorizontalInset + 16.dp else maxHorizontalInset + 16.dp
+
         // Top: Centered Title & Subtitle when side panel is open on tablet (no back button)
         AnimatedVisibility(
             visible = shouldShrinkVideo,
@@ -792,8 +877,8 @@ fun PlayerScreen(
                 Modifier.align(Alignment.TopStart)
                     .fillMaxWidth()
                     .padding(
-                        start = leftInset + 16.dp,
-                        end = videoPaddingEnd + 16.dp,
+                        start = shrunkStartPadding,
+                        end = shrunkEndPadding,
                         top = titleTopPadding,
                     )
                     .zIndex(5f),
@@ -833,8 +918,8 @@ fun PlayerScreen(
                 Modifier.align(Alignment.BottomStart)
                     .fillMaxWidth()
                     .padding(
-                        start = leftInset + 16.dp,
-                        end = videoPaddingEnd + 16.dp,
+                        start = shrunkStartPadding,
+                        end = shrunkEndPadding,
                         bottom = bottomControllerPadding,
                     )
                     .zIndex(5f),
@@ -912,16 +997,13 @@ fun PlayerScreen(
         }
 
         AnimatedVisibility(
-            visible = (isBuffering || !uiState.fileLoaded) && !isAnyScrubbing,
+            visible =
+                (isBuffering || !uiState.fileLoaded) &&
+                    !isAnyScrubbing &&
+                    !(isExpandedWidth && isPanelOpen),
             enter = fadeIn(tween(200)),
             exit = fadeOut(tween(200)),
-            modifier =
-                Modifier.align(Alignment.Center)
-                    .offset(
-                        x = (leftColumnWidth / 2) - (screenWidth / 2),
-                        y = videoCenterY - (screenHeight / 2),
-                    )
-                    .zIndex(6f),
+            modifier = Modifier.align(Alignment.Center).zIndex(6f),
         ) {
             CircularProgressIndicator(
                 color = MaterialTheme.colorScheme.primary,
@@ -1591,13 +1673,6 @@ fun PlayerScreen(
                 Box(
                     modifier =
                         Modifier.fillMaxSize()
-                            .padding(
-                                start = videoPaddingInset,
-                                end = videoPaddingEnd,
-                                top = 0.dp,
-                                bottom = 0.dp,
-                            )
-                            .clip(RoundedCornerShape(videoCornerRadius))
                             .background(
                                 Brush.verticalGradient(
                                     0.0f to Color.Black.copy(alpha = 0.65f * controlsScrimAlpha),
@@ -1607,8 +1682,8 @@ fun PlayerScreen(
                                 )
                             )
                             .padding(
-                                start = insets.calculateLeftPadding(LayoutDirection.Ltr) + 16.dp,
-                                end = insets.calculateRightPadding(LayoutDirection.Ltr) + 16.dp,
+                                start = maxHorizontalInset + 16.dp,
+                                end = maxHorizontalInset + 16.dp,
                                 top = insets.calculateTopPadding() + 12.dp,
                                 bottom = insets.calculateBottomPadding() + 12.dp,
                             )

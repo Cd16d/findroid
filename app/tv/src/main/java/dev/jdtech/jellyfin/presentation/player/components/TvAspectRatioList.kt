@@ -87,11 +87,10 @@ internal fun AspectRatioList(
 ) {
     val resizeModes = remember {
         listOf(
-                PlayerResizeMode.FIT to PlayerR.string.aspect_ratio_fit,
-                PlayerResizeMode.ZOOM to PlayerR.string.aspect_ratio_zoom,
-                PlayerResizeMode.FILL to PlayerR.string.aspect_ratio_fill,
-            )
-            .let { modes -> if (isMpv) modes.dropLast(1) else modes }
+            PlayerResizeMode.FIT to PlayerR.string.aspect_ratio_fit,
+            PlayerResizeMode.ZOOM to PlayerR.string.aspect_ratio_zoom,
+            PlayerResizeMode.FILL to PlayerR.string.aspect_ratio_fill,
+        )
     }
 
     LazyColumn(

@@ -303,7 +303,6 @@ fun PlayerScreen(
     var scrubJob by remember { mutableStateOf<Job?>(null) }
 
     var resizeMode by remember { mutableStateOf(PlayerResizeMode.FIT) }
-    val isMpv = viewModel.isMpv
 
     val isMovie =
         remember(itemKind) {
@@ -582,10 +581,7 @@ fun PlayerScreen(
                 }
     ) {
         val effectiveResizeMode =
-            if (isPanelOpen) AspectRatioFrameLayout.RESIZE_MODE_FIT
-            else if (isMpv && resizeMode == PlayerResizeMode.FILL)
-                AspectRatioFrameLayout.RESIZE_MODE_FIT
-            else resizeMode.aspectRatioMode
+            if (isPanelOpen) AspectRatioFrameLayout.RESIZE_MODE_FIT else resizeMode.aspectRatioMode
 
         BoxWithConstraints(
             modifier =

@@ -217,6 +217,10 @@ class MPVPlayer(
                 Property("speed", MpvFormat.MPV_FORMAT_DOUBLE),
                 Property("playlist-count", MpvFormat.MPV_FORMAT_INT64),
                 Property("playlist-current-pos", MpvFormat.MPV_FORMAT_INT64),
+                Property("dwidth", MpvFormat.MPV_FORMAT_INT64),
+                Property("dheight", MpvFormat.MPV_FORMAT_INT64),
+                Property("width", MpvFormat.MPV_FORMAT_INT64),
+                Property("height", MpvFormat.MPV_FORMAT_INT64),
             )
             .forEach { (name, format) -> mpvLib.observeProperty(name, format) }
 
@@ -396,6 +400,10 @@ class MPVPlayer(
                     }
                 }
                 "demuxer-cache-time" -> currentCacheDurationMs = value * C.MILLIS_PER_SECOND
+                "dwidth",
+                "dheight",
+                "width",
+                "height" -> checkAndUpdateVideoSize()
                 "playlist-count" -> {
                     listeners.sendEvent(EVENT_TIMELINE_CHANGED) { listener ->
                         listener.onTimelineChanged(
@@ -451,6 +459,10 @@ class MPVPlayer(
                     isSeekable = mpvLib.getPropertyBoolean("seekable") == true
                     currentDurationMs =
                         (mpvLib.getPropertyDouble("duration")?.times(C.MILLIS_PER_SECOND))?.toLong()
+                    checkAndUpdateVideoSize()
+                }
+                MpvEvent.MPV_EVENT_VIDEO_RECONFIG -> {
+                    checkAndUpdateVideoSize()
                 }
                 MpvEvent.MPV_EVENT_SEEK -> {
                     setPlayerStateAndNotifyIfChanged(playbackState = STATE_BUFFERING)
@@ -460,6 +472,7 @@ class MPVPlayer(
                     }
                 }
                 MpvEvent.MPV_EVENT_PLAYBACK_RESTART -> {
+                    checkAndUpdateVideoSize()
                     if (!isPlayerReady) {
                         isPlayerReady = true
                         if (initialSeekTo > 0L) {
@@ -1372,10 +1385,42 @@ class MPVPlayer(
      * @see Player.Listener.onVideoSizeChanged
      */
     override fun getVideoSize(): VideoSize {
-        val width = mpvLib.getPropertyInt("width")
-        val height = mpvLib.getPropertyInt("height")
-        if (width == null || height == null) return VideoSize.UNKNOWN
-        return VideoSize(width, height)
+        return try {
+            val dw = mpvLib.getPropertyInt("dwidth")
+            val dh = mpvLib.getPropertyInt("dheight")
+            if (dw != null && dh != null && dw > 0 && dh > 0) {
+                return VideoSize(dw, dh)
+            }
+            val width = mpvLib.getPropertyInt("width")
+            val height = mpvLib.getPropertyInt("height")
+            if (width == null || height == null || width <= 0 || height <= 0) VideoSize.UNKNOWN
+            else VideoSize(width, height)
+        } catch (_: Exception) {
+            VideoSize.UNKNOWN
+        }
+    }
+
+    private var lastVideoSize: VideoSize = VideoSize.UNKNOWN
+    private var attachedSurfaceHolder: SurfaceHolder? = null
+
+    private fun updateSurfaceFixedSize(holder: SurfaceHolder? = attachedSurfaceHolder) {
+        val size = getVideoSize()
+        if (holder != null && size.width > 0 && size.height > 0) {
+            try {
+                holder.setFixedSize(size.width, size.height)
+            } catch (_: Exception) {}
+        }
+    }
+
+    private fun checkAndUpdateVideoSize() {
+        val newSize = getVideoSize()
+        if (newSize != lastVideoSize && newSize != VideoSize.UNKNOWN) {
+            lastVideoSize = newSize
+            updateSurfaceFixedSize()
+            listeners.sendEvent(EVENT_VIDEO_SIZE_CHANGED) { listener ->
+                listener.onVideoSizeChanged(newSize)
+            }
+        }
     }
 
     fun getDroppedFrames(): Long {
@@ -1504,7 +1549,11 @@ class MPVPlayer(
                     mpvLib.setPropertyDouble("panscan", 1.0)
                     mpvLib.setPropertyString("video-aspect-override", "-1")
                 }
-                PlayerResizeMode.FILL,
+                PlayerResizeMode.FILL -> {
+                    mpvLib.setPropertyBoolean("keepaspect", false)
+                    mpvLib.setPropertyDouble("panscan", 0.0)
+                    mpvLib.setPropertyString("video-aspect-override", "-1")
+                }
                 PlayerResizeMode.FIT -> {
                     mpvLib.setPropertyBoolean("keepaspect", true)
                     mpvLib.setPropertyDouble("panscan", 0.0)
@@ -1525,9 +1574,11 @@ class MPVPlayer(
              * @param holder The SurfaceHolder whose surface is being created.
              */
             override fun surfaceCreated(holder: SurfaceHolder) {
+                attachedSurfaceHolder = holder
                 mpvLib.attachSurface(holder.surface)
                 mpvLib.setOptionString("force-window", "yes")
                 mpvLib.setOptionString("vo", videoOutput)
+                updateSurfaceFixedSize(holder)
             }
 
             /**
@@ -1562,6 +1613,10 @@ class MPVPlayer(
                 mpvLib.setOptionString("vo", "null")
                 mpvLib.setOptionString("force-window", "no")
                 mpvLib.detachSurface()
+                try {
+                    holder.setSizeFromLayout()
+                } catch (_: Exception) {}
+                attachedSurfaceHolder = null
             }
         }
 

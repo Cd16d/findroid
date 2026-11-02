@@ -27,16 +27,10 @@ internal fun PhoneAspectRatioList(
 ) {
     val modes =
         listOf(
-                PlayerResizeMode.FIT to stringResource(id = PlayerR.string.aspect_ratio_fit),
-                PlayerResizeMode.ZOOM to stringResource(id = PlayerR.string.aspect_ratio_zoom),
-            )
-            .let { modes ->
-                if (isMpv) modes
-                else
-                    modes +
-                        (PlayerResizeMode.FILL to
-                            stringResource(id = PlayerR.string.aspect_ratio_fill))
-            }
+            PlayerResizeMode.FIT to stringResource(id = PlayerR.string.aspect_ratio_fit),
+            PlayerResizeMode.ZOOM to stringResource(id = PlayerR.string.aspect_ratio_zoom),
+            PlayerResizeMode.FILL to stringResource(id = PlayerR.string.aspect_ratio_fill),
+        )
     LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         itemsIndexed(modes) { _, (mode, label) ->
             val isSelected = currentResizeMode == mode
