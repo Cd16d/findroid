@@ -44,6 +44,7 @@ import dev.jdtech.mpv.MPVLib.MpvFormat
 import java.io.File
 import java.io.IOException
 import java.util.concurrent.CopyOnWriteArraySet
+import java.util.concurrent.Executors.newSingleThreadExecutor
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
@@ -327,6 +328,7 @@ class MPVPlayer(
     private var initialSeekTo: Long = 0L
     private var oldMediaItem: MediaItem? = null
     private var currentResizeMode: PlayerResizeMode = PlayerResizeMode.FIT
+    private val commandExecutor = newSingleThreadExecutor()
 
     // mpv events
     override fun eventProperty(property: String) {
@@ -449,9 +451,13 @@ class MPVPlayer(
         handler.post {
             when (eventId) {
                 MpvEvent.MPV_EVENT_START_FILE -> {
-                    if (!isPlayerReady) {
-                        for (command in initialCommands) {
-                            mpvLib.command(command)
+                    if (!isPlayerReady && initialCommands.isNotEmpty()) {
+                        val commandsToRun = initialCommands.toList()
+                        initialCommands.clear()
+                        commandExecutor.execute {
+                            for (command in commandsToRun) {
+                                mpvLib.command(command)
+                            }
                         }
                     }
                 }
@@ -474,10 +480,19 @@ class MPVPlayer(
                 MpvEvent.MPV_EVENT_PLAYBACK_RESTART -> {
                     checkAndUpdateVideoSize()
                     if (!isPlayerReady) {
-                        isPlayerReady = true
                         if (initialSeekTo > 0L) {
-                            seekTo(C.TIME_UNSET)
+                            val seekToMs = initialSeekTo
+                            initialSeekTo = 0L
+                            mpvLib.command(
+                                arrayOf(
+                                    "seek",
+                                    "${seekToMs.toDouble().div(C.MILLIS_PER_SECOND)}",
+                                    "absolute",
+                                )
+                            )
+                            return@post
                         }
+                        isPlayerReady = true
                         if (playWhenReady) {
                             Timber.d("Starting playback...")
                             if (handleAudioFocus) {
@@ -1114,6 +1129,9 @@ class MPVPlayer(
             AudioManagerCompat.abandonAudioFocusRequest(audioManager, audioFocusRequest)
         }
         resetInternalState()
+        try {
+            commandExecutor.shutdown()
+        } catch (_: Exception) {}
         mpvLib.removeObserver(this)
         mpvLib.destroy()
     }
