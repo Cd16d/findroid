@@ -6,9 +6,11 @@ import android.content.pm.ActivityInfo
 import android.content.res.Configuration
 import android.media.AudioManager
 import android.provider.Settings
+import android.view.View
 import android.view.accessibility.CaptioningManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -39,6 +41,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.union
@@ -74,10 +77,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.zIndex
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -93,6 +96,7 @@ import androidx.media3.ui.PlayerView
 import androidx.media3.ui.SubtitleView
 import androidx.window.core.layout.WindowSizeClass
 import dev.jdtech.jellyfin.PlayerActivity
+import dev.jdtech.jellyfin.core.presentation.components.AmbientPlayerBackground
 import dev.jdtech.jellyfin.isControlsLocked
 import dev.jdtech.jellyfin.models.VolumeKeyEvent
 import dev.jdtech.jellyfin.player.core.domain.models.PlayerSidePanelType
@@ -210,6 +214,11 @@ fun PlayerScreen(
         remember(prefs) { prefs.observe(prefs.playerHaptics) }
             .collectAsState(initial = prefs.getValue(prefs.playerHaptics))
     val haptics = rememberPlayerHaptics(enabled = hapticsEnabled)
+
+    val isAmbientModeEnabled by
+        remember(prefs) { prefs.observe(prefs.playerAmbientMode) }
+            .collectAsState(initial = prefs.getValue(prefs.playerAmbientMode))
+    var capturedPlayerView by remember { mutableStateOf<PlayerView?>(null) }
 
     var currentPosition by remember { mutableLongStateOf(0L) }
     var bufferedPosition by remember { mutableLongStateOf(0L) }
@@ -490,33 +499,28 @@ fun PlayerScreen(
         }
     }
 
-    val panelDpAnimSpec = tween<Dp>(durationMillis = 260, easing = LinearEasing)
+    val shouldShrinkVideo = isExpandedWidth && isPanelOpen && !isInPip
+    val panelProgress by
+        animateFloatAsState(
+            targetValue = if (shouldShrinkVideo) 1f else 0f,
+            animationSpec =
+                if (isInPip) snap() else tween(durationMillis = 320, easing = FastOutSlowInEasing),
+            label = "panelProgress",
+        )
     val panelSlideAnimSpec =
         tween<IntOffset>(
-            durationMillis = 260,
-            easing = LinearEasing,
+            durationMillis = 320,
+            easing = FastOutSlowInEasing,
         )
-    val panelFadeAnimSpec = tween<Float>(durationMillis = 260, easing = LinearEasing)
-    val shouldShrinkVideo = isExpandedWidth && isPanelOpen && !isInPip
-    val animSpec = if (isInPip) snap() else panelDpAnimSpec
-    val videoPaddingEnd by
-        animateDpAsState(
-            targetValue = if (shouldShrinkVideo) 432.dp else 0.dp,
-            animationSpec = animSpec,
-            label = "videoPaddingEnd",
+    val panelFadeAnimSpec =
+        tween<Float>(
+            durationMillis = 320,
+            easing = FastOutSlowInEasing,
         )
-    val videoPaddingInset by
-        animateDpAsState(
-            targetValue = if (shouldShrinkVideo) 16.dp else 0.dp,
-            animationSpec = animSpec,
-            label = "videoPaddingInset",
-        )
-    val videoCornerRadius by
-        animateDpAsState(
-            targetValue = if (shouldShrinkVideo) 24.dp else 0.dp,
-            animationSpec = animSpec,
-            label = "videoCornerRadius",
-        )
+
+    val videoPaddingEnd = 432.dp * panelProgress
+    val videoCornerRadius = 24.dp * panelProgress
+    val videoPaddingInset = 16.dp * panelProgress
 
     LaunchedEffect(isInPip) {
         if (isInPip && videoPlayerState.isPanelOpen) {
@@ -579,35 +583,67 @@ fun PlayerScreen(
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize().background(Color.Black)) {
         val screenWidth = maxWidth
+        val screenHeight = maxHeight
         val insets = WindowInsets.safeDrawing.union(WindowInsets.displayCutout).asPaddingValues()
         val density = LocalDensity.current
+        val leftInset = insets.calculateLeftPadding(LayoutDirection.Ltr)
+        val rightInset = insets.calculateRightPadding(LayoutDirection.Ltr)
+        val topInset = insets.calculateTopPadding()
+        val bottomInset = insets.calculateBottomPadding()
 
-        val videoPaddingTop by
-            animateDpAsState(
-                targetValue = if (shouldShrinkVideo) insets.calculateTopPadding() + 60.dp else 0.dp,
-                animationSpec = animSpec,
-                label = "videoPaddingTop",
-            )
-        val videoPaddingBottom by
-            animateDpAsState(
-                targetValue =
-                    if (shouldShrinkVideo) insets.calculateBottomPadding() + 120.dp else 0.dp,
-                animationSpec = animSpec,
-                label = "videoPaddingBottom",
-            )
+        val leftColumnWidth = screenWidth - videoPaddingEnd
+        val minTitleTopPadding = topInset + 24.dp
+        val titleContentHeight = if (!uiState.currentItemSubtitle.isNullOrBlank()) 52.dp else 32.dp
+        val reservedTopHeight = minTitleTopPadding + titleContentHeight + 16.dp
+
+        val bottomControllerPadding = bottomInset + 12.dp
+        val controllerContentHeight = 112.dp
+        val reservedBottomHeight = bottomControllerPadding + controllerContentHeight + 48.dp
+
+        val shrunkMaxVideoWidth = (screenWidth - 432.dp - 32.dp).coerceAtLeast(0.dp)
+        val shrunkMaxVideoHeight =
+            (screenHeight - reservedTopHeight - reservedBottomHeight).coerceAtLeast(0.dp)
+
+        val effectiveMaxWidth = lerp(screenWidth, shrunkMaxVideoWidth, panelProgress)
+        val effectiveMaxHeight = lerp(screenHeight, shrunkMaxVideoHeight, panelProgress)
+
+        val (targetWidth, targetHeight) =
+            if (panelProgress > 0f) {
+                if (
+                    videoAspectRatio > 0f &&
+                        effectiveMaxWidth.value > 0f &&
+                        effectiveMaxHeight.value > 0f
+                ) {
+                    val containerRatio = effectiveMaxWidth.value / effectiveMaxHeight.value
+                    if (containerRatio > videoAspectRatio) {
+                        (effectiveMaxHeight * videoAspectRatio) to effectiveMaxHeight
+                    } else {
+                        effectiveMaxWidth to (effectiveMaxWidth / videoAspectRatio)
+                    }
+                } else {
+                    effectiveMaxWidth to effectiveMaxHeight
+                }
+            } else {
+                screenWidth to screenHeight
+            }
+
+        val shrunkVideoCenterY = reservedTopHeight + (shrunkMaxVideoHeight / 2)
+        val videoCenterY = lerp(screenHeight / 2, shrunkVideoCenterY, panelProgress)
+        val videoTop = videoCenterY - (targetHeight / 2)
+
+        val titleTopPadding = maxOf(minTitleTopPadding, (videoTop - titleContentHeight) / 2)
+
+        val ambientWidth = targetWidth + 600.dp
+        val ambientHeight = targetHeight + 600.dp
+        val ambientOffsetX = (leftColumnWidth / 2) - (screenWidth / 2)
+        val ambientOffsetY = videoCenterY - (screenHeight / 2)
 
         val cardWidth = calculateTrickplayCardWidth(uiState.currentTrickplay, videoAspectRatio)
         val cardHalfWidth = cardWidth / 2
-        val seekBarStartOffset =
-            videoPaddingInset + insets.calculateLeftPadding(LayoutDirection.Ltr) + 20.dp
+        val seekBarStartOffset = leftInset + 20.dp
         val touchXAbsoluteDp = seekBarStartOffset + with(density) { seekBarTouchX.toDp() }
-        val minAvailableLeft =
-            videoPaddingInset + insets.calculateLeftPadding(LayoutDirection.Ltr) + 16.dp
-        val maxAvailableRight =
-            screenWidth -
-                videoPaddingEnd -
-                insets.calculateRightPadding(LayoutDirection.Ltr) -
-                20.dp
+        val minAvailableLeft = leftInset + 16.dp
+        val maxAvailableRight = screenWidth - videoPaddingEnd - rightInset - 20.dp
         val clampedOffsetX =
             (touchXAbsoluteDp - cardHalfWidth).coerceIn(
                 minAvailableLeft,
@@ -618,59 +654,51 @@ fun PlayerScreen(
             animateDpAsState(
                 targetValue =
                     if (shouldShrinkVideo) {
-                        insets.calculateBottomPadding() + 8.dp + 64.dp + 4.dp + 48.dp
+                        bottomControllerPadding + controllerContentHeight + 8.dp
                     } else {
-                        insets.calculateBottomPadding() + 12.dp + 48.dp + videoPaddingInset
+                        bottomInset + 12.dp + 48.dp + videoPaddingInset
                     },
                 animationSpec = tween(220),
                 label = "trickplayBottomPadding",
             )
 
-        // Video Player Container (dynamically adapts with linear animated padding when side panel
-        // opens on tablet)
-        BoxWithConstraints(
-            modifier =
-                Modifier.fillMaxSize()
-                    .padding(
-                        start =
-                            if (shouldShrinkVideo) {
-                                videoPaddingInset + insets.calculateLeftPadding(LayoutDirection.Ltr)
-                            } else {
-                                0.dp
-                            },
-                        end = videoPaddingEnd,
-                        top = videoPaddingTop,
-                        bottom = videoPaddingBottom,
-                    ),
+        val isAmbientActive =
+            isAmbientModeEnabled &&
+                !isInPip &&
+                (isPanelOpen || currentResizeMode == PlayerResizeMode.FIT)
+
+        if (!isInPip) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center,
+            ) {
+                AmbientPlayerBackground(
+                    playerView = capturedPlayerView,
+                    isPlaying = isPlaying,
+                    enabled = isAmbientActive,
+                    currentPositionMs = currentPosition,
+                    isPanelOpen = isPanelOpen,
+                    applyBlackBorder = shouldShrinkVideo,
+                    modifier =
+                        Modifier.requiredSize(ambientWidth, ambientHeight)
+                            .offset(x = ambientOffsetX, y = ambientOffsetY),
+                )
+            }
+        }
+
+        // Video Player Container (dynamically adapts when side panel opens on tablet)
+        Box(
+            modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center,
         ) {
-            val shouldApplyAspectRatio = shouldShrinkVideo || videoCornerRadius > 0.dp
-            val verticalSafetyPadding = if (shouldShrinkVideo) 12.dp else 0.dp
-            val horizontalSafetyPadding = if (shouldShrinkVideo) 12.dp else 0.dp
-            val safeMaxHeight = (maxHeight - (verticalSafetyPadding * 2)).coerceAtLeast(0.dp)
-            val safeMaxWidth = (maxWidth - (horizontalSafetyPadding * 2)).coerceAtLeast(0.dp)
-            val (targetWidth, targetHeight) =
-                if (
-                    shouldApplyAspectRatio &&
-                        videoAspectRatio > 0f &&
-                        safeMaxHeight.value > 0f &&
-                        safeMaxWidth.value > 0f
-                ) {
-                    val containerRatio = safeMaxWidth.value / safeMaxHeight.value
-                    if (containerRatio > videoAspectRatio) {
-                        (safeMaxHeight * videoAspectRatio) to safeMaxHeight
-                    } else {
-                        safeMaxWidth to (safeMaxWidth / videoAspectRatio)
-                    }
-                } else {
-                    maxWidth to maxHeight
-                }
-
             Box(
                 modifier =
                     Modifier.size(targetWidth, targetHeight)
+                        .offset(
+                            x = (leftColumnWidth / 2) - (screenWidth / 2),
+                            y = videoCenterY - (screenHeight / 2),
+                        )
                         .clip(RoundedCornerShape(videoCornerRadius))
-                        .background(Color.Black)
             ) {
                 AndroidView(
                     factory = { ctx ->
@@ -714,11 +742,20 @@ fun PlayerScreen(
                                 itemKind = itemKind,
                                 startFromBeginning = startFromBeginning,
                             )
-                            playerView.setBackgroundColor(android.graphics.Color.BLACK)
+                            playerView.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                            playerView.setShutterBackgroundColor(android.graphics.Color.TRANSPARENT)
+                            playerView
+                                .findViewById<View>(androidx.media3.ui.R.id.exo_shutter)
+                                ?.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                            playerView
+                                .findViewById<View>(androidx.media3.ui.R.id.exo_content_frame)
+                                ?.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                            capturedPlayerView = playerView
                         }
                     },
                     update = { playerView ->
                         onPlayerViewAvailable(playerView)
+                        capturedPlayerView = playerView
                         if (playerView.resizeMode != effectiveResizeMode) {
                             playerView.resizeMode = effectiveResizeMode
                         }
@@ -755,12 +792,9 @@ fun PlayerScreen(
                 Modifier.align(Alignment.TopStart)
                     .fillMaxWidth()
                     .padding(
-                        start =
-                            videoPaddingInset +
-                                insets.calculateLeftPadding(LayoutDirection.Ltr) +
-                                16.dp,
+                        start = leftInset + 16.dp,
                         end = videoPaddingEnd + 16.dp,
-                        top = insets.calculateTopPadding() + 8.dp,
+                        top = titleTopPadding,
                     )
                     .zIndex(5f),
         ) {
@@ -799,12 +833,9 @@ fun PlayerScreen(
                 Modifier.align(Alignment.BottomStart)
                     .fillMaxWidth()
                     .padding(
-                        start =
-                            videoPaddingInset +
-                                insets.calculateLeftPadding(LayoutDirection.Ltr) +
-                                16.dp,
+                        start = leftInset + 16.dp,
                         end = videoPaddingEnd + 16.dp,
-                        bottom = insets.calculateBottomPadding() + 8.dp,
+                        bottom = bottomControllerPadding,
                     )
                     .zIndex(5f),
         ) {
@@ -886,12 +917,9 @@ fun PlayerScreen(
             exit = fadeOut(tween(200)),
             modifier =
                 Modifier.align(Alignment.Center)
-                    .padding(
-                        start =
-                            videoPaddingInset + insets.calculateLeftPadding(LayoutDirection.Ltr),
-                        end = videoPaddingEnd + insets.calculateRightPadding(LayoutDirection.Ltr),
-                        top = videoPaddingTop + insets.calculateTopPadding(),
-                        bottom = videoPaddingBottom + insets.calculateBottomPadding(),
+                    .offset(
+                        x = (leftColumnWidth / 2) - (screenWidth / 2),
+                        y = videoCenterY - (screenHeight / 2),
                     )
                     .zIndex(6f),
         ) {
@@ -1566,8 +1594,8 @@ fun PlayerScreen(
                             .padding(
                                 start = videoPaddingInset,
                                 end = videoPaddingEnd,
-                                top = videoPaddingTop,
-                                bottom = videoPaddingBottom,
+                                top = 0.dp,
+                                bottom = 0.dp,
                             )
                             .clip(RoundedCornerShape(videoCornerRadius))
                             .background(
@@ -1725,6 +1753,10 @@ fun PlayerScreen(
                         currentResizeMode = currentResizeMode,
                         onResizeModeChange = onResizeModeChange,
                         openedDirectly = openedPanelDirectly,
+                        isAmbientModeEnabled = isAmbientModeEnabled,
+                        onAmbientModeToggle = { enabled ->
+                            prefs.setValue(prefs.playerAmbientMode, enabled)
+                        },
                         onClose = {
                             videoPlayerState.sidePanelType = PlayerSidePanelType.NONE
                             videoPlayerState.hideControls()
@@ -1751,6 +1783,10 @@ fun PlayerScreen(
                     currentResizeMode = currentResizeMode,
                     onResizeModeChange = onResizeModeChange,
                     openedDirectly = openedPanelDirectly,
+                    isAmbientModeEnabled = isAmbientModeEnabled,
+                    onAmbientModeToggle = { enabled ->
+                        prefs.setValue(prefs.playerAmbientMode, enabled)
+                    },
                     onDismiss = {
                         videoPlayerState.sidePanelType = PlayerSidePanelType.NONE
                         videoPlayerState.hideControls()

@@ -141,4 +141,5 @@
     <string name="sleep_timer_start">Start timer</string>
     <string name="sleep_timer_turn_off">Turn off timer</string>
     <string name="sleep_timer_remaining">%1$d min remaining</string>
+    <string name="player_ambient_mode">Ambient mode</string>
 </resources>

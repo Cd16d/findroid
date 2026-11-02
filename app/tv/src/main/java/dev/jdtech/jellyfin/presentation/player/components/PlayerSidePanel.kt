@@ -65,6 +65,8 @@ fun PlayerSidePanel(
     onResizeModeChange: (PlayerResizeMode) -> Unit,
     modifier: Modifier = Modifier,
     onClose: () -> Unit = {},
+    isAmbientModeEnabled: Boolean = false,
+    onAmbientModeToggle: (Boolean) -> Unit = {},
 ) {
     val initialFocusRequester = remember { FocusRequester() }
 
@@ -83,6 +85,7 @@ fun PlayerSidePanel(
     val aspectRatioFocusRequester = remember { FocusRequester() }
     val sleepTimerFocusRequester = remember { FocusRequester() }
     val playbackInfoFocusRequester = remember { FocusRequester() }
+    val ambientFocusRequester = remember { FocusRequester() }
 
     var tracks by remember { mutableStateOf(viewModel.player.currentTracks) }
     DisposableEffect(viewModel.player) {
@@ -174,6 +177,9 @@ fun PlayerSidePanel(
                         aspectRatioFocusRequester = aspectRatioFocusRequester,
                         sleepTimerFocusRequester = sleepTimerFocusRequester,
                         playbackInfoFocusRequester = playbackInfoFocusRequester,
+                        ambientFocusRequester = ambientFocusRequester,
+                        isAmbientModeEnabled = isAmbientModeEnabled,
+                        onAmbientModeToggle = onAmbientModeToggle,
                     )
                 }
 

@@ -5,10 +5,14 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material3.LocalMinimumInteractiveComponentSize
+import androidx.compose.material3.Switch
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -44,6 +48,8 @@ internal fun PhoneSettingsMenu(
     currentResizeMode: PlayerResizeMode,
     currentSpeed: Float,
     isPlaying: Boolean,
+    isAmbientModeEnabled: Boolean,
+    onAmbientModeToggle: (Boolean) -> Unit,
     onNavigate: (PlayerSidePanelType) -> Unit,
     onLock: () -> Unit,
 ) {
@@ -165,6 +171,24 @@ internal fun PhoneSettingsMenu(
         }
         item {
             PhoneNavigationRow(
+                title = stringResource(id = PlayerR.string.player_ambient_mode),
+                subtitle = "",
+                iconRes = CoreR.drawable.ic_ambient_mode,
+                showChevron = false,
+                trailingContent = {
+                    CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 0.dp) {
+                        Switch(
+                            checked = isAmbientModeEnabled,
+                            onCheckedChange = null,
+                            modifier = Modifier.scale(0.75f),
+                        )
+                    }
+                },
+                onClick = { onAmbientModeToggle(!isAmbientModeEnabled) },
+            )
+        }
+        item {
+            PhoneNavigationRow(
                 title = stringResource(id = PlayerR.string.sleep_timer),
                 subtitle = sleepTimerSubtitle,
                 iconRes = PlayerR.drawable.ic_sleep_timer,
@@ -213,6 +237,8 @@ internal fun TabletSettingsMenu(
     currentSpeed: Float,
     currentResizeMode: PlayerResizeMode,
     isPlaying: Boolean,
+    isAmbientModeEnabled: Boolean,
+    onAmbientModeToggle: (Boolean) -> Unit,
     onNavigate: (PlayerSidePanelType) -> Unit,
     onLock: () -> Unit,
 ) {
@@ -257,7 +283,7 @@ internal fun TabletSettingsMenu(
                 .name
         } else stringResource(id = PlayerR.string.none)
 
-    val currentSpeedText = "${currentSpeed}×"
+    val currentSpeedText = "$currentSpeed×"
     val currentAspectText =
         when (currentResizeMode) {
             PlayerResizeMode.ZOOM -> stringResource(id = PlayerR.string.aspect_ratio_zoom)
@@ -312,6 +338,24 @@ internal fun TabletSettingsMenu(
                 subtitle = currentAspectText,
                 iconRes = PlayerR.drawable.ic_aspect_ratio,
                 onClick = { onNavigate(PlayerSidePanelType.ASPECT_RATIO) },
+            )
+        }
+        item {
+            TabletNavigationItem(
+                title = stringResource(id = PlayerR.string.player_ambient_mode),
+                subtitle = "",
+                iconRes = CoreR.drawable.ic_ambient_mode,
+                showChevron = false,
+                trailingContent = {
+                    CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 0.dp) {
+                        Switch(
+                            checked = isAmbientModeEnabled,
+                            onCheckedChange = null,
+                            modifier = Modifier.scale(0.75f),
+                        )
+                    }
+                },
+                onClick = { onAmbientModeToggle(!isAmbientModeEnabled) },
             )
         }
         item {

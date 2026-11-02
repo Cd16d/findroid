@@ -1,6 +1,7 @@
 package dev.jdtech.jellyfin.presentation.player
 
 import android.content.Context
+import android.view.View
 import android.view.accessibility.CaptioningManager
 import androidx.activity.compose.BackHandler
 import androidx.annotation.OptIn
@@ -36,6 +37,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
@@ -108,6 +110,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import coil3.compose.AsyncImage
 import dev.jdtech.jellyfin.core.R as CoreR
+import dev.jdtech.jellyfin.core.presentation.components.AmbientPlayerBackground
 import dev.jdtech.jellyfin.core.presentation.theme.PlayerOverlayBackground
 import dev.jdtech.jellyfin.core.presentation.theme.PlayerTvSurface
 import dev.jdtech.jellyfin.core.presentation.theme.PlayerTvSurfaceFocused
@@ -215,6 +218,11 @@ fun PlayerScreen(
     }
 
     val prefs = remember(context) { AppPreferences(context) }
+    val isAmbientModeEnabled by
+        remember(prefs) { prefs.observe(prefs.playerAmbientMode) }
+            .collectAsState(initial = prefs.getValue(prefs.playerAmbientMode))
+    var capturedPlayerView by remember { mutableStateOf<PlayerView?>(null) }
+
     val hideSeconds = remember { prefs.getValue(prefs.playerControlsTimeout).toInt() }
     val videoPlayerState = rememberVideoPlayerState(hideSeconds = hideSeconds)
 
@@ -603,11 +611,28 @@ fun PlayerScreen(
                     maxWidth to maxHeight
                 }
 
+            val isAmbientActive =
+                isAmbientModeEnabled && (isPanelOpen || resizeMode == PlayerResizeMode.FIT)
+            val ambientWidth = targetWidth + 600.dp
+            val ambientHeight = targetHeight + 600.dp
+
+            if (isAmbientActive) {
+                AmbientPlayerBackground(
+                    playerView = capturedPlayerView,
+                    isPlaying = isPlaying,
+                    enabled = true,
+                    ambientAlpha = 0.55f,
+                    currentPositionMs = currentPosition,
+                    isPanelOpen = isPanelOpen,
+                    applyBlackBorder = isPanelOpen,
+                    modifier = Modifier.requiredSize(ambientWidth, ambientHeight),
+                )
+            }
+
             Box(
                 modifier =
                     Modifier.size(targetWidth, targetHeight)
                         .clip(RoundedCornerShape(videoCornerRadius))
-                        .background(Color.Black)
             ) {
                 AndroidView(
                     factory = { ctx ->
@@ -646,10 +671,19 @@ fun PlayerScreen(
                                 itemKind = itemKind,
                                 startFromBeginning = startFromBeginning,
                             )
-                            playerView.setBackgroundColor(android.graphics.Color.BLACK)
+                            playerView.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                            playerView.setShutterBackgroundColor(android.graphics.Color.TRANSPARENT)
+                            playerView
+                                .findViewById<View>(androidx.media3.ui.R.id.exo_shutter)
+                                ?.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                            playerView
+                                .findViewById<View>(androidx.media3.ui.R.id.exo_content_frame)
+                                ?.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                            capturedPlayerView = playerView
                         }
                     },
                     update = { playerView ->
+                        capturedPlayerView = playerView
                         playerView.resizeMode = effectiveResizeMode
                         playerView.player?.updateMpvResizeMode(resizeMode)
                     },
@@ -719,6 +753,10 @@ fun PlayerScreen(
                 currentResizeMode = resizeMode,
                 onResizeModeChange = { resizeMode = it },
                 onClose = ::closeOrStepBackSidePanel,
+                isAmbientModeEnabled = isAmbientModeEnabled,
+                onAmbientModeToggle = { enabled ->
+                    prefs.setValue(prefs.playerAmbientMode, enabled)
+                },
             )
         }
 

@@ -60,6 +60,7 @@ class AppPreferences @Inject constructor(val sharedPreferences: SharedPreference
     val playerOrientationLast =
         Preference("pref_player_orientation_last", PlayerOrientation.SENSOR.name.lowercase())
     val playerAutoplayNext = Preference("pref_player_autoplay_next", true)
+    val playerAmbientMode = Preference("pref_player_ambient_mode", false)
     val playerHaptics = Preference("pref_player_haptics", true)
     val playerControlsTimeout = Preference("pref_player_controls_timeout", 4L)
     val playerPlaybackSpeedRemember = Preference("pref_player_playback_speed_remember", false)

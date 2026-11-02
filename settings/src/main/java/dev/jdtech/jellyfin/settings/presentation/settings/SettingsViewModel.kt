@@ -347,6 +347,14 @@ constructor(
                                                 ),
                                                 PreferenceSwitch(
                                                     nameStringResource =
+                                                        R.string.pref_player_ambient_mode,
+                                                    descriptionStringRes =
+                                                        R.string.pref_player_ambient_mode_summary,
+                                                    backendPreference =
+                                                        appPreferences.playerAmbientMode,
+                                                ),
+                                                PreferenceSwitch(
+                                                    nameStringResource =
                                                         R.string
                                                             .pref_player_playback_speed_remember,
                                                     descriptionStringRes =

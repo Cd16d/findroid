@@ -209,6 +209,8 @@
     <string name="playback">Playback</string>
     <string name="pref_player_autoplay_next">Autoplay next episode</string>
     <string name="pref_player_autoplay_next_summary">Automatically play the next episode when the current one ends</string>
+    <string name="pref_player_ambient_mode">Ambient mode</string>
+    <string name="pref_player_ambient_mode_summary">Cast gentle glowing colors from the video into the black bars</string>
     <string name="pref_player_haptics">Haptic feedback</string>
     <string name="pref_player_haptics_summary">Vibrate on player controls and gesture interactions</string>
     <string name="pref_player_controls_timeout">Controls timeout</string>

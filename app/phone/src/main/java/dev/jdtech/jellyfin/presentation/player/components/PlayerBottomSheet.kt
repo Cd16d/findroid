@@ -79,6 +79,8 @@ fun PlayerBottomSheet(
     onLock: () -> Unit,
     modifier: Modifier = Modifier,
     openedDirectly: Boolean = false,
+    isAmbientModeEnabled: Boolean = false,
+    onAmbientModeToggle: (Boolean) -> Unit = {},
 ) {
     if (panelType == PlayerSidePanelType.NONE) return
 
@@ -193,6 +195,8 @@ fun PlayerBottomSheet(
                             currentResizeMode = currentResizeMode,
                             currentSpeed = uiState.playbackSpeed,
                             isPlaying = isPlaying,
+                            isAmbientModeEnabled = isAmbientModeEnabled,
+                            onAmbientModeToggle = onAmbientModeToggle,
                             onNavigate = onPanelTypeChange,
                             onLock = {
                                 onDismiss()

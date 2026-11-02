@@ -12,12 +12,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.LocalMinimumInteractiveComponentSize
+import androidx.compose.material3.Switch
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
@@ -99,7 +104,7 @@ internal fun PanelHeader(panelType: PlayerSidePanelType) {
  * @param sleepTimerFocusRequester [FocusRequester] for the sleep timer menu item.
  * @param playbackInfoFocusRequester [FocusRequester] for the playback info menu item.
  */
-@OptIn(UnstableApi::class)
+@OptIn(UnstableApi::class, ExperimentalMaterial3Api::class)
 @Composable
 internal fun SettingsList(
     viewModel: PlayerViewModel,
@@ -113,6 +118,9 @@ internal fun SettingsList(
     aspectRatioFocusRequester: FocusRequester,
     sleepTimerFocusRequester: FocusRequester,
     playbackInfoFocusRequester: FocusRequester,
+    ambientFocusRequester: FocusRequester,
+    isAmbientModeEnabled: Boolean = false,
+    onAmbientModeToggle: (Boolean) -> Unit = {},
 ) {
     val context = LocalContext.current
     val currentLocale = LocalConfiguration.current.locales[0]
@@ -243,6 +251,25 @@ internal fun SettingsList(
             )
         }
 
+        // Ambient Mode
+        item {
+            NavigationItem(
+                title = stringResource(id = PlayerR.string.player_ambient_mode),
+                iconRes = CoreR.drawable.ic_ambient_mode,
+                onClick = { onAmbientModeToggle(!isAmbientModeEnabled) },
+                modifier = Modifier.focusRequester(ambientFocusRequester),
+                trailingContent = {
+                    CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 0.dp) {
+                        Switch(
+                            checked = isAmbientModeEnabled,
+                            onCheckedChange = null,
+                            modifier = Modifier.scale(0.75f),
+                        )
+                    }
+                },
+            )
+        }
+
         // Sleep Timer
         item {
             NavigationItem(
@@ -295,7 +322,10 @@ internal fun NavigationItem(
             contentColor = Color.White,
             focusedContentColor = Color.Black,
         ),
+    trailingContent: (@Composable () -> Unit)? = null,
 ) {
+    val verticalPadding = if (trailingContent != null) 9.dp else 14.dp
+
     Surface(
         onClick = onClick,
         shape = shape,
@@ -304,7 +334,8 @@ internal fun NavigationItem(
         modifier = modifier.fillMaxWidth(),
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
+            modifier =
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = verticalPadding),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
@@ -336,11 +367,15 @@ internal fun NavigationItem(
                     }
                 }
             }
-            Icon(
-                painter = painterResource(id = CoreR.drawable.ic_arrow_right),
-                contentDescription = null,
-                modifier = Modifier.size(18.dp),
-            )
+            if (trailingContent != null) {
+                trailingContent()
+            } else {
+                Icon(
+                    painter = painterResource(id = CoreR.drawable.ic_arrow_right),
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
         }
     }
 }

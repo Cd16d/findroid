@@ -71,6 +71,8 @@ fun PlayerSidePanel(
     onLock: () -> Unit,
     modifier: Modifier = Modifier,
     openedDirectly: Boolean = false,
+    isAmbientModeEnabled: Boolean = false,
+    onAmbientModeToggle: (Boolean) -> Unit = {},
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var tracks by remember { mutableStateOf(viewModel.player.currentTracks) }
@@ -91,7 +93,7 @@ fun PlayerSidePanel(
         onDispose { viewModel.player.removeListener(listener) }
     }
 
-    Box(modifier = modifier.width(400.dp).fillMaxHeight()) {
+    Box(modifier = modifier.width(432.dp).fillMaxHeight()) {
         Column(
             modifier =
                 Modifier.fillMaxSize()
@@ -166,6 +168,8 @@ fun PlayerSidePanel(
                         currentSpeed = uiState.playbackSpeed,
                         currentResizeMode = currentResizeMode,
                         isPlaying = isPlaying,
+                        isAmbientModeEnabled = isAmbientModeEnabled,
+                        onAmbientModeToggle = onAmbientModeToggle,
                         onNavigate = onPanelTypeChange,
                         onLock = {
                             onClose()

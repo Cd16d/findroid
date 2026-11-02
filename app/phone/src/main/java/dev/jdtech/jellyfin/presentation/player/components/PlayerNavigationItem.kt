@@ -44,6 +44,7 @@ fun PlayerNavigationItem(
     enabled: Boolean = true,
     showChevron: Boolean = true,
     isTablet: Boolean = false,
+    trailingContent: (@Composable () -> Unit)? = null,
 ) {
     val alpha = if (enabled) 1f else if (isTablet) 0.38f else 0.4f
     val backgroundColor = PlayerCardBackground
@@ -52,6 +53,8 @@ fun PlayerNavigationItem(
     val titleStyle =
         if (isTablet) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyMedium
     val onSurface = MaterialTheme.colorScheme.onSurface
+
+    val verticalPadding = if (trailingContent != null) 10.dp else 14.dp
 
     Surface(
         modifier = Modifier.fillMaxWidth().graphicsLayer { this.alpha = alpha },
@@ -62,7 +65,8 @@ fun PlayerNavigationItem(
         enabled = enabled,
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
+            modifier =
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = verticalPadding),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(arrangementSpacing),
         ) {
@@ -103,7 +107,9 @@ fun PlayerNavigationItem(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            if (showChevron && enabled) {
+            if (trailingContent != null) {
+                trailingContent()
+            } else if (showChevron && enabled) {
                 Icon(
                     painter = painterResource(id = CoreR.drawable.ic_chevron_right),
                     contentDescription = null,
@@ -124,6 +130,7 @@ internal fun PhoneNavigationRow(
     shape: Shape = CentralShapes.GroupSingle,
     enabled: Boolean = true,
     showChevron: Boolean = true,
+    trailingContent: (@Composable () -> Unit)? = null,
 ) {
     PlayerNavigationItem(
         title = title,
@@ -134,6 +141,7 @@ internal fun PhoneNavigationRow(
         enabled = enabled,
         showChevron = showChevron,
         isTablet = false,
+        trailingContent = trailingContent,
     )
 }
 
@@ -146,6 +154,7 @@ internal fun TabletNavigationItem(
     shape: Shape = CentralShapes.GroupSingle,
     enabled: Boolean = true,
     showChevron: Boolean = true,
+    trailingContent: (@Composable () -> Unit)? = null,
 ) {
     PlayerNavigationItem(
         title = title,
@@ -156,6 +165,7 @@ internal fun TabletNavigationItem(
         enabled = enabled,
         showChevron = showChevron,
         isTablet = true,
+        trailingContent = trailingContent,
     )
 }
 
