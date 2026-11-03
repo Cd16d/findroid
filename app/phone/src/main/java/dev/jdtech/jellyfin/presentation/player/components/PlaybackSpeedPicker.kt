@@ -354,21 +354,17 @@ private fun SpeedSliderSection(
         val isDragged by sliderInteractionSource.collectIsDraggedAsState()
         val isInteracting = isPressed || isDragged
 
-        val animatedTrackHeight by
-            animateDpAsState(
-                targetValue = if (isInteracting) 18.dp else 16.dp,
-                animationSpec = tween(150),
-                label = "speedTrackHeight",
-            )
+        // Standard Material 3 Expressive XS slider track height (16dp)
+        val trackHeightDp = 16.dp
         val animatedThumbWidth by
             animateDpAsState(
-                targetValue = if (isInteracting) 6.dp else 4.dp,
+                targetValue = if (isInteracting) 2.dp else 4.dp,
                 animationSpec = tween(150),
                 label = "speedThumbWidth",
             )
         val animatedThumbHeight by
             animateDpAsState(
-                targetValue = if (isInteracting) 36.dp else 32.dp,
+                targetValue = if (isInteracting) 38.dp else 32.dp,
                 animationSpec = tween(150),
                 label = "speedThumbHeight",
             )
@@ -398,7 +394,7 @@ private fun SpeedSliderSection(
             track = { sliderState ->
                 val fraction = sliderState.value
                 Canvas(modifier = Modifier.fillMaxWidth().height(48.dp)) {
-                    val trackHeight = animatedTrackHeight.toPx()
+                    val trackHeight = trackHeightDp.toPx()
                     val centerY = size.height / 2f
                     val centerX = size.width * 0.5f
                     val thumbX = size.width * fraction.coerceIn(0f, 1f)
