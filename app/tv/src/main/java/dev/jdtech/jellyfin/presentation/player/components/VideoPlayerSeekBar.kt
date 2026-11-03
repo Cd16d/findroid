@@ -322,8 +322,8 @@ fun VideoPlayerSeekBar(
         val thumbGap = animatedThumbGap.toPx()
         val thumbWidthPx = animatedThumbWidth.toPx()
         val fullCornerRadius = CornerRadius(trackHeightPx / 2f, trackHeightPx / 2f)
-        val innerCornerRadius = CornerRadius(3.dp.toPx(), 3.dp.toPx())
-        val gapPx = 3.dp.toPx()
+        val innerCornerRadius = CornerRadius(2.dp.toPx(), 2.dp.toPx())
+        val gapPx = 2.dp.toPx()
         val numSlices = chapterSlices.size
         val totalGapsPx = if (numSlices > 1) (numSlices - 1) * gapPx else 0f
         val trackAvailableWidth = (size.width - totalGapsPx).coerceAtLeast(0f)
