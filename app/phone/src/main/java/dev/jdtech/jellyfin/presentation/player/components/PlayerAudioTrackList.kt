@@ -161,10 +161,15 @@ internal fun TabletAudioTrackList(viewModel: PlayerViewModel, tracks: Tracks) {
     }
 }
 
-@Preview(showBackground = true, backgroundColor = 0xFF1E1E1E)
+@Preview(
+    name = "Phone Audio Track List",
+    showBackground = true,
+    backgroundColor = 0xFF141416,
+    widthDp = 360,
+)
 @Composable
 private fun PhoneAudioTrackListPreview() {
-    FindroidTheme {
+    FindroidTheme(darkTheme = true) {
         Column(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -185,10 +190,15 @@ private fun PhoneAudioTrackListPreview() {
     }
 }
 
-@Preview(showBackground = true, backgroundColor = 0xFF141416, widthDp = 360)
+@Preview(
+    name = "Tablet Audio Track List",
+    showBackground = true,
+    backgroundColor = 0xFF141416,
+    widthDp = 432,
+)
 @Composable
 private fun TabletAudioTrackListPreview() {
-    FindroidTheme {
+    FindroidTheme(darkTheme = true) {
         Column(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),

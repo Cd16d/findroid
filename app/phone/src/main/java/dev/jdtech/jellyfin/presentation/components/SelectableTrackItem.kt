@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -106,7 +107,7 @@ fun SelectableTrackItem(
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodyMedium,
-                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                fontWeight = FontWeight.Bold,
                 color = contentColor,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -175,15 +176,38 @@ fun SelectableTrackItem(
     }
 }
 
-@Preview(showBackground = true, backgroundColor = 0xFF1E1E1E)
+@Preview(name = "Phone List", showBackground = true, backgroundColor = 0xFF141416, widthDp = 360)
+@Preview(
+    name = "Tablet Side Panel",
+    showBackground = true,
+    backgroundColor = 0xFF141416,
+    widthDp = 432,
+)
 @Composable
 private fun SelectableTrackItemPreview() {
     FindroidTheme(darkTheme = true) {
-        SelectableTrackItem(
-            title = "English (AAC 5.1)",
-            chips = listOf("Default", "5.1"),
-            isSelected = true,
-            onClick = {},
-        )
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            SelectableTrackItem(
+                title = "None",
+                chips = emptyList(),
+                isSelected = false,
+                onClick = {},
+            )
+            SelectableTrackItem(
+                title = "English (AAC 5.1)",
+                chips = listOf("Default", "5.1"),
+                isSelected = true,
+                onClick = {},
+            )
+            SelectableTrackItem(
+                title = "Italian (AC3 5.1)",
+                chips = listOf("5.1"),
+                isSelected = false,
+                onClick = {},
+            )
+        }
     }
 }

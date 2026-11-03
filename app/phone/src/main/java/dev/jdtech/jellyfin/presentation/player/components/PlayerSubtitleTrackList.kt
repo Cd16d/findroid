@@ -107,10 +107,15 @@ internal fun TabletSubtitleTrackList(viewModel: PlayerViewModel, tracks: Tracks)
     PhoneSubtitleTrackList(viewModel = viewModel, tracks = tracks)
 }
 
-@Preview(showBackground = true, backgroundColor = 0xFF1E1E1E)
+@Preview(
+    name = "Phone Subtitle Track List",
+    showBackground = true,
+    backgroundColor = 0xFF141416,
+    widthDp = 360,
+)
 @Composable
 private fun PhoneSubtitleTrackListPreview() {
-    FindroidTheme {
+    FindroidTheme(darkTheme = true) {
         Column(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -131,10 +136,15 @@ private fun PhoneSubtitleTrackListPreview() {
     }
 }
 
-@Preview(showBackground = true, backgroundColor = 0xFF141416, widthDp = 360)
+@Preview(
+    name = "Tablet Subtitle Track List",
+    showBackground = true,
+    backgroundColor = 0xFF141416,
+    widthDp = 432,
+)
 @Composable
 private fun TabletSubtitleTrackListPreview() {
-    FindroidTheme {
+    FindroidTheme(darkTheme = true) {
         Column(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),

@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -37,17 +38,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.core.presentation.theme.CentralShapes
 import dev.jdtech.jellyfin.core.presentation.theme.PlayerCardBackground
+import dev.jdtech.jellyfin.player.core.R as PlayerR
 import dev.jdtech.jellyfin.player.core.domain.models.ResolutionTier
 import dev.jdtech.jellyfin.player.core.domain.models.VideoQualityOption
 import dev.jdtech.jellyfin.player.local.presentation.PlayerViewModel
 import dev.jdtech.jellyfin.presentation.components.SelectableTrackItem
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
-import org.jellyfin.sdk.model.api.MediaStreamType
 import kotlin.math.roundToInt
-import dev.jdtech.jellyfin.core.R as CoreR
-import dev.jdtech.jellyfin.player.core.R as PlayerR
+import org.jellyfin.sdk.model.api.MediaStreamType
 
 /**
  * Video quality selection list for phone bottom sheet.
@@ -186,7 +187,7 @@ internal fun AutoQualityCard(
         color = containerColor,
         border =
             if (isSelected) BorderStroke(1.5.dp, borderColor) else BorderStroke(1.dp, borderColor),
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth().heightIn(min = 52.dp),
         onClick = onSelectAuto,
         enabled = !isSelected,
     ) {
@@ -194,6 +195,7 @@ internal fun AutoQualityCard(
             Row(
                 modifier =
                     Modifier.fillMaxWidth()
+                        .heightIn(min = 52.dp)
                         .then(if (isSelected) Modifier.clickable { onSelectAuto() } else Modifier)
                         .padding(horizontal = 16.dp, vertical = 14.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -350,7 +352,7 @@ private fun ResolutionQualityCard(
         color = containerColor,
         border =
             if (isSelected) BorderStroke(1.5.dp, borderColor) else BorderStroke(1.dp, borderColor),
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
         onClick = onSelectResolution,
         enabled = !isSelected,
     ) {
@@ -358,6 +360,7 @@ private fun ResolutionQualityCard(
             Row(
                 modifier =
                     Modifier.fillMaxWidth()
+                        .heightIn(min = 52.dp)
                         .then(
                             if (isSelected) Modifier.clickable { onSelectResolution() }
                             else Modifier
@@ -384,7 +387,7 @@ private fun ResolutionQualityCard(
                     Text(
                         text = tier.name,
                         style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                        fontWeight = FontWeight.Bold,
                         color = contentColor,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -449,7 +452,18 @@ private fun ResolutionQualityCard(
     }
 }
 
-@Preview(showBackground = true, backgroundColor = 0xFF1E1E1E)
+@Preview(
+    name = "Phone Auto Quality",
+    showBackground = true,
+    backgroundColor = 0xFF141416,
+    widthDp = 360,
+)
+@Preview(
+    name = "Tablet Auto Quality",
+    showBackground = true,
+    backgroundColor = 0xFF141416,
+    widthDp = 432,
+)
 @Composable
 private fun AutoQualityCardPreview() {
     FindroidTheme(darkTheme = true) {
@@ -475,7 +489,18 @@ private fun AutoQualityCardPreview() {
     }
 }
 
-@Preview(showBackground = true, backgroundColor = 0xFF1E1E1E)
+@Preview(
+    name = "Phone Resolution Tier",
+    showBackground = true,
+    backgroundColor = 0xFF141416,
+    widthDp = 360,
+)
+@Preview(
+    name = "Tablet Resolution Tier",
+    showBackground = true,
+    backgroundColor = 0xFF141416,
+    widthDp = 432,
+)
 @Composable
 private fun ResolutionQualityCardPreview() {
     FindroidTheme(darkTheme = true) {

@@ -3,6 +3,7 @@ package dev.jdtech.jellyfin.presentation.player.components
 import android.content.res.Configuration
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -27,6 +28,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
@@ -50,6 +52,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import dev.jdtech.jellyfin.core.R as CoreR
+import dev.jdtech.jellyfin.core.presentation.theme.CentralShapes
+import dev.jdtech.jellyfin.core.presentation.theme.PlayerCardBackground
 import dev.jdtech.jellyfin.core.presentation.theme.PlayerOverlayBackground
 import dev.jdtech.jellyfin.player.core.R as PlayerR
 import dev.jdtech.jellyfin.player.core.presentation.drawCustomRoundRect
@@ -95,7 +99,6 @@ private fun fractionToSpeed(fraction: Float, minSpeed: Float, maxSpeed: Float): 
  * @param modifier Optional [Modifier] applied to root container.
  * @param isTabletLayout True to display the full vertical list for tablet, false for phone chips.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlaybackSpeedPicker(
     currentSpeed: Float,
@@ -118,216 +121,51 @@ fun PlaybackSpeedPicker(
                 .fillMaxWidth()
                 .padding(
                     vertical = if (isLandscape) 8.dp else 12.dp,
-                    horizontal = 16.dp,
+                    horizontal = if (isTabletLayout) 0.dp else 16.dp,
                 ),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        // Current speed readout (e.g. "1.00×")
-        Text(
-            text = String.format(Locale.US, "%.2f×", speedState),
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-            color = Color.White,
-        )
-
-        Spacer(modifier = Modifier.height(if (isLandscape) 8.dp else 16.dp))
-
-        // Minus Button, Centered Slider, Plus Button
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            // Minus Button (-0.05 step)
-            Box(
-                modifier =
-                    Modifier.size(46.dp)
-                        .clip(CircleShape)
-                        .background(PlayerOverlayBackground)
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = ripple(bounded = true, radius = 23.dp),
-                            enabled = speedState > 0.05f,
-                            onClick = {
-                                val next =
-                                    (round((speedState - 0.05f) * 100f) / 100f).coerceAtLeast(0.05f)
-                                speedState = next
-                                onSpeedChange(next)
-                            },
-                        ),
-                contentAlignment = Alignment.Center,
+        if (isTabletLayout) {
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = CentralShapes.GroupSingle,
+                color = PlayerCardBackground,
+                border =
+                    BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)),
             ) {
-                Icon(
-                    painter = painterResource(id = CoreR.drawable.ic_minus),
-                    contentDescription = "-",
-                    modifier = Modifier.size(20.dp),
-                    tint = if (speedState > 0.05f) Color.White else Color.White.copy(alpha = 0.3f),
-                )
-            }
-
-            // Slider with Centered Track (active bar starts from 1.0x at 50%)
-            val sliderFraction = speedToFraction(speedState, minSpeed, maxSpeed)
-            val sliderInteractionSource = remember { MutableInteractionSource() }
-            val isPressed by sliderInteractionSource.collectIsPressedAsState()
-            val isDragged by sliderInteractionSource.collectIsDraggedAsState()
-            val isInteracting = isPressed || isDragged
-
-            val animatedTrackHeight by
-                animateDpAsState(
-                    targetValue = if (isInteracting) 18.dp else 16.dp,
-                    animationSpec = tween(150),
-                    label = "speedTrackHeight",
-                )
-            val animatedThumbWidth by
-                animateDpAsState(
-                    targetValue = if (isInteracting) 6.dp else 4.dp,
-                    animationSpec = tween(150),
-                    label = "speedThumbWidth",
-                )
-            val animatedThumbHeight by
-                animateDpAsState(
-                    targetValue = if (isInteracting) 36.dp else 32.dp,
-                    animationSpec = tween(150),
-                    label = "speedThumbHeight",
-                )
-
-            Slider(
-                value = sliderFraction,
-                onValueChange = { f ->
-                    val snapped = fractionToSpeed(f, minSpeed, maxSpeed)
-                    speedState = snapped
-                    onSpeedChange(snapped)
-                },
-                valueRange = 0f..1f,
-                interactionSource = sliderInteractionSource,
-                colors =
-                    SliderDefaults.colors(
-                        thumbColor = MaterialTheme.colorScheme.primary,
-                        activeTrackColor = Color.Transparent,
-                        inactiveTrackColor = Color.Transparent,
-                    ),
-                thumb = {
-                    Box(
-                        modifier =
-                            Modifier.size(width = animatedThumbWidth, height = animatedThumbHeight)
-                                .clip(RoundedCornerShape(animatedThumbWidth / 2f))
-                                .background(Color.White)
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    SpeedSliderSection(
+                        speedState = speedState,
+                        minSpeed = minSpeed,
+                        maxSpeed = maxSpeed,
+                        onSpeedChange = {
+                            speedState = it
+                            onSpeedChange(it)
+                        },
+                        isLandscape = isLandscape,
                     )
-                },
-                track = { sliderState ->
-                    val fraction = sliderState.value
-                    Canvas(modifier = Modifier.fillMaxWidth().height(48.dp)) {
-                        val trackHeight = animatedTrackHeight.toPx()
-                        val centerY = size.height / 2f
-                        val centerX = size.width * 0.5f
-                        val thumbX = size.width * fraction.coerceIn(0f, 1f)
-                        val thumbWidthPx = animatedThumbWidth.toPx()
-                        val thumbGapPx = 4.dp.toPx()
-                        val centerGapPx = 4.dp.toPx()
-                        val centerLeft = centerX - centerGapPx / 2f
-                        val centerRight = centerX + centerGapPx / 2f
-                        val halfTrack = trackHeight / 2f
-                        val fullCornerRadius = CornerRadius(halfTrack, halfTrack)
-                        val smallCornerRadius = CornerRadius(3.dp.toPx(), 3.dp.toPx())
-
-                        val clampedThumbX =
-                            thumbX.coerceIn(thumbWidthPx / 2f, size.width - thumbWidthPx / 2f)
-                        val thumbLeft = clampedThumbX - thumbWidthPx / 2f
-                        val thumbRight = clampedThumbX + thumbWidthPx / 2f
-                        val gapStart = (thumbLeft - thumbGapPx).coerceAtLeast(0f)
-                        val gapEnd = (thumbRight + thumbGapPx).coerceAtMost(size.width)
-
-                        val inactiveColor = Color.White.copy(alpha = 0.20f)
-                        val activeColor = Color.White
-
-                        // 1. Left inactive track (from 0 to minOf(centerLeft, gapStart))
-                        val leftEnd = minOf(centerLeft, gapStart)
-                        if (leftEnd > 0f) {
-                            drawCustomRoundRect(
-                                color = inactiveColor,
-                                topLeft = Offset(0f, centerY - halfTrack),
-                                size = Size(leftEnd, trackHeight),
-                                topLeftRadius = fullCornerRadius,
-                                bottomLeftRadius = fullCornerRadius,
-                                topRightRadius = smallCornerRadius,
-                                bottomRightRadius = smallCornerRadius,
-                            )
-                        }
-
-                        // 2. Active track segment extending from center
-                        if (thumbX >= centerX) {
-                            if (gapStart > centerRight) {
-                                drawCustomRoundRect(
-                                    color = activeColor,
-                                    topLeft = Offset(centerRight, centerY - halfTrack),
-                                    size = Size(gapStart - centerRight, trackHeight),
-                                    topLeftRadius = smallCornerRadius,
-                                    bottomLeftRadius = smallCornerRadius,
-                                    topRightRadius = smallCornerRadius,
-                                    bottomRightRadius = smallCornerRadius,
-                                )
-                            }
-                        } else {
-                            if (gapEnd < centerLeft) {
-                                drawCustomRoundRect(
-                                    color = activeColor,
-                                    topLeft = Offset(gapEnd, centerY - halfTrack),
-                                    size = Size(centerLeft - gapEnd, trackHeight),
-                                    topLeftRadius = smallCornerRadius,
-                                    bottomLeftRadius = smallCornerRadius,
-                                    topRightRadius = smallCornerRadius,
-                                    bottomRightRadius = smallCornerRadius,
-                                )
-                            }
-                        }
-
-                        // 3. Right inactive track (from maxOf(centerRight, gapEnd) to size.width)
-                        val rightStart = maxOf(centerRight, gapEnd)
-                        if (size.width > rightStart) {
-                            drawCustomRoundRect(
-                                color = inactiveColor,
-                                topLeft = Offset(rightStart, centerY - halfTrack),
-                                size = Size(size.width - rightStart, trackHeight),
-                                topLeftRadius = smallCornerRadius,
-                                bottomLeftRadius = smallCornerRadius,
-                                topRightRadius = fullCornerRadius,
-                                bottomRightRadius = fullCornerRadius,
-                            )
-                        }
-                    }
-                },
-                modifier = Modifier.weight(1f).padding(horizontal = 4.dp),
-            )
-
-            // Plus Button (+0.05 step)
-            Box(
-                modifier =
-                    Modifier.size(46.dp)
-                        .clip(CircleShape)
-                        .background(PlayerOverlayBackground)
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = ripple(bounded = true, radius = 23.dp),
-                            enabled = speedState < 4.0f,
-                            onClick = {
-                                val next =
-                                    (round((speedState + 0.05f) * 100f) / 100f).coerceAtMost(4.0f)
-                                speedState = next
-                                onSpeedChange(next)
-                            },
-                        ),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    painter = painterResource(id = CoreR.drawable.ic_plus),
-                    contentDescription = "+",
-                    modifier = Modifier.size(20.dp),
-                    tint = if (speedState < 4.0f) Color.White else Color.White.copy(alpha = 0.3f),
-                )
+                }
             }
+        } else {
+            SpeedSliderSection(
+                speedState = speedState,
+                minSpeed = minSpeed,
+                maxSpeed = maxSpeed,
+                onSpeedChange = {
+                    speedState = it
+                    onSpeedChange(it)
+                },
+                isLandscape = isLandscape,
+            )
         }
 
-        Spacer(modifier = Modifier.height(if (isLandscape) 12.dp else 20.dp))
+        Spacer(
+            modifier =
+                Modifier.height(if (isTabletLayout) 10.dp else if (isLandscape) 12.dp else 20.dp)
+        )
 
         if (isTabletLayout) {
             // Tablet: Vertical List with SelectableTrackItem (like TV)
@@ -458,9 +296,226 @@ fun PlaybackSpeedPicker(
     }
 }
 
-@Preview(name = "Portrait", showBackground = true, backgroundColor = 0xFF141416)
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SpeedSliderSection(
+    speedState: Float,
+    minSpeed: Float,
+    maxSpeed: Float,
+    onSpeedChange: (Float) -> Unit,
+    isLandscape: Boolean,
+) {
+    // Current speed readout (e.g. "1.00×")
+    Text(
+        text = String.format(Locale.US, "%.2f×", speedState),
+        style = MaterialTheme.typography.headlineMedium,
+        fontWeight = FontWeight.Bold,
+        color = Color.White,
+    )
+
+    Spacer(modifier = Modifier.height(if (isLandscape) 8.dp else 16.dp))
+
+    // Minus Button, Centered Slider, Plus Button
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        // Minus Button (-0.05 step)
+        Box(
+            modifier =
+                Modifier.size(46.dp)
+                    .clip(CircleShape)
+                    .background(PlayerOverlayBackground)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = ripple(bounded = true, radius = 23.dp),
+                        enabled = speedState > 0.05f,
+                        onClick = {
+                            val next =
+                                (round((speedState - 0.05f) * 100f) / 100f).coerceAtLeast(0.05f)
+                            onSpeedChange(next)
+                        },
+                    ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                painter = painterResource(id = CoreR.drawable.ic_minus),
+                contentDescription = "-",
+                modifier = Modifier.size(20.dp),
+                tint = if (speedState > 0.05f) Color.White else Color.White.copy(alpha = 0.3f),
+            )
+        }
+
+        // Slider with Centered Track (active bar starts from 1.0x at 50%)
+        val sliderFraction = speedToFraction(speedState, minSpeed, maxSpeed)
+        val sliderInteractionSource = remember { MutableInteractionSource() }
+        val isPressed by sliderInteractionSource.collectIsPressedAsState()
+        val isDragged by sliderInteractionSource.collectIsDraggedAsState()
+        val isInteracting = isPressed || isDragged
+
+        val animatedTrackHeight by
+            animateDpAsState(
+                targetValue = if (isInteracting) 18.dp else 16.dp,
+                animationSpec = tween(150),
+                label = "speedTrackHeight",
+            )
+        val animatedThumbWidth by
+            animateDpAsState(
+                targetValue = if (isInteracting) 6.dp else 4.dp,
+                animationSpec = tween(150),
+                label = "speedThumbWidth",
+            )
+        val animatedThumbHeight by
+            animateDpAsState(
+                targetValue = if (isInteracting) 36.dp else 32.dp,
+                animationSpec = tween(150),
+                label = "speedThumbHeight",
+            )
+
+        Slider(
+            value = sliderFraction,
+            onValueChange = { f ->
+                val snapped = fractionToSpeed(f, minSpeed, maxSpeed)
+                onSpeedChange(snapped)
+            },
+            valueRange = 0f..1f,
+            interactionSource = sliderInteractionSource,
+            colors =
+                SliderDefaults.colors(
+                    thumbColor = MaterialTheme.colorScheme.primary,
+                    activeTrackColor = Color.Transparent,
+                    inactiveTrackColor = Color.Transparent,
+                ),
+            thumb = {
+                Box(
+                    modifier =
+                        Modifier.size(width = animatedThumbWidth, height = animatedThumbHeight)
+                            .clip(RoundedCornerShape(animatedThumbWidth / 2f))
+                            .background(Color.White)
+                )
+            },
+            track = { sliderState ->
+                val fraction = sliderState.value
+                Canvas(modifier = Modifier.fillMaxWidth().height(48.dp)) {
+                    val trackHeight = animatedTrackHeight.toPx()
+                    val centerY = size.height / 2f
+                    val centerX = size.width * 0.5f
+                    val thumbX = size.width * fraction.coerceIn(0f, 1f)
+                    val thumbWidthPx = animatedThumbWidth.toPx()
+                    val thumbGapPx = 4.dp.toPx()
+                    val centerGapPx = 4.dp.toPx()
+                    val centerLeft = centerX - centerGapPx / 2f
+                    val centerRight = centerX + centerGapPx / 2f
+                    val halfTrack = trackHeight / 2f
+                    val fullCornerRadius = CornerRadius(halfTrack, halfTrack)
+                    val smallCornerRadius = CornerRadius(3.dp.toPx(), 3.dp.toPx())
+
+                    val clampedThumbX =
+                        thumbX.coerceIn(thumbWidthPx / 2f, size.width - thumbWidthPx / 2f)
+                    val thumbLeft = clampedThumbX - thumbWidthPx / 2f
+                    val thumbRight = clampedThumbX + thumbWidthPx / 2f
+                    val gapStart = (thumbLeft - thumbGapPx).coerceAtLeast(0f)
+                    val gapEnd = (thumbRight + thumbGapPx).coerceAtMost(size.width)
+
+                    val inactiveColor = Color.White.copy(alpha = 0.20f)
+                    val activeColor = Color.White
+
+                    // 1. Left inactive track (from 0 to minOf(centerLeft, gapStart))
+                    val leftEnd = minOf(centerLeft, gapStart)
+                    if (leftEnd > 0f) {
+                        drawCustomRoundRect(
+                            color = inactiveColor,
+                            topLeft = Offset(0f, centerY - halfTrack),
+                            size = Size(leftEnd, trackHeight),
+                            topLeftRadius = fullCornerRadius,
+                            bottomLeftRadius = fullCornerRadius,
+                            topRightRadius = smallCornerRadius,
+                            bottomRightRadius = smallCornerRadius,
+                        )
+                    }
+
+                    // 2. Active track segment extending from center
+                    if (thumbX >= centerX) {
+                        if (gapStart > centerRight) {
+                            drawCustomRoundRect(
+                                color = activeColor,
+                                topLeft = Offset(centerRight, centerY - halfTrack),
+                                size = Size(gapStart - centerRight, trackHeight),
+                                topLeftRadius = smallCornerRadius,
+                                bottomLeftRadius = smallCornerRadius,
+                                topRightRadius = smallCornerRadius,
+                                bottomRightRadius = smallCornerRadius,
+                            )
+                        }
+                    } else {
+                        if (gapEnd < centerLeft) {
+                            drawCustomRoundRect(
+                                color = activeColor,
+                                topLeft = Offset(gapEnd, centerY - halfTrack),
+                                size = Size(centerLeft - gapEnd, trackHeight),
+                                topLeftRadius = smallCornerRadius,
+                                bottomLeftRadius = smallCornerRadius,
+                                topRightRadius = smallCornerRadius,
+                                bottomRightRadius = smallCornerRadius,
+                            )
+                        }
+                    }
+
+                    // 3. Right inactive track (from maxOf(centerRight, gapEnd) to size.width)
+                    val rightStart = maxOf(centerRight, gapEnd)
+                    if (size.width > rightStart) {
+                        drawCustomRoundRect(
+                            color = inactiveColor,
+                            topLeft = Offset(rightStart, centerY - halfTrack),
+                            size = Size(size.width - rightStart, trackHeight),
+                            topLeftRadius = smallCornerRadius,
+                            bottomLeftRadius = smallCornerRadius,
+                            topRightRadius = fullCornerRadius,
+                            bottomRightRadius = fullCornerRadius,
+                        )
+                    }
+                }
+            },
+            modifier = Modifier.weight(1f).padding(horizontal = 4.dp),
+        )
+
+        // Plus Button (+0.05 step)
+        Box(
+            modifier =
+                Modifier.size(46.dp)
+                    .clip(CircleShape)
+                    .background(PlayerOverlayBackground)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = ripple(bounded = true, radius = 23.dp),
+                        enabled = speedState < 4.0f,
+                        onClick = {
+                            val next =
+                                (round((speedState + 0.05f) * 100f) / 100f).coerceAtMost(4.0f)
+                            onSpeedChange(next)
+                        },
+                    ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                painter = painterResource(id = CoreR.drawable.ic_plus),
+                contentDescription = "+",
+                modifier = Modifier.size(20.dp),
+                tint = if (speedState < 4.0f) Color.White else Color.White.copy(alpha = 0.3f),
+            )
+        }
+    }
+}
+
 @Preview(
-    name = "Landscape",
+    name = "Phone Portrait",
+    showBackground = true,
+    backgroundColor = 0xFF141416,
+    widthDp = 360,
+)
+@Preview(
+    name = "Phone Landscape",
     showBackground = true,
     backgroundColor = 0xFF141416,
     widthDp = 800,
@@ -468,10 +523,33 @@ fun PlaybackSpeedPicker(
 )
 @Composable
 private fun PlaybackSpeedPickerPreview() {
-    FindroidTheme {
+    FindroidTheme(darkTheme = true) {
         PlaybackSpeedPicker(
             currentSpeed = 1.0f,
             onSpeedChange = {},
+            isTabletLayout = false,
         )
+    }
+}
+
+@Preview(
+    name = "Tablet Side Panel",
+    showBackground = true,
+    backgroundColor = 0xFF141416,
+    widthDp = 432,
+    heightDp = 700,
+)
+@Composable
+private fun PlaybackSpeedPickerTabletPreview() {
+    FindroidTheme(darkTheme = true) {
+        Surface(color = PlayerCardBackground) {
+            Box(modifier = Modifier.padding(24.dp)) {
+                PlaybackSpeedPicker(
+                    currentSpeed = 1.25f,
+                    onSpeedChange = {},
+                    isTabletLayout = true,
+                )
+            }
+        }
     }
 }

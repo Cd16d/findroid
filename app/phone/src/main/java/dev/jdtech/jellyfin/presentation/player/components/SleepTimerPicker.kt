@@ -48,7 +48,7 @@ import dev.jdtech.jellyfin.player.core.domain.models.SleepTimerStatus
 import dev.jdtech.jellyfin.presentation.components.SelectableTrackItem
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 
-private val CardShape = CentralShapes.LargeCard
+private val CardShape = CentralShapes.GroupSingle
 
 private val Presets = listOf(10, 15, 30, 45, 60)
 
@@ -296,10 +296,16 @@ fun SleepTimerPicker(
     }
 }
 
-@Preview(showBackground = true, backgroundColor = 0xFF141416)
+@Preview(name = "Phone Off", showBackground = true, backgroundColor = 0xFF141416, widthDp = 360)
+@Preview(
+    name = "Tablet Side Panel Off",
+    showBackground = true,
+    backgroundColor = 0xFF141416,
+    widthDp = 432,
+)
 @Composable
 private fun SleepTimerPickerOffPreview() {
-    FindroidTheme {
+    FindroidTheme(darkTheme = true) {
         Surface(color = PlayerCardBackground) {
             SleepTimerPicker(
                 sleepTimerStatus = SleepTimerStatus(mode = SleepTimerMode.Off),
@@ -310,10 +316,16 @@ private fun SleepTimerPickerOffPreview() {
     }
 }
 
-@Preview(showBackground = true, backgroundColor = 0xFF141416)
+@Preview(name = "Phone Active", showBackground = true, backgroundColor = 0xFF141416, widthDp = 360)
+@Preview(
+    name = "Tablet Side Panel Active",
+    showBackground = true,
+    backgroundColor = 0xFF141416,
+    widthDp = 432,
+)
 @Composable
 private fun SleepTimerPickerActivePreview() {
-    FindroidTheme {
+    FindroidTheme(darkTheme = true) {
         Surface(color = PlayerCardBackground) {
             SleepTimerPicker(
                 sleepTimerStatus =

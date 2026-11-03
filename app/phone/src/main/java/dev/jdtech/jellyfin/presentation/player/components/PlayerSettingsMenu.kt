@@ -258,7 +258,18 @@ internal fun TabletSettingsMenu(
         isTablet = true,
     )
 
-@Preview(showBackground = true, backgroundColor = 0xFF141416, widthDp = 360)
+@Preview(
+    name = "Phone Settings Menu",
+    showBackground = true,
+    backgroundColor = 0xFF141416,
+    widthDp = 360,
+)
+@Preview(
+    name = "Tablet Settings Menu",
+    showBackground = true,
+    backgroundColor = 0xFF141416,
+    widthDp = 432,
+)
 @Composable
 private fun TabletSettingsMenuPreview() {
     FindroidTheme(darkTheme = true) {

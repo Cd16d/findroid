@@ -64,10 +64,15 @@ internal fun TabletAspectRatioList(
     )
 }
 
-@Preview(showBackground = true, backgroundColor = 0xFF1E1E1E)
+@Preview(
+    name = "Phone Aspect Ratio List",
+    showBackground = true,
+    backgroundColor = 0xFF141416,
+    widthDp = 360,
+)
 @Composable
 private fun PhoneAspectRatioListPreview() {
-    FindroidTheme {
+    FindroidTheme(darkTheme = true) {
         PhoneAspectRatioList(
             currentResizeMode = PlayerResizeMode.FIT,
             onResizeModeSelected = {},
@@ -75,10 +80,15 @@ private fun PhoneAspectRatioListPreview() {
     }
 }
 
-@Preview(showBackground = true, backgroundColor = 0xFF141414)
+@Preview(
+    name = "Tablet Aspect Ratio List",
+    showBackground = true,
+    backgroundColor = 0xFF141416,
+    widthDp = 432,
+)
 @Composable
 private fun TabletAspectRatioListPreview() {
-    FindroidTheme {
+    FindroidTheme(darkTheme = true) {
         TabletAspectRatioList(
             currentResizeMode = PlayerResizeMode.ZOOM,
             onResizeModeSelected = {},

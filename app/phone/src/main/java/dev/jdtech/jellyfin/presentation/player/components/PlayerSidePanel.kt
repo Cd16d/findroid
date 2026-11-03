@@ -7,15 +7,18 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
@@ -38,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.media3.common.Player
 import androidx.media3.common.Tracks
 import dev.jdtech.jellyfin.core.R as CoreR
+import dev.jdtech.jellyfin.core.presentation.theme.PlayerCardBackground
 import dev.jdtech.jellyfin.core.presentation.theme.PlayerSheetBackground
 import dev.jdtech.jellyfin.player.core.R as PlayerR
 import dev.jdtech.jellyfin.player.core.domain.models.PlayerSidePanelType
@@ -102,7 +106,7 @@ fun PlayerSidePanel(
         ) {
             // Header with Back navigation & Title
             Row(
-                modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                modifier = Modifier.fillMaxWidth().height(36.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
@@ -159,6 +163,7 @@ fun PlayerSidePanel(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
+            Spacer(modifier = Modifier.height(16.dp))
 
             when (panelType) {
                 PlayerSidePanelType.SETTINGS -> {
@@ -235,26 +240,46 @@ fun PlayerSidePanel(
     }
 }
 
-@Preview(showBackground = true, backgroundColor = 0xFF141414)
+@Preview(
+    name = "Tablet Selectable Item",
+    showBackground = true,
+    backgroundColor = 0xFF141416,
+    widthDp = 432,
+)
 @Composable
 private fun TabletSelectableItemPreview() {
-    FindroidTheme {
-        SelectableTrackItem(
-            title = "English - Stereo",
-            chips = listOf("Default"),
-            isSelected = true,
-            onClick = {},
-        )
+    FindroidTheme(darkTheme = true) {
+        Surface(color = PlayerCardBackground) {
+            Box(modifier = Modifier.padding(24.dp)) {
+                SelectableTrackItem(
+                    title = "English - Stereo",
+                    chips = listOf("Default"),
+                    isSelected = true,
+                    onClick = {},
+                )
+            }
+        }
     }
 }
 
-@Preview(showBackground = true, backgroundColor = 0xFF141414)
+@Preview(
+    name = "Tablet Speed List",
+    showBackground = true,
+    backgroundColor = 0xFF141416,
+    widthDp = 432,
+    heightDp = 600,
+)
 @Composable
 private fun TabletSpeedListPreview() {
-    FindroidTheme {
-        PlaybackSpeedPicker(
-            currentSpeed = 1.25f,
-            onSpeedChange = {},
-        )
+    FindroidTheme(darkTheme = true) {
+        Surface(color = PlayerCardBackground) {
+            Box(modifier = Modifier.padding(24.dp)) {
+                PlaybackSpeedPicker(
+                    currentSpeed = 1.25f,
+                    onSpeedChange = {},
+                    isTabletLayout = true,
+                )
+            }
+        }
     }
 }

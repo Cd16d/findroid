@@ -146,7 +146,12 @@ fun PlayerNavigationItem(
     }
 }
 
-@Preview(showBackground = true, backgroundColor = 0xFF141416)
+@Preview(
+    name = "Phone Navigation Item",
+    showBackground = true,
+    backgroundColor = 0xFF141416,
+    widthDp = 360,
+)
 @Composable
 private fun PhoneNavigationItemPreview() {
     FindroidTheme(darkTheme = true) {
@@ -170,7 +175,12 @@ private fun PhoneNavigationItemPreview() {
     }
 }
 
-@Preview(showBackground = true, backgroundColor = 0xFF141416)
+@Preview(
+    name = "Tablet Navigation Item",
+    showBackground = true,
+    backgroundColor = 0xFF141416,
+    widthDp = 432,
+)
 @Composable
 private fun TabletNavigationItemPreview() {
     FindroidTheme(darkTheme = true) {
