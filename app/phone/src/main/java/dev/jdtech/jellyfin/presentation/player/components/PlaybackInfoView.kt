@@ -66,7 +66,7 @@ fun PlaybackInfoView(
 
     LazyColumn(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         // 1. Playback Info
         item {
@@ -141,7 +141,7 @@ fun PlaybackInfoView(
                                         id = PlayerR.string.playback_info_transcode_reasons
                                     ),
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = Color.White.copy(alpha = 0.7f),
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                                 fontWeight = FontWeight.Medium,
                             )
                             infoData.transcodeReasons.forEach { reason ->
@@ -158,7 +158,7 @@ fun PlaybackInfoView(
                                     Text(
                                         text = reason,
                                         style = MaterialTheme.typography.bodyMedium,
-                                        color = Color.White,
+                                        color = MaterialTheme.colorScheme.onSurface,
                                         fontWeight = FontWeight.SemiBold,
                                     )
                                 }
@@ -190,14 +190,14 @@ fun PlaybackInfoView(
                                             id = PlayerR.string.playback_info_transcode_speed_graph
                                         ),
                                     style = MaterialTheme.typography.bodyMedium,
-                                    color = Color.White.copy(alpha = 0.7f),
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                                     fontWeight = FontWeight.Medium,
                                 )
 
                                 Text(
                                     text = infoData.transcodeSpeed.orEmpty(),
                                     style = MaterialTheme.typography.bodyMedium,
-                                    color = Color.White,
+                                    color = MaterialTheme.colorScheme.onSurface,
                                     fontWeight = FontWeight.SemiBold,
                                 )
                             }
@@ -329,7 +329,7 @@ fun PlaybackInfoView(
                         text =
                             stringResource(id = PlayerR.string.playback_info_buffer_health_graph),
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White.copy(alpha = 0.7f),
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                         fontWeight = FontWeight.Medium,
                     )
                     SimpleStatGraph(
@@ -358,7 +358,7 @@ private fun PlaybackInfoSectionCard(
         modifier = Modifier.fillMaxWidth(),
         shape = CentralShapes.GroupSingle,
         color = PlayerCardBackground,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)),
     ) {
         Column(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
@@ -388,9 +388,9 @@ private fun PlaybackInfoSubSection(
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-        shape = RoundedCornerShape(12.dp),
-        color = Color.White.copy(alpha = 0.04f),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.06f)),
+        shape = CentralShapes.SmallCard,
+        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.04f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)),
     ) {
         Column(
             modifier = Modifier.fillMaxWidth().padding(12.dp),
@@ -426,14 +426,14 @@ private fun PlaybackInfoRow(
         Text(
             text = label,
             style = MaterialTheme.typography.bodyMedium,
-            color = Color.White.copy(alpha = 0.7f),
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
             fontWeight = FontWeight.Medium,
             modifier = Modifier.weight(0.45f),
         )
         Text(
             text = value,
             style = MaterialTheme.typography.bodyMedium,
-            color = Color.White,
+            color = MaterialTheme.colorScheme.onSurface,
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier.weight(0.55f),
         )
@@ -464,14 +464,14 @@ private fun ConversionProgressRow(
                 text =
                     stringResource(id = PlayerR.string.playback_info_transcode_conversion_progress),
                 style = MaterialTheme.typography.bodyMedium,
-                color = Color.White.copy(alpha = 0.7f),
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                 fontWeight = FontWeight.Medium,
             )
             if (text.isNotBlank()) {
                 Text(
                     text = text,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.SemiBold,
                 )
             }
@@ -480,7 +480,7 @@ private fun ConversionProgressRow(
             progress = { ratio.coerceIn(0f, 1f) },
             modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)),
             color = MaterialTheme.colorScheme.primary,
-            trackColor = Color.White.copy(alpha = 0.12f),
+            trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
         )
     }
 }
@@ -515,7 +515,7 @@ private fun SimpleStatGraph(
             Text(
                 text = PlaybackInfoFormatter.formatStatMax(maxVal, unit),
                 style = MaterialTheme.typography.labelSmall,
-                color = Color.White.copy(alpha = 0.5f),
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
             )
             Text(
                 text = PlaybackInfoFormatter.formatStatLatest(latestVal, unit),
@@ -536,7 +536,7 @@ private fun SimpleStatGraph(
                             bottomEnd = 16.dp,
                         )
                     )
-                    .background(Color.White.copy(alpha = 0.04f))
+                    .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.04f))
         ) {
             drawStatGraph(
                 data = data,

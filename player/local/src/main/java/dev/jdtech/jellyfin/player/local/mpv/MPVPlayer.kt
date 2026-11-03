@@ -215,6 +215,7 @@ class MPVPlayer(
                 Property("time-pos", MpvFormat.MPV_FORMAT_INT64),
                 Property("duration", MpvFormat.MPV_FORMAT_INT64),
                 Property("demuxer-cache-time", MpvFormat.MPV_FORMAT_INT64),
+                Property("demuxer-cache-duration", MpvFormat.MPV_FORMAT_DOUBLE),
                 Property("speed", MpvFormat.MPV_FORMAT_DOUBLE),
                 Property("playlist-count", MpvFormat.MPV_FORMAT_INT64),
                 Property("playlist-current-pos", MpvFormat.MPV_FORMAT_INT64),
@@ -322,7 +323,8 @@ class MPVPlayer(
     private var currentMediaItemIndex: Int = 0
     private var currentPositionMs: Long? = null
     private var currentDurationMs: Long? = null
-    private var currentCacheDurationMs: Long? = null
+    private var currentCacheTimeMs: Long? = null
+    private var currentDemuxerCacheDurationMs: Long? = null
     private var initialCommands = mutableListOf<Array<String>>()
     private var initialIndex: Int = 0
     private var initialSeekTo: Long = 0L
@@ -401,7 +403,7 @@ class MPVPlayer(
                         currentDurationMs = newDuration
                     }
                 }
-                "demuxer-cache-time" -> currentCacheDurationMs = value * C.MILLIS_PER_SECOND
+                "demuxer-cache-time" -> currentCacheTimeMs = value * C.MILLIS_PER_SECOND
                 "dwidth",
                 "dheight",
                 "width",
@@ -443,6 +445,10 @@ class MPVPlayer(
                         listener.onPlaybackParametersChanged(playbackParameters)
                     }
                 }
+                "demuxer-cache-duration" -> {
+                    currentDemuxerCacheDurationMs =
+                        (value * C.MILLIS_PER_SECOND).toLong().coerceAtLeast(0L)
+                }
             }
         }
     }
@@ -471,6 +477,8 @@ class MPVPlayer(
                     checkAndUpdateVideoSize()
                 }
                 MpvEvent.MPV_EVENT_SEEK -> {
+                    currentCacheTimeMs = null
+                    currentDemuxerCacheDurationMs = 0L
                     setPlayerStateAndNotifyIfChanged(playbackState = STATE_BUFFERING)
                     listeners.sendEvent(EVENT_POSITION_DISCONTINUITY) { listener ->
                         @Suppress("DEPRECATION")
@@ -865,7 +873,8 @@ class MPVPlayer(
         playbackState = STATE_IDLE
         currentPositionMs = null
         currentDurationMs = null
-        currentCacheDurationMs = null
+        currentCacheTimeMs = null
+        currentDemuxerCacheDurationMs = null
         initialCommands.clear()
     }
 
@@ -1036,6 +1045,9 @@ class MPVPlayer(
             initialSeekTo =
                 if (isPlayerReady) {
                     if (seekTo > 0L || positionMs != C.TIME_UNSET) {
+                        currentPositionMs = seekTo
+                        currentCacheTimeMs = null
+                        currentDemuxerCacheDurationMs = 0L
                         mpvLib.command(
                             arrayOf(
                                 "seek",
@@ -1227,7 +1239,8 @@ class MPVPlayer(
      * buffered, in milliseconds.
      */
     override fun getBufferedPosition(): Long {
-        return currentCacheDurationMs ?: contentPosition
+        val pos = if (contentPosition == C.TIME_UNSET) 0L else contentPosition
+        return currentCacheTimeMs ?: currentDemuxerCacheDurationMs?.let { pos + it } ?: pos
     }
 
     /**
@@ -1235,7 +1248,8 @@ class MPVPlayer(
      * milliseconds. This includes pre-buffered data for subsequent ads and windows.
      */
     override fun getTotalBufferedDuration(): Long {
-        return bufferedPosition
+        val pos = if (contentPosition == C.TIME_UNSET) 0L else contentPosition
+        return currentDemuxerCacheDurationMs ?: (bufferedPosition - pos).coerceAtLeast(0L)
     }
 
     /** Returns whether the player is currently playing an ad. */

@@ -1385,7 +1385,16 @@ constructor(
 
         val currentBufferSecs = (player.totalBufferedDuration / 1000f).coerceAtLeast(0f)
         val bufferHealthText = String.format(Locale.US, "%.1f s", currentBufferSecs)
-        val audioOutputText = if (isMpv) "MPV AudioTrack" else "ExoPlayer AudioTrack"
+        val audioOutputText =
+            if (isMpv) {
+                when (appPreferences.getPlayerMpvAo()) {
+                    PlayerMpvAo.AUDIOTRACK -> "AudioTrack"
+                    PlayerMpvAo.OPENSLES -> "OpenSL ES"
+                    PlayerMpvAo.AAUDIO -> "AAudio"
+                }
+            } else {
+                null
+            }
 
         _uiState.update { state ->
             val cur = state.playbackInfoData

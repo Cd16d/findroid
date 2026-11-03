@@ -31,6 +31,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.tv.material3.Border
+import androidx.tv.material3.ClickableSurfaceDefaults
+import androidx.tv.material3.ClickableSurfaceScale
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.SurfaceDefaults
@@ -71,12 +74,12 @@ internal fun PlaybackInfoList(
     LazyColumn(
         verticalArrangement = Arrangement.spacedBy(10.dp),
         contentPadding = PaddingValues(vertical = 4.dp),
-        modifier = Modifier.focusRequester(initialFocusRequester),
     ) {
         // Playback Info Section
         item {
             TvPlaybackInfoCard(
-                title = stringResource(id = PlayerR.string.playback_info_playback_section)
+                title = stringResource(id = PlayerR.string.playback_info_playback_section),
+                modifier = Modifier.focusRequester(initialFocusRequester),
             ) {
                 TvPlaybackInfoRow(
                     label = stringResource(id = PlayerR.string.playback_info_player),
@@ -320,12 +323,6 @@ internal fun PlaybackInfoList(
                     label = stringResource(id = PlayerR.string.playback_info_dropped_frames),
                     value = infoData.droppedFrames,
                 )
-                infoData.bufferHealth?.let {
-                    TvPlaybackInfoRow(
-                        label = stringResource(id = PlayerR.string.playback_info_buffer_health),
-                        value = it,
-                    )
-                }
                 infoData.audioOutput?.let {
                     TvPlaybackInfoRow(
                         label = stringResource(id = PlayerR.string.playback_info_audio_output),
@@ -467,16 +464,34 @@ private fun TvConversionProgressRow(
 @Composable
 private fun TvPlaybackInfoCard(
     title: String,
+    modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Surface(
-        shape = PanelItemShape,
+        onClick = {},
+        shape = ClickableSurfaceDefaults.shape(shape = PanelItemShape),
         colors =
-            SurfaceDefaults.colors(
+            ClickableSurfaceDefaults.colors(
                 containerColor = PlayerTvSidePanelContainer,
+                focusedContainerColor = PlayerTvSidePanelContainer,
                 contentColor = Color.White,
+                focusedContentColor = Color.White,
             ),
-        modifier = Modifier.fillMaxWidth(),
+        border =
+            ClickableSurfaceDefaults.border(
+                border =
+                    Border(
+                        BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
+                        shape = PanelItemShape,
+                    ),
+                focusedBorder =
+                    Border(
+                        BorderStroke(2.dp, Color.White),
+                        shape = PanelItemShape,
+                    ),
+            ),
+        scale = ClickableSurfaceScale.None,
+        modifier = modifier.fillMaxWidth(),
     ) {
         Column(
             modifier = Modifier.fillMaxWidth().padding(14.dp),
