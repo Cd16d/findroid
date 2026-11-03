@@ -134,7 +134,6 @@ internal fun PlayerSettingsMenu(
                 title = stringResource(id = PlayerR.string.video_quality),
                 subtitle = uiState.selectedQuality.label,
                 iconRes = PlayerR.drawable.ic_video_quality,
-                isTablet = isTablet,
                 onClick = { onNavigate(PlayerSidePanelType.QUALITY) },
             )
         }
@@ -143,7 +142,6 @@ internal fun PlayerSettingsMenu(
                 title = stringResource(id = PlayerR.string.audio),
                 subtitle = audioTitle,
                 iconRes = CoreR.drawable.ic_audio,
-                isTablet = isTablet,
                 onClick = { onNavigate(PlayerSidePanelType.AUDIO) },
             )
         }
@@ -152,7 +150,6 @@ internal fun PlayerSettingsMenu(
                 title = stringResource(id = PlayerR.string.subtitles),
                 subtitle = subTitle,
                 iconRes = CoreR.drawable.ic_closed_caption,
-                isTablet = isTablet,
                 onClick = { onNavigate(PlayerSidePanelType.SUBTITLES) },
             )
         }
@@ -161,7 +158,6 @@ internal fun PlayerSettingsMenu(
                 title = stringResource(id = PlayerR.string.playback_speed),
                 subtitle = currentSpeedText,
                 iconRes = PlayerR.drawable.ic_playback_speed,
-                isTablet = isTablet,
                 onClick = { onNavigate(PlayerSidePanelType.SPEED) },
             )
         }
@@ -170,7 +166,6 @@ internal fun PlayerSettingsMenu(
                 title = stringResource(id = PlayerR.string.aspect_ratio),
                 subtitle = currentAspectText,
                 iconRes = PlayerR.drawable.ic_aspect_ratio,
-                isTablet = isTablet,
                 onClick = { onNavigate(PlayerSidePanelType.ASPECT_RATIO) },
             )
         }
@@ -179,7 +174,6 @@ internal fun PlayerSettingsMenu(
                 title = stringResource(id = PlayerR.string.player_ambient_mode),
                 iconRes = CoreR.drawable.ic_ambient_mode,
                 showChevron = false,
-                isTablet = isTablet,
                 trailingContent = { PlayerSwitch(checked = isAmbientModeEnabled) },
                 onClick = { onAmbientModeToggle(!isAmbientModeEnabled) },
             )
@@ -189,7 +183,6 @@ internal fun PlayerSettingsMenu(
                 title = stringResource(id = PlayerR.string.sleep_timer),
                 subtitle = sleepTimerSubtitle,
                 iconRes = PlayerR.drawable.ic_sleep_timer,
-                isTablet = isTablet,
                 onClick = { onNavigate(PlayerSidePanelType.SLEEP_TIMER) },
             )
         }
@@ -199,7 +192,6 @@ internal fun PlayerSettingsMenu(
                 iconRes = CoreR.drawable.ic_lock,
                 showChevron = false,
                 enabled = isPlaying,
-                isTablet = isTablet,
                 onClick = onLock,
             )
         }
@@ -209,7 +201,6 @@ internal fun PlayerSettingsMenu(
                     title = stringResource(id = PlayerR.string.playback_info),
                     iconRes = CoreR.drawable.ic_chart_line,
                     showChevron = true,
-                    isTablet = isTablet,
                     onClick = { onNavigate(PlayerSidePanelType.PLAYBACK_INFO) },
                 )
             }
@@ -279,42 +270,36 @@ private fun TabletSettingsMenuPreview() {
                 title = "Video Quality",
                 subtitle = "Auto (1080p)",
                 iconRes = PlayerR.drawable.ic_video_quality,
-                isTablet = true,
                 onClick = {},
             )
             PlayerNavigationItem(
                 title = "Audio",
                 subtitle = "English - 5.1",
                 iconRes = CoreR.drawable.ic_audio,
-                isTablet = true,
                 onClick = {},
             )
             PlayerNavigationItem(
                 title = "Subtitles",
                 subtitle = "English [CC]",
                 iconRes = CoreR.drawable.ic_closed_caption,
-                isTablet = true,
                 onClick = {},
             )
             PlayerNavigationItem(
                 title = "Playback Speed",
                 subtitle = "1.0×",
                 iconRes = PlayerR.drawable.ic_playback_speed,
-                isTablet = true,
                 onClick = {},
             )
             PlayerNavigationItem(
                 title = "Aspect Ratio",
                 subtitle = "Fit",
                 iconRes = PlayerR.drawable.ic_aspect_ratio,
-                isTablet = true,
                 onClick = {},
             )
             PlayerNavigationItem(
                 title = "Sleep Timer",
                 subtitle = "Off",
                 iconRes = PlayerR.drawable.ic_sleep_timer,
-                isTablet = true,
                 onClick = {},
             )
         }

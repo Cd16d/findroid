@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -33,6 +34,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.core.presentation.theme.CentralShapes
+import dev.jdtech.jellyfin.core.presentation.theme.PlayerCardBackground
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 
 val TrackItemShape = CentralShapes.GroupSingle
@@ -62,13 +64,13 @@ fun SelectableTrackItem(
         if (isSelected) {
             MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.28f)
         } else {
-            MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.5f)
+            PlayerCardBackground
         }
     val borderColor =
         if (isSelected) {
             MaterialTheme.colorScheme.primary
         } else {
-            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)
+            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
         }
     val contentColor =
         if (isSelected) {
@@ -78,7 +80,7 @@ fun SelectableTrackItem(
         }
 
     Surface(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth().heightIn(min = 52.dp),
         shape = shape,
         color = containerColor,
         border =
@@ -88,7 +90,7 @@ fun SelectableTrackItem(
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             if (isSelected) {
                 Icon(
@@ -173,10 +175,10 @@ fun SelectableTrackItem(
     }
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, backgroundColor = 0xFF1E1E1E)
 @Composable
 private fun SelectableTrackItemPreview() {
-    FindroidTheme {
+    FindroidTheme(darkTheme = true) {
         SelectableTrackItem(
             title = "English (AAC 5.1)",
             chips = listOf("Default", "5.1"),

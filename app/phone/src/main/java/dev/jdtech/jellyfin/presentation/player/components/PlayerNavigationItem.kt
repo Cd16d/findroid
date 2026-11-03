@@ -68,19 +68,17 @@ fun PlayerNavigationItem(
     badge: String? = null,
     enabled: Boolean = true,
     showChevron: Boolean = true,
-    isTablet: Boolean = false,
     trailingContent: (@Composable () -> Unit)? = null,
 ) {
-    val alpha = if (enabled) 1f else if (isTablet) 0.38f else 0.4f
+    val alpha = if (enabled) 1f else 0.38f
     val backgroundColor = PlayerCardBackground
-    val arrangementSpacing = if (isTablet) 12.dp else 10.dp
-    val iconSize = if (isTablet) 22.dp else 20.dp
-    val titleStyle =
-        if (isTablet) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyMedium
+    val arrangementSpacing = 12.dp
+    val iconSize = 20.dp
+    val titleStyle = MaterialTheme.typography.bodyMedium
     val onSurface = MaterialTheme.colorScheme.onSurface
 
-    val minHeight = if (isTablet) 52.dp else 48.dp
-    val verticalPadding = if (isTablet) 14.dp else 12.dp
+    val minHeight = 52.dp
+    val verticalPadding = 14.dp
 
     Surface(
         modifier =
@@ -184,14 +182,12 @@ private fun TabletNavigationItemPreview() {
                 title = "Video Quality",
                 subtitle = "Auto (1080p)",
                 iconRes = PlayerR.drawable.ic_video_quality,
-                isTablet = true,
                 onClick = {},
             )
             PlayerNavigationItem(
                 title = "Audio",
                 subtitle = "English - Stereo",
                 iconRes = CoreR.drawable.ic_audio,
-                isTablet = true,
                 onClick = {},
             )
         }

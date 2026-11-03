@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -29,7 +28,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -39,16 +37,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.core.presentation.theme.CentralShapes
-import dev.jdtech.jellyfin.player.core.R as PlayerR
+import dev.jdtech.jellyfin.core.presentation.theme.PlayerCardBackground
 import dev.jdtech.jellyfin.player.core.domain.models.ResolutionTier
 import dev.jdtech.jellyfin.player.core.domain.models.VideoQualityOption
 import dev.jdtech.jellyfin.player.local.presentation.PlayerViewModel
 import dev.jdtech.jellyfin.presentation.components.SelectableTrackItem
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
-import kotlin.math.roundToInt
 import org.jellyfin.sdk.model.api.MediaStreamType
+import kotlin.math.roundToInt
+import dev.jdtech.jellyfin.core.R as CoreR
+import dev.jdtech.jellyfin.player.core.R as PlayerR
 
 /**
  * Video quality selection list for phone bottom sheet.
@@ -167,13 +166,13 @@ internal fun AutoQualityCard(
         if (isSelected) {
             MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.28f)
         } else {
-            MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.5f)
+            PlayerCardBackground
         }
     val borderColor =
         if (isSelected) {
             MaterialTheme.colorScheme.primary
         } else {
-            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)
+            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
         }
     val contentColor =
         if (isSelected) {
@@ -203,7 +202,7 @@ internal fun AutoQualityCard(
                 Row(
                     modifier = Modifier.weight(1f, fill = false),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     if (isSelected) {
                         Icon(
@@ -218,7 +217,7 @@ internal fun AutoQualityCard(
                     Text(
                         text = stringResource(PlayerR.string.quality_auto),
                         style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                        fontWeight = FontWeight.Bold,
                         color = contentColor,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -240,7 +239,9 @@ internal fun AutoQualityCard(
                                                     alpha = 0.15f
                                                 )
                                             } else {
-                                                MaterialTheme.colorScheme.surfaceVariant
+                                                MaterialTheme.colorScheme.onSurface.copy(
+                                                    alpha = 0.08f
+                                                )
                                             }
                                         )
                                         .padding(horizontal = 6.dp, vertical = 2.dp)
@@ -329,13 +330,13 @@ private fun ResolutionQualityCard(
         if (isSelected) {
             MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.28f)
         } else {
-            MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.5f)
+            PlayerCardBackground
         }
     val borderColor =
         if (isSelected) {
             MaterialTheme.colorScheme.primary
         } else {
-            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)
+            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
         }
     val contentColor =
         if (isSelected) {
@@ -368,7 +369,7 @@ private fun ResolutionQualityCard(
                 Row(
                     modifier = Modifier.weight(1f),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     if (isSelected) {
                         Icon(
@@ -451,7 +452,7 @@ private fun ResolutionQualityCard(
 @Preview(showBackground = true, backgroundColor = 0xFF1E1E1E)
 @Composable
 private fun AutoQualityCardPreview() {
-    FindroidTheme {
+    FindroidTheme(darkTheme = true) {
         Column(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -477,7 +478,7 @@ private fun AutoQualityCardPreview() {
 @Preview(showBackground = true, backgroundColor = 0xFF1E1E1E)
 @Composable
 private fun ResolutionQualityCardPreview() {
-    FindroidTheme {
+    FindroidTheme(darkTheme = true) {
         val mockTier =
             ResolutionTier("1080p", 1920, 1080, listOf(3_000_000, 6_000_000, 10_000_000), 6_000_000)
         Column(
