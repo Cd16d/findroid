@@ -5,14 +5,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material3.LocalMinimumInteractiveComponentSize
-import androidx.compose.material3.Switch
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -175,15 +171,7 @@ internal fun PhoneSettingsMenu(
                 subtitle = "",
                 iconRes = CoreR.drawable.ic_ambient_mode,
                 showChevron = false,
-                trailingContent = {
-                    CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 0.dp) {
-                        Switch(
-                            checked = isAmbientModeEnabled,
-                            onCheckedChange = null,
-                            modifier = Modifier.scale(0.75f),
-                        )
-                    }
-                },
+                trailingContent = { PlayerSwitch(checked = isAmbientModeEnabled) },
                 onClick = { onAmbientModeToggle(!isAmbientModeEnabled) },
             )
         }
@@ -346,15 +334,7 @@ internal fun TabletSettingsMenu(
                 subtitle = "",
                 iconRes = CoreR.drawable.ic_ambient_mode,
                 showChevron = false,
-                trailingContent = {
-                    CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 0.dp) {
-                        Switch(
-                            checked = isAmbientModeEnabled,
-                            onCheckedChange = null,
-                            modifier = Modifier.scale(0.75f),
-                        )
-                    }
-                },
+                trailingContent = { PlayerSwitch(checked = isAmbientModeEnabled) },
                 onClick = { onAmbientModeToggle(!isAmbientModeEnabled) },
             )
         }

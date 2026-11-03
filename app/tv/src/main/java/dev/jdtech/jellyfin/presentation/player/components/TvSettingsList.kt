@@ -3,11 +3,13 @@ package dev.jdtech.jellyfin.presentation.player.components
 import androidx.annotation.OptIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -55,6 +57,25 @@ import dev.jdtech.jellyfin.player.local.presentation.PlayerViewModel
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.settings.domain.Constants.PlayerResizeMode
 import org.jellyfin.sdk.model.api.MediaStreamType
+
+/** Scaled switch component for player navigation items with fixed 39dp x 24dp layout bounds. */
+@Composable
+private fun PlayerSwitch(
+    checked: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier.size(width = 39.dp, height = 24.dp).scale(0.75f),
+        contentAlignment = Alignment.Center,
+    ) {
+        CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 0.dp) {
+            Switch(
+                checked = checked,
+                onCheckedChange = null,
+            )
+        }
+    }
+}
 
 /**
  * Header title displaying the currently active panel page title.
@@ -258,15 +279,7 @@ internal fun SettingsList(
                 iconRes = CoreR.drawable.ic_ambient_mode,
                 onClick = { onAmbientModeToggle(!isAmbientModeEnabled) },
                 modifier = Modifier.focusRequester(ambientFocusRequester),
-                trailingContent = {
-                    CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 0.dp) {
-                        Switch(
-                            checked = isAmbientModeEnabled,
-                            onCheckedChange = null,
-                            modifier = Modifier.scale(0.75f),
-                        )
-                    }
-                },
+                trailingContent = { PlayerSwitch(checked = isAmbientModeEnabled) },
             )
         }
 
@@ -286,7 +299,6 @@ internal fun SettingsList(
             item {
                 NavigationItem(
                     title = stringResource(id = PlayerR.string.playback_info),
-                    subtitle = "",
                     iconRes = CoreR.drawable.ic_chart_line,
                     onClick = { onNavigate(PlayerSidePanelType.PLAYBACK_INFO) },
                     modifier = Modifier.focusRequester(playbackInfoFocusRequester),
@@ -324,14 +336,14 @@ internal fun NavigationItem(
         ),
     trailingContent: (@Composable () -> Unit)? = null,
 ) {
-    val verticalPadding = if (trailingContent != null) 9.dp else 14.dp
+    val verticalPadding = 14.dp
 
     Surface(
         onClick = onClick,
         shape = shape,
         colors = colors,
         scale = ClickableSurfaceScale.None,
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth().heightIn(min = 52.dp),
     ) {
         Row(
             modifier =

@@ -8,16 +8,21 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
@@ -31,6 +36,25 @@ import dev.jdtech.jellyfin.core.presentation.theme.CentralShapes
 import dev.jdtech.jellyfin.core.presentation.theme.PlayerCardBackground
 import dev.jdtech.jellyfin.player.core.R as PlayerR
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
+
+/** Scaled switch component for player navigation items with fixed 39dp x 24dp layout bounds. */
+@Composable
+fun PlayerSwitch(
+    checked: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier.size(width = 39.dp, height = 24.dp).scale(0.75f),
+        contentAlignment = Alignment.Center,
+    ) {
+        CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 0.dp) {
+            Switch(
+                checked = checked,
+                onCheckedChange = null,
+            )
+        }
+    }
+}
 
 /** Unified navigation item for player settings menus (Phone & Tablet). */
 @Composable
@@ -54,10 +78,12 @@ fun PlayerNavigationItem(
         if (isTablet) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyMedium
     val onSurface = MaterialTheme.colorScheme.onSurface
 
-    val verticalPadding = if (trailingContent != null) 10.dp else 14.dp
+    val minHeight = if (isTablet) 52.dp else 48.dp
+    val verticalPadding = if (isTablet) 14.dp else 12.dp
 
     Surface(
-        modifier = Modifier.fillMaxWidth().graphicsLayer { this.alpha = alpha },
+        modifier =
+            Modifier.fillMaxWidth().heightIn(min = minHeight).graphicsLayer { this.alpha = alpha },
         shape = shape,
         color = backgroundColor,
         border = BorderStroke(1.dp, onSurface.copy(alpha = 0.08f)),
