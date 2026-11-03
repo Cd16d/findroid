@@ -105,64 +105,11 @@ fun PlayerSidePanel(
                     .padding(top = 28.dp, bottom = 24.dp)
         ) {
             // Header with Back navigation & Title
-            Row(
-                modifier = Modifier.fillMaxWidth().height(36.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                if (panelType != PlayerSidePanelType.SETTINGS && !openedDirectly) {
-                    Box(
-                        modifier =
-                            Modifier.size(36.dp)
-                                .clip(CircleShape)
-                                .background(PlayerSheetBackground)
-                                .clickable(
-                                    interactionSource = remember { MutableInteractionSource() },
-                                    indication = ripple(bounded = true, radius = 18.dp),
-                                    onClick = { onPanelTypeChange(PlayerSidePanelType.SETTINGS) },
-                                ),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            painter = painterResource(id = CoreR.drawable.ic_arrow_left),
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp),
-                            tint = Color.White,
-                        )
-                    }
-                }
-
-                Text(
-                    text =
-                        stringResource(
-                            id =
-                                when (panelType) {
-                                    PlayerSidePanelType.AUDIO -> PlayerR.string.select_audio_track
-                                    PlayerSidePanelType.SUBTITLES ->
-                                        PlayerR.string.select_subtitle_track
-
-                                    PlayerSidePanelType.SPEED ->
-                                        PlayerR.string.select_playback_speed
-
-                                    PlayerSidePanelType.ASPECT_RATIO -> PlayerR.string.aspect_ratio
-                                    PlayerSidePanelType.CHAPTERS -> PlayerR.string.chapters
-                                    PlayerSidePanelType.SLEEP_TIMER -> PlayerR.string.sleep_timer
-                                    PlayerSidePanelType.QUALITY -> PlayerR.string.video_quality
-                                    PlayerSidePanelType.PLAYBACK_INFO ->
-                                        PlayerR.string.playback_info
-
-                                    PlayerSidePanelType.SETTINGS,
-                                    PlayerSidePanelType.NONE -> CoreR.string.title_settings
-                                }
-                        ),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
-                    modifier = Modifier.weight(1f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
+            SidePanelHeader(
+                panelType = panelType,
+                openedDirectly = openedDirectly,
+                onBack = { onPanelTypeChange(PlayerSidePanelType.SETTINGS) },
+            )
             Spacer(modifier = Modifier.height(16.dp))
 
             when (panelType) {
@@ -235,6 +182,117 @@ fun PlayerSidePanel(
                 }
 
                 PlayerSidePanelType.NONE -> Unit
+            }
+        }
+    }
+}
+
+@Composable
+private fun SidePanelHeader(
+    panelType: PlayerSidePanelType,
+    openedDirectly: Boolean,
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val showBackButton = panelType != PlayerSidePanelType.SETTINGS && !openedDirectly
+    Row(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .height(36.dp)
+                .padding(start = if (showBackButton) 0.dp else 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        if (showBackButton) {
+            Box(
+                modifier =
+                    Modifier.size(36.dp)
+                        .clip(CircleShape)
+                        .background(PlayerSheetBackground)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = ripple(bounded = true, radius = 18.dp),
+                            onClick = onBack,
+                        ),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    painter = painterResource(id = CoreR.drawable.ic_arrow_left),
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                    tint = Color.White,
+                )
+            }
+        }
+
+        Text(
+            text =
+                stringResource(
+                    id =
+                        when (panelType) {
+                            PlayerSidePanelType.AUDIO -> PlayerR.string.select_audio_track
+                            PlayerSidePanelType.SUBTITLES -> PlayerR.string.select_subtitle_track
+
+                            PlayerSidePanelType.SPEED -> PlayerR.string.select_playback_speed
+
+                            PlayerSidePanelType.ASPECT_RATIO -> PlayerR.string.aspect_ratio
+                            PlayerSidePanelType.CHAPTERS -> PlayerR.string.chapters
+                            PlayerSidePanelType.SLEEP_TIMER -> PlayerR.string.sleep_timer
+                            PlayerSidePanelType.QUALITY -> PlayerR.string.video_quality
+                            PlayerSidePanelType.PLAYBACK_INFO -> PlayerR.string.playback_info
+
+                            PlayerSidePanelType.SETTINGS,
+                            PlayerSidePanelType.NONE -> CoreR.string.title_settings
+                        }
+                ),
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = Color.White,
+            modifier = Modifier.weight(1f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Preview(
+    name = "Tablet Header Settings",
+    showBackground = true,
+    backgroundColor = 0xFF141416,
+    widthDp = 432,
+)
+@Composable
+private fun TabletHeaderSettingsPreview() {
+    FindroidTheme(darkTheme = true) {
+        Surface(color = PlayerCardBackground) {
+            Box(modifier = Modifier.padding(24.dp)) {
+                SidePanelHeader(
+                    panelType = PlayerSidePanelType.SETTINGS,
+                    openedDirectly = false,
+                    onBack = {},
+                )
+            }
+        }
+    }
+}
+
+@Preview(
+    name = "Tablet Header Submenu",
+    showBackground = true,
+    backgroundColor = 0xFF141416,
+    widthDp = 432,
+)
+@Composable
+private fun TabletHeaderSubmenuPreview() {
+    FindroidTheme(darkTheme = true) {
+        Surface(color = PlayerCardBackground) {
+            Box(modifier = Modifier.padding(24.dp)) {
+                SidePanelHeader(
+                    panelType = PlayerSidePanelType.AUDIO,
+                    openedDirectly = false,
+                    onBack = {},
+                )
             }
         }
     }
