@@ -368,7 +368,7 @@ internal fun NavigationItem(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
-                    if (subtitle != null) {
+                    if (!subtitle.isNullOrBlank()) {
                         Text(
                             text = subtitle,
                             style = MaterialTheme.typography.bodySmall,

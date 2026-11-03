@@ -260,7 +260,7 @@ fun PlayerBottomSheet(
 @Preview(showBackground = true, backgroundColor = 0xFF0E0E10)
 @Composable
 private fun PlayerBottomSheetPreview() {
-    FindroidTheme {
+    FindroidTheme(darkTheme = true) {
         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
@@ -273,21 +273,21 @@ private fun PlayerBottomSheetPreview() {
                     color = MaterialTheme.colorScheme.onSurface,
                 )
             }
-            PhoneNavigationRow(
+            PlayerNavigationItem(
                 title = stringResource(id = PlayerR.string.audio),
                 subtitle = "English",
                 iconRes = CoreR.drawable.ic_audio,
                 onClick = {},
             )
             Spacer(modifier = Modifier.height(8.dp))
-            PhoneNavigationRow(
+            PlayerNavigationItem(
                 title = stringResource(id = PlayerR.string.subtitles),
                 subtitle = "English [CC]",
                 iconRes = CoreR.drawable.ic_closed_caption,
                 onClick = {},
             )
             Spacer(modifier = Modifier.height(8.dp))
-            PhoneNavigationRow(
+            PlayerNavigationItem(
                 title = stringResource(id = PlayerR.string.playback_speed),
                 subtitle = "1.0×",
                 iconRes = PlayerR.drawable.ic_playback_speed,
@@ -300,7 +300,7 @@ private fun PlayerBottomSheetPreview() {
 @Preview(showBackground = true, backgroundColor = 0xFF1E1E1E)
 @Composable
 private fun PhoneSelectableItemPreview() {
-    FindroidTheme {
+    FindroidTheme(darkTheme = true) {
         SelectableTrackItem(
             title = "English [CC]",
             chips = listOf("SDH", "Default"),
@@ -313,7 +313,7 @@ private fun PhoneSelectableItemPreview() {
 @Preview(showBackground = true, backgroundColor = 0xFF1E1E1E)
 @Composable
 private fun PhoneSpeedListPreview() {
-    FindroidTheme {
+    FindroidTheme(darkTheme = true) {
         PlaybackSpeedPicker(
             currentSpeed = 1f,
             onSpeedChange = {},

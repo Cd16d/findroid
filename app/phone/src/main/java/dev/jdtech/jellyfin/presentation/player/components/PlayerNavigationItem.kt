@@ -60,9 +60,10 @@ fun PlayerSwitch(
 @Composable
 fun PlayerNavigationItem(
     title: String,
-    subtitle: String,
     iconRes: Int,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    subtitle: String? = null,
     shape: Shape = CentralShapes.GroupSingle,
     badge: String? = null,
     enabled: Boolean = true,
@@ -83,7 +84,7 @@ fun PlayerNavigationItem(
 
     Surface(
         modifier =
-            Modifier.fillMaxWidth().heightIn(min = minHeight).graphicsLayer { this.alpha = alpha },
+            modifier.fillMaxWidth().heightIn(min = minHeight).graphicsLayer { this.alpha = alpha },
         shape = shape,
         color = backgroundColor,
         border = BorderStroke(1.dp, onSurface.copy(alpha = 0.08f)),
@@ -124,7 +125,7 @@ fun PlayerNavigationItem(
                 }
             }
             Spacer(modifier = Modifier.weight(1f))
-            if (subtitle.isNotBlank()) {
+            if (!subtitle.isNullOrBlank()) {
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodyMedium,
@@ -147,69 +148,21 @@ fun PlayerNavigationItem(
     }
 }
 
+@Preview(showBackground = true, backgroundColor = 0xFF141416)
 @Composable
-internal fun PhoneNavigationRow(
-    title: String,
-    subtitle: String,
-    iconRes: Int,
-    onClick: () -> Unit,
-    shape: Shape = CentralShapes.GroupSingle,
-    enabled: Boolean = true,
-    showChevron: Boolean = true,
-    trailingContent: (@Composable () -> Unit)? = null,
-) {
-    PlayerNavigationItem(
-        title = title,
-        subtitle = subtitle,
-        iconRes = iconRes,
-        onClick = onClick,
-        shape = shape,
-        enabled = enabled,
-        showChevron = showChevron,
-        isTablet = false,
-        trailingContent = trailingContent,
-    )
-}
-
-@Composable
-internal fun TabletNavigationItem(
-    title: String,
-    subtitle: String,
-    iconRes: Int,
-    onClick: () -> Unit,
-    shape: Shape = CentralShapes.GroupSingle,
-    enabled: Boolean = true,
-    showChevron: Boolean = true,
-    trailingContent: (@Composable () -> Unit)? = null,
-) {
-    PlayerNavigationItem(
-        title = title,
-        subtitle = subtitle,
-        iconRes = iconRes,
-        onClick = onClick,
-        shape = shape,
-        enabled = enabled,
-        showChevron = showChevron,
-        isTablet = true,
-        trailingContent = trailingContent,
-    )
-}
-
-@Preview(showBackground = true, backgroundColor = 0xFF1E1E1E)
-@Composable
-private fun PhoneNavigationRowPreview() {
-    FindroidTheme {
+private fun PhoneNavigationItemPreview() {
+    FindroidTheme(darkTheme = true) {
         Column(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            PhoneNavigationRow(
+            PlayerNavigationItem(
                 title = stringResource(id = PlayerR.string.audio),
                 subtitle = "English (5.1)",
                 iconRes = CoreR.drawable.ic_audio,
                 onClick = {},
             )
-            PhoneNavigationRow(
+            PlayerNavigationItem(
                 title = stringResource(id = PlayerR.string.subtitles),
                 subtitle = "English [CC]",
                 iconRes = CoreR.drawable.ic_closed_caption,
@@ -222,21 +175,23 @@ private fun PhoneNavigationRowPreview() {
 @Preview(showBackground = true, backgroundColor = 0xFF141416)
 @Composable
 private fun TabletNavigationItemPreview() {
-    FindroidTheme {
+    FindroidTheme(darkTheme = true) {
         Column(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            TabletNavigationItem(
+            PlayerNavigationItem(
                 title = "Video Quality",
                 subtitle = "Auto (1080p)",
                 iconRes = PlayerR.drawable.ic_video_quality,
+                isTablet = true,
                 onClick = {},
             )
-            TabletNavigationItem(
+            PlayerNavigationItem(
                 title = "Audio",
                 subtitle = "English - Stereo",
                 iconRes = CoreR.drawable.ic_audio,
+                isTablet = true,
                 onClick = {},
             )
         }
