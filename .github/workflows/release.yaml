@@ -71,34 +71,13 @@ jobs:
             cp "$f" "artifacts/findroid-tv-$new_name"
           done
 
-      - name: Generate Release Notes
-        run: |
-          PREVIOUS_TAG=$(git describe --tags --abbrev=0 --match "v*" HEAD^ 2>/dev/null || git describe --tags --abbrev=0 HEAD^ 2>/dev/null || true)
-
-          {
-            echo "Release build for \`${GITHUB_REF_NAME}\` at commit \`${GITHUB_SHA:0:7}\`."
-            echo
-            echo "#### 📦 Included Variants"
-            echo "- **Libre:** Open-source version without proprietary libraries."
-            echo "- **Proprietary:** Includes features like Chromecast support."
-            echo "- **TV:** Optimized for Android TV / Leanback."
-            echo
-
-            if [ -n "$PREVIOUS_TAG" ]; then
-              echo "#### 📝 Commits since \`$PREVIOUS_TAG\`"
-              git log "$PREVIOUS_TAG..HEAD" --pretty=format:"* %s (%h)" --reverse
-            else
-              echo "#### 📝 Recent Commits"
-              git log -n 30 --pretty=format:"* %s (%h)" --reverse
-            fi
-          } > release-notes.md
-
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
         with:
           name: "Findroid ${{ github.ref_name }}"
-          body_path: release-notes.md
-          generate_release_notes: true
+          body: |
+            Release build for `${{ github.ref_name }}`.
+          generate_release_notes: false
           prerelease: false
           draft: false
           files: artifacts/*.apk

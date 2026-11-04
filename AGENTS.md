@@ -20,7 +20,7 @@ Findroid is organized as a modular Android project:
 
 ## Rules for working on the project
 
-1. Always pull the latest changes from `main` before starting your work to minimize merge conflicts.
+1. Always pull the latest changes from `beta` before starting your work to minimize merge conflicts. The active working and development branch for this fork is `beta` (`upstream/main` merges into `beta`, and all release workflows run on `beta`).
 2. Commit names should be clear, written in English, and directly describe the work performed following the format: `type(scope): short description`. For example: `feat(player): add subtitle delay adjustment`. Including the scope is optional. When explicitly asked to commit, AI agents must generate a clear, accurate commit message reflecting the exact changes made during the session.
 3. String resources are divided across modules in their respective `res/values/strings.xml` files (e.g., `core/src/main/res/values/strings.xml`, `modes/film/src/main/res/values/strings.xml`, `player/core/src/main/res/values/strings.xml`, `setup/src/main/res/values/strings.xml`, `settings/src/main/res/values/strings.xml`).
    - **ONLY edit the default (English) `strings.xml` in the respective module's `res/values/` directory.**
@@ -75,21 +75,29 @@ When the user requests to synchronize or merge with the original upstream reposi
 ### 2. Automated Release Workflow
 
 When the user requests to create or trigger a new release:
-1. **Quality & Language Checks**:
-   - Run `./gradlew ktfmtCheck` and `./gradlew assembleDebug`.
+1. **Quality & Pre-Tag Verification Checks**:
+   - Run `./gradlew ktfmtCheck` and `./gradlew assembleDebug`. Both must pass with zero errors before creating or pushing a release tag.
    - Verify that working directory is clean, no hardcoded strings exist, and all commit messages and comments are in English.
 2. **Commit & Push Branch**:
    - Commit any pending changes using standard format (`type(scope): description` in English) describing the actual work performed.
    - Push current branch to remote (`git push origin beta`).
 3. **Upstream & Tag Version Inspection**:
-   - Check existing git tags (`git tag -l "v*"`).
+   - Check existing git tags sorted chronologically by creation date (`git tag -l --sort=-creatordate "v*"`). Always use creation date order to identify the preceding release tag so that changelogs capture accurate commit ranges across nomenclature transitions.
    - Inspect upstream version `APP_NAME` in `buildSrc/src/main/kotlin/Versions.kt` on `upstream/main` (e.g. `1.2.0`).
-4. **Tag Creation**:
-   - Construct the release tag using the upstream version combined with the beta suffix (e.g. `v1.2.0-beta.1`, `v1.2.0-beta.2`, etc., incrementing appropriately based on existing tags).
+4. **Tag Creation & Naming Scheme**:
+   - Preview and release tags MUST strictly follow the semantic beta nomenclature: `v<UPSTREAM_VERSION>-beta.<N>` (e.g. `v1.2.0-beta.1`, `v1.2.0-beta.2`, `v1.2.0-beta.3`, etc.). Do NOT use legacy milestone suffixes like `-v3` or `-v4`.
+   - Inspect existing tags matching `v<UPSTREAM_VERSION>-beta.*` to determine the highest existing `<N>`, and increment by 1.
    - Create local git tag (`git tag -a <tag_name> -m "Release <tag_name>"`).
 5. **Push Tag**:
    - Push the new tag to remote (`git push origin <tag_name>`).
-   - Pushing the tag will automatically trigger `.github/workflows/release.yaml` on GitHub Actions to build, sign, and publish the release APKs.
+   - Pushing the tag automatically triggers `.github/workflows/release.yaml` on GitHub Actions to build, sign, and publish the release APKs.
+6. **AI Release Notes Generation (Standard Output)**:
+   - AI agents MUST generate a comprehensive, polished release notes markdown document in **English** and output it directly to the user in chat, ready to be reviewed and copied into the GitHub Releases description.
+   - The release notes MUST strictly follow this standard structure:
+     - **Headline**: `# Findroid <tag_name>` followed by a concise overview of the release theme.
+     - **What's New & Highlights**: Grouped into user-friendly categories with emojis and markdown headers (e.g. `### 🌟 Key Highlights`, `### 🎨 UI & Player Controls`, `### ⚡ Performance & Engine`, `### 🐛 Bug Fixes`). Explain benefits from the user's perspective rather than raw technical jargon.
+     - **Included Variants**: Standard section detailing `Libre`, `Proprietary`, and `TV` build flavors.
+     - **Commits List**: `### 📝 Commits since <preceding_tag>` listing commits as `* <commit message> (<short_hash>)`.
 
 ## Building and testing your changes
 
