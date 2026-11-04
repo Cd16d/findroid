@@ -9,7 +9,6 @@ import dev.jdtech.jellyfin.player.core.R
 import dev.jdtech.jellyfin.player.core.domain.models.Track
 import dev.jdtech.jellyfin.player.core.domain.models.TrackDisplayInfo
 import java.util.Locale
-import org.jellyfin.sdk.model.api.MediaStream
 import org.jellyfin.sdk.model.api.MediaStreamType
 
 /**
@@ -17,7 +16,6 @@ import org.jellyfin.sdk.model.api.MediaStreamType
  * and display labels.
  */
 object TrackFormatter {
-    private val WHITESPACE_REGEX = Regex("\\s+")
 
     /** Formats a raw codec string into a human-readable display label. */
     fun formatCodec(codec: String?): String? {
@@ -106,25 +104,6 @@ object TrackFormatter {
             }
     }
 
-    /** Strips codec information from a track label string to avoid duplicate text. */
-    private fun stripCodec(label: String?, codec: String?): String? {
-        if (label.isNullOrBlank()) return null
-        val formattedCodec = formatCodec(codec)
-        val codecsToRemove =
-            listOfNotNull(formattedCodec, codec).filter { it.isNotBlank() }.distinct()
-
-        if (codecsToRemove.isEmpty()) return label.trim()
-
-        val pattern = codecsToRemove.joinToString("|") { Regex.escape(it) }
-        val regex = Regex("(?i)[(\\[\\-/\\s]*\\b($pattern)\\b[)\\]]*")
-
-        return label
-            .replace(regex, "")
-            .replace(WHITESPACE_REGEX, " ")
-            .trim('-', '(', ')', '[', ']', '/', ' ')
-            .takeIf { it.isNotBlank() }
-    }
-
     /**
      * Creates formatted track display information including localized names and status tags/chips
      * for UI display.
@@ -138,11 +117,10 @@ object TrackFormatter {
         trackType: Int = track.type,
     ): TrackDisplayInfo {
         val localizedLanguage = formatLanguageName(track.language, currentLocale)
-        val cleanLabel = stripCodec(track.label, track.codec)
-        val baseName =
+        var name =
             localizedLanguage
+                ?: track.label?.takeIf { it.isNotBlank() }
                 ?: track.language?.takeIf { it.isNotBlank() && it != "und" }
-                ?: cleanLabel?.takeIf { it.isNotBlank() }
                 ?: context.getString(R.string.track_index, fallbackIndex)
 
         val isSubtitle =
@@ -151,126 +129,65 @@ object TrackFormatter {
                     track.channelCount == null &&
                     track.channelLayout == null)
 
-        if (isSubtitle) {
-            val tags = mutableListOf<String>()
-
-            val isForced =
-                track.isForced == true ||
-                    track.label?.contains("forced", ignoreCase = true) == true ||
-                    track.label?.contains("forzat", ignoreCase = true) == true ||
-                    track.label?.contains("forcé", ignoreCase = true) == true
-            if (isForced) {
-                tags.add(context.getString(R.string.forced))
-            }
-
-            val isHearingImpaired =
-                track.isHearingImpaired == true ||
-                    track.label?.contains("sdh", ignoreCase = true) == true ||
-                    track.label?.contains("cc", ignoreCase = true) == true ||
-                    track.label?.contains("non udenti", ignoreCase = true) == true ||
-                    track.label?.contains("sordi", ignoreCase = true) == true
-            if (isHearingImpaired) {
-                tags.add(context.getString(R.string.hearing_impaired))
-            }
-
-            val isOriginal =
-                track.isOriginal == true ||
-                    track.label?.contains("original", ignoreCase = true) == true ||
-                    track.label?.contains("orig", ignoreCase = true) == true
-            if (isOriginal) {
-                tags.add("Original")
-            }
-
-            val formattedName =
-                if (tags.isNotEmpty()) {
-                    "$baseName (${tags.joinToString(", ")})"
-                } else {
-                    baseName
-                }
-
-            val chips = mutableListOf<String>()
-            val formattedCodec = formatCodec(track.codec)
-            if (!formattedCodec.isNullOrBlank()) {
-                chips.add(formattedCodec)
-            }
-
-            if (displayExtraInfo) {
-                val isExternal =
-                    track.isExternal == true ||
-                        track.label?.contains("external", ignoreCase = true) == true ||
-                        track.label?.contains("estern", ignoreCase = true) == true
-                if (isExternal) {
-                    chips.add(context.getString(R.string.external))
-                }
-            }
-
-            return TrackDisplayInfo(name = formattedName, chips = chips)
-        }
-
-        val cleanCandidate = cleanLabel?.split('-', '(', '[', '/')?.firstOrNull()?.trim()
-        val candidateLanguage = formatLanguageName(cleanCandidate, currentLocale)
-        val audioName =
-            localizedLanguage
-                ?: candidateLanguage
-                ?: track.language?.takeIf { it.isNotBlank() && it != "und" }
-                ?: cleanCandidate?.takeIf { it.isNotBlank() }
-                ?: context.getString(R.string.track_index, fallbackIndex)
-
         val chips = mutableListOf<String>()
+
         if (track.isDefault == true) {
             chips.add(context.getString(CoreR.string.track_default))
         }
 
-        val channelLayout = formatChannelLayout(track.channelLayout, track.channelCount)
-        if (channelLayout != null) {
-            chips.add(channelLayout)
-        }
-
-        val formattedCodec = formatCodec(track.codec)
-        if (!formattedCodec.isNullOrBlank()) {
-            chips.add(formattedCodec)
-        }
-
-        if (displayExtraInfo) {
-            val isExternal =
-                track.isExternal == true ||
-                    track.label?.contains("external", ignoreCase = true) == true ||
-                    track.label?.contains("estern", ignoreCase = true) == true
-            if (isExternal) {
+        if (isSubtitle) {
+            val subtitleAttributes = mutableListOf<String>()
+            if (track.isForced == true) {
+                subtitleAttributes.add(context.getString(R.string.forced))
+            }
+            if (track.isHearingImpaired == true) {
+                subtitleAttributes.add(context.getString(R.string.hearing_impaired))
+            }
+            if (subtitleAttributes.isNotEmpty()) {
+                name = "$name (${subtitleAttributes.joinToString(", ")})"
+            }
+            if (track.isOriginal == true) {
+                chips.add(context.getString(R.string.track_original))
+            }
+            val formattedCodec = formatCodec(track.codec)
+            if (!formattedCodec.isNullOrBlank()) {
+                chips.add(formattedCodec)
+            }
+            if (displayExtraInfo && track.isExternal == true) {
+                chips.add(context.getString(R.string.external))
+            }
+        } else {
+            val channelLayout = formatChannelLayout(track.channelLayout, track.channelCount)
+            if (channelLayout != null) {
+                chips.add(channelLayout)
+            }
+            val formattedCodec = formatCodec(track.codec)
+            if (!formattedCodec.isNullOrBlank()) {
+                chips.add(formattedCodec)
+            }
+            if (track.isOriginal == true) {
+                chips.add(context.getString(R.string.track_original))
+            }
+            if (displayExtraInfo && track.isExternal == true) {
                 chips.add(context.getString(R.string.external))
             }
         }
 
-        return TrackDisplayInfo(name = audioName, chips = chips)
+        return TrackDisplayInfo(name = name, chips = chips)
     }
 
     /** Converts an ExoPlayer [Tracks.Group] into a domain [Track] model. */
     fun toTrack(group: Tracks.Group, fallbackIndex: Int = 0): Track {
         val format = group.mediaTrackGroup.getFormat(0)
-        val label = format.label
-        val isForced =
-            (format.selectionFlags and C.SELECTION_FLAG_FORCED) != 0 ||
-                label?.contains("forced", ignoreCase = true) == true ||
-                label?.contains("forzat", ignoreCase = true) == true ||
-                label?.contains("forcé", ignoreCase = true) == true
+        val isForced = (format.selectionFlags and C.SELECTION_FLAG_FORCED) != 0
         val isHearingImpaired =
             (format.roleFlags and
                 (C.ROLE_FLAG_DESCRIBES_MUSIC_AND_SOUND or
                     C.ROLE_FLAG_EASY_TO_READ or
                     C.ROLE_FLAG_TRANSCRIBES_DIALOG or
-                    C.ROLE_FLAG_CAPTION)) != 0 ||
-                label?.contains("sdh", ignoreCase = true) == true ||
-                label?.contains("cc", ignoreCase = true) == true ||
-                label?.contains("non udenti", ignoreCase = true) == true ||
-                label?.contains("sordi", ignoreCase = true) == true
-        val isExternal =
-            format.id?.startsWith("external", ignoreCase = true) == true ||
-                label?.contains("external", ignoreCase = true) == true ||
-                label?.contains("estern", ignoreCase = true) == true
-        val isDefault =
-            (format.selectionFlags and C.SELECTION_FLAG_DEFAULT) != 0 ||
-                label?.contains("default", ignoreCase = true) == true ||
-                label?.contains("predefinit", ignoreCase = true) == true
+                    C.ROLE_FLAG_CAPTION)) != 0
+        val isExternal = format.id?.startsWith("external", ignoreCase = true) == true
+        val isDefault = (format.selectionFlags and C.SELECTION_FLAG_DEFAULT) != 0
         val rawCodec = format.codecs ?: format.sampleMimeType?.substringAfterLast("/")
 
         return Track(
@@ -309,53 +226,18 @@ object TrackFormatter {
 
     /** Converts a [FindroidMediaStream] into a domain [Track] model. */
     fun toTrack(stream: FindroidMediaStream): Track {
-        val isDefault =
-            stream.isDefault == true ||
-                stream.title.contains("default", ignoreCase = true) ||
-                stream.displayTitle?.contains("default", ignoreCase = true) == true ||
-                stream.displayTitle?.contains("predefinit", ignoreCase = true) == true
         return Track(
             id = stream.index ?: 0,
             label = stream.title.takeIf { it.isNotBlank() } ?: stream.displayTitle,
-            language = stream.language,
-            codec = stream.codec,
+            language = stream.language.takeIf { it.isNotBlank() },
+            codec = stream.codec.takeIf { it.isNotBlank() },
             selected = false,
             supported = true,
             isExternal = stream.isExternal,
-            isForced = stream.isForced,
-            isHearingImpaired = stream.isHearingImpaired,
-            isDefault = isDefault,
-            isOriginal = stream.isOriginal,
-            channelLayout = stream.channelLayout,
-            channelCount = stream.channels,
-            type =
-                when (stream.type) {
-                    MediaStreamType.AUDIO -> C.TRACK_TYPE_AUDIO
-                    MediaStreamType.SUBTITLE -> C.TRACK_TYPE_TEXT
-                    else -> C.TRACK_TYPE_UNKNOWN
-                },
-        )
-    }
-
-    /** Converts a Jellyfin SDK [MediaStream] into a domain [Track] model. */
-    fun toTrack(stream: MediaStream): Track {
-        val isDefault =
-            stream.isDefault ||
-                stream.title?.contains("default", ignoreCase = true) == true ||
-                stream.displayTitle?.contains("default", ignoreCase = true) == true ||
-                stream.displayTitle?.contains("predefinit", ignoreCase = true) == true
-        return Track(
-            id = stream.index,
-            label = stream.title?.takeIf { it.isNotBlank() } ?: stream.displayTitle,
-            language = stream.language,
-            codec = stream.codec,
-            selected = false,
-            supported = true,
-            isExternal = stream.isExternal,
-            isForced = stream.isForced,
-            isHearingImpaired = stream.isHearingImpaired,
-            isDefault = isDefault,
-            isOriginal = stream.isOriginal,
+            isForced = stream.isForced == true,
+            isHearingImpaired = stream.isHearingImpaired == true,
+            isDefault = stream.isDefault == true,
+            isOriginal = stream.isOriginal == true,
             channelLayout = stream.channelLayout,
             channelCount = stream.channels,
             type =
@@ -389,37 +271,4 @@ object TrackFormatter {
             channelCount = streamTrack.channelCount ?: track.channelCount,
         )
     }
-
-    /**
-     * Merges information from a Jellyfin SDK [MediaStream] into a domain [Track] model, preferring
-     * API metadata when available.
-     */
-    fun mergeWithStream(track: Track, stream: MediaStream?): Track {
-        if (stream == null) return track
-        val streamTrack = toTrack(stream)
-        return track.copy(
-            label = track.label?.takeIf { it.isNotBlank() } ?: streamTrack.label,
-            language =
-                track.language?.takeIf { it.isNotBlank() && it != "und" } ?: streamTrack.language,
-            codec = streamTrack.codec?.takeIf { it.isNotBlank() } ?: track.codec,
-            isExternal = streamTrack.isExternal == true || track.isExternal == true,
-            isForced = streamTrack.isForced == true || track.isForced == true,
-            isHearingImpaired =
-                streamTrack.isHearingImpaired == true || track.isHearingImpaired == true,
-            isDefault = streamTrack.isDefault == true || track.isDefault == true,
-            isOriginal = streamTrack.isOriginal == true || track.isOriginal == true,
-            channelLayout = streamTrack.channelLayout ?: track.channelLayout,
-            channelCount = streamTrack.channelCount ?: track.channelCount,
-        )
-    }
 }
-
-/** Converts an ExoPlayer [Tracks.Group] into a domain [Track] model. */
-fun Tracks.Group.toTrack(fallbackIndex: Int = 0): Track =
-    TrackFormatter.toTrack(this, fallbackIndex)
-
-/** Converts a [FindroidMediaStream] into a domain [Track] model. */
-fun FindroidMediaStream.toTrack(): Track = TrackFormatter.toTrack(this)
-
-/** Converts a Jellyfin SDK [MediaStream] into a domain [Track] model. */
-fun MediaStream.toTrack(): Track = TrackFormatter.toTrack(this)

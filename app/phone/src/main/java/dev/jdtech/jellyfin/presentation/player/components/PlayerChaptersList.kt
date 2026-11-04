@@ -2,6 +2,7 @@ package dev.jdtech.jellyfin.presentation.player.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -71,7 +72,11 @@ internal fun PhoneChaptersList(viewModel: PlayerViewModel) {
         }
     }
 
-    LazyColumn(state = listState, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    LazyColumn(
+        state = listState,
+        contentPadding = PaddingValues(bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
         itemsIndexed(chapters) { index, chapter ->
             val isCurrent = index == currentChapterIndex
             ChapterCard(

@@ -1,6 +1,7 @@
 package dev.jdtech.jellyfin.presentation.player.components
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.Composable
@@ -31,7 +32,10 @@ internal fun PhoneAspectRatioList(
             PlayerResizeMode.ZOOM to stringResource(id = PlayerR.string.aspect_ratio_zoom),
             PlayerResizeMode.FILL to stringResource(id = PlayerR.string.aspect_ratio_fill),
         )
-    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    LazyColumn(
+        contentPadding = PaddingValues(bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
         itemsIndexed(modes) { _, (mode, label) ->
             val isSelected = currentResizeMode == mode
             SelectableTrackItem(

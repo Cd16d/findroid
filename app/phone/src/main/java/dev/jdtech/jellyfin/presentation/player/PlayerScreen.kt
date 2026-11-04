@@ -461,6 +461,7 @@ fun PlayerScreen(
                     reason: Int,
                 ) {
                     currentPosition = newPosition.positionMs
+                    bufferedPosition = viewModel.player.bufferedPosition
                 }
 
                 override fun onTimelineChanged(timeline: Timeline, reason: Int) {
@@ -479,24 +480,19 @@ fun PlayerScreen(
         onDispose { viewModel.player.removeListener(listener) }
     }
 
-    LaunchedEffect(Unit) {
-        var tick = 0
+    val shouldShrinkVideo = isExpandedWidth && isPanelOpen && !isInPip
+
+    LaunchedEffect(videoPlayerState.controlsVisible, isPlaying, shouldShrinkVideo) {
+        if (!videoPlayerState.controlsVisible && !shouldShrinkVideo) return@LaunchedEffect
         while (true) {
             currentPosition = viewModel.player.currentPosition
             bufferedPosition = viewModel.player.bufferedPosition
             hasPreviousItem = viewModel.player.hasPreviousMediaItem()
             hasNextItem = viewModel.player.hasNextMediaItem()
             mediaItemCount = viewModel.player.mediaItemCount
-            if (isPlaying) {
-                if (tick % 3 == 0) viewModel.updateCurrentSegment()
-                if (tick % 16 == 0 && tick > 0) viewModel.updatePlaybackProgress()
-            }
-            tick++
             delay(300.milliseconds)
         }
     }
-
-    val shouldShrinkVideo = isExpandedWidth && isPanelOpen && !isInPip
     val panelProgressState =
         animateFloatAsState(
             targetValue = if (shouldShrinkVideo) 1f else 0f,
@@ -835,8 +831,6 @@ fun PlayerScreen(
                             }
                         },
                         update = { playerView ->
-                            onPlayerViewAvailable(playerView)
-                            capturedPlayerView = playerView
                             if (playerView.resizeMode != effectiveResizeMode) {
                                 playerView.resizeMode = effectiveResizeMode
                             }
@@ -1979,30 +1973,46 @@ fun PlayerScreen(
                 // Bottom Sheet (overlays video on compact/medium width, e.g. phone or portrait
                 // tablet)
                 if (!isExpandedWidth && isPanelOpen) {
+                    val handlePanelTypeChange =
+                        remember(videoPlayerState) {
+                            { type: PlayerSidePanelType -> videoPlayerState.sidePanelType = type }
+                        }
+                    val handleAmbientModeToggle =
+                        remember(prefs) {
+                            { enabled: Boolean -> prefs.setValue(prefs.playerAmbientMode, enabled) }
+                        }
+                    val handleDismissBottomSheet =
+                        remember(videoPlayerState) {
+                            {
+                                videoPlayerState.sidePanelType = PlayerSidePanelType.NONE
+                                videoPlayerState.hideControls()
+                                openedPanelDirectly = false
+                            }
+                        }
+                    val handleLockPlayer =
+                        remember(isPlaying, haptics, activity, videoPlayerState) {
+                            {
+                                if (isPlaying) {
+                                    haptics.confirm()
+                                    activity?.requestedOrientation =
+                                        ActivityInfo.SCREEN_ORIENTATION_LOCKED
+                                    isControlsLocked = true
+                                    (activity as? PlayerActivity)?.updatePipParams()
+                                    videoPlayerState.setLocked(true)
+                                }
+                            }
+                        }
                     PlayerBottomSheet(
                         panelType = videoPlayerState.sidePanelType,
-                        onPanelTypeChange = { videoPlayerState.sidePanelType = it },
+                        onPanelTypeChange = handlePanelTypeChange,
                         viewModel = viewModel,
                         currentResizeMode = currentResizeMode,
                         onResizeModeChange = onResizeModeChange,
                         openedDirectly = openedPanelDirectly,
                         isAmbientModeEnabled = isAmbientModeEnabled,
-                        onAmbientModeToggle = { enabled ->
-                            prefs.setValue(prefs.playerAmbientMode, enabled)
-                        },
-                        onDismiss = {
-                            videoPlayerState.sidePanelType = PlayerSidePanelType.NONE
-                            videoPlayerState.hideControls()
-                            openedPanelDirectly = false
-                        },
-                        onLock = {
-                            if (!isPlaying) return@PlayerBottomSheet
-                            haptics.confirm()
-                            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LOCKED
-                            isControlsLocked = true
-                            (activity as? PlayerActivity)?.updatePipParams()
-                            videoPlayerState.setLocked(true)
-                        },
+                        onAmbientModeToggle = handleAmbientModeToggle,
+                        onDismiss = handleDismissBottomSheet,
+                        onLock = handleLockPlayer,
                     )
                 }
             }

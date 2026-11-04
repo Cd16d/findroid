@@ -2,6 +2,7 @@ package dev.jdtech.jellyfin.presentation.player.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -51,7 +52,10 @@ internal fun PhoneSubtitleTrackList(viewModel: PlayerViewModel, tracks: Tracks) 
 
     var optimisticSelectedIndex by remember(tracks) { mutableIntStateOf(selectedTrackIndex) }
 
-    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    LazyColumn(
+        contentPadding = PaddingValues(bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
         item {
             SelectableTrackItem(
                 title = stringResource(id = PlayerR.string.none),

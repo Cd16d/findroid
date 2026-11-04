@@ -3,6 +3,7 @@ package dev.jdtech.jellyfin.presentation.player.components
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -59,7 +60,10 @@ internal fun PhoneAudioTrackList(viewModel: PlayerViewModel, tracks: Tracks) {
             )
         }
     } else {
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        LazyColumn(
+            contentPadding = PaddingValues(bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
             itemsIndexed(items = audioTracks, key = { _, track -> track.id }) { index, track ->
                 val isSelected = optimisticSelectedId == track.id
                 val displayInfo =
@@ -102,7 +106,10 @@ internal fun TabletAudioTrackList(viewModel: PlayerViewModel, tracks: Tracks) {
     val availableTracks = uiState.availableAudioTracks
 
     if (availableTracks.isNotEmpty()) {
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        LazyColumn(
+            contentPadding = PaddingValues(bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
             itemsIndexed(items = availableTracks) { _, track ->
                 val displayInfo =
                     remember(track, currentLocale, displayExtraInfo) {
@@ -133,7 +140,10 @@ internal fun TabletAudioTrackList(viewModel: PlayerViewModel, tracks: Tracks) {
 
         var optimisticSelectedIndex by remember(tracks) { mutableStateOf(selectedTrackIndex) }
 
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        LazyColumn(
+            contentPadding = PaddingValues(bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
             itemsIndexed(items = audioGroups) { index, group ->
                 val isSelected = optimisticSelectedIndex == index
                 val displayInfo =

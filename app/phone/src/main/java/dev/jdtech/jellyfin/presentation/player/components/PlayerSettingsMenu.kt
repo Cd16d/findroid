@@ -2,12 +2,14 @@ package dev.jdtech.jellyfin.presentation.player.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -57,76 +59,116 @@ internal fun PlayerSettingsMenu(
     val currentLocale = LocalConfiguration.current.locales[0]
     val uiState by viewModel.uiState.collectAsState()
 
-    val selectedAudioTrack = uiState.availableAudioTracks.firstOrNull { it.selected }
-    val selectedAudioGroup =
-        tracks.groups.firstOrNull { it.type == C.TRACK_TYPE_AUDIO && it.isSelected }
+    val noneString = stringResource(id = PlayerR.string.none)
     val audioTitle =
-        selectedAudioTrack?.let {
-            TrackFormatter.getTrackDisplayInfo(
-                    track = it,
-                    context = context,
-                    displayExtraInfo = viewModel.displayExtraInfo,
-                    currentLocale = currentLocale,
-                )
-                .name
-        }
-            ?: selectedAudioGroup?.let {
+        remember(
+            uiState.availableAudioTracks,
+            tracks,
+            viewModel.displayExtraInfo,
+            currentLocale,
+            noneString,
+        ) {
+            val selectedAudioTrack = uiState.availableAudioTracks.firstOrNull { it.selected }
+            val selectedAudioGroup =
+                tracks.groups.firstOrNull { it.type == C.TRACK_TYPE_AUDIO && it.isSelected }
+            selectedAudioTrack?.let {
                 TrackFormatter.getTrackDisplayInfo(
-                        group = it,
+                        track = it,
                         context = context,
                         displayExtraInfo = viewModel.displayExtraInfo,
                         currentLocale = currentLocale,
                     )
                     .name
             }
-            ?: stringResource(id = PlayerR.string.none)
+                ?: selectedAudioGroup?.let {
+                    TrackFormatter.getTrackDisplayInfo(
+                            group = it,
+                            context = context,
+                            displayExtraInfo = viewModel.displayExtraInfo,
+                            currentLocale = currentLocale,
+                        )
+                        .name
+                }
+                ?: noneString
+        }
 
-    val selectedSubGroup =
-        tracks.groups.firstOrNull { it.type == C.TRACK_TYPE_TEXT && it.isSelected }
     val subTitle =
-        if (selectedSubGroup != null) {
-            val subIndex =
-                tracks.groups
-                    .filter { it.type == C.TRACK_TYPE_TEXT && it.isSupported }
-                    .indexOf(selectedSubGroup)
-            val matchedStream =
-                if (subIndex >= 0) {
-                    uiState.mediaStreams
-                        .filter { it.type == MediaStreamType.SUBTITLE }
-                        .getOrNull(subIndex)
-                } else null
-            val track =
-                TrackFormatter.mergeWithStream(
-                    TrackFormatter.toTrack(selectedSubGroup, 1),
-                    matchedStream,
-                )
-            TrackFormatter.getTrackDisplayInfo(
-                    track = track,
-                    context = context,
-                    displayExtraInfo = viewModel.displayExtraInfo,
-                    currentLocale = currentLocale,
-                )
-                .name
-        } else stringResource(id = PlayerR.string.none)
+        remember(
+            tracks,
+            uiState.mediaStreams,
+            viewModel.displayExtraInfo,
+            currentLocale,
+            noneString,
+        ) {
+            val selectedSubGroup =
+                tracks.groups.firstOrNull { it.type == C.TRACK_TYPE_TEXT && it.isSelected }
+            if (selectedSubGroup != null) {
+                val subIndex =
+                    tracks.groups
+                        .filter { it.type == C.TRACK_TYPE_TEXT && it.isSupported }
+                        .indexOf(selectedSubGroup)
+                val matchedStream =
+                    if (subIndex >= 0) {
+                        uiState.mediaStreams
+                            .filter { it.type == MediaStreamType.SUBTITLE }
+                            .getOrNull(subIndex)
+                    } else null
+                val track =
+                    TrackFormatter.mergeWithStream(
+                        TrackFormatter.toTrack(selectedSubGroup, 1),
+                        matchedStream,
+                    )
+                TrackFormatter.getTrackDisplayInfo(
+                        track = track,
+                        context = context,
+                        displayExtraInfo = viewModel.displayExtraInfo,
+                        currentLocale = currentLocale,
+                    )
+                    .name
+            } else noneString
+        }
 
     val currentSpeedText = "${currentSpeed}×"
+    val zoomString = stringResource(id = PlayerR.string.aspect_ratio_zoom)
+    val fillString = stringResource(id = PlayerR.string.aspect_ratio_fill)
+    val fitString = stringResource(id = PlayerR.string.aspect_ratio_fit)
     val currentAspectText =
-        when (currentResizeMode) {
-            PlayerResizeMode.ZOOM -> stringResource(id = PlayerR.string.aspect_ratio_zoom)
-            PlayerResizeMode.FILL -> stringResource(id = PlayerR.string.aspect_ratio_fill)
-            else -> stringResource(id = PlayerR.string.aspect_ratio_fit)
+        remember(currentResizeMode, zoomString, fillString, fitString) {
+            when (currentResizeMode) {
+                PlayerResizeMode.ZOOM -> zoomString
+                PlayerResizeMode.FILL -> fillString
+                else -> fitString
+            }
         }
 
     val isMovie = uiState.seriesId == null
     val sleepTimerSubtitle =
-        SleepTimerFormatter.formatSleepTimerSubtitle(
-            context = context,
-            sleepTimerStatus = uiState.sleepTimerStatus,
-            isMovie = isMovie,
-        )
+        remember(uiState.sleepTimerStatus, isMovie) {
+            SleepTimerFormatter.formatSleepTimerSubtitle(
+                context = context,
+                sleepTimerStatus = uiState.sleepTimerStatus,
+                isMovie = isMovie,
+            )
+        }
+
+    val navigateToQuality = remember(onNavigate) { { onNavigate(PlayerSidePanelType.QUALITY) } }
+    val navigateToAudio = remember(onNavigate) { { onNavigate(PlayerSidePanelType.AUDIO) } }
+    val navigateToSubtitles = remember(onNavigate) { { onNavigate(PlayerSidePanelType.SUBTITLES) } }
+    val navigateToSpeed = remember(onNavigate) { { onNavigate(PlayerSidePanelType.SPEED) } }
+    val navigateToAspectRatio =
+        remember(onNavigate) { { onNavigate(PlayerSidePanelType.ASPECT_RATIO) } }
+    val toggleAmbient =
+        remember(onAmbientModeToggle, isAmbientModeEnabled) {
+            { onAmbientModeToggle(!isAmbientModeEnabled) }
+        }
+    val navigateToSleepTimer =
+        remember(onNavigate) { { onNavigate(PlayerSidePanelType.SLEEP_TIMER) } }
+    val navigateToPlaybackInfo =
+        remember(onNavigate) { { onNavigate(PlayerSidePanelType.PLAYBACK_INFO) } }
 
     LazyColumn(
         modifier = Modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         item {
@@ -134,7 +176,7 @@ internal fun PlayerSettingsMenu(
                 title = stringResource(id = PlayerR.string.video_quality),
                 subtitle = uiState.selectedQuality.label,
                 iconRes = PlayerR.drawable.ic_video_quality,
-                onClick = { onNavigate(PlayerSidePanelType.QUALITY) },
+                onClick = navigateToQuality,
             )
         }
         item {
@@ -142,7 +184,7 @@ internal fun PlayerSettingsMenu(
                 title = stringResource(id = PlayerR.string.audio),
                 subtitle = audioTitle,
                 iconRes = CoreR.drawable.ic_audio,
-                onClick = { onNavigate(PlayerSidePanelType.AUDIO) },
+                onClick = navigateToAudio,
             )
         }
         item {
@@ -150,7 +192,7 @@ internal fun PlayerSettingsMenu(
                 title = stringResource(id = PlayerR.string.subtitles),
                 subtitle = subTitle,
                 iconRes = CoreR.drawable.ic_closed_caption,
-                onClick = { onNavigate(PlayerSidePanelType.SUBTITLES) },
+                onClick = navigateToSubtitles,
             )
         }
         item {
@@ -158,7 +200,7 @@ internal fun PlayerSettingsMenu(
                 title = stringResource(id = PlayerR.string.playback_speed),
                 subtitle = currentSpeedText,
                 iconRes = PlayerR.drawable.ic_playback_speed,
-                onClick = { onNavigate(PlayerSidePanelType.SPEED) },
+                onClick = navigateToSpeed,
             )
         }
         item {
@@ -166,7 +208,7 @@ internal fun PlayerSettingsMenu(
                 title = stringResource(id = PlayerR.string.aspect_ratio),
                 subtitle = currentAspectText,
                 iconRes = PlayerR.drawable.ic_aspect_ratio,
-                onClick = { onNavigate(PlayerSidePanelType.ASPECT_RATIO) },
+                onClick = navigateToAspectRatio,
             )
         }
         item {
@@ -175,7 +217,7 @@ internal fun PlayerSettingsMenu(
                 iconRes = CoreR.drawable.ic_ambient_mode,
                 showChevron = false,
                 trailingContent = { PlayerSwitch(checked = isAmbientModeEnabled) },
-                onClick = { onAmbientModeToggle(!isAmbientModeEnabled) },
+                onClick = toggleAmbient,
             )
         }
         item {
@@ -183,7 +225,7 @@ internal fun PlayerSettingsMenu(
                 title = stringResource(id = PlayerR.string.sleep_timer),
                 subtitle = sleepTimerSubtitle,
                 iconRes = PlayerR.drawable.ic_sleep_timer,
-                onClick = { onNavigate(PlayerSidePanelType.SLEEP_TIMER) },
+                onClick = navigateToSleepTimer,
             )
         }
         item {
@@ -201,7 +243,7 @@ internal fun PlayerSettingsMenu(
                     title = stringResource(id = PlayerR.string.playback_info),
                     iconRes = CoreR.drawable.ic_chart_line,
                     showChevron = true,
-                    onClick = { onNavigate(PlayerSidePanelType.PLAYBACK_INFO) },
+                    onClick = navigateToPlaybackInfo,
                 )
             }
         }

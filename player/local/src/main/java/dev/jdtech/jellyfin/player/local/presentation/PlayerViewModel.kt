@@ -156,6 +156,7 @@ constructor(
 
     private var items: MutableList<PlayerItem> = mutableListOf()
     private var sleepTimerJob: Job? = null
+    private var playbackProgressJob: Job? = null
     var selectedAudioStreamIndex: Int? = null
         private set
 
@@ -1071,6 +1072,9 @@ constructor(
                     previousDurationMs = durationMs,
                 )
                 hasReportedStart = true
+                if (player.isPlaying) {
+                    startPlaybackProgressJob()
+                }
             } catch (e: Exception) {
                 Timber.e(e, "Error reloading media stream")
             } finally {
@@ -1605,6 +1609,7 @@ constructor(
     }
 
     private fun releasePlayer() {
+        stopPlaybackProgressJob()
         if (player.currentMediaItem?.mediaId == null) return
         val position = player.currentPosition
         val duration = player.duration
@@ -1622,6 +1627,31 @@ constructor(
         currentMediaItemIndex = 0
         player.removeListener(this)
         player.release()
+    }
+
+    private fun startPlaybackProgressJob() {
+        playbackProgressJob?.cancel()
+        playbackProgressJob = viewModelScope.launch {
+            var progressTick = 0
+            while (player.isPlaying) {
+                delay(1_000L.milliseconds)
+                if (player.isPlaying) {
+                    updateCurrentSegment()
+                    progressTick++
+                    if (progressTick >= 10) {
+                        progressTick = 0
+                        if (playbackManager.isReporting) {
+                            updatePlaybackProgress()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun stopPlaybackProgressJob() {
+        playbackProgressJob?.cancel()
+        playbackProgressJob = null
     }
 
     fun updatePlaybackProgress() {
@@ -1877,11 +1907,13 @@ constructor(
         reason: Int,
     ) {
         if (reason == Player.DISCONTINUITY_REASON_SEEK) {
+            updatePlaybackProgress()
             updateCurrentSegment()
         }
     }
 
     override fun onCleared() {
+        stopPlaybackProgressJob()
         Timber.d("Clearing Player ViewModel")
         releasePlayer()
     }
@@ -2009,21 +2041,27 @@ constructor(
         super.onIsPlayingChanged(isPlaying)
         eventsChannel.trySend(PlayerEvents.IsPlayingChanged(isPlaying))
 
-        if (isPlaying && !playbackManager.isReporting) {
-            val mediaId = player.currentMediaItem?.mediaId
-            if (mediaId != null) {
-                viewModelScope.launch {
-                    playbackManager.startSession(
-                        itemId = UUID.fromString(mediaId),
-                        positionMs = player.currentPosition,
-                        playMethod = currentPlayMethod,
-                        mediaSourceId = currentMediaSourceId,
-                        playSessionId = playSessionId,
-                    )
+        if (isPlaying) {
+            startPlaybackProgressJob()
+            if (!playbackManager.isReporting) {
+                val mediaId = player.currentMediaItem?.mediaId
+                if (mediaId != null) {
+                    viewModelScope.launch {
+                        playbackManager.startSession(
+                            itemId = UUID.fromString(mediaId),
+                            positionMs = player.currentPosition,
+                            playMethod = currentPlayMethod,
+                            mediaSourceId = currentMediaSourceId,
+                            playSessionId = playSessionId,
+                        )
+                    }
                 }
             }
-        } else if (playbackManager.isReporting) {
-            updatePlaybackProgress()
+        } else {
+            stopPlaybackProgressJob()
+            if (playbackManager.isReporting) {
+                updatePlaybackProgress()
+            }
         }
     }
 }

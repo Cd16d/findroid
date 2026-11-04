@@ -91,7 +91,10 @@ internal fun PhoneQualityList(
             }
         }
 
-    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    LazyColumn(
+        contentPadding = PaddingValues(bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
         // 1. Original (Direct Play)
         item {
             SelectableTrackItem(

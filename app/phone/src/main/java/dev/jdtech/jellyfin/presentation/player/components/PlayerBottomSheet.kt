@@ -1,5 +1,13 @@
 package dev.jdtech.jellyfin.presentation.player.components
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -14,19 +22,23 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.BottomSheetDefaults
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -34,6 +46,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -89,6 +102,41 @@ fun PlayerBottomSheet(
     var tracks by remember { mutableStateOf(viewModel.player.currentTracks) }
     var isPlaying by remember { mutableStateOf(viewModel.player.isPlaying) }
 
+    val density = LocalDensity.current
+    val transitionDistancePx = with(density) { 48.dp.toPx() }
+
+    val cornerRadius by
+        remember(sheetState, transitionDistancePx) {
+            derivedStateOf {
+                val offset = runCatching { sheetState.requireOffset() }.getOrNull()
+                if (offset == null) {
+                    28.dp
+                } else {
+                    val progress = (offset / transitionDistancePx).coerceIn(0f, 1f)
+                    28.dp * progress
+                }
+            }
+        }
+
+    val handleTopPadding by
+        remember(sheetState, transitionDistancePx) {
+            derivedStateOf {
+                val offset = runCatching { sheetState.requireOffset() }.getOrNull()
+                if (offset == null) {
+                    22.dp
+                } else {
+                    val progress = (offset / transitionDistancePx).coerceIn(0f, 1f)
+                    22.dp * progress
+                }
+            }
+        }
+
+    LaunchedEffect(panelType) {
+        if (panelType != PlayerSidePanelType.SETTINGS && panelType != PlayerSidePanelType.NONE) {
+            runCatching { sheetState.expand() }
+        }
+    }
+
     DisposableEffect(viewModel.player) {
         val listener =
             object : Player.Listener {
@@ -107,17 +155,35 @@ fun PlayerBottomSheet(
     val windowInfo = LocalWindowInfo.current
     val maxContentHeight = (windowInfo.containerDpSize.height - 48.dp).coerceAtLeast(200.dp)
 
+    val handleLock =
+        remember(onDismiss, onLock) {
+            {
+                onDismiss()
+                onLock()
+            }
+        }
+    val handleNavigateToSettings =
+        remember(onPanelTypeChange) { { onPanelTypeChange(PlayerSidePanelType.SETTINGS) } }
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
+        shape = RoundedCornerShape(topStart = cornerRadius, topEnd = cornerRadius),
         containerColor = PlayerSheetContainer,
         contentColor = MaterialTheme.colorScheme.onSurface,
         dragHandle = {
-            BottomSheetDefaults.DragHandle(
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
-            )
+            Box(
+                modifier = Modifier.fillMaxWidth().padding(top = handleTopPadding, bottom = 10.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Surface(
+                    modifier = Modifier.size(width = 32.dp, height = 4.dp),
+                    shape = MaterialTheme.shapes.extraLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                ) {}
+            }
         },
-        contentWindowInsets = { WindowInsets(0, 0, 0, 0) },
+        contentWindowInsets = { WindowInsets.statusBars },
         modifier = modifier,
     ) {
         Column(
@@ -126,15 +192,20 @@ fun PlayerBottomSheet(
                     .widthIn(max = 540.dp)
                     .align(Alignment.CenterHorizontally)
                     .padding(horizontal = 20.dp)
-                    .padding(bottom = 16.dp)
         ) {
             // Header with Back navigation & Title
+            val showBackButton = (panelType != PlayerSidePanelType.SETTINGS) && !openedDirectly
+            val isSettings =
+                panelType == PlayerSidePanelType.SETTINGS || panelType == PlayerSidePanelType.NONE
             Row(
-                modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                modifier =
+                    Modifier.fillMaxWidth()
+                        .padding(bottom = 12.dp)
+                        .padding(start = if (isSettings) 12.dp else 0.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                if ((panelType != PlayerSidePanelType.SETTINGS) && !openedDirectly) {
+                if (showBackButton) {
                     Box(
                         modifier =
                             Modifier.size(36.dp)
@@ -143,9 +214,8 @@ fun PlayerBottomSheet(
                                 .clickable(
                                     interactionSource = remember { MutableInteractionSource() },
                                     indication = ripple(bounded = true, radius = 18.dp),
-                                ) {
-                                    onPanelTypeChange(PlayerSidePanelType.SETTINGS)
-                                },
+                                    onClick = handleNavigateToSettings,
+                                ),
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(
@@ -186,8 +256,28 @@ fun PlayerBottomSheet(
                 )
             }
 
-            Box(modifier = Modifier.fillMaxWidth().heightIn(max = maxContentHeight)) {
-                when (panelType) {
+            AnimatedContent(
+                targetState = panelType,
+                transitionSpec = {
+                    (fadeIn(animationSpec = tween(220, delayMillis = 60)) +
+                            scaleIn(
+                                initialScale = 0.98f,
+                                animationSpec = tween(220, delayMillis = 60),
+                            ))
+                        .togetherWith(fadeOut(animationSpec = tween(90)))
+                        .using(
+                            SizeTransform(
+                                clip = false,
+                                sizeAnimationSpec = { _, _ ->
+                                    tween(durationMillis = 300, easing = FastOutSlowInEasing)
+                                },
+                            )
+                        )
+                },
+                label = "PlayerBottomSheetPanelTransition",
+                modifier = Modifier.fillMaxWidth().heightIn(max = maxContentHeight),
+            ) { targetPanel ->
+                when (targetPanel) {
                     PlayerSidePanelType.SETTINGS -> {
                         PhoneSettingsMenu(
                             viewModel = viewModel,
@@ -198,10 +288,7 @@ fun PlayerBottomSheet(
                             isAmbientModeEnabled = isAmbientModeEnabled,
                             onAmbientModeToggle = onAmbientModeToggle,
                             onNavigate = onPanelTypeChange,
-                            onLock = {
-                                onDismiss()
-                                onLock()
-                            },
+                            onLock = handleLock,
                         )
                     }
                     PlayerSidePanelType.QUALITY -> {
