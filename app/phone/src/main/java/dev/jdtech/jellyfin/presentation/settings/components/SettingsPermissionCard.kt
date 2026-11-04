@@ -1,5 +1,6 @@
 package dev.jdtech.jellyfin.presentation.settings.components
 
+import android.Manifest
 import android.app.Activity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -35,6 +36,7 @@ import dev.jdtech.jellyfin.settings.domain.models.PermissionDefinitions
 import dev.jdtech.jellyfin.settings.presentation.models.PreferencePermission
 import dev.jdtech.jellyfin.utils.isPermissionGranted
 import dev.jdtech.jellyfin.utils.openAppSettings
+import dev.jdtech.jellyfin.utils.openNotificationSettings
 import dev.jdtech.jellyfin.utils.shouldShowPermissionRationale
 
 @Composable
@@ -69,7 +71,11 @@ fun SettingsPermissionCard(
                         !shouldShowPermissionRationale(activity, preference.permission)
                 ) {
                     // The system dialog is suppressed ("don't ask again").
-                    openAppSettings(context)
+                    if (preference.permission.id == Manifest.permission.POST_NOTIFICATIONS) {
+                        openNotificationSettings(context)
+                    } else {
+                        openAppSettings(context)
+                    }
                 }
             }
         }

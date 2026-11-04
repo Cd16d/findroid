@@ -13,6 +13,7 @@ import dev.jdtech.jellyfin.settings.BuildConfig
 import dev.jdtech.jellyfin.settings.R
 import dev.jdtech.jellyfin.settings.domain.AppPreferences
 import dev.jdtech.jellyfin.settings.domain.Constants
+import dev.jdtech.jellyfin.settings.domain.models.PermissionDefinitions
 import dev.jdtech.jellyfin.settings.presentation.enums.DeviceType
 import dev.jdtech.jellyfin.settings.presentation.models.PreferenceAppLanguage
 import dev.jdtech.jellyfin.settings.presentation.models.PreferenceCategory
@@ -21,6 +22,7 @@ import dev.jdtech.jellyfin.settings.presentation.models.PreferenceGroup
 import dev.jdtech.jellyfin.settings.presentation.models.PreferenceIntInput
 import dev.jdtech.jellyfin.settings.presentation.models.PreferenceLongInput
 import dev.jdtech.jellyfin.settings.presentation.models.PreferenceMultiSelect
+import dev.jdtech.jellyfin.settings.presentation.models.PreferencePermission
 import dev.jdtech.jellyfin.settings.presentation.models.PreferenceSegmentConfig
 import dev.jdtech.jellyfin.settings.presentation.models.PreferenceSelect
 import dev.jdtech.jellyfin.settings.presentation.models.PreferenceStepper
@@ -69,6 +71,31 @@ constructor(
         set(value) {
             savedStateHandle[KEY_INITIAL_STORAGE_DEVICE_ORDER] = value?.let { ArrayList(it) }
         }
+
+    private val permissionPreferences =
+        PermissionDefinitions.all.map { permission ->
+            PreferencePermission(permission = permission)
+        }
+
+    private val permissionsPreferenceGroup =
+        PreferenceGroup(
+            preferences =
+                listOf(
+                    PreferenceCategory(
+                        nameStringResource = R.string.settings_category_permissions,
+                        iconDrawableId = R.drawable.ic_shield_check,
+                        onClick = {
+                            viewModelScope.launch {
+                                eventsChannel.send(
+                                    SettingsEvent.NavigateToSettings(listOf(it.nameStringResource))
+                                )
+                            }
+                        },
+                        nestedPreferenceGroups =
+                            listOf(PreferenceGroup(preferences = permissionPreferences)),
+                    )
+                )
+        )
 
     private val topLevelPreferences =
         listOf(
@@ -270,7 +297,7 @@ constructor(
                                                 PreferenceSelect(
                                                     nameStringResource =
                                                         R.string.settings_preferred_audio_language,
-                                                    iconDrawableId = R.drawable.ic_speaker,
+                                                    iconDrawableId = R.drawable.ic_audio,
                                                     backendPreference =
                                                         appPreferences.preferredAudioLanguage,
                                                     options = R.array.languages,
@@ -1100,7 +1127,14 @@ constructor(
                         )
                     )
             ),
-        )
+        ) +
+            // Show the Permissions category only if at least one permission applies on this Android
+            // version.
+            (if (permissionPreferences.any { Build.VERSION.SDK_INT >= it.minSdk }) {
+                listOf(permissionsPreferenceGroup)
+            } else {
+                emptyList()
+            })
 
     fun loadPreferences(indexes: List<Int> = emptyList(), deviceType: DeviceType) {
         viewModelScope.launch {
@@ -1171,6 +1205,10 @@ constructor(
                             preferences =
                                 preferenceGroup.preferences
                                     .filter { it.supportedDeviceTypes.contains(deviceType) }
+                                    .filter { preference ->
+                                        preference !is PreferencePermission ||
+                                            Build.VERSION.SDK_INT >= preference.minSdk
+                                    }
                                     .filter { preference ->
                                         !(preference is PreferenceSelect &&
                                             preference.backendPreference ==

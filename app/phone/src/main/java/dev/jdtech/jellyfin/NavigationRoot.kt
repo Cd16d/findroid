@@ -106,10 +106,13 @@ import dev.jdtech.jellyfin.presentation.settings.DownloadPresetsScreen
 import dev.jdtech.jellyfin.presentation.settings.SettingsFileEditScreen
 import dev.jdtech.jellyfin.presentation.settings.SettingsScreen
 import dev.jdtech.jellyfin.presentation.settings.SmartDownloadsScreen
+import dev.jdtech.jellyfin.presentation.setup.permission.PermissionScreen
 import dev.jdtech.jellyfin.presentation.theme.spacings
 import dev.jdtech.jellyfin.presentation.utils.LocalOfflineMode
 import dev.jdtech.jellyfin.presentation.utils.rememberSafePadding
 import dev.jdtech.jellyfin.settings.domain.AppPreferences
+import dev.jdtech.jellyfin.setup.presentation.permission.PermissionAction
+import dev.jdtech.jellyfin.setup.presentation.permission.PermissionViewModel
 import dev.jdtech.jellyfin.utils.restart
 import dev.jdtech.jellyfin.viewmodels.MainViewModel
 import java.util.UUID
@@ -204,18 +207,35 @@ fun NavigationRoot(
         appliedSetupMode.setupComplete = setupComplete
     }
 
-    // Exposed as a state object (rather than a plain value) so the entry content closures, which
+    // The activity-scoped permission ViewModel is shared by the interstitial and the setup screen.
+    val permissionViewModel: PermissionViewModel = hiltViewModel()
+    val permissionState by permissionViewModel.state.collectAsStateWithLifecycle()
+
     if (setupComplete) {
-        MainNavigation(
-            navigationState = navigationState,
-            navigator = navigator,
-            entryDecorators = entryDecorators,
-            isOfflineMode = LocalOfflineMode.current,
-        )
+        // Upgrader interstitial: shown before the home screen until the user decides or
+        // dismisses it for this session.
+        if (permissionState.showInterstitial) {
+            PermissionScreen(
+                viewModel = permissionViewModel,
+                onDecided = {},
+                onBackPressed = { permissionViewModel.onAction(PermissionAction.OnDismiss) },
+            )
+        } else {
+            MainNavigation(
+                navigationState = navigationState,
+                navigator = navigator,
+                entryDecorators = entryDecorators,
+                isOfflineMode = LocalOfflineMode.current,
+                permissionViewModel = permissionViewModel,
+                permissionApplicable = permissionState.currentRequest != null,
+            )
+        }
     } else {
         SetupNavigation(
             backStack = setupBackStack,
             entryDecorators = entryDecorators,
+            permissionViewModel = permissionViewModel,
+            permissionApplicable = permissionState.currentRequest != null,
         )
     }
 }
@@ -233,6 +253,8 @@ private fun MainNavigation(
     navigator: Navigator,
     entryDecorators: List<NavEntryDecorator<NavKey>>,
     isOfflineMode: Boolean,
+    permissionViewModel: PermissionViewModel,
+    permissionApplicable: Boolean,
 ) {
     val context = LocalContext.current
     val mainViewModel: MainViewModel = hiltViewModel(context as ViewModelStoreOwner)
@@ -364,6 +386,8 @@ private fun MainNavigation(
         mainEntries(
             navigator = navigator,
             onUserClick = { isAccountMenuOpen = true },
+            permissionViewModel = permissionViewModel,
+            permissionApplicable = permissionApplicable,
         )
     }
 
@@ -532,6 +556,8 @@ private fun MainNavigation(
 private fun SetupNavigation(
     backStack: NavBackStack<NavKey>,
     entryDecorators: List<NavEntryDecorator<NavKey>>,
+    permissionViewModel: PermissionViewModel,
+    permissionApplicable: Boolean,
 ) {
     val navigate: (NavKey) -> Unit = backStack::add
     val goBack: () -> Unit = { backStack.removeLastOrNull() }
@@ -544,6 +570,8 @@ private fun SetupNavigation(
             navigateOrReuse = navigateOrReuse,
             showBack = backStack.size > 1,
             onSetupComplete = {},
+            permissionViewModel = permissionViewModel,
+            permissionApplicable = permissionApplicable,
         )
     }
 
@@ -561,6 +589,8 @@ private fun SetupNavigation(
 private fun EntryProviderScope<NavKey>.mainEntries(
     navigator: Navigator,
     onUserClick: () -> Unit,
+    permissionViewModel: PermissionViewModel,
+    permissionApplicable: Boolean,
 ) {
     setupEntries(
         navigate = navigator::navigate,
@@ -568,6 +598,8 @@ private fun EntryProviderScope<NavKey>.mainEntries(
         navigateOrReuse = navigator::navigateOrReuse,
         showBack = true,
         onSetupComplete = { navigator.navigateHome() },
+        permissionViewModel = permissionViewModel,
+        permissionApplicable = permissionApplicable,
     )
     entry<HomeRoute> {
         HomeScreen(

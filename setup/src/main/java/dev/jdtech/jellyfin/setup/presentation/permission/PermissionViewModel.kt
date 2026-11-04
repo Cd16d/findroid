@@ -1,12 +1,14 @@
 package dev.jdtech.jellyfin.setup.presentation.permission
 
 import android.content.Context
+import android.content.pm.PackageManager
 import android.os.Build
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.jdtech.jellyfin.settings.domain.AppPreferences
+import dev.jdtech.jellyfin.settings.presentation.enums.DeviceType
 import dev.jdtech.jellyfin.utils.isPermissionGranted
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -50,13 +52,17 @@ constructor(
     }
 
     /**
-     * Selects the first request needing a prompt: one that applies on this OS version, is not
-     * granted, and has not been decided. Only an explicit grant or skip persists the decided flag,
-     * so implicit system grants don't suppress the prompt.
+     * Selects the first request needing a prompt: one that applies to the current device and OS
+     * version, is not granted, and has not been decided. Only an explicit grant or skip persists
+     * the decided flag, so implicit system grants don't suppress the prompt.
      */
     private fun selectCurrentRequest() {
+        val isTv = context.packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK)
+        val currentDeviceType = if (isTv) DeviceType.TV else DeviceType.PHONE
+
         val current = requests.firstOrNull { request ->
-            Build.VERSION.SDK_INT >= request.permission.minSdk &&
+            request.supportedDeviceTypes.contains(currentDeviceType) &&
+                Build.VERSION.SDK_INT >= request.permission.minSdk &&
                 !isPermissionGranted(context, request.permission) &&
                 !appPreferences.getValue(request.decidedPreference)
         }

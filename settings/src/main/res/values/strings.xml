@@ -218,6 +218,10 @@
     <string name="pref_player_playback_speed_remember">Remember playback speed</string>
     <string name="pref_player_playback_speed_remember_summary">Keep chosen playback speed across media playback</string>
     <string name="permission_local_network">Local Network</string>
+    <string name="settings_category_permissions">Permissions</string>
+    <string name="permission_notifications">Notifications</string>
+    <string name="permission_notifications_summary">Allow notifications for media playback and downloads</string>
+    <string name="permission_notifications_rationale">Findroid requires notification permission to keep you informed about active downloads and media playback controls.</string>
     <string name="permission_local_network_summary">Allow discovering devices on your local network</string>
     <string name="permission_local_network_rationale">Findroid requires local network permission to discover Jellyfin servers and Cast devices on your network.</string>
     <string name="permission_status_granted">Granted</string>

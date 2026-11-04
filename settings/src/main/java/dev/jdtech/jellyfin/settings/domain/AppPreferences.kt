@@ -253,6 +253,7 @@ class AppPreferences @Inject constructor(val sharedPreferences: SharedPreference
     val sortOrder = Preference("pref_sort_order", "Ascending")
 
     // Permissions
+    val notificationsPermissionDecided = Preference("pref_notifications_permission_decided", false)
     val localNetworkPermissionDecided = Preference("pref_local_network_permission_decided", false)
 
     // Offline mode

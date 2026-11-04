@@ -5,6 +5,7 @@ import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
 import dev.jdtech.jellyfin.AddServerRoute
 import dev.jdtech.jellyfin.LoginRoute
+import dev.jdtech.jellyfin.PermissionRoute
 import dev.jdtech.jellyfin.ServerAddressesRoute
 import dev.jdtech.jellyfin.ServersRoute
 import dev.jdtech.jellyfin.UsersRoute
@@ -12,9 +13,11 @@ import dev.jdtech.jellyfin.WelcomeRoute
 import dev.jdtech.jellyfin.presentation.setup.addresses.ServerAddressesScreen
 import dev.jdtech.jellyfin.presentation.setup.addserver.AddServerScreen
 import dev.jdtech.jellyfin.presentation.setup.login.LoginScreen
+import dev.jdtech.jellyfin.presentation.setup.permission.PermissionScreen
 import dev.jdtech.jellyfin.presentation.setup.servers.ServersScreen
 import dev.jdtech.jellyfin.presentation.setup.users.UsersScreen
 import dev.jdtech.jellyfin.presentation.setup.welcome.WelcomeScreen
+import dev.jdtech.jellyfin.setup.presentation.permission.PermissionViewModel
 
 /**
  * Registers the setup flow entries.
@@ -30,9 +33,27 @@ fun EntryProviderScope<NavKey>.setupEntries(
     navigateOrReuse: (NavKey) -> Unit,
     showBack: Boolean,
     onSetupComplete: () -> Unit,
+    permissionViewModel: PermissionViewModel,
+    permissionApplicable: Boolean,
 ) {
     entry<WelcomeRoute> {
-        WelcomeScreen(onContinueClick = dropUnlessResumed { navigate(ServersRoute) })
+        WelcomeScreen(
+            onContinueClick =
+                dropUnlessResumed {
+                    navigate(if (permissionApplicable) PermissionRoute else ServersRoute)
+                }
+        )
+    }
+    entry<PermissionRoute> {
+        PermissionScreen(
+            viewModel = permissionViewModel,
+            onDecided =
+                dropUnlessResumed {
+                    // Pop the permission entry so back from Servers returns to Welcome.
+                    goBack()
+                    navigate(ServersRoute)
+                },
+        )
     }
     entry<ServersRoute> {
         ServersScreen(

@@ -1,5 +1,6 @@
 package dev.jdtech.jellyfin.settings.presentation.models
 
+import android.Manifest
 import dev.jdtech.jellyfin.settings.domain.models.Permission
 import dev.jdtech.jellyfin.settings.domain.models.Preference as PreferenceBackend
 import dev.jdtech.jellyfin.settings.presentation.enums.DeviceType
@@ -8,7 +9,12 @@ import dev.jdtech.jellyfin.settings.presentation.enums.DeviceType
 data class PreferencePermission(
     override val enabled: Boolean = true,
     override val dependencies: List<PreferenceBackend<Boolean>> = emptyList(),
-    override val supportedDeviceTypes: List<DeviceType> = listOf(DeviceType.PHONE, DeviceType.TV),
+    override val supportedDeviceTypes: List<DeviceType> =
+        if (permission.id == Manifest.permission.POST_NOTIFICATIONS) {
+            listOf(DeviceType.PHONE)
+        } else {
+            listOf(DeviceType.PHONE, DeviceType.TV)
+        },
     val permission: Permission,
 ) : Preference {
     override val nameStringResource: Int
