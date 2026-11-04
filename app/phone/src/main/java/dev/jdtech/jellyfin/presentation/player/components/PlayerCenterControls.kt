@@ -54,7 +54,7 @@ fun PlayerCenterControls(
     hasNextItem: Boolean = false,
     isPortrait: Boolean = false,
 ) {
-    val haptics = rememberPlayerHaptics()
+    val haptics = LocalPlayerHaptics.current
 
     Row(
         modifier = modifier,

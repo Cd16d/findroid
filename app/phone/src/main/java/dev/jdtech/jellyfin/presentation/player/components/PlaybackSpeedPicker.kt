@@ -34,6 +34,7 @@ import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -305,6 +306,8 @@ private fun SpeedSliderSection(
     onSpeedChange: (Float) -> Unit,
     isLandscape: Boolean,
 ) {
+    val haptics = LocalPlayerHaptics.current
+    var wasAtCenter by remember(speedState) { mutableStateOf(abs(speedState - 1.0f) < 0.01f) }
     // Current speed readout (e.g. "1.00×")
     Text(
         text = String.format(Locale.US, "%.2f×", speedState),
@@ -373,6 +376,11 @@ private fun SpeedSliderSection(
             value = sliderFraction,
             onValueChange = { f ->
                 val snapped = fractionToSpeed(f, minSpeed, maxSpeed)
+                val isAtCenter = abs(snapped - 1.0f) < 0.01f
+                if (isAtCenter && !wasAtCenter) {
+                    haptics.chapterSnap()
+                }
+                wasAtCenter = isAtCenter
                 onSpeedChange(snapped)
             },
             valueRange = 0f..1f,

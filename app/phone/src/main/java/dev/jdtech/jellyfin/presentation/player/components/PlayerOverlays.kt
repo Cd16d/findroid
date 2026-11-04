@@ -362,7 +362,8 @@ fun SlideToUnlock(
 
     val coroutineScope = rememberCoroutineScope()
     val dragOffset = remember { Animatable(0f) }
-    val haptics = rememberPlayerHaptics()
+    val haptics = LocalPlayerHaptics.current
+    val currentHaptics by rememberUpdatedState(haptics)
 
     val currentOffset = dragOffset.value
     val progress = (currentOffset / maxDragPx).coerceIn(0f, 1f)
@@ -440,19 +441,19 @@ fun SlideToUnlock(
                     .pointerInput(maxDragPx) {
                         detectHorizontalDragGestures(
                             onDragStart = {
-                                haptics.gestureStart()
+                                currentHaptics.gestureStart()
                                 currentOnDraggingChanged(true)
                                 currentOnKeepAlive()
                             },
                             onDragEnd = {
                                 currentOnDraggingChanged(false)
                                 if (dragOffset.value >= maxDragPx * 0.95f) {
-                                    haptics.confirm()
+                                    currentHaptics.confirm()
                                     currentOnUnlock()
                                     coroutineScope.launch { dragOffset.snapTo(0f) }
                                 } else {
                                     if (dragOffset.value > 12f) {
-                                        haptics.reject()
+                                        currentHaptics.reject()
                                     }
                                     currentOnKeepAlive()
                                     coroutineScope.launch {
@@ -470,7 +471,7 @@ fun SlideToUnlock(
                             onDragCancel = {
                                 currentOnDraggingChanged(false)
                                 if (dragOffset.value > 12f) {
-                                    haptics.reject()
+                                    currentHaptics.reject()
                                 }
                                 currentOnKeepAlive()
                                 coroutineScope.launch {

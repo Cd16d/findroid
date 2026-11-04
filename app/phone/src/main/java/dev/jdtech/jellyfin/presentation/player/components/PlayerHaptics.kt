@@ -4,6 +4,7 @@ import android.os.Build
 import android.view.HapticFeedbackConstants
 import android.view.View
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalView
 
@@ -14,14 +15,14 @@ import androidx.compose.ui.platform.LocalView
  * Automatically checks API levels for newer constants (such as CONFIRM, REJECT, and SEGMENT_TICK)
  * and falls back gracefully on older devices.
  */
-class PlayerHaptics(private val view: View, private val enabled: Boolean = true) {
+class PlayerHaptics(private val view: View?, private val enabled: Boolean = true) {
 
     /**
-     * Light micro-tick for granular steps, such as double-tap seeking increments (+10s, -10s) and
-     * discrete volume button steps.
+     * Light micro-tick for granular steps, such as double-tap seeking increments (+10s, -10s),
+     * discrete volume button steps, and stationary timeline taps.
      */
     fun tick() {
-        if (!enabled) return
+        if (!enabled || view == null) return
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             view.performHapticFeedback(HapticFeedbackConstants.SEGMENT_TICK)
         } else {
@@ -29,9 +30,12 @@ class PlayerHaptics(private val view: View, private val enabled: Boolean = true)
         }
     }
 
-    /** Tactile detent / snap sensation when the scrub bar crosses a chapter marker threshold. */
+    /**
+     * Tactile detent / snap sensation when the scrub bar crosses a chapter marker threshold or
+     * center notch.
+     */
     fun chapterSnap() {
-        if (!enabled) return
+        if (!enabled || view == null) return
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             view.performHapticFeedback(HapticFeedbackConstants.SEGMENT_TICK)
         } else {
@@ -44,11 +48,11 @@ class PlayerHaptics(private val view: View, private val enabled: Boolean = true)
      * - Play / Pause toggle
      * - Slide-to-unlock completed (100% threshold reached)
      * - Lock controls enabled
+     * - Screen orientation locked / unlocked
      * - Skip Intro / Outro button pressed
-     * - Track / chapter selected from panel
      */
     fun confirm() {
-        if (!enabled) return
+        if (!enabled || view == null) return
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
         } else {
@@ -57,11 +61,21 @@ class PlayerHaptics(private val view: View, private val enabled: Boolean = true)
     }
 
     /**
+     * Distinct tactile cue for long press activation:
+     * - Quick 2× speed hold activation
+     */
+    fun longPress() {
+        if (!enabled || view == null) return
+        view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+    }
+
+    /**
      * Rejection / cancellation feedback when an action is aborted:
      * - Slide-to-unlock released before reaching the end (springs back)
+     * - Physical / logical boundary limit reached (volume/brightness 0% or 100%)
      */
     fun reject() {
-        if (!enabled) return
+        if (!enabled || view == null) return
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             view.performHapticFeedback(HapticFeedbackConstants.REJECT)
         } else {
@@ -73,7 +87,7 @@ class PlayerHaptics(private val view: View, private val enabled: Boolean = true)
      * Subtle tactile tick when beginning a continuous touch gesture (e.g. timeline scrub start).
      */
     fun gestureStart() {
-        if (!enabled) return
+        if (!enabled || view == null) return
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             view.performHapticFeedback(HapticFeedbackConstants.GESTURE_START)
         } else {
@@ -83,7 +97,7 @@ class PlayerHaptics(private val view: View, private val enabled: Boolean = true)
 
     /** Subtle tactile tick when committing / ending a continuous touch gesture. */
     fun gestureEnd() {
-        if (!enabled) return
+        if (!enabled || view == null) return
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
         } else {
@@ -97,12 +111,7 @@ class PlayerHaptics(private val view: View, private val enabled: Boolean = true)
      * - Screen brightness reaching 0% or 100%
      */
     fun boundary() {
-        if (!enabled) return
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-        } else {
-            view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
-        }
+        reject()
     }
 }
 
@@ -112,3 +121,9 @@ fun rememberPlayerHaptics(enabled: Boolean = true): PlayerHaptics {
     val view = LocalView.current
     return remember(view, enabled) { PlayerHaptics(view, enabled) }
 }
+
+/**
+ * CompositionLocal providing [PlayerHaptics] throughout the player hierarchy, ensuring all
+ * components respect the user's haptic preferences.
+ */
+val LocalPlayerHaptics = compositionLocalOf { PlayerHaptics(view = null, enabled = false) }

@@ -158,7 +158,8 @@ fun VideoPlayerSeekBar(
             label = "bufferPhase",
         )
 
-    val haptics = rememberPlayerHaptics()
+    val haptics = LocalPlayerHaptics.current
+    val currentHaptics by rememberUpdatedState(haptics)
     val currentChapters by rememberUpdatedState(chapters)
     val slicePath = remember { Path() }
 
@@ -250,7 +251,7 @@ fun VideoPlayerSeekBar(
                                         // Intentional horizontal drag -> engage scrubbing
                                         isScrubbingEngaged = true
                                         isDragging = true
-                                        haptics.gestureStart()
+                                        currentHaptics.gestureStart()
                                         currentState?.resetTimeout()
                                     }
                                 }
@@ -267,7 +268,7 @@ fun VideoPlayerSeekBar(
                                     scrubPos = (currentFraction * safeDurationMs).toLong()
                                     val newChapterIdx = getChapterIndex(scrubPos)
                                     if (newChapterIdx != lastChapterIdx && newChapterIdx != -1) {
-                                        haptics.chapterSnap()
+                                        currentHaptics.chapterSnap()
                                         lastChapterIdx = newChapterIdx
                                     }
                                     currentOnScrubbingChanged(true, scrubPos, change.position.x)
@@ -287,7 +288,9 @@ fun VideoPlayerSeekBar(
                                         releasedNormally = true
                                         currentState?.resetTimeout()
                                         if (isScrubbingEngaged) {
-                                            haptics.gestureEnd()
+                                            currentHaptics.gestureEnd()
+                                        } else {
+                                            currentHaptics.tick()
                                         }
                                         currentFraction =
                                             calculateProgressFromX(
