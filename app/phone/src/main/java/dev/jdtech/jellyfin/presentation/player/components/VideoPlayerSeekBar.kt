@@ -43,6 +43,7 @@ import dev.jdtech.jellyfin.player.core.presentation.calculateProgressFromX
 import dev.jdtech.jellyfin.player.core.presentation.drawCustomRoundRect
 import dev.jdtech.jellyfin.player.core.presentation.getSegmentColor
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
+import kotlin.math.abs
 
 private fun getM3SegmentFraction(phase: Float, startPhase: Float, endPhase: Float): Float {
     if (phase <= startPhase) return 0f
@@ -207,17 +208,13 @@ fun VideoPlayerSeekBar(
             modifier.fillMaxWidth().height(36.dp).padding(horizontal = 4.dp).pointerInput(
                 safeDurationMs
             ) {
+                val touchSlop = viewConfiguration.touchSlop
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
-                    down.consume()
-                    haptics.gestureStart()
-                    currentState?.resetTimeout()
-                    isDragging = true
-                    var currentFraction =
-                        calculateProgressFromX(down.position.x, size.width.toFloat())
-                    dragProgress = currentFraction
+                    val startX = down.position.x
+                    val startY = down.position.y
+                    var currentFraction = calculateProgressFromX(startX, size.width.toFloat())
                     var scrubPos = (currentFraction * safeDurationMs).toLong()
-                    currentOnScrubbingChanged(true, scrubPos, down.position.x)
 
                     fun getChapterIndex(posMs: Long): Int {
                         val chs = currentChapters
@@ -229,34 +226,83 @@ fun VideoPlayerSeekBar(
                     }
 
                     var lastChapterIdx = getChapterIndex(scrubPos)
-
+                    var isScrubbingEngaged = false
+                    var isAborted = false
                     var releasedNormally = false
+
                     try {
                         while (true) {
                             val event = awaitPointerEvent()
                             val change = event.changes.firstOrNull { it.id == down.id } ?: break
                             if (change.pressed) {
-                                change.consume()
-                                currentState?.resetTimeout()
-                                currentFraction =
-                                    calculateProgressFromX(
-                                        change.position.x,
-                                        size.width.toFloat(),
-                                    )
-                                dragProgress = currentFraction
-                                scrubPos = (currentFraction * safeDurationMs).toLong()
-                                val newChapterIdx = getChapterIndex(scrubPos)
-                                if (newChapterIdx != lastChapterIdx && newChapterIdx != -1) {
-                                    haptics.chapterSnap()
-                                    lastChapterIdx = newChapterIdx
+                                val totalDx = change.position.x - startX
+                                val totalDy = change.position.y - startY
+
+                                if (!isScrubbingEngaged) {
+                                    // If moving upward or primarily vertical -> swipe up (e.g.
+                                    // system Home/PiP gesture), abort seek immediately
+                                    if (abs(totalDy) > touchSlop && abs(totalDy) > abs(totalDx)) {
+                                        isAborted = true
+                                        break
+                                    } else if (
+                                        abs(totalDx) > touchSlop && abs(totalDx) > abs(totalDy)
+                                    ) {
+                                        // Intentional horizontal drag -> engage scrubbing
+                                        isScrubbingEngaged = true
+                                        isDragging = true
+                                        haptics.gestureStart()
+                                        currentState?.resetTimeout()
+                                    }
                                 }
-                                currentOnScrubbingChanged(true, scrubPos, change.position.x)
+
+                                if (isScrubbingEngaged) {
+                                    change.consume()
+                                    currentState?.resetTimeout()
+                                    currentFraction =
+                                        calculateProgressFromX(
+                                            change.position.x,
+                                            size.width.toFloat(),
+                                        )
+                                    dragProgress = currentFraction
+                                    scrubPos = (currentFraction * safeDurationMs).toLong()
+                                    val newChapterIdx = getChapterIndex(scrubPos)
+                                    if (newChapterIdx != lastChapterIdx && newChapterIdx != -1) {
+                                        haptics.chapterSnap()
+                                        lastChapterIdx = newChapterIdx
+                                    }
+                                    currentOnScrubbingChanged(true, scrubPos, change.position.x)
+                                }
                             } else {
-                                change.consume()
-                                releasedNormally = true
-                                haptics.gestureEnd()
-                                currentOnSeek(currentFraction)
-                                currentOnScrubbingChanged(false, scrubPos, change.position.x)
+                                // Pointer lifted (UP)
+                                if (!isAborted) {
+                                    val totalDx = change.position.x - startX
+                                    val totalDy = change.position.y - startY
+                                    // Valid if dragging was engaged or if it was an intentional
+                                    // stationary tap
+                                    if (
+                                        isScrubbingEngaged ||
+                                            (abs(totalDx) <= touchSlop && abs(totalDy) <= touchSlop)
+                                    ) {
+                                        change.consume()
+                                        releasedNormally = true
+                                        currentState?.resetTimeout()
+                                        if (isScrubbingEngaged) {
+                                            haptics.gestureEnd()
+                                        }
+                                        currentFraction =
+                                            calculateProgressFromX(
+                                                change.position.x,
+                                                size.width.toFloat(),
+                                            )
+                                        currentOnSeek(currentFraction)
+                                        scrubPos = (currentFraction * safeDurationMs).toLong()
+                                        currentOnScrubbingChanged(
+                                            false,
+                                            scrubPos,
+                                            change.position.x,
+                                        )
+                                    }
+                                }
                                 break
                             }
                         }

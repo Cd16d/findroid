@@ -523,24 +523,12 @@ fun PlayerScreen(
         }
     }
 
-    // Fade controls to alpha 0f while scrubbing on the seekbar
-    val topBarAlpha by
-        animateFloatAsState(
-            targetValue = if (isSeekBarScrubbing) 0f else 1f,
-            animationSpec = tween(180),
-            label = "topBarAlpha",
-        )
+    // Fade center controls in landscape to alpha 0f while scrubbing
     val centerControlsAlpha by
         animateFloatAsState(
             targetValue = if (isSeekBarScrubbing || isGestureScrubbing) 0f else 1f,
             animationSpec = tween(180),
             label = "centerControlsAlpha",
-        )
-    val controlsScrimAlpha by
-        animateFloatAsState(
-            targetValue = if (isSeekBarScrubbing) 0f else 1f,
-            animationSpec = tween(180),
-            label = "controlsScrimAlpha",
         )
 
     val skipButtonDurationPref by
@@ -698,7 +686,7 @@ fun PlayerScreen(
                     if (shouldShrinkVideo) {
                         bottomControllerPadding + controllerContentHeight + 8.dp
                     } else {
-                        bottomInset + 12.dp + 48.dp + videoPaddingInset
+                        bottomInset + (if (isPortrait) 142.dp else 72.dp) + videoPaddingInset
                     },
                 animationSpec = tween(220),
                 label = "trickplayBottomPadding",
@@ -1603,7 +1591,9 @@ fun PlayerScreen(
                 animateDpAsState(
                     targetValue =
                         if (videoPlayerState.controlsVisible) {
-                            insets.calculateBottomPadding() + 84.dp + videoPaddingInset
+                            insets.calculateBottomPadding() +
+                                (if (isPortrait) 168.dp else 96.dp) +
+                                videoPaddingInset
                         } else {
                             insets.calculateBottomPadding() + 32.dp + videoPaddingInset
                         },
@@ -1675,17 +1665,19 @@ fun PlayerScreen(
                         Modifier.fillMaxSize()
                             .background(
                                 Brush.verticalGradient(
-                                    0.0f to Color.Black.copy(alpha = 0.65f * controlsScrimAlpha),
+                                    0.0f to Color.Black.copy(alpha = 0.65f),
                                     (if (isCompactWidth) 0.25f else 0.15f) to Color.Transparent,
-                                    0.75f to Color.Transparent,
-                                    1.0f to Color.Black.copy(alpha = 0.75f * controlsScrimAlpha),
+                                    (if (isPortrait) 0.60f else 0.75f) to Color.Transparent,
+                                    1.0f to Color.Black.copy(alpha = 0.80f),
                                 )
                             )
                             .padding(
                                 start = maxHorizontalInset + 16.dp,
                                 end = maxHorizontalInset + 16.dp,
                                 top = insets.calculateTopPadding() + 12.dp,
-                                bottom = insets.calculateBottomPadding() + 12.dp,
+                                bottom =
+                                    insets.calculateBottomPadding() +
+                                        (if (isPortrait) 16.dp else 24.dp),
                             )
                 ) {
                     // Top Bar: Back, Title, Top-Right Actions (Subtitles, Audio, Lock, PiP,
@@ -1716,92 +1708,172 @@ fun PlayerScreen(
                         isPipSupported = isPipSupported,
                         isCompactWidth = isCompactWidth,
                         sleepTimerStatus = uiState.sleepTimerStatus,
-                        modifier =
-                            Modifier.align(Alignment.TopCenter).graphicsLayer {
-                                alpha = topBarAlpha
-                            },
+                        modifier = Modifier.align(Alignment.TopCenter),
                     )
 
-                    // Center Controls: Rewind 10s, Play/Pause, Fast-Forward 10s (+ Title/Subtitle
-                    // in portrait)
-                    Column(
-                        modifier =
-                            Modifier.align(Alignment.Center).graphicsLayer {
-                                alpha = centerControlsAlpha
-                            },
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        val isEpisode = itemKind.equals("Episode", ignoreCase = true)
-                        PlayerCenterControls(
-                            isPlaying = isPlaying,
-                            isBuffering = isBuffering,
-                            onPlayPause = {
-                                videoPlayerState.resetTimeout()
-                                if (isPlaying) viewModel.player.pause() else viewModel.player.play()
-                            },
-                            onSeekRelative = { deltaMs ->
-                                videoPlayerState.resetTimeout()
+                    val isEpisode = itemKind.equals("Episode", ignoreCase = true)
+                    if (!isPortrait) {
+                        // Landscape Center Controls: Rewind 10s, Play/Pause, Fast-Forward 10s
+                        Column(
+                            modifier =
+                                Modifier.align(Alignment.Center).graphicsLayer {
+                                    alpha = centerControlsAlpha
+                                },
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            PlayerCenterControls(
+                                isPlaying = isPlaying,
+                                isBuffering = isBuffering,
+                                onPlayPause = {
+                                    videoPlayerState.resetTimeout()
+                                    if (isPlaying) viewModel.player.pause()
+                                    else viewModel.player.play()
+                                },
+                                onSeekRelative = { deltaMs ->
+                                    videoPlayerState.resetTimeout()
+                                    val duration = viewModel.player.duration.coerceAtLeast(0L)
+                                    val newPos =
+                                        (viewModel.player.currentPosition + deltaMs).coerceIn(
+                                            0L,
+                                            duration,
+                                        )
+                                    currentPosition = newPos
+                                    viewModel.player.seekTo(newPos)
+                                },
+                                onPreviousItem =
+                                    if (isEpisode) {
+                                        {
+                                            videoPlayerState.resetTimeout()
+                                            viewModel.player.seekToPreviousMediaItem()
+                                        }
+                                    } else null,
+                                onNextItem =
+                                    if (isEpisode) {
+                                        {
+                                            videoPlayerState.resetTimeout()
+                                            viewModel.player.seekToNextMediaItem()
+                                        }
+                                    } else null,
+                                hasPreviousItem = hasPreviousItem,
+                                hasNextItem = hasNextItem,
+                                isPortrait = false,
+                            )
+                        }
+
+                        // Landscape Bottom Controls: VideoPlayerSeeker
+                        VideoPlayerSeeker(
+                            state = videoPlayerState,
+                            onSeek = { fraction ->
                                 val duration = viewModel.player.duration.coerceAtLeast(0L)
-                                val newPos =
-                                    (viewModel.player.currentPosition + deltaMs).coerceIn(
-                                        0L,
-                                        duration,
-                                    )
-                                currentPosition = newPos
-                                viewModel.player.seekTo(newPos)
+                                val targetMs = (fraction * duration).toLong()
+                                currentPosition = targetMs
+                                viewModel.player.seekTo(targetMs)
                             },
-                            onPreviousItem =
-                                if (isEpisode) {
-                                    {
-                                        videoPlayerState.resetTimeout()
-                                        viewModel.player.seekToPreviousMediaItem()
-                                    }
-                                } else null,
-                            onNextItem =
-                                if (isEpisode) {
-                                    {
-                                        videoPlayerState.resetTimeout()
-                                        viewModel.player.seekToNextMediaItem()
-                                    }
-                                } else null,
-                            hasPreviousItem = hasPreviousItem,
-                            hasNextItem = hasNextItem,
-                            isPortrait = isPortrait,
+                            contentProgress = currentPosition.milliseconds,
+                            contentDuration =
+                                viewModel.player.duration.coerceAtLeast(0L).milliseconds,
+                            bufferedProgress = bufferedPosition.milliseconds,
+                            chapters =
+                                if (uiState.showChapterMarkers) uiState.currentChapters
+                                else emptyList(),
+                            segments =
+                                if (uiState.showChapterMarkers) uiState.segments else emptyList(),
+                            isScrubbing = isSeekBarScrubbing,
+                            scrubPositionMs = seekBarScrubPositionMs,
+                            onScrubbingChanged = { scrubbing, posMs, touchX ->
+                                isSeekBarScrubbing = scrubbing
+                                seekBarScrubPositionMs = posMs
+                                seekBarTouchX = touchX
+                            },
+                            onOpenChapters = {
+                                openedPanelDirectly = true
+                                videoPlayerState.sidePanelType = PlayerSidePanelType.CHAPTERS
+                            },
+                            isPortrait = false,
+                            isCompactWidth = isCompactWidth,
+                            modifier = Modifier.align(Alignment.BottomCenter),
                         )
-                    }
+                    } else {
+                        // Portrait Bottom Deck: Seeker directly above Center Controls
+                        Column(
+                            modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            VideoPlayerSeeker(
+                                state = videoPlayerState,
+                                onSeek = { fraction ->
+                                    val duration = viewModel.player.duration.coerceAtLeast(0L)
+                                    val targetMs = (fraction * duration).toLong()
+                                    currentPosition = targetMs
+                                    viewModel.player.seekTo(targetMs)
+                                },
+                                contentProgress = currentPosition.milliseconds,
+                                contentDuration =
+                                    viewModel.player.duration.coerceAtLeast(0L).milliseconds,
+                                bufferedProgress = bufferedPosition.milliseconds,
+                                chapters =
+                                    if (uiState.showChapterMarkers) uiState.currentChapters
+                                    else emptyList(),
+                                segments =
+                                    if (uiState.showChapterMarkers) uiState.segments
+                                    else emptyList(),
+                                isScrubbing = isSeekBarScrubbing,
+                                scrubPositionMs = seekBarScrubPositionMs,
+                                onScrubbingChanged = { scrubbing, posMs, touchX ->
+                                    isSeekBarScrubbing = scrubbing
+                                    seekBarScrubPositionMs = posMs
+                                    seekBarTouchX = touchX
+                                },
+                                onOpenChapters = {
+                                    openedPanelDirectly = true
+                                    videoPlayerState.sidePanelType = PlayerSidePanelType.CHAPTERS
+                                },
+                                isPortrait = true,
+                                isCompactWidth = true,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
 
-                    // Bottom Controls: VideoPlayerSeeker
-                    VideoPlayerSeeker(
-                        state = videoPlayerState,
-                        onSeek = { fraction ->
-                            val duration = viewModel.player.duration.coerceAtLeast(0L)
-                            val targetMs = (fraction * duration).toLong()
-                            currentPosition = targetMs
-                            viewModel.player.seekTo(targetMs)
-                        },
-                        contentProgress = currentPosition.milliseconds,
-                        contentDuration = viewModel.player.duration.coerceAtLeast(0L).milliseconds,
-                        bufferedProgress = bufferedPosition.milliseconds,
-                        chapters =
-                            if (uiState.showChapterMarkers) uiState.currentChapters
-                            else emptyList(),
-                        segments =
-                            if (uiState.showChapterMarkers) uiState.segments else emptyList(),
-                        isScrubbing = isSeekBarScrubbing,
-                        scrubPositionMs = seekBarScrubPositionMs,
-                        onScrubbingChanged = { scrubbing, posMs, touchX ->
-                            isSeekBarScrubbing = scrubbing
-                            seekBarScrubPositionMs = posMs
-                            seekBarTouchX = touchX
-                        },
-                        onOpenChapters = {
-                            openedPanelDirectly = true
-                            videoPlayerState.sidePanelType = PlayerSidePanelType.CHAPTERS
-                        },
-                        isPortrait = isPortrait,
-                        isCompactWidth = isCompactWidth,
-                        modifier = Modifier.align(Alignment.BottomCenter),
-                    )
+                            PlayerCenterControls(
+                                isPlaying = isPlaying,
+                                isBuffering = isBuffering,
+                                onPlayPause = {
+                                    videoPlayerState.resetTimeout()
+                                    if (isPlaying) viewModel.player.pause()
+                                    else viewModel.player.play()
+                                },
+                                onSeekRelative = { deltaMs ->
+                                    videoPlayerState.resetTimeout()
+                                    val duration = viewModel.player.duration.coerceAtLeast(0L)
+                                    val newPos =
+                                        (viewModel.player.currentPosition + deltaMs).coerceIn(
+                                            0L,
+                                            duration,
+                                        )
+                                    currentPosition = newPos
+                                    viewModel.player.seekTo(newPos)
+                                },
+                                onPreviousItem =
+                                    if (isEpisode) {
+                                        {
+                                            videoPlayerState.resetTimeout()
+                                            viewModel.player.seekToPreviousMediaItem()
+                                        }
+                                    } else null,
+                                onNextItem =
+                                    if (isEpisode) {
+                                        {
+                                            videoPlayerState.resetTimeout()
+                                            viewModel.player.seekToNextMediaItem()
+                                        }
+                                    } else null,
+                                hasPreviousItem = hasPreviousItem,
+                                hasNextItem = hasNextItem,
+                                isPortrait = true,
+                                modifier = Modifier.graphicsLayer { alpha = centerControlsAlpha },
+                            )
+                        }
+                    }
                 }
             }
 
