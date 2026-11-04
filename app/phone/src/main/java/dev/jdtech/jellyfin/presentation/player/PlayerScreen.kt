@@ -670,8 +670,9 @@ fun PlayerScreen(
 
             val titleTopPadding = maxOf(minTitleTopPadding, (videoTop - titleContentHeight) / 2)
 
-            val ambientWidth = targetWidth + 600.dp
-            val ambientHeight = targetHeight + 600.dp
+            val ambientWidth = if (shouldShrinkVideo) targetWidth + 600.dp else screenWidth
+            val ambientHeight = if (shouldShrinkVideo) targetHeight + 600.dp else screenHeight
+            val ambientVideoMargin = if (shouldShrinkVideo) 300.dp else 0.dp
 
             val cardWidth = calculateTrickplayCardWidth(uiState.currentTrickplay, videoAspectRatio)
             val cardHalfWidth = cardWidth / 2
@@ -697,10 +698,13 @@ fun PlayerScreen(
                     label = "trickplayBottomPadding",
                 )
 
-            val isAmbientActive =
-                isAmbientModeEnabled &&
-                    !isInPip &&
-                    (isPanelOpen || currentResizeMode == PlayerResizeMode.FIT)
+            val hasBlackBars =
+                shouldShrinkVideo ||
+                    (currentResizeMode == PlayerResizeMode.FIT &&
+                        (fullVideoWidth < screenWidth - 1.dp ||
+                            fullVideoHeight < screenHeight - 1.dp))
+
+            val isAmbientActive = isAmbientModeEnabled && !isInPip && hasBlackBars
 
             val startScaleX =
                 if (shrunkVideoWidth.value > 0f) fullVideoWidth.value / shrunkVideoWidth.value
@@ -741,6 +745,7 @@ fun PlayerScreen(
                             currentPositionMs = currentPosition,
                             isPanelOpen = isPanelOpen,
                             applyBlackBorder = shouldShrinkVideo,
+                            videoMargin = ambientVideoMargin,
                             modifier = Modifier.fillMaxSize(),
                         )
                     }

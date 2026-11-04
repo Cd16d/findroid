@@ -60,6 +60,7 @@ private const val PIXEL_COUNT = GRID_WIDTH * GRID_HEIGHT
 private const val SAMPLE_INTERVAL_MS = 250L
 private const val FRAME_TIMEOUT_MS = 1000L
 private const val MORPH_TIME_CONSTANT_SECONDS = 1f
+private const val MIN_FRAME_INTERVAL_NANOS = 16_000_000L
 
 /**
  * Ambient background component that renders a diffused edge glow around the video surface using
@@ -216,18 +217,24 @@ fun AmbientPlayerBackground(
         }
     }
 
-    // Continuous pixel interpolation loop running on display VSync
+    // Continuous pixel interpolation loop running on display VSync (capped at 60 FPS)
     LaunchedEffect(enabled, isPlaying) {
         if (!enabled) return@LaunchedEffect
-        var lastFrameTimeNanos = 0L
+        var lastDrawnNanos = 0L
         while (isActive) {
             withFrameNanos { now ->
-                if (lastFrameTimeNanos == 0L) {
-                    lastFrameTimeNanos = now
+                if (lastDrawnNanos == 0L) {
+                    lastDrawnNanos = now
                     return@withFrameNanos
                 }
-                val dt = ((now - lastFrameTimeNanos) / 1_000_000_000f).coerceIn(0.001f, 0.1f)
-                lastFrameTimeNanos = now
+
+                val dtNanos = now - lastDrawnNanos
+                if (dtNanos < MIN_FRAME_INTERVAL_NANOS) {
+                    return@withFrameNanos
+                }
+
+                val dt = (dtNanos / 1_000_000_000f).coerceIn(0.001f, 0.1f)
+                lastDrawnNanos = now
 
                 if (!hasDrawnFirstFrame) return@withFrameNanos
 
