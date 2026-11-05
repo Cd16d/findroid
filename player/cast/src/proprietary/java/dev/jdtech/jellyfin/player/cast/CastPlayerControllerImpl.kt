@@ -590,7 +590,11 @@ constructor(
         val streamUrl = currentQueueItem?.media?.contentId
         Timber.d("Stream Url: $streamUrl")
         audioStreamIndex = streamUrl?.let { url ->
-            Uri.parse(url).getQueryParameter("AudioStreamIndex")?.toIntOrNull()
+            Uri.parse(url).let { uri ->
+                uri.queryParameterNames
+                    .firstOrNull { it.equals("AudioStreamIndex", ignoreCase = true) }
+                    ?.let { uri.getQueryParameter(it)?.toIntOrNull() }
+            }
         }
         subtitleStreamIndex = status.activeTrackIds?.firstOrNull()?.toInt()
 
@@ -728,7 +732,6 @@ constructor(
                             deviceProfile = profile,
                             maxStreamingBitrate = maxStreamingBitrate,
                             audioStreamIndex = audioStreamIndex,
-                            subtitleStreamIndex = subtitleStreamIndex,
                             enableDirectPlay = audioStreamIndex == null,
                             enableDirectStream = true,
                             enableTranscoding = true,

@@ -367,6 +367,9 @@ constructor(
         get() = player is MPVPlayer
 
     fun initializePlayer(itemId: UUID, itemKind: String, startFromBeginning: Boolean) {
+        currentMediaSourceId = null
+        currentSource = null
+        selectedAudioStreamIndex = null
         player.addListener(this)
 
         if (appPreferences.getValue(appPreferences.playerPlaybackSpeedRemember)) {
@@ -457,6 +460,7 @@ constructor(
                 Timber.e("No start item, stopping player initialization")
                 return@launch
             }
+            currentMediaSourceId = startItem.mediaSourceId
 
             val selectedOption = _uiState.value.selectedQuality
 
@@ -518,7 +522,7 @@ constructor(
                         includePath = true,
                         maxStreamingBitrate = effectiveBitrate,
                         audioStreamIndex = selectedAudioStreamIndex,
-                        mediaSourceId = currentMediaSourceId,
+                        mediaSourceId = currentMediaSourceId ?: currentSource?.id,
                         deviceProfile = deviceProfile,
                         enableDirectPlay = enableDirectPlay,
                     )
@@ -809,7 +813,13 @@ constructor(
                 selectedAudioStreamIndex
                     ?: if (!isDirect) {
                         currentSource?.transcodingUrl?.let { url ->
-                            url.toUri().getQueryParameter("AudioStreamIndex")?.toIntOrNull()
+                            url.toUri().let { uri ->
+                                uri.queryParameterNames
+                                    .firstOrNull {
+                                        it.equals("AudioStreamIndex", ignoreCase = true)
+                                    }
+                                    ?.let { uri.getQueryParameter(it)?.toIntOrNull() }
+                            }
                         }
                     } else {
                         val internalSelectedIdx =
@@ -952,7 +962,7 @@ constructor(
                         includePath = true,
                         maxStreamingBitrate = effectiveBitrate,
                         audioStreamIndex = selectedAudioStreamIndex,
-                        mediaSourceId = currentMediaSourceId,
+                        mediaSourceId = currentMediaSourceId ?: currentSource?.id,
                         deviceProfile = deviceProfile,
                         enableDirectPlay = enableDirectPlay,
                     )
@@ -1766,6 +1776,9 @@ constructor(
                 items
                     .first { it.itemId.toString() == player.currentMediaItem?.mediaId }
                     .let { item ->
+                        currentMediaSourceId = item.mediaSourceId
+                        currentSource = null
+                        selectedAudioStreamIndex = null
                         val parentIndexNumber = item.parentIndexNumber
                         val indexNumber = item.indexNumber
                         val indexNumberEnd = item.indexNumberEnd
