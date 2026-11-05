@@ -1,4 +1,4 @@
-﻿# Working with Findroid as an AI agent
+# Working with Findroid as an AI agent
 
 Findroid is a third-party Android application for Jellyfin that provides a native user interface to browse and play movies and series. It is written in Kotlin and built using Jetpack Compose, Material 3 design guidelines, Room, ExoPlayer, and mpv.
 
@@ -98,6 +98,75 @@ When the user requests to create or trigger a new release:
      - **What's New & Highlights**: Grouped into user-friendly categories with emojis and markdown headers (e.g. `### 🌟 Key Highlights`, `### 🎨 UI & Player Controls`, `### ⚡ Performance & Engine`, `### 🐛 Bug Fixes`). Explain benefits from the user's perspective rather than raw technical jargon.
      - **Included Variants**: Standard section detailing `Libre`, `Proprietary`, and `TV` build flavors.
      - **Commits List**: `### 📝 Commits since <preceding_tag>` listing commits as `* <commit message> (<short_hash>)`.
+
+### 3. Standardized Pull Request Workflow & Schema
+
+When creating or proposing a Pull Request (PR):
+1. **Branch Management**:
+   - Feature/bugfix PRs must branch off `beta` into a dedicated branch named `feat/<short-description>`, `fix/<short-description>`, or `refactor/<short-description>` (e.g., `feat/issue-1.1-native-stream-url`).
+   - The target/base branch for all PRs on this fork is `beta`.
+2. **Pre-PR Quality Checks**:
+   - `./gradlew ktfmtCheck` must pass with zero formatting errors.
+   - `./gradlew assembleDebug` must pass with zero compilation errors across all targets.
+   - All added comments, KDoc, PR descriptions, and commit messages must strictly be in **English**.
+3. **PR Title Format**:
+   - Must strictly adhere to Conventional Commits: `<type>(<scope>): <clear imperative description in English>`
+   - Examples: `fix(player): pass mediaSourceId in PlaybackInfo and remove regex URL surgeries`, `feat(tv): implement native D-pad search screen`.
+4. **Standard Pull Request Markdown Template**:
+   All PR descriptions must strictly use the following markdown template in English:
+   ```markdown
+   ## 📌 Overview & Motivation
+   <!-- Concise executive summary explaining what problem is solved, what feature is added, or what architectural decision was implemented, referencing any related issue. -->
+   Closes #<ISSUE_NUMBER> (or Relates to #<ISSUE_NUMBER>)
+
+   ## 🛠️ Key Changes by Subsystem / Module
+   - **`<module-name>`**:
+     - `ClassName.kt`: Bullet points detailing exact changes made, parameters added, or methods refactored.
+     - `AnotherFile.kt`: Details on behavior adjustments.
+
+   ## 🧪 Verification & Testing
+   - [x] `./gradlew ktfmtCheck` passed with zero errors.
+   - [x] `./gradlew assembleDebug` built cleanly across all targets (`app:phone:assembleProprietaryDebug`, `app:phone:assembleLibreDebug`, `app:tv:assembleLibreDebug`).
+   - [ ] Verified manually on physical device or emulator (describe scenarios tested, e.g. switching audio/subtitle tracks during playback).
+
+   ## 📷 Screenshots / Demos (If Applicable)
+   <!-- UI screenshots, recordings, or diffs if visual components were modified. -->
+   N/A
+   ```
+
+### 4. Standardized Issue Creation & Tracking Schema
+
+When creating, filing, or updating GitHub Issues:
+1. **Issue Title Convention**:
+   - For planned roadmap items: `Issue <M.N>: <Descriptive Title in English>` (e.g. `Issue 1.1: Native Stream URL Generation & Regex Removal`).
+   - For ad-hoc bugs: `bug(<scope>): <concise description in English>`.
+   - For feature requests: `feat(<scope>): <concise description in English>`.
+2. **Standard Issue Markdown Template**:
+   All issues must strictly use the following markdown template in English:
+   ```markdown
+   ### 🎯 Problem Statement / Context
+   <!-- Explain the underlying problem, architectural inefficiency, crash/bug, or missing capability. Reference live server behavior, logs, or benchmarks where relevant. -->
+
+   ### 📋 Technical Scope & Affected Components
+   - **Target Subsystems:** `:module1`, `:module2`
+   - **Specific Files:** `path/to/File1.kt`, `path/to/File2.kt`
+   - **Concrete Actions:**
+     1. Action item 1
+     2. Action item 2
+
+   ### ✅ Acceptance Criteria
+   - [ ] Concrete verifiable outcome 1 (e.g. track switching natively generates transcoding URL with zero regex surgery).
+   - [ ] No regression on related workflows (e.g. Chromecast session, direct play, offline downloads).
+   - [ ] Code complies with `./gradlew ktfmtCheck` and `./gradlew assembleDebug`.
+
+   ### 🔬 Empirical / Architectural Notes (Optional)
+   <!-- Technical insights, Jellyfin SDK / server protocol constraints, or reference implementations. -->
+   ```
+3. **Issue Progress & Resolution Comments**:
+   When referencing an ongoing or completed issue in an issue comment or PR link:
+   - Provide a concise summary of the actual implementation.
+   - Link the corresponding PR: `Implemented in PR #<PR_NUMBER>`.
+   - Confirm verification status (`ktfmtCheck`, `assembleDebug`).
 
 ## Building and testing your changes
 
