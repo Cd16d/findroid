@@ -231,6 +231,8 @@ interface JellyfinRepository {
         includePath: Boolean = false,
         maxStreamingBitrate: Int? = null,
         audioStreamIndex: Int? = null,
+        subtitleStreamIndex: Int? = null,
+        mediaSourceId: String? = null,
         deviceProfile: DeviceProfile? = null,
         enableDirectPlay: Boolean = true,
     ): List<FindroidSource>

@@ -915,6 +915,8 @@ class JellyfinRepositoryImpl(
         includePath: Boolean,
         maxStreamingBitrate: Int?,
         audioStreamIndex: Int?,
+        subtitleStreamIndex: Int?,
+        mediaSourceId: String?,
         deviceProfile: DeviceProfile?,
         enableDirectPlay: Boolean,
     ): List<FindroidSource> =
@@ -945,9 +947,11 @@ class JellyfinRepositoryImpl(
                             itemId,
                             PlaybackInfoDto(
                                 userId = jellyfinApi.userId!!,
+                                mediaSourceId = mediaSourceId,
                                 deviceProfile = effectiveProfile,
                                 maxStreamingBitrate = effectiveMaxBitrate,
                                 audioStreamIndex = audioStreamIndex,
+                                subtitleStreamIndex = subtitleStreamIndex,
                                 enableDirectPlay = enableDirectPlay,
                                 enableDirectStream = true,
                                 enableTranscoding = true,
@@ -964,7 +968,6 @@ class JellyfinRepositoryImpl(
                             itemId,
                             includePath,
                             playSessionId = playSessionId,
-                            audioStreamIndex = audioStreamIndex,
                         )
                     }
                 )

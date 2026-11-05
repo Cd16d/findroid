@@ -518,6 +518,7 @@ constructor(
                         includePath = true,
                         maxStreamingBitrate = effectiveBitrate,
                         audioStreamIndex = selectedAudioStreamIndex,
+                        mediaSourceId = currentMediaSourceId,
                         deviceProfile = deviceProfile,
                         enableDirectPlay = enableDirectPlay,
                     )
@@ -693,6 +694,7 @@ constructor(
                                             includePath = true,
                                             maxStreamingBitrate = effectiveBitrate,
                                             audioStreamIndex = selectedAudioStreamIndex,
+                                            mediaSourceId = currentMediaSourceId,
                                             deviceProfile = deviceProfile,
                                             enableDirectPlay = enableDirectPlay,
                                         )
@@ -807,11 +809,7 @@ constructor(
                 selectedAudioStreamIndex
                     ?: if (!isDirect) {
                         currentSource?.transcodingUrl?.let { url ->
-                            Regex("(?i)AudioStreamIndex=(\\d+)")
-                                .find(url)
-                                ?.groupValues
-                                ?.get(1)
-                                ?.toIntOrNull()
+                            url.toUri().getQueryParameter("AudioStreamIndex")?.toIntOrNull()
                         }
                     } else {
                         val internalSelectedIdx =
@@ -954,6 +952,7 @@ constructor(
                         includePath = true,
                         maxStreamingBitrate = effectiveBitrate,
                         audioStreamIndex = selectedAudioStreamIndex,
+                        mediaSourceId = currentMediaSourceId,
                         deviceProfile = deviceProfile,
                         enableDirectPlay = enableDirectPlay,
                     )

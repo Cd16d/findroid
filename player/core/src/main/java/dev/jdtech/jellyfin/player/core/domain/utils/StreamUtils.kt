@@ -57,29 +57,14 @@ object StreamUtils {
         audioStreamIndex: Int? = null,
     ): String {
         val cleanBase = baseUrl.trimEnd('/')
-        val url =
-            if (!transcodingUrl.isNullOrBlank()) {
-                val cleanPath =
-                    if (transcodingUrl.startsWith("/")) transcodingUrl else "/$transcodingUrl"
-                "$cleanBase$cleanPath"
-            } else {
-                val sourceParam =
-                    if (!mediaSourceId.isNullOrBlank()) "&MediaSourceId=$mediaSourceId" else ""
-                "$cleanBase/Videos/$itemId/stream?static=true$sourceParam"
-            }
-
-        return if (audioStreamIndex != null) {
-            if (url.contains(Regex("(?i)AudioStreamIndex="))) {
-                url.replace(
-                    Regex("(?i)AudioStreamIndex=\\d+"),
-                    "AudioStreamIndex=$audioStreamIndex",
-                )
-            } else {
-                val sep = if (url.contains("?")) "&" else "?"
-                "$url${sep}AudioStreamIndex=$audioStreamIndex"
-            }
+        return if (!transcodingUrl.isNullOrBlank()) {
+            val cleanPath =
+                if (transcodingUrl.startsWith("/")) transcodingUrl else "/$transcodingUrl"
+            "$cleanBase$cleanPath"
         } else {
-            url
+            val sourceParam =
+                if (!mediaSourceId.isNullOrBlank()) "&MediaSourceId=$mediaSourceId" else ""
+            "$cleanBase/Videos/$itemId/stream?static=true$sourceParam"
         }
     }
 }
