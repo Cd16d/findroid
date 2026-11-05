@@ -31,24 +31,9 @@ suspend fun MediaSourceInfo.toFindroidSource(
     playSessionId: String? = null,
     audioStreamIndex: Int? = null,
 ): FindroidSource {
-    val effectiveTranscodingUrl =
-        if (!transcodingUrl.isNullOrBlank() && audioStreamIndex != null) {
-            if (transcodingUrl!!.contains(Regex("(?i)AudioStreamIndex="))) {
-                transcodingUrl!!.replace(
-                    Regex("(?i)AudioStreamIndex=\\d+"),
-                    "AudioStreamIndex=$audioStreamIndex",
-                )
-            } else {
-                val sep = if (transcodingUrl!!.contains("?")) "&" else "?"
-                "$transcodingUrl${sep}AudioStreamIndex=$audioStreamIndex"
-            }
-        } else {
-            transcodingUrl
-        }
-
     val path =
         if (includePath) {
-            val transUrl = effectiveTranscodingUrl
+            val transUrl = transcodingUrl
             if (!transUrl.isNullOrBlank()) {
                 val cleanPath = if (transUrl.startsWith("/")) transUrl else "/$transUrl"
                 jellyfinRepository.getBaseUrl().removeSuffix("/") + cleanPath
@@ -79,7 +64,7 @@ suspend fun MediaSourceInfo.toFindroidSource(
         supportsDirectPlay = supportsDirectPlay,
         supportsDirectStream = supportsDirectStream,
         supportsTranscoding = supportsTranscoding,
-        transcodingUrl = effectiveTranscodingUrl,
+        transcodingUrl = transcodingUrl,
         playSessionId = playSessionId,
         container = container,
         bitrate = bitrate,

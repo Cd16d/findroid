@@ -357,6 +357,8 @@ class JellyfinRepositoryOfflineImpl(
         includePath: Boolean,
         maxStreamingBitrate: Int?,
         audioStreamIndex: Int?,
+        subtitleStreamIndex: Int?,
+        mediaSourceId: String?,
         deviceProfile: org.jellyfin.sdk.model.api.DeviceProfile?,
         enableDirectPlay: Boolean,
     ): List<FindroidSource> =
