@@ -210,7 +210,14 @@ constructor(
             .flatMapLatest { item ->
                 flow {
                     if (item != null) {
-                        val trickplay = fetchTrickplay(repository, item, defaultDispatcher)
+                        val trickplay =
+                            fetchTrickplay(
+                                repository = repository,
+                                item = item,
+                                cacheDir = context.cacheDir,
+                                coroutineScope = viewModelScope,
+                                dispatcher = defaultDispatcher,
+                            )
                         emit(trickplay)
                     } else {
                         emit(null)
@@ -220,7 +227,7 @@ constructor(
             .onEach { trickplay ->
                 val oldTrickplay = _uiState.value.currentTrickplay
                 if (oldTrickplay != trickplay) {
-                    oldTrickplay?.images?.forEach { it.recycle() }
+                    oldTrickplay?.release()
                     _uiState.update { it.copy(currentTrickplay = trickplay) }
                 }
             }
@@ -282,7 +289,7 @@ constructor(
             }
 
         val oldTrickplay = _uiState.value.currentTrickplay
-        oldTrickplay?.images?.forEach { it.recycle() }
+        oldTrickplay?.release()
 
         _uiState.update {
             it.copy(
@@ -471,7 +478,7 @@ constructor(
         savedStateHandle.remove<String>(KEY_CURRENT_ITEM_ID)
         currentMediaItemSegments = emptyList()
         val oldTrickplay = _uiState.value.currentTrickplay
-        oldTrickplay?.images?.forEach { it.recycle() }
+        oldTrickplay?.release()
         _uiState.update {
             it.copy(
                 currentItemTitle = CurrentItemTitle(title = ""),
@@ -509,7 +516,7 @@ constructor(
     override fun onCleared() {
         clearActiveSegment()
         val oldTrickplay = _uiState.value.currentTrickplay
-        oldTrickplay?.images?.forEach { it.recycle() }
+        oldTrickplay?.release()
     }
 
     companion object {

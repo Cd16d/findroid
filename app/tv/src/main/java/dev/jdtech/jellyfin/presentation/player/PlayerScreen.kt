@@ -119,6 +119,7 @@ import dev.jdtech.jellyfin.models.FindroidSegment
 import dev.jdtech.jellyfin.player.core.R as PlayerR
 import dev.jdtech.jellyfin.player.core.domain.models.PlayerChapter
 import dev.jdtech.jellyfin.player.core.domain.models.PlayerSidePanelType
+import dev.jdtech.jellyfin.player.core.presentation.TrickplayScrubber
 import dev.jdtech.jellyfin.player.local.mpv.updateMpvResizeMode
 import dev.jdtech.jellyfin.player.local.presentation.PlayerEvents
 import dev.jdtech.jellyfin.player.local.presentation.PlayerViewModel
@@ -128,7 +129,6 @@ import dev.jdtech.jellyfin.presentation.components.ProgressBadge
 import dev.jdtech.jellyfin.presentation.components.SpoilerMask
 import dev.jdtech.jellyfin.presentation.components.toScreensaverSlide
 import dev.jdtech.jellyfin.presentation.player.components.PlayerSidePanel
-import dev.jdtech.jellyfin.presentation.player.components.TrickplayScrubber
 import dev.jdtech.jellyfin.presentation.player.components.VideoPlayerControlsLayout
 import dev.jdtech.jellyfin.presentation.player.components.VideoPlayerMediaButton
 import dev.jdtech.jellyfin.presentation.player.components.VideoPlayerMediaTitle
@@ -722,6 +722,7 @@ fun PlayerScreen(
                 chapters = uiState.currentChapters,
                 seekDeltaMs = scrubPositionMs - scrubStartingPositionMs,
                 videoAspectRatio = videoAspectRatio,
+                cardHeight = 185.dp,
             )
         }
 

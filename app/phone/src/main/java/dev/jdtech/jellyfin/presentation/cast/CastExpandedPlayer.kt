@@ -346,7 +346,6 @@ private fun CastExpandedPlayerLayout(
             currentPositionMs = uiState.playerState.currentPosition,
             durationMs = uiState.playerState.duration,
             segments = uiState.segments,
-            trickplay = uiState.currentTrickplay,
             onChapterSelected = { startTimeMs -> actions.onSeek(startTimeMs) },
             onDismiss = onDismissChaptersSelection,
             modifier = Modifier.padding(bottom = safePadding.bottom),

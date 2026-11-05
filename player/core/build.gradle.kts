@@ -1,5 +1,6 @@
 plugins {
     alias(libs.plugins.android.library)
+    alias(libs.plugins.kotlin.compose.compiler)
     alias(libs.plugins.kotlin.parcelize)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
@@ -21,6 +22,8 @@ android {
         named("release") { isMinifyEnabled = false }
         register("beta") { initWith(getByName("release")) }
     }
+
+    buildFeatures { compose = true }
 }
 
 dependencies {
@@ -31,5 +34,7 @@ dependencies {
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
     implementation(libs.androidx.compose.ui)
+    implementation(libs.androidx.compose.foundation)
+    implementation(libs.androidx.compose.material3)
     implementation(libs.jellyfin.core)
 }

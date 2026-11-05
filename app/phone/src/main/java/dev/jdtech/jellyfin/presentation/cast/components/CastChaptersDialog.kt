@@ -64,7 +64,6 @@ import androidx.compose.ui.unit.dp
 import dev.jdtech.jellyfin.models.FindroidSegment
 import dev.jdtech.jellyfin.player.core.R
 import dev.jdtech.jellyfin.player.core.domain.models.PlayerChapter
-import dev.jdtech.jellyfin.player.core.domain.models.Trickplay
 import dev.jdtech.jellyfin.presentation.components.ChapterCard
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
@@ -77,7 +76,6 @@ import kotlin.math.roundToInt
  * @param visible Whether the dialog is visible.
  * @param chapters List of chapters available for current item.
  * @param currentPositionMs Current playback position in milliseconds.
- * @param trickplay Trickplay information for thumbnail previews.
  * @param onChapterSelected Callback when a chapter is selected with its start position in ms.
  * @param onDismiss Callback when dialog is dismissed.
  * @param modifier Modifier applied to the dialog surface. Defaults to [Modifier].
@@ -89,7 +87,6 @@ fun CastChaptersDialog(
     visible: Boolean,
     chapters: List<PlayerChapter>,
     currentPositionMs: Long,
-    trickplay: Trickplay?,
     onChapterSelected: (Long) -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
@@ -310,7 +307,6 @@ fun CastChaptersDialog(
                                     chapter = chapter,
                                     index = index,
                                     isCurrent = isCurrent,
-                                    trickplay = trickplay,
                                     onClick = {
                                         onChapterSelected(chapter.startPosition)
                                         onDismiss()
@@ -338,7 +334,6 @@ private fun CastChaptersDialogPreview() {
                     PlayerChapter(300000L, "Episode 1"),
                 ),
             currentPositionMs = 200000L,
-            trickplay = null,
             onChapterSelected = {},
             onDismiss = {},
         )

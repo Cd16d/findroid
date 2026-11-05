@@ -1,6 +1,5 @@
 package dev.jdtech.jellyfin.presentation.player.components
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -31,7 +30,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -52,8 +50,6 @@ import dev.jdtech.jellyfin.core.presentation.theme.PlayerTvSidePanelContainer
 import dev.jdtech.jellyfin.core.presentation.theme.PlayerTvSidePanelUnselected
 import dev.jdtech.jellyfin.player.core.R as PlayerR
 import dev.jdtech.jellyfin.player.core.domain.models.PlayerChapter
-import dev.jdtech.jellyfin.player.core.domain.models.Trickplay
-import dev.jdtech.jellyfin.player.core.domain.models.intervalMs
 import dev.jdtech.jellyfin.player.core.domain.utils.ChapterUtils
 import dev.jdtech.jellyfin.player.local.presentation.PlayerViewModel
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
@@ -126,7 +122,6 @@ internal fun ChapterList(
                     chapter = chapter,
                     chapterIndex = index,
                     isCurrent = isCurrent,
-                    trickplay = uiState.currentTrickplay,
                     onClick = {
                         viewModel.player.seekTo(chapter.startPosition)
                         onClose()
@@ -150,7 +145,6 @@ internal fun ChapterList(
  * @param chapterIndex Zero-based chapter index.
  * @param isCurrent Whether this chapter is currently playing.
  * @param onClick Callback when selecting this chapter.
- * @param trickplay Optional trickplay thumbnail dataset.
  * @param modifier Optional [Modifier] applied to the item surface.
  */
 @Composable
@@ -159,7 +153,6 @@ internal fun ChapterItem(
     chapterIndex: Int,
     isCurrent: Boolean,
     onClick: () -> Unit,
-    trickplay: Trickplay?,
     modifier: Modifier = Modifier,
 ) {
     val chapterName =
@@ -175,36 +168,6 @@ internal fun ChapterItem(
         }
 
     var isImageError by remember(chapter.imageUri) { mutableStateOf(false) }
-
-    val trickplayBitmap =
-        remember(trickplay, chapter.startPosition) {
-            if (trickplay != null && trickplay.images.isNotEmpty()) {
-                val intervalMs = trickplay.intervalMs
-                if (intervalMs > 0) {
-                    val idx =
-                        (chapter.startPosition / intervalMs)
-                            .toInt()
-                            .coerceIn(0, trickplay.images.size - 1)
-                    trickplay.images.getOrNull(idx)
-                } else {
-                    null
-                }
-            } else {
-                null
-            }
-        }
-
-    val imageAspectRatio =
-        remember(trickplayBitmap) {
-            if (trickplayBitmap != null && trickplayBitmap.height > 0) {
-                (trickplayBitmap.width.toFloat() / trickplayBitmap.height.toFloat()).coerceIn(
-                    4f / 3f,
-                    2.4f,
-                )
-            } else {
-                16f / 9f
-            }
-        }
 
     val itemColors =
         ClickableSurfaceDefaults.colors(
@@ -230,12 +193,12 @@ internal fun ChapterItem(
             modifier = Modifier.fillMaxWidth().padding(10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // Chapter thumbnail with Dynamic Aspect Ratio
+            // Chapter thumbnail (server image or placeholder icon)
             val hasServerImage = !chapter.imageUri.isNullOrBlank() && !isImageError
             Box(
                 modifier =
                     Modifier.height(63.dp)
-                        .aspectRatio(imageAspectRatio)
+                        .aspectRatio(16f / 9f)
                         .clip(ChapterThumbShape)
                         .background(Color.Black),
                 contentAlignment = Alignment.Center,
@@ -246,13 +209,6 @@ internal fun ChapterItem(
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
                         onError = { isImageError = true },
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                } else if (trickplayBitmap != null) {
-                    Image(
-                        bitmap = trickplayBitmap.asImageBitmap(),
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize(),
                     )
                 } else {
@@ -311,14 +267,12 @@ private fun ChapterListPreview() {
                 chapterIndex = 0,
                 isCurrent = true,
                 onClick = {},
-                trickplay = null,
             )
             ChapterItem(
                 chapter = PlayerChapter(name = "Part 1", startPosition = 120_000L),
                 chapterIndex = 1,
                 isCurrent = false,
                 onClick = {},
-                trickplay = null,
             )
         }
     }
@@ -334,7 +288,6 @@ private fun ChapterItemPreview() {
                 chapterIndex = 0,
                 isCurrent = true,
                 onClick = {},
-                trickplay = null,
             )
         }
     }
