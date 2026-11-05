@@ -3,8 +3,6 @@ package dev.jdtech.jellyfin.player.core.domain.models
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.LruCache
-import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.unit.IntSize
 import dev.jdtech.jellyfin.repository.JellyfinRepository
 import java.io.File
 import java.util.UUID
@@ -15,14 +13,21 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 
-/** Represents frame offset and size within a trickplay sprite sheet. */
-data class TrickplayFrame(val sheetIndex: Int, val srcOffset: IntOffset, val srcSize: IntSize)
+/** Represents frame coordinates and size within a trickplay sprite sheet. */
+data class TrickplayFrame(
+    val sheetIndex: Int,
+    val srcX: Int,
+    val srcY: Int,
+    val srcWidth: Int,
+    val srcHeight: Int,
+)
 
 /**
  * Manages trickplay preview thumbnails with an asynchronous 3-sheet sliding window cache.
@@ -33,6 +38,7 @@ data class TrickplayFrame(val sheetIndex: Int, val srcOffset: IntOffset, val src
  */
 class Trickplay(
     val itemId: UUID,
+    val mediaSourceId: String? = null,
     val interval: Int,
     val width: Int,
     val height: Int,
@@ -62,12 +68,17 @@ class Trickplay(
     val images: List<Bitmap>
         get() = emptyList()
 
-    private val trickplayDir: File? = cacheDir?.let { File(it, "trickplay/$itemId") }
+    private val trickplayDir: File? = cacheDir?.let {
+        val dirName = if (mediaSourceId.isNullOrEmpty()) "$itemId" else "${itemId}_$mediaSourceId"
+        File(it, "trickplay/$dirName")
+    }
 
     // 3-sheet LRU cache: keeps max 3 Bitmaps in memory (~6-8 MB in RGB_565)
     private val sheetCache = LruCache<Int, Bitmap>(3)
 
     private val activeLoads = ConcurrentHashMap<Int, Deferred<Bitmap?>>()
+
+    private var downloadJob: Job? = null
 
     @Volatile private var lastCenterSheet: Int = -1
 
@@ -77,38 +88,39 @@ class Trickplay(
         ) {
             trickplayDir.mkdirs()
             preloadWindow(0)
-            coroutineScope.launch(dispatcher) {
-                try {
-                    for (i in 0 until sheetCount) {
-                        if (!isActive) break
-                        val sheetFile = File(trickplayDir, "$i.jpg")
-                        if (!sheetFile.exists() || sheetFile.length() == 0L) {
-                            val data = repository.getTrickplayData(itemId, width, i)
-                            if (data != null && isActive) {
-                                try {
-                                    sheetFile.writeBytes(data)
-                                } catch (_: Exception) {}
+            downloadJob =
+                coroutineScope.launch(dispatcher) {
+                    try {
+                        for (i in 0 until sheetCount) {
+                            if (!isActive) break
+                            val sheetFile = File(trickplayDir, "$i.jpg")
+                            if (!sheetFile.exists() || sheetFile.length() == 0L) {
+                                val data = repository.getTrickplayData(itemId, width, i)
+                                if (data != null && isActive) {
+                                    writeSheetAtomically(trickplayDir, i, data)
+                                }
                             }
                         }
+                    } catch (_: CancellationException) {
+                        // Scope cancelled
+                    } catch (e: Exception) {
+                        Timber.w(e, "Error downloading trickplay sheets to disk cache for $itemId")
                     }
-                } catch (_: CancellationException) {
-                    // Scope cancelled
-                } catch (e: Exception) {
-                    Timber.w(e, "Error downloading trickplay sheets to disk cache for $itemId")
                 }
-            }
         }
     }
 
     constructor(
         itemId: UUID,
         info: TrickplayInfo,
+        mediaSourceId: String? = null,
         repository: JellyfinRepository? = null,
         cacheDir: File? = null,
         coroutineScope: CoroutineScope? = null,
         dispatcher: CoroutineDispatcher = Dispatchers.IO,
     ) : this(
         itemId = itemId,
+        mediaSourceId = mediaSourceId,
         interval = info.interval,
         width = info.width,
         height = info.height,
@@ -154,6 +166,14 @@ class Trickplay(
         if (coroutineScope == null || sheetCount <= 0) return
         val minSheet = (centerSheet - 1).coerceAtLeast(0)
         val maxSheet = (centerSheet + 1).coerceAtMost(sheetCount - 1)
+
+        // Cancel pending loads that fall outside the active window
+        activeLoads.forEach { (index, deferred) ->
+            if (index !in minSheet..maxSheet) {
+                deferred.cancel()
+            }
+        }
+
         for (sheet in minSheet..maxSheet) {
             if (getCachedSheet(sheet) == null) {
                 coroutineScope.launch(dispatcher) { getSheet(sheet) }
@@ -198,21 +218,36 @@ class Trickplay(
     private suspend fun decodeSheet(sheetIndex: Int): Bitmap? {
         val sheetFile = trickplayDir?.let { File(it, "$sheetIndex.jpg") }
         if (sheetFile != null && sheetFile.exists() && sheetFile.length() > 0L) {
-            return decodeBitmapFromFile(sheetFile)
+            val bitmap = decodeBitmapFromFile(sheetFile)
+            if (bitmap != null) {
+                return bitmap
+            } else {
+                // Remove corrupted file and re-fetch from repository
+                sheetFile.delete()
+            }
         }
 
         if (repository != null) {
             val bytes = repository.getTrickplayData(itemId, width, sheetIndex)
             if (bytes != null) {
-                if (sheetFile != null) {
-                    try {
-                        sheetFile.writeBytes(bytes)
-                    } catch (_: Exception) {}
+                if (trickplayDir != null) {
+                    writeSheetAtomically(trickplayDir, sheetIndex, bytes)
                 }
                 return decodeBitmapFromBytes(bytes)
             }
         }
         return null
+    }
+
+    private fun writeSheetAtomically(dir: File, sheetIndex: Int, data: ByteArray) {
+        try {
+            val tmpFile = File(dir, "$sheetIndex.tmp")
+            tmpFile.writeBytes(data)
+            val targetFile = File(dir, "$sheetIndex.jpg")
+            if (tmpFile.exists()) {
+                tmpFile.renameTo(targetFile)
+            }
+        } catch (_: Exception) {}
     }
 
     private fun decodeBitmapFromFile(file: File): Bitmap? {
@@ -252,13 +287,17 @@ class Trickplay(
         val srcY = row * height
         return TrickplayFrame(
             sheetIndex = sheetIndex,
-            srcOffset = IntOffset(srcX, srcY),
-            srcSize = IntSize(width, height),
+            srcX = srcX,
+            srcY = srcY,
+            srcWidth = width,
+            srcHeight = height,
         )
     }
 
     /** Releases cached bitmaps, cancels in-flight loads, and deletes temporary disk files. */
     fun release() {
+        downloadJob?.cancel()
+        downloadJob = null
         synchronized(sheetCache) {
             val snapshot = sheetCache.snapshot()
             sheetCache.evictAll()
@@ -281,14 +320,24 @@ class Trickplay(
         if (this === other) return true
         if (other !is Trickplay) return false
         return itemId == other.itemId &&
+            mediaSourceId == other.mediaSourceId &&
             interval == other.interval &&
-            thumbnailCount == other.thumbnailCount
+            thumbnailCount == other.thumbnailCount &&
+            width == other.width &&
+            height == other.height &&
+            tileWidth == other.tileWidth &&
+            tileHeight == other.tileHeight
     }
 
     override fun hashCode(): Int {
         var result = itemId.hashCode()
+        result = 31 * result + (mediaSourceId?.hashCode() ?: 0)
         result = 31 * result + interval
         result = 31 * result + thumbnailCount
+        result = 31 * result + width
+        result = 31 * result + height
+        result = 31 * result + tileWidth
+        result = 31 * result + tileHeight
         return result
     }
 }

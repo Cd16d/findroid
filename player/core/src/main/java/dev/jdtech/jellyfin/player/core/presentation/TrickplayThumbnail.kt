@@ -64,9 +64,9 @@ fun TrickplayThumbnail(
             mutableStateOf(trickplay.getCachedSheet(frame.sheetIndex))
         }
 
-    LaunchedEffect(trickplay, frame.sheetIndex) {
+    LaunchedEffect(trickplay, frame.sheetIndex, positionMs) {
         trickplay.updatePosition(positionMs)
-        if (sheetBitmap == null) {
+        if (sheetBitmap == null || sheetBitmap?.isRecycled == true) {
             sheetBitmap = trickplay.getSheet(frame.sheetIndex)
         }
     }
@@ -77,8 +77,8 @@ fun TrickplayThumbnail(
         Canvas(modifier = modifier) {
             drawImage(
                 image = imageBitmap,
-                srcOffset = frame.srcOffset,
-                srcSize = frame.srcSize,
+                srcOffset = IntOffset(frame.srcX, frame.srcY),
+                srcSize = IntSize(frame.srcWidth, frame.srcHeight),
                 dstOffset = IntOffset.Zero,
                 dstSize = IntSize(size.width.roundToInt(), size.height.roundToInt()),
             )
