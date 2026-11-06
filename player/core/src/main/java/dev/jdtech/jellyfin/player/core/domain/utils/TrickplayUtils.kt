@@ -12,14 +12,6 @@ import kotlinx.coroutines.Dispatchers
 /**
  * Initializes trickplay thumbnail metadata for scrubbing previews and sets up the 3-sheet sliding
  * window cache without eagerly downloading or slicing sprite sheets.
- *
- * @param repository Jellyfin repository to fetch trickplay sheets.
- * @param item Player item containing trickplay metadata.
- * @param cacheDir Cache directory for temporary sheet disk caching.
- * @param coroutineScope Coroutine scope for background preloading and disk downloads.
- * @param dispatcher Coroutine dispatcher for image decoding and I/O (defaults to [Dispatchers.IO]).
- * @return Initialized [Trickplay] sliding cache manager, or null if trickplay metadata is
- *   unavailable or invalid.
  */
 suspend fun fetchTrickplay(
     repository: JellyfinRepository,
@@ -45,8 +37,8 @@ suspend fun fetchTrickplay(
 
     return Trickplay(
         itemId = item.itemId,
-        mediaSourceId = item.mediaSourceId,
         info = trickplayInfo,
+        mediaSourceId = item.mediaSourceId,
         repository = repository,
         cacheDir = cacheDir,
         coroutineScope = coroutineScope,
