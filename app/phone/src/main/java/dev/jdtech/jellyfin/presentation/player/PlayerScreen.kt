@@ -998,11 +998,20 @@ fun PlayerScreen(
                 }
             }
 
+            val isControlsOverlayVisible =
+                !isInPip &&
+                    videoPlayerState.controlsVisible &&
+                    !videoPlayerState.isControlsLocked &&
+                    !isPanelOpen
+
+            val isCenterButtonBuffering = isControlsOverlayVisible && isBuffering
+
             AnimatedVisibility(
                 visible =
                     (isBuffering || !uiState.fileLoaded) &&
                         !isAnyScrubbing &&
-                        !(isExpandedWidth && isPanelOpen),
+                        !(isExpandedWidth && isPanelOpen) &&
+                        !isCenterButtonBuffering,
                 enter = fadeIn(tween(200)),
                 exit = fadeOut(tween(200)),
                 modifier = Modifier.align(Alignment.Center).zIndex(6f),
@@ -1758,6 +1767,8 @@ fun PlayerScreen(
                             isPipSupported = isPipSupported,
                             isCompactWidth = isCompactWidth,
                             sleepTimerStatus = uiState.sleepTimerStatus,
+                            isPlaying = isPlaying,
+                            isBuffering = isBuffering,
                             modifier = Modifier.align(Alignment.TopCenter),
                         )
 

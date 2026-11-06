@@ -1,5 +1,6 @@
 package dev.jdtech.jellyfin.presentation.player.components
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -20,6 +21,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -33,7 +35,9 @@ import androidx.compose.ui.unit.dp
 import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.core.presentation.theme.PlayerOverlayBackground
 import dev.jdtech.jellyfin.player.core.R as PlayerR
+import dev.jdtech.jellyfin.player.core.domain.models.SleepTimerMode
 import dev.jdtech.jellyfin.player.core.domain.models.SleepTimerStatus
+import dev.jdtech.jellyfin.player.core.presentation.formatDuration
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 
 private val GlassPillShape = CircleShape
@@ -58,6 +62,8 @@ private val GlassBorderStroke = BorderStroke(1.dp, Color.White.copy(alpha = 0.15
  * @param isCompactWidth Whether the layout width is compact (< 600dp).
  * @param sleepTimerStatus Current status of the sleep timer.
  * @param onOpenSleepTimer Callback to open the sleep timer sheet/panel.
+ * @param isPlaying Whether media is currently playing.
+ * @param isBuffering Whether media is currently buffering.
  */
 @Composable
 fun PlayerTopBar(
@@ -75,6 +81,8 @@ fun PlayerTopBar(
     isCompactWidth: Boolean = false,
     sleepTimerStatus: SleepTimerStatus = SleepTimerStatus(),
     onOpenSleepTimer: (() -> Unit)? = null,
+    isPlaying: Boolean = true,
+    isBuffering: Boolean = false,
 ) {
     val buttonSize = 44.dp
     val iconSize = 24.dp
@@ -136,164 +144,198 @@ fun PlayerTopBar(
                 }
             }
 
-            // Right Actions: Unified translucent glass pill containing:
-            // Subtitles, Audio, Screen Lock, PiP (if supported), Settings
+            // Right Section: Standalone Sleep Timer Pill (when active) + Unified Actions Glass Pill
             Row(
-                modifier =
-                    Modifier.clip(GlassPillShape)
-                        .background(GlassBackgroundColor)
-                        .border(GlassBorderStroke, GlassPillShape)
-                        .padding(horizontal = 4.dp, vertical = 2.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(2.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                // Screen Orientation Lock / Unlock Button
-                Box(
-                    modifier =
-                        Modifier.size(buttonSize)
-                            .clip(CircleShape)
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = ripple(bounded = true, radius = buttonSize / 2),
-                                onClick = onToggleOrientation,
-                            ),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        painter =
-                            painterResource(
-                                id =
-                                    if (isOrientationLocked) {
-                                        CoreR.drawable.ic_rotate_off
-                                    } else {
-                                        CoreR.drawable.ic_rotate
-                                    }
-                            ),
-                        contentDescription = null,
-                        modifier = Modifier.size(iconSize),
-                        tint = Color.White,
-                    )
-                }
-
-                // PiP Button (if supported)
-                if (isPipSupported) {
-                    Box(
-                        modifier =
-                            Modifier.size(buttonSize)
-                                .clip(CircleShape)
-                                .clickable(
-                                    interactionSource = remember { MutableInteractionSource() },
-                                    indication = ripple(bounded = true, radius = buttonSize / 2),
-                                    onClick = onEnterPip,
-                                ),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            painter = painterResource(id = CoreR.drawable.ic_picture_in_picture),
-                            contentDescription = null,
-                            modifier = Modifier.size(iconSize),
-                            tint = Color.White,
-                        )
-                    }
-                }
-
-                // Subtitles & Audio Buttons (hidden on compact width to avoid crowding)
-                if (!isCompactWidth) {
-                    // Subtitles Button
-                    Box(
-                        modifier =
-                            Modifier.size(buttonSize)
-                                .clip(CircleShape)
-                                .clickable(
-                                    interactionSource = remember { MutableInteractionSource() },
-                                    indication = ripple(bounded = true, radius = buttonSize / 2),
-                                    onClick = onOpenSubtitles,
-                                ),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            painter = painterResource(id = CoreR.drawable.ic_closed_caption),
-                            contentDescription = null,
-                            modifier = Modifier.size(iconSize),
-                            tint = Color.White,
-                        )
-                    }
-
-                    // Audio Button
-                    Box(
-                        modifier =
-                            Modifier.size(buttonSize)
-                                .clip(CircleShape)
-                                .clickable(
-                                    interactionSource = remember { MutableInteractionSource() },
-                                    indication = ripple(bounded = true, radius = buttonSize / 2),
-                                    onClick = onOpenAudio,
-                                ),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            painter = painterResource(id = CoreR.drawable.ic_audio),
-                            contentDescription = null,
-                            modifier = Modifier.size(iconSize),
-                            tint = Color.White,
-                        )
-                    }
-                }
-
-                // Sleep Timer Active Chip
+                // Sleep Timer Standalone Pill
                 if (sleepTimerStatus.isActive) {
-                    val remainingMins =
-                        maxOf(1, ((sleepTimerStatus.remainingSeconds + 59L) / 60L).toInt())
+                    val isTimerPaused =
+                        sleepTimerStatus.mode is SleepTimerMode.EndOfMedia &&
+                            !isPlaying &&
+                            !isBuffering
+                    val timerBackgroundColor by
+                        animateColorAsState(
+                            targetValue =
+                                if (isTimerPaused) {
+                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.55f)
+                                } else {
+                                    MaterialTheme.colorScheme.primary
+                                },
+                            label = "sleep_timer_pill_bg",
+                        )
                     Box(
                         modifier =
-                            Modifier.height(buttonSize)
-                                .clip(CircleShape)
+                            Modifier.clip(GlassPillShape)
+                                .background(timerBackgroundColor)
                                 .clickable(
                                     interactionSource = remember { MutableInteractionSource() },
                                     indication = ripple(bounded = true, radius = buttonSize / 2),
                                     onClick = { onOpenSleepTimer?.invoke() ?: onOpenSettings() },
                                 )
-                                .padding(horizontal = 8.dp),
+                                .padding(horizontal = 12.dp, vertical = 6.dp),
                         contentAlignment = Alignment.Center,
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
                         ) {
+                            val timerIcon =
+                                if (isTimerPaused) PlayerR.drawable.ic_sleep_timer_pause
+                                else PlayerR.drawable.ic_sleep_timer
+                            val countdownText =
+                                if (
+                                    sleepTimerStatus.remainingSeconds <= 0L &&
+                                        sleepTimerStatus.mode is SleepTimerMode.EndOfMedia
+                                ) {
+                                    "--:--"
+                                } else {
+                                    formatDuration(sleepTimerStatus.remainingSeconds * 1000L)
+                                }
                             Icon(
-                                painter = painterResource(id = PlayerR.drawable.ic_sleep_timer),
+                                painter = painterResource(id = timerIcon),
                                 contentDescription = null,
                                 modifier = Modifier.size(18.dp),
-                                tint = MaterialTheme.colorScheme.primary,
+                                tint = MaterialTheme.colorScheme.onPrimary,
                             )
                             Text(
-                                text = "${remainingMins}m",
-                                style = MaterialTheme.typography.labelLarge,
+                                text = countdownText,
+                                style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary,
+                                color = MaterialTheme.colorScheme.onPrimary,
                             )
                         }
                     }
                 }
 
-                // Settings Button
-                Box(
+                // Unified translucent glass pill containing:
+                // Subtitles, Audio, Screen Lock, PiP (if supported), Settings
+                Row(
                     modifier =
-                        Modifier.size(buttonSize)
-                            .clip(CircleShape)
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = ripple(bounded = true, radius = buttonSize / 2),
-                                onClick = onOpenSettings,
-                            ),
-                    contentAlignment = Alignment.Center,
+                        Modifier.clip(GlassPillShape)
+                            .background(GlassBackgroundColor)
+                            .border(GlassBorderStroke, GlassPillShape)
+                            .padding(horizontal = 4.dp, vertical = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(2.dp),
                 ) {
-                    Icon(
-                        painter = painterResource(id = CoreR.drawable.ic_settings),
-                        contentDescription = null,
-                        modifier = Modifier.size(iconSize),
-                        tint = Color.White,
-                    )
+                    // Screen Orientation Lock / Unlock Button
+                    Box(
+                        modifier =
+                            Modifier.size(buttonSize)
+                                .clip(CircleShape)
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = ripple(bounded = true, radius = buttonSize / 2),
+                                    onClick = onToggleOrientation,
+                                ),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            painter =
+                                painterResource(
+                                    id =
+                                        if (isOrientationLocked) {
+                                            CoreR.drawable.ic_rotate_off
+                                        } else {
+                                            CoreR.drawable.ic_rotate
+                                        }
+                                ),
+                            contentDescription = null,
+                            modifier = Modifier.size(iconSize),
+                            tint = Color.White,
+                        )
+                    }
+
+                    // PiP Button (if supported)
+                    if (isPipSupported) {
+                        Box(
+                            modifier =
+                                Modifier.size(buttonSize)
+                                    .clip(CircleShape)
+                                    .clickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication =
+                                            ripple(bounded = true, radius = buttonSize / 2),
+                                        onClick = onEnterPip,
+                                    ),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                painter =
+                                    painterResource(id = CoreR.drawable.ic_picture_in_picture),
+                                contentDescription = null,
+                                modifier = Modifier.size(iconSize),
+                                tint = Color.White,
+                            )
+                        }
+                    }
+
+                    // Subtitles & Audio Buttons (hidden on compact width to avoid crowding)
+                    if (!isCompactWidth) {
+                        // Subtitles Button
+                        Box(
+                            modifier =
+                                Modifier.size(buttonSize)
+                                    .clip(CircleShape)
+                                    .clickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication =
+                                            ripple(bounded = true, radius = buttonSize / 2),
+                                        onClick = onOpenSubtitles,
+                                    ),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                painter = painterResource(id = CoreR.drawable.ic_closed_caption),
+                                contentDescription = null,
+                                modifier = Modifier.size(iconSize),
+                                tint = Color.White,
+                            )
+                        }
+
+                        // Audio Button
+                        Box(
+                            modifier =
+                                Modifier.size(buttonSize)
+                                    .clip(CircleShape)
+                                    .clickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication =
+                                            ripple(bounded = true, radius = buttonSize / 2),
+                                        onClick = onOpenAudio,
+                                    ),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                painter = painterResource(id = CoreR.drawable.ic_audio),
+                                contentDescription = null,
+                                modifier = Modifier.size(iconSize),
+                                tint = Color.White,
+                            )
+                        }
+                    }
+
+                    // Settings Button
+                    Box(
+                        modifier =
+                            Modifier.size(buttonSize)
+                                .clip(CircleShape)
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = ripple(bounded = true, radius = buttonSize / 2),
+                                    onClick = onOpenSettings,
+                                ),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            painter = painterResource(id = CoreR.drawable.ic_settings),
+                            contentDescription = null,
+                            modifier = Modifier.size(iconSize),
+                            tint = Color.White,
+                        )
+                    }
                 }
             }
         }
@@ -360,6 +402,53 @@ private fun PlayerTopBarPortraitPreview() {
             onToggleOrientation = {},
             isOrientationLocked = true,
             isCompactWidth = true,
+        )
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF000000)
+@Composable
+private fun PlayerTopBarWithSleepTimerPreview() {
+    FindroidTheme {
+        PlayerTopBar(
+            title = "S01E01 - Pilot",
+            subtitle = "Breaking Bad",
+            onBack = {},
+            onOpenSubtitles = {},
+            onOpenAudio = {},
+            onEnterPip = {},
+            onOpenSettings = {},
+            onToggleOrientation = {},
+            sleepTimerStatus =
+                SleepTimerStatus(
+                    mode = SleepTimerMode.Duration(30),
+                    remainingSeconds = 1140L,
+                ),
+            isCompactWidth = false,
+        )
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF000000)
+@Composable
+private fun PlayerTopBarWithSleepTimerPausedPreview() {
+    FindroidTheme {
+        PlayerTopBar(
+            title = "S01E01 - Pilot",
+            subtitle = "Breaking Bad",
+            onBack = {},
+            onOpenSubtitles = {},
+            onOpenAudio = {},
+            onEnterPip = {},
+            onOpenSettings = {},
+            onToggleOrientation = {},
+            isPlaying = false,
+            sleepTimerStatus =
+                SleepTimerStatus(
+                    mode = SleepTimerMode.EndOfMedia,
+                    remainingSeconds = 1432L,
+                ),
+            isCompactWidth = false,
         )
     }
 }

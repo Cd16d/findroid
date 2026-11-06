@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -241,15 +242,26 @@ fun SleepTimerPicker(
                         colors =
                             ButtonDefaults.elevatedButtonColors(
                                 containerColor =
-                                    if (isActive) MaterialTheme.colorScheme.primary
-                                    else PlayerOverlayBackground,
+                                    if (isActive) MaterialTheme.colorScheme.errorContainer
+                                    else MaterialTheme.colorScheme.primary,
                                 contentColor =
-                                    if (isActive) MaterialTheme.colorScheme.onPrimary
-                                    else Color.White,
+                                    if (isActive) MaterialTheme.colorScheme.onErrorContainer
+                                    else MaterialTheme.colorScheme.onPrimary,
                             ),
                         shape = CircleShape,
                         modifier = Modifier.fillMaxWidth().height(42.dp),
                     ) {
+                        Icon(
+                            painter =
+                                painterResource(
+                                    id =
+                                        if (isActive) CoreR.drawable.ic_x
+                                        else CoreR.drawable.ic_play
+                                ),
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text =
                                 if (isActive) {
