@@ -60,9 +60,10 @@ private val GlassBorderStroke = BorderStroke(1.dp, Color.White.copy(alpha = 0.15
  * @param isOrientationLocked Whether screen rotation is currently locked.
  * @param isPipSupported Whether picture-in-picture is supported on the current device.
  * @param isCompactWidth Whether the layout width is compact (< 600dp).
- * @param isPlaying Whether media is currently playing.
  * @param sleepTimerStatus Current status of the sleep timer.
  * @param onOpenSleepTimer Callback to open the sleep timer sheet/panel.
+ * @param isPlaying Whether media is currently playing.
+ * @param isBuffering Whether media is currently buffering.
  */
 @Composable
 fun PlayerTopBar(
@@ -78,9 +79,10 @@ fun PlayerTopBar(
     isOrientationLocked: Boolean = false,
     isPipSupported: Boolean = true,
     isCompactWidth: Boolean = false,
-    isPlaying: Boolean = true,
     sleepTimerStatus: SleepTimerStatus = SleepTimerStatus(),
     onOpenSleepTimer: (() -> Unit)? = null,
+    isPlaying: Boolean = true,
+    isBuffering: Boolean = false,
 ) {
     val buttonSize = 44.dp
     val iconSize = 24.dp
@@ -150,7 +152,9 @@ fun PlayerTopBar(
                 // Sleep Timer Standalone Pill
                 if (sleepTimerStatus.isActive) {
                     val isTimerPaused =
-                        sleepTimerStatus.mode is SleepTimerMode.EndOfMedia && !isPlaying
+                        sleepTimerStatus.mode is SleepTimerMode.EndOfMedia &&
+                            !isPlaying &&
+                            !isBuffering
                     val timerBackgroundColor by
                         animateColorAsState(
                             targetValue =
@@ -180,17 +184,26 @@ fun PlayerTopBar(
                             val timerIcon =
                                 if (isTimerPaused) PlayerR.drawable.ic_sleep_timer_pause
                                 else PlayerR.drawable.ic_sleep_timer
+                            val countdownText =
+                                if (
+                                    sleepTimerStatus.remainingSeconds <= 0L &&
+                                        sleepTimerStatus.mode is SleepTimerMode.EndOfMedia
+                                ) {
+                                    "--:--"
+                                } else {
+                                    formatDuration(sleepTimerStatus.remainingSeconds * 1000L)
+                                }
                             Icon(
                                 painter = painterResource(id = timerIcon),
                                 contentDescription = null,
                                 modifier = Modifier.size(18.dp),
-                                tint = Color.White,
+                                tint = MaterialTheme.colorScheme.onPrimary,
                             )
                             Text(
-                                text = formatDuration(sleepTimerStatus.remainingSeconds * 1000L),
+                                text = countdownText,
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = Color.White,
+                                color = MaterialTheme.colorScheme.onPrimary,
                             )
                         }
                     }
