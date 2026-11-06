@@ -35,7 +35,6 @@ import kotlinx.coroutines.delay
 internal fun PhoneChaptersList(viewModel: PlayerViewModel) {
     val uiState by viewModel.uiState.collectAsState()
     val chapters = uiState.currentChapters
-    val trickplay = uiState.currentTrickplay
     var currentPosition by remember { mutableLongStateOf(viewModel.player.currentPosition) }
     val listState = rememberLazyListState()
 
@@ -74,7 +73,7 @@ internal fun PhoneChaptersList(viewModel: PlayerViewModel) {
 
     LazyColumn(
         state = listState,
-        contentPadding = PaddingValues(bottom = 24.dp),
+        contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         itemsIndexed(chapters) { index, chapter ->
@@ -83,7 +82,6 @@ internal fun PhoneChaptersList(viewModel: PlayerViewModel) {
                 chapter = chapter,
                 index = index,
                 isCurrent = isCurrent,
-                trickplay = trickplay,
                 onClick = {
                     currentPosition = chapter.startPosition
                     viewModel.player.seekTo(chapter.startPosition)
@@ -115,14 +113,12 @@ private fun PhoneChaptersListPreview() {
                 chapter = PlayerChapter(name = "Chapter 1: Arrival", startPosition = 0L),
                 index = 0,
                 isCurrent = true,
-                trickplay = null,
                 onClick = {},
             )
             ChapterCard(
                 chapter = PlayerChapter(name = "Chapter 2: Discovery", startPosition = 180_000L),
                 index = 1,
                 isCurrent = false,
-                trickplay = null,
                 onClick = {},
             )
         }
@@ -141,7 +137,6 @@ private fun TabletChaptersListPreview() {
                 chapter = PlayerChapter(name = "Intro", startPosition = 0L),
                 index = 0,
                 isCurrent = true,
-                trickplay = null,
                 onClick = {},
             )
             ChapterCard(
@@ -149,7 +144,6 @@ private fun TabletChaptersListPreview() {
                     PlayerChapter(name = "Prologue - The Beginning", startPosition = 120_000L),
                 index = 1,
                 isCurrent = false,
-                trickplay = null,
                 onClick = {},
             )
         }

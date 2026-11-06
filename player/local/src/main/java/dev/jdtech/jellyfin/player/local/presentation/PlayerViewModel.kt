@@ -286,7 +286,13 @@ constructor(
             .flatMapLatest { item ->
                 flow {
                     if (item != null) {
-                        val trickplay = fetchTrickplay(repository, item)
+                        val trickplay =
+                            fetchTrickplay(
+                                repository = repository,
+                                item = item,
+                                cacheDir = application.cacheDir,
+                                coroutineScope = viewModelScope,
+                            )
                         emit(trickplay)
                     } else {
                         emit(null)
@@ -296,7 +302,7 @@ constructor(
             .onEach { trickplay ->
                 val oldTrickplay = _uiState.value.currentTrickplay
                 if (oldTrickplay != trickplay) {
-                    oldTrickplay?.images?.forEach { it.recycle() }
+                    oldTrickplay?.release()
                     _uiState.update { it.copy(currentTrickplay = trickplay) }
                 }
             }
@@ -1630,6 +1636,7 @@ constructor(
             )
         }
 
+        _uiState.value.currentTrickplay?.release()
         _uiState.update { it.copy(currentTrickplay = null) }
         playWhenReady = false
         playbackPosition = 0L
@@ -1646,6 +1653,7 @@ constructor(
                 delay(1_000L.milliseconds)
                 if (player.isPlaying) {
                     updateCurrentSegment()
+                    _uiState.value.currentTrickplay?.updatePosition(player.currentPosition)
                     progressTick++
                     if (progressTick >= 10) {
                         progressTick = 0
@@ -1919,6 +1927,7 @@ constructor(
         reason: Int,
     ) {
         if (reason == Player.DISCONTINUITY_REASON_SEEK) {
+            _uiState.value.currentTrickplay?.updatePosition(newPosition.positionMs)
             updatePlaybackProgress()
             updateCurrentSegment()
         }

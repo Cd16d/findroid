@@ -1,7 +1,6 @@
 package dev.jdtech.jellyfin.presentation.components
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -26,7 +25,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -38,8 +36,6 @@ import dev.jdtech.jellyfin.core.presentation.theme.PlayerCardBackground
 import dev.jdtech.jellyfin.core.presentation.theme.PlayerCardCurrent
 import dev.jdtech.jellyfin.player.core.R as PlayerR
 import dev.jdtech.jellyfin.player.core.domain.models.PlayerChapter
-import dev.jdtech.jellyfin.player.core.domain.models.Trickplay
-import dev.jdtech.jellyfin.player.core.domain.models.intervalMs
 import dev.jdtech.jellyfin.player.core.presentation.formatDuration
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 
@@ -54,7 +50,6 @@ private val ChapterThumbShape = CentralShapes.SmallCard
  * @param isCurrent Whether chapter is currently active.
  * @param onClick Callback when chapter card is tapped.
  * @param modifier Optional modifier applied to row. Defaults to [Modifier].
- * @param trickplay Trickplay model for thumbnail extraction. Defaults to `null`.
  */
 @Composable
 fun ChapterCard(
@@ -63,7 +58,6 @@ fun ChapterCard(
     isCurrent: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    trickplay: Trickplay? = null,
 ) {
     val startTimeMs = chapter.startPosition
     val formattedTime = formatDuration(startTimeMs)
@@ -73,30 +67,6 @@ fun ChapterCard(
             ?: stringResource(id = PlayerR.string.chapter_title, index + 1)
 
     var isImageError by remember(chapter.imageUri) { mutableStateOf(false) }
-
-    val trickplayBitmap =
-        remember(trickplay, startTimeMs) {
-            if (trickplay != null && trickplay.images.isNotEmpty()) {
-                val intervalMs = trickplay.intervalMs
-                val imgIndex =
-                    if (intervalMs > 0) {
-                        (startTimeMs / intervalMs).toInt().coerceIn(0, trickplay.images.size - 1)
-                    } else 0
-                trickplay.images.getOrNull(imgIndex)
-            } else null
-        }
-
-    val imageAspectRatio =
-        remember(trickplayBitmap) {
-            if (trickplayBitmap != null && trickplayBitmap.height > 0) {
-                (trickplayBitmap.width.toFloat() / trickplayBitmap.height.toFloat()).coerceIn(
-                    4f / 3f,
-                    2.4f,
-                )
-            } else {
-                16f / 9f
-            }
-        }
 
     val thumbBorder = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f))
 
@@ -116,12 +86,12 @@ fun ChapterCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            // Chapter Thumbnail with Dynamic Aspect Ratio
+            // Chapter Thumbnail
             val hasServerImage = !chapter.imageUri.isNullOrBlank() && !isImageError
             Box(
                 modifier =
                     Modifier.height(42.dp)
-                        .aspectRatio(if (hasServerImage) 16f / 9f else imageAspectRatio)
+                        .aspectRatio(16f / 9f)
                         .clip(ChapterThumbShape)
                         .border(thumbBorder, ChapterThumbShape)
                         .background(Color.Black),
@@ -134,13 +104,6 @@ fun ChapterCard(
                         contentScale = ContentScale.Crop,
                         onError = { isImageError = true },
                         modifier = Modifier.fillMaxSize(),
-                    )
-                } else if (trickplayBitmap != null) {
-                    Image(
-                        bitmap = trickplayBitmap.asImageBitmap(),
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop,
                     )
                 } else {
                     Text(

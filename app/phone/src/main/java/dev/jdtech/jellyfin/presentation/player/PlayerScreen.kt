@@ -100,6 +100,8 @@ import dev.jdtech.jellyfin.core.presentation.components.AmbientPlayerBackground
 import dev.jdtech.jellyfin.isControlsLocked
 import dev.jdtech.jellyfin.models.VolumeKeyEvent
 import dev.jdtech.jellyfin.player.core.domain.models.PlayerSidePanelType
+import dev.jdtech.jellyfin.player.core.presentation.TrickplayScrubber
+import dev.jdtech.jellyfin.player.core.presentation.calculateTrickplayCardWidth
 import dev.jdtech.jellyfin.player.local.mpv.updateMpvResizeMode
 import dev.jdtech.jellyfin.player.local.presentation.PlayerEvents
 import dev.jdtech.jellyfin.player.local.presentation.PlayerViewModel
@@ -112,11 +114,9 @@ import dev.jdtech.jellyfin.presentation.player.components.PlayerSidePanel
 import dev.jdtech.jellyfin.presentation.player.components.PlayerTopBar
 import dev.jdtech.jellyfin.presentation.player.components.QuickSpeedOverlay
 import dev.jdtech.jellyfin.presentation.player.components.ScreenLockOverlay
-import dev.jdtech.jellyfin.presentation.player.components.TrickplayScrubber
 import dev.jdtech.jellyfin.presentation.player.components.VideoPlayerSeeker
 import dev.jdtech.jellyfin.presentation.player.components.VolumeBrightnessOverlay
 import dev.jdtech.jellyfin.presentation.player.components.ZoomFeedbackOverlay
-import dev.jdtech.jellyfin.presentation.player.components.calculateTrickplayCardWidth
 import dev.jdtech.jellyfin.presentation.player.components.rememberPlayerHaptics
 import dev.jdtech.jellyfin.presentation.player.components.rememberVideoPlayerState
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme

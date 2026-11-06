@@ -1,6 +1,5 @@
 package dev.jdtech.jellyfin.presentation.cast.components
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -19,7 +18,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -29,7 +27,6 @@ import coil3.compose.AsyncImage
 import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.player.cast.models.Device
 import dev.jdtech.jellyfin.player.cast.presentation.CastPlayerViewModel
-import dev.jdtech.jellyfin.player.core.R as PlayerCoreR
 import dev.jdtech.jellyfin.player.core.domain.models.PlayerImage
 import dev.jdtech.jellyfin.player.core.domain.models.Trickplay
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
@@ -122,17 +119,11 @@ fun TrickplayThumbnail(
     scrubPosition: Float,
     modifier: Modifier = Modifier,
 ) {
-    if (trickplay.images.isEmpty() || trickplay.interval <= 0) return
-
+    if (!trickplay.hasThumbnails || trickplay.interval <= 0) return
     val safePosition = if (scrubPosition.isFinite() && scrubPosition > 0f) scrubPosition else 0f
-    val index = (safePosition / trickplay.interval).toInt().coerceIn(0, trickplay.images.size - 1)
-    val image = trickplay.images.getOrNull(index) ?: return
-    val imageBitmap = remember(image) { image.asImageBitmap() }
-
-    Image(
-        bitmap = imageBitmap,
-        contentDescription = stringResource(PlayerCoreR.string.player_trickplay),
-        contentScale = ContentScale.Crop,
+    dev.jdtech.jellyfin.player.core.presentation.TrickplayThumbnail(
+        trickplay = trickplay,
+        positionMs = safePosition.toLong(),
         modifier = modifier.fillMaxSize(),
     )
 }
@@ -158,7 +149,7 @@ private fun CastPlayerArtwork(
                 .background(MaterialTheme.colorScheme.surfaceContainerHighest),
         contentAlignment = Alignment.Center,
     ) {
-        if (isScrubbing && trickplay != null && hasValidDuration && trickplay.images.isNotEmpty()) {
+        if (isScrubbing && trickplay != null && hasValidDuration && trickplay.hasThumbnails) {
             TrickplayThumbnail(
                 trickplay = trickplay,
                 scrubPosition = scrubPosition,
